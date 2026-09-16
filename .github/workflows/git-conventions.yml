@@ -1,0 +1,84 @@
+name: Git conventions
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: git-conventions-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Git conventions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: PR 제목과 커밋 메시지 검사
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            // 기준: .docs/.convetions/GIT_CONVETIONS.md 5.1, 5.2, 6.1
+            // 로컬 검증: node --test .github/scripts/git-conventions.test.cjs
+            const pr = context.payload.pull_request;
+            const types = '(?:feat|fix|refactor|test|docs|chore)';
+            const titlePattern = new RegExp(`^${types}: ([^\\r\\n]+)$`);
+            const commitPattern = new RegExp(`^${types}: ([^\\r\\n]+)\\(#[1-9]\\d*\\)$`);
+            const validSummary = value => value === value.trim()
+              && !value.endsWith('.') && !/^(?:wip|update|change)$/i.test(value);
+            const errors = [];
+            const title = pr.title.match(titlePattern);
+            if (!title || title[0] !== pr.title || !validSummary(title[1]) || /\(#\d+\)$/.test(title[1])) {
+              errors.push('PR 제목은 "feat: 샘플 생성 API 추가" 형식이어야 합니다. 이슈 번호는 본문에 적어 주세요.');
+            }
+
+            // PR REST API의 250개 제한을 피하고 GraphQL 커서를 끝까지 조회한다.
+            const query = `query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+              repository(owner: $owner, name: $repo) {
+                pullRequest(number: $number) {
+                  headRefOid
+                  commits(first: 100, after: $cursor) {
+                    totalCount
+                    nodes { commit { oid message } }
+                    pageInfo { hasNextPage endCursor }
+                  }
+                }
+              }
+            }`;
+            let cursor = null;
+            let checked = 0;
+            let total = 0;
+            do {
+              const result = await github.graphql(query, { ...context.repo, number: pr.number, cursor });
+              const current = result.repository?.pullRequest;
+              if (!current || current.headRefOid !== pr.head.sha) {
+                throw new Error('PR을 조회할 수 없거나 검사 중 커밋이 변경되었습니다. 최신 실행을 확인해 주세요.');
+              }
+              const page = current.commits;
+              total = page.totalCount;
+              for (const { commit } of page.nodes) {
+                const firstLine = commit.message.split(/\r?\n/, 1)[0];
+                const match = firstLine.match(commitPattern);
+                if (!match || !validSummary(match[1])) {
+                  errors.push(`커밋 ${commit.oid.slice(0, 7)}: "feat: 샘플 생성 API 추가(#123)" 형식이어야 합니다.`);
+                }
+                checked += 1;
+              }
+              if (page.pageInfo.hasNextPage && (!page.pageInfo.endCursor || page.pageInfo.endCursor === cursor)) {
+                throw new Error('커밋 페이지를 끝까지 조회하지 못했습니다.');
+              }
+              cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+            } while (cursor);
+            if (checked === 0 || checked !== total) {
+              throw new Error(`커밋 조회가 불완전합니다: ${checked}/${total}`);
+            }
+            if (errors.length) {
+              core.setFailed(errors.join('\n'));
+            } else {
+              core.info(`PR 제목과 커밋 ${checked}개의 메시지가 규칙을 통과했습니다.`);
+            }

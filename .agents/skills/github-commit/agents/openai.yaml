@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git 커밋"
+  short_description: "변경 범위와 이슈 번호를 확인해 규칙에 맞는 커밋을 만듭니다"
+  default_prompt: "$github-commit을 사용해 변경 내용을 분석하고 관련 이슈 번호를 포함한 커밋 메시지를 제안해 주세요."

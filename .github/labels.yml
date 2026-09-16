@@ -1,0 +1,15 @@
+- name: "feature"
+  color: "1d76db"
+  description: "새로운 기능 요청 또는 구현"
+
+- name: "refactoring"
+  color: "0052cc"
+  description: "기존 기능의 개선 또는 리팩토링"
+
+- name: "test"
+  color: "b60205"
+  description: "실험적 기능 또는 테스트 구현"
+
+- name: "bug"
+  color: "f60205"
+  description: "실험적 기능 또는 테스트 구현"

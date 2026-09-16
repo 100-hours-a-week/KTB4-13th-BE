@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Search existing issues
+    url: https://github.com/YAPP-Github/28th-Web-Team-2-BE-2/issues
+    about: Check whether a related issue already exists before creating a new one.
+  - name: Ask a question
+    url: https://github.com/YAPP-Github/28th-Web-Team-2-BE-2/issues/new?template=chore.yml
+    about: Use the chore Issue form for inquiries because Discussions are disabled.

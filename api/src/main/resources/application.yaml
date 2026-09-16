@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: book
+  profiles:
+    default: local
+  config:
+    import: classpath:persistence.yml

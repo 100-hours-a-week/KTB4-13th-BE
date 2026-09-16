@@ -1,0 +1,31 @@
+name: Sync Labels
+# https://github.com/marketplace/actions/github-labeler
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/labels.yml
+      - .github/workflows/create-labels.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/labels.yml
+      - .github/workflows/create-labels.yml
+permissions:
+  issues: write
+
+jobs:
+  sync-labels:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Run Labeler Action
+        uses: crazy-max/ghaction-github-labeler@v5
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          yaml_file: .github/labels.yml

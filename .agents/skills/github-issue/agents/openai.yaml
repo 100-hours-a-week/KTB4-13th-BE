@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub 이슈"
+  short_description: "프로젝트 규칙과 템플릿에 맞춰 이슈를 작성하고 생성합니다"
+  default_prompt: "$github-issue를 사용해 요청 내용을 프로젝트 규칙에 맞는 GitHub 이슈로 정리해 주세요."

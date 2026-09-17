@@ -35,7 +35,13 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Gradle check
-        run: ./gradlew check --no-daemon
+        run: ./gradlew clean check bootJar --no-daemon
+
+      - name: Verify automation and coverage output
+        run: |
+          node --test .github/scripts/git-conventions.test.cjs .github/scripts/pending-workflows.test.cjs
+          test -s build/reports/jacoco/test/jacocoTestReport.xml
+          test -s build/reports/jacoco/test/html/index.html
 
       - name: Publish JaCoCo report to PR
         if: ${{ always() && github.event_name == 'pull_request' }}
@@ -43,7 +49,7 @@ jobs:
         uses: madrapps/jacoco-report@50d3aff4548aa991e6753342d9ba291084e63848 # v1.7.2
         with:
           title: "테스트 커버리지"
-          paths: ${{ github.workspace }}/api/build/reports/jacoco/test/jacocoTestReport.xml
+          paths: ${{ github.workspace }}/build/reports/jacoco/test/jacocoTestReport.xml
           token: ${{ secrets.GITHUB_TOKEN }}
           min-coverage-overall: 90
           update-comment: true
@@ -54,7 +60,7 @@ jobs:
         with:
           name: jacoco-report
           path: |
-            api/build/reports/jacoco/test/html/
-            api/build/reports/jacoco/test/jacocoTestReport.xml
-          if-no-files-found: warn
+            build/reports/jacoco/test/html/
+            build/reports/jacoco/test/jacocoTestReport.xml
+          if-no-files-found: error
           retention-days: 14

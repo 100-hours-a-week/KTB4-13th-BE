@@ -31,6 +31,8 @@ test('PR 크기 라벨과 대기 알림 workflow 계약을 유지한다', () => 
     assert.match(labels, new RegExp(`name: "${label.replace('/', '\\/')}"\\n  color: "${color}"`));
   }
   assert.match(sizeLabeler, /types: \[opened, reopened, synchronize\]/);
+  assert.match(sizeLabeler, /pull-requests: write/);
+  assert.match(sizeLabeler, /'refactor\/': 'refactor'/);
   assert.match(sizeLabeler, /changes <= 50/);
   assert.match(sizeLabeler, /changes <= 200/);
   assert.match(sizeLabeler, /changes <= 500/);

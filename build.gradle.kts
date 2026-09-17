@@ -1,46 +1,65 @@
 plugins {
-    base
-    id("com.diffplug.spotless") version "8.10.2" apply false
-    id("org.springframework.boot") version "4.1.1" apply false
-    id("io.spring.dependency-management") version "1.1.7" apply false
+    java
+    jacoco
+    id("org.springframework.boot") version "4.1.1"
+    id("io.spring.dependency-management") version "1.1.7"
+    id("com.diffplug.spotless") version "8.10.2"
 }
 
-allprojects {
-    group = "com"
-    repositories { mavenCentral() }
+group = "com"
+repositories { mavenCentral() }
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(25) }
 }
 
-configure(subprojects.filter { it.path != ":infrastructure" }) {
-    apply(plugin = "java-library")
-    apply(plugin = "io.spring.dependency-management")
-    apply(plugin = "com.diffplug.spotless")
+dependencies {
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
+    runtimeOnly("org.flywaydb:flyway-mysql")
+    runtimeOnly("com.mysql:mysql-connector-j")
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
 
-    configure<com.diffplug.gradle.spotless.SpotlessExtension> {
-        ratchetFrom("origin/main")
-        java {
-            palantirJavaFormat("2.98.0")
-            removeUnusedImports()
-            forbidWildcardImports()
-            trimTrailingWhitespace()
-            endWithNewline()
-        }
-    }
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-mysql")
+    testImplementation("com.tngtech.archunit:archunit:1.5.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
 
-    configure<io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension> {
-        imports { mavenBom("org.springframework.boot:spring-boot-dependencies:4.1.1") }
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+    options.compilerArgs.add("-parameters")
+}
+
+tasks.test {
+    useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+jacoco { toolVersion = "0.8.15" }
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
     }
-    configure<JavaPluginExtension> {
-        toolchain { languageVersion = JavaLanguageVersion.of(25) }
+}
+tasks.check { dependsOn(tasks.jacocoTestReport) }
+tasks.jar { enabled = false }
+
+spotless {
+    ratchetFrom("origin/main")
+    java {
+        palantirJavaFormat("2.98.0")
+        removeUnusedImports()
+        forbidWildcardImports()
+        trimTrailingWhitespace()
+        endWithNewline()
     }
-    tasks.withType<JavaCompile>().configureEach {
-        options.encoding = "UTF-8"
-        options.compilerArgs.add("-parameters")
-    }
-    dependencies {
-        "testImplementation"("org.junit.jupiter:junit-jupiter")
-        "testImplementation"("org.assertj:assertj-core")
-        "testImplementation"("org.mockito:mockito-junit-jupiter")
-        "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
-    }
-    tasks.withType<Test>().configureEach { useJUnitPlatform() }
 }

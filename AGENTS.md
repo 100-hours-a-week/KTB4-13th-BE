@@ -1,10 +1,11 @@
 # AGENTS.md
 
 Spring Boot + Java 25 단일 모듈 프로젝트의 개발 규칙입니다.
-구조와 의존 방향은 이 문서를 기준으로 합니다. 저장소의 `.docs/ARCHITECTURE.md`는 이전 멀티모듈 구조의 기록입니다.
+작업에 해당하는 팀 공통 기준 문서를 읽고 적용합니다.
 
-- Java 코드 작성·수정: Spotless와 이 문서의 Java 규칙을 적용합니다. 로컬 `.docs/.conventions/CODE_STYLE_CONVETIONS.md`가 있으면 추가 규칙을 확인합니다.
-- Issue·Branch·Commit·PR 작업: 설치된 GitHub 스킬과 `.github` 템플릿·규칙 검사를 따릅니다.
+- 패키지 구조·책임·명명 변경: [아키텍처](.docs/ARCHITECTURE.md)
+- Java 코드 작성·수정: [코드 스타일](.docs/.conventions/CODE_STYLE_CONVETIONS.md)과 Spotless를 적용합니다.
+- Issue·Branch·Commit·PR 작업: [Git 규칙](.docs/.conventions/GIT_CONVETIONS.md), 설치된 GitHub 스킬과 `.github` 템플릿·규칙 검사를 따릅니다.
 - 스킬 선택·관리: 설치된 각 `SKILL.md`를 기준으로 하며, 로컬 `.docs/SKILL_DOCS.md`가 있으면 색인으로 사용합니다.
 
 ## 기술 스택

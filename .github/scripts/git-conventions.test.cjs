@@ -1,7 +1,9 @@
 const assert = require('node:assert/strict');
-const { readFileSync } = require('node:fs');
+const { readFileSync, readdirSync } = require('node:fs');
 const { join } = require('node:path');
 const { test } = require('node:test');
+
+const repositoryRoot = join(__dirname, '../..');
 
 // 워크플로의 실제 script 블록을 실행하여 검증 규칙을 복제하지 않는다.
 const workflow = readFileSync(join(__dirname, '../workflows/git-conventions.yml'), 'utf8');
@@ -97,4 +99,32 @@ test('PR 제목과 메시지의 코드처럼 보이는 문자열을 데이터로
   const summary = '인용 "값", `코드`, ${process.exit(99)} 처리';
   const result = await run({ title: `fix: ${summary}`, messages: [`fix: ${summary}(#123)`] });
   assert.deepEqual(result.failures, []);
+});
+
+test('Issue 양식은 현재 저장소 링크와 실제 라벨 기준을 사용한다', () => {
+  const templateDirectory = join(repositoryRoot, '.github/ISSUE_TEMPLATE');
+  const config = readFileSync(join(templateDirectory, 'config.yml'), 'utf8');
+  assert.doesNotMatch(config, /YAPP-Github/);
+  assert.match(config, /100-hours-a-week\/KTB4-13th-BE/);
+
+  const configuredLabels = new Set(
+    [...readFileSync(join(repositoryRoot, '.github/labels.yml'), 'utf8').matchAll(/^- name: "([^"]+)"$/gm)]
+      .map(match => match[1]),
+  );
+  for (const file of readdirSync(templateDirectory).filter(name => name.endsWith('.yml') && name !== 'config.yml')) {
+    const form = readFileSync(join(templateDirectory, file), 'utf8');
+    assert.doesNotMatch(form, /id: (agent-prompt|acceptance-criteria|out-of-scope)/, file);
+    for (const match of form.matchAll(/^labels: \["([^"]+)"\]$/gm)) {
+      assert.ok(configuredLabels.has(match[1]), `${file}: 정의되지 않은 라벨 ${match[1]}`);
+    }
+  }
+});
+
+test('PR 스킬은 실제 PR 템플릿 섹션만 안내한다', () => {
+  const template = readFileSync(join(repositoryRoot, '.github/PULL_REQUEST_TEMPLATE.md'), 'utf8');
+  const skill = readFileSync(join(repositoryRoot, '.agents/skills/github-pr/SKILL.md'), 'utf8');
+  const headings = [...template.matchAll(/^## (.+)$/gm)].map(match => match[1]);
+  for (const heading of headings) assert.match(skill, new RegExp(`\\b${heading}\\b`));
+  assert.doesNotMatch(skill, /Verification|Out of Scope|Sub-issue Progress/);
+  assert.doesNotMatch(template, /미검증 사항 및 사유:\s*없음/);
 });

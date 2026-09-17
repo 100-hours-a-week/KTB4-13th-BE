@@ -19,7 +19,7 @@ Issue 번호는 사용자 입력과 브랜치에서 확인한다. 누락·불일
 ## 작성과 등록
 
 1. 제목은 `<type>: <한국어 요약>`으로 작성한다. 커밋과 달리 `(#이슈번호)`를 제목에 붙이지 않는다.
-2. PR 본문의 기준은 `.github/PULL_REQUEST_TEMPLATE.md`다. 문제와 변경 후 동작을 요점부터 설명하고, Related Issue에는 실제 Issue를 닫는 `Closes #번호` 또는 `Fixes #번호`를 쓴다. Verification에는 검증 결과를, Out of Scope에는 범위 외 항목을 적는다. Sub-issue Progress와 Notes는 해당할 때만 채운다.
+2. PR 본문의 섹션과 순서는 `.github/PULL_REQUEST_TEMPLATE.md`만 기준으로 삼는다. Summary에는 문제와 변경 후 동작을, Changes에는 주요 변경을, Related Issue에는 실제 Issue를 닫는 `Closes #번호` 또는 `Fixes #번호`를 쓴다. Validation에는 실행한 검증과 미검증 사항을 구분해 적고 Notes는 필요한 경우에만 남긴다.
 3. 실행한 검증과 미실행·실패 항목을 구분한다. Issue 완료 조건과 변경 범위를 대조하고, 400줄을 크게 넘으면 독립적으로 분리할 수 있는지 검토한다. 줄 수 권장을 절대 제한으로 취급하지 않는다.
 4. 비밀값과 로컬 `.docs/` 원문을 게시하지 않는다. PR에 들어갈 모든 커밋의 첫 줄이 `.github/workflows/git-conventions.yml`의 규칙을 충족하는지 확인한다. 규칙에 맞지 않는 이력을 승인 없이 재작성하지 않는다.
 5. 명시적인 PR 생성·수정 요청이면 실행한다. 초안 요청이면 제목과 본문을 완성해 반환한다. Push는 세션에서 승인된 경우에만 수행하며, 원격 브랜치가 없고 Push 승인이 없다면 완성한 PR 초안과 대상 브랜치를 제시한 뒤 승인받는다. 이미 승인된 작업은 다시 묻지 않는다.

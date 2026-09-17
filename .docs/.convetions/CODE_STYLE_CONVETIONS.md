@@ -1,129 +1,159 @@
-# Code Style Conventions
+# 코드 스타일 컨벤션
 
-## 1. General Guidelines
+## 1. 기본 원칙
 
-- Use the [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html) as the baseline style guide.
-- This project's explicit formatting rules below take precedence over the baseline.
-- Use the design checklist as review guidance, not numeric limits that require extra classes or methods. Apply it to the code being changed rather than unrelated code.
+- [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html)를 기본 스타일 가이드로 사용합니다.
+- 아래에 명시한 프로젝트의 포맷 규칙을 기본 가이드보다 우선합니다.
+- 설계 체크리스트는 리뷰 지침으로 사용합니다. 수치 제한을 맞추기 위해 클래스나 메서드를 추가하지 않으며, 현재 변경하는 코드에 적용합니다.
 
-## 2. Design Review Checklist
+## 2. 설계 리뷰 체크리스트
 
-### Is control flow easy to follow?
+### 제어 흐름을 쉽게 이해할 수 있는가?
 
-- Prefer early returns when they reduce nesting. Extract a method when the extracted operation has a clear responsibility.
-- Use `if`/`else`, a simple ternary, or a `switch` expression when it makes the alternatives easier to understand. Avoid nested ternaries and deeply nested branches.
+- 중첩을 줄일 수 있다면 조기 반환을 우선합니다. 분리할 동작의 책임이 명확할 때 메서드로 추출합니다.
+- 선택지를 이해하기 쉬워진다면 `if`/`else`, 단순한 삼항 연산자, `switch` 표현식을 사용합니다. 중첩된 삼항 연산자와 깊게 중첩된 분기는 피합니다.
 
-### Does a value object capture a domain rule?
+### 값 객체가 도메인 규칙을 표현하는가?
 
-- Introduce a value object when it owns an invariant, domain behavior, or a meaningful distinction that prevents mistakes.
-- Primitive values and strings are appropriate for simple values and boundary DTOs. Do not wrap them solely to satisfy a checklist.
+- 불변식, 도메인 행위 또는 실수를 방지하는 의미 있는 구분을 소유할 때 값 객체를 도입합니다.
+- 단순한 값과 경계의 DTO에는 원시값과 문자열을 사용할 수 있습니다. 체크리스트를 만족시키기 위해서만 감싸지 않습니다.
 
-### Does a collection own domain behavior?
+### 컬렉션이 도메인 행위를 소유하는가?
 
-- Use a first-class collection when it owns collection-wide rules or behavior.
-- A plain collection is sufficient for data transfer. Protect domain state from external mutation with immutable views or defensive copies where needed.
+- 컬렉션 전체에 적용되는 규칙이나 행위가 있으면 일급 컬렉션을 사용합니다.
+- 데이터 전달에는 일반 컬렉션으로 충분합니다. 필요한 경우 불변 뷰나 방어적 복사로 외부에서 도메인 상태를 변경하지 못하게 합니다.
 
-### Do fields and parameters belong together?
+### 필드와 매개변수가 하나의 개념에 속하는가?
 
-- Keep related state and behavior together. Split a class when it has separate responsibilities, not when its field count crosses a fixed threshold.
-- Group parameters when they express a meaningful concept. Do not invent parameter objects solely to reduce a count.
-- DTOs, records, JPA entities, and mappers may need several fields or parameters to represent their contracts.
+- 관련된 상태와 행위를 함께 둡니다. 필드 개수가 일정 수를 넘어서가 아니라 서로 다른 책임이 있을 때 클래스를 분리합니다.
+- 매개변수들이 의미 있는 개념을 표현하면 하나로 묶습니다. 개수를 줄이기 위해서만 매개변수 객체를 만들지 않습니다.
+- DTO, record, JPA Entity, Mapper는 계약을 표현하기 위해 여러 필드나 매개변수가 필요할 수 있습니다.
 
-### Does the domain control its state transitions?
+### 도메인이 자신의 상태 전이를 제어하는가?
 
-- Use domain methods to enforce invariants and state transitions rather than public setters that bypass them.
-- Read-only accessors are appropriate when callers need domain state. DTO accessors and framework-required entity access do not replace domain behavior.
+- 불변식을 우회하는 공개 setter 대신 도메인 메서드로 불변식과 상태 전이를 보장합니다.
+- 호출자가 도메인 상태를 알아야 한다면 읽기 전용 접근자를 사용할 수 있습니다. DTO 접근자나 프레임워크가 요구하는 Entity 접근 방식이 도메인 행위를 대신하지는 않습니다.
 
-### Do calls respect responsibility boundaries?
+### Lombok을 사용하는 도메인 모델에 표준 어노테이션을 적용했는가?
 
-- Avoid reaching through another object's internal structure to perform its work; place that behavior with its owner.
-- Fluent APIs, stream pipelines, DTO mapping, and assertion chains are allowed when readable. Counting dots does not establish coupling.
+도메인 모델에서 Lombok을 사용할 때는 클래스 선언 바로 위에 다음 어노테이션을 아래 순서대로 배치합니다.
 
-### Does each method or class have a clear responsibility?
+```java
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+@Accessors(fluent = true)
+```
 
-- Keep each method or class focused on a coherent responsibility.
-- Extract separate responsibilities when this improves understanding; do not split code solely to make it shorter.
+- `AccessLevel`, `Getter`, `NoArgsConstructor`, `Accessors`를 명시적으로 import하며 와일드카드 import를 사용하지 않습니다.
+- `@Accessors(fluent = true)`를 적용하면 호출자는 `getName()` 대신 `name()`을 사용합니다.
+- 보호된 무인자 생성자는 인프라 또는 상태 복원을 위한 경계입니다. 도메인 생성은 불변식을 보장하는 생성자, 팩터리, Command 또는 도메인 메서드를 거쳐야 합니다.
+- record, enum, interface, 도메인 예외, 정책, 무인자 생성으로 유효하지 않은 도메인 상태가 만들어질 수 있는 클래스에는 이 어노테이션 묶음을 적용하지 않습니다. 적용 대상 모델에서 예외가 필요하면 사유를 기록합니다.
 
-## 3. Input Validation and Error Contracts
+### 호출이 책임 경계를 지키는가?
 
-### Did you actively use Jakarta Validation for external input?
+- 다른 객체의 내부 구조를 따라 들어가 그 객체의 일을 대신하지 않습니다. 해당 행위를 책임지는 객체에 동작을 둡니다.
+- 읽기 쉽다면 Fluent API, Stream 파이프라인, DTO 매핑, assertion 체이닝을 허용합니다. 점의 개수만으로 결합도를 판단하지 않습니다.
 
-- Prefer `@NotBlank`, `@NotNull`, `@Min`, `@Max`, `@Size`, and `@Pattern` from `jakarta.validation.constraints` for required values, ranges, lengths, and format constraints in Presentation DTOs.
-- Enable validation with `@Valid` or `@Validated` on the Controller and follow the HTTP error contract in [`ApiExceptionHandler`](../../api/src/main/java/com/book/api/support/web/ApiExceptionHandler.java).
-- Avoid duplicating the same simple HTTP input checks in DTO constructors. Commands and Domain objects must still enforce their own preconditions and invariants for non-HTTP callers.
-- Use the technology-neutral [`BusinessException`](../../common/src/main/java/com/book/common/exception/BusinessException.java) contract for shared business errors; map them to HTTP responses in `api/support/web`.
-- Rules that are difficult to express with annotations alone, such as null defaults, input normalization, conditions between multiple fields, and domain invariants, belong in the constructor, Application, or Domain layer.
-- Verify new constraints with tests that confirm invalid HTTP input returns the expected status code and error response contract.
+### 메서드와 클래스의 책임이 명확한가?
 
-## 4. Formatting and Java Conventions
+- 각 메서드와 클래스는 일관된 하나의 책임에 집중합니다.
+- 이해하기 쉬워진다면 서로 다른 책임을 분리합니다. 단순히 코드를 짧게 만들기 위해 분리하지 않습니다.
 
-### Did you use four spaces for indentation?
+## 3. 입력 검증과 오류 계약
 
-- Use four spaces for each indentation level.
-- Do not use tab characters.
-- Use eight spaces for continuation indentation.
+### 외부 입력에 Jakarta Validation을 활용했는가?
 
-### Did you keep each line within 120 characters?
+- Presentation DTO의 필수값, 범위, 길이, 형식 제약에는 `jakarta.validation.constraints`의 `@NotBlank`, `@NotNull`, `@Min`, `@Max`, `@Size`, `@Pattern`을 우선 사용합니다.
+- Controller에서 `@Valid` 또는 `@Validated`로 검증을 활성화하고, [`ApiExceptionHandler`](../../api/src/main/java/com/book/api/support/web/ApiExceptionHandler.java)의 HTTP 오류 계약을 따릅니다.
+- 같은 단순 HTTP 입력 검증을 DTO 생성자에 중복 작성하지 않습니다. Command와 Domain 객체는 HTTP를 거치지 않는 호출에서도 자신의 전제조건과 불변식을 보장해야 합니다.
+- 공통 비즈니스 오류에는 기술 중립적인 [`BusinessException`](../../common/src/main/java/com/book/common/exception/BusinessException.java) 계약을 사용하고, `api/support/web`에서 HTTP 응답으로 변환합니다.
+- null 기본값, 입력 정규화, 필드 간 조건, 도메인 불변식처럼 어노테이션만으로 표현하기 어려운 규칙은 생성자, Application 또는 Domain 계층에 둡니다.
+- 제약을 추가하면 잘못된 HTTP 입력에 대해 예상한 상태 코드와 오류 응답이 반환되는지 테스트합니다.
 
-- Limit each line to 120 characters.
+## 4. 포맷과 Java 작성 규칙
 
-### Did you always use braces for control statements?
+### 들여쓰기에 공백 4개를 사용했는가?
 
-- Use braces for `if`, `for`, and `while`, even when the body contains one line.
-- Place the opening brace on the same line as the control statement or declaration (K&R style).
+- 들여쓰기 한 단계에 공백 4개를 사용합니다.
+- 탭 문자를 사용하지 않습니다.
+- 줄을 이어 쓸 때는 공백 8개로 들여씁니다.
 
-### Did you avoid wildcard imports?
+### 한 줄을 120자 이내로 작성했는가?
 
-- Do not use `import *`.
-- Keep static imports separate from regular imports.
+- 각 줄의 길이는 120자 이내로 제한합니다.
 
-### Does each Java file contain only one top-level class?
+### 제어문에 항상 중괄호를 사용했는가?
 
-- Define only one top-level class, interface, enum, or record in each `.java` file.
+- 본문이 한 줄이어도 `if`, `for`, `while`에 중괄호를 사용합니다.
+- 여는 중괄호는 제어문이나 선언과 같은 줄에 둡니다(K&R 스타일).
 
-### Did you keep overloaded methods together?
+### 와일드카드 import를 피했는가?
 
-- Place overloaded methods next to one another.
+- `import *`를 사용하지 않습니다.
+- static import와 일반 import를 구분합니다.
 
-### Did you declare one variable per statement?
+### Java 파일마다 최상위 타입을 하나만 정의했는가?
 
-- Declare only one variable in each declaration statement.
+- 각 `.java` 파일에는 최상위 class, interface, enum 또는 record를 하나만 정의합니다.
 
-### Did you declare local variables close to their use?
+### 오버로딩한 메서드를 함께 배치했는가?
 
-- Declare local variables near the first statement that uses them.
+- 오버로딩한 메서드는 서로 인접하게 배치합니다.
 
-### Did you follow Java naming conventions?
+### 선언문마다 변수를 하나만 선언했는가?
 
-- Use `lowercase` for package names.
-- Use `UpperCamelCase` for class, interface, enum, and record names.
-- Use `lowerCamelCase` for method and field names.
-- Use `UPPER_SNAKE_CASE` only for semantic constants.
-- Do not treat every `static final` member as a constant.
-- Use `userId` instead of `userID`.
+- 하나의 선언문에는 변수 하나만 선언합니다.
 
-### Did you use `@Override` wherever applicable?
+### 지역 변수를 사용하는 위치 가까이에 선언했는가?
 
-- Add `@Override` whenever a method overrides or implements inherited behavior.
+- 지역 변수는 처음 사용하는 구문 가까이에 선언합니다.
 
-### Did you handle exceptions explicitly?
+### 변수와 매개변수에 `final`을 명시했는가?
 
-- Do not silently ignore exceptions.
-- Handle, log, or propagate each exception appropriately.
+- 재할당하지 않는 지역 변수에는 `final`을 명시합니다. `final var` 선언과 향상된 `for`문의 변수도 포함합니다. 사실상 final인 상태만으로는 이 규칙을 충족하지 않습니다.
+- 메서드와 생성자의 매개변수에 `final`을 명시하고 재할당하지 않습니다. 변환한 값은 새로운 `final` 지역 변수에 저장합니다.
+- 람다 매개변수를 선언할 때는 타입 또는 `var`와 함께 `final`을 명시합니다. 예: `(final var item) -> item.name()`.
+- 생성 이후 값이나 참조가 바뀌지 않는 필드에는 `final`을 명시합니다. 생성자로 주입하는 의존성도 포함합니다. 도메인 상태 전이나 프레임워크 요구사항으로 재할당해야 하는 필드는 non-final로 유지합니다.
+- 반복문의 카운터나 누적 변수처럼 재할당이 필요한 지역 변수에는 `final`을 생략합니다. 변수에 final을 붙이기 위해서만 가변 래퍼를 도입하지 않습니다.
+- record 컴포넌트처럼 Java 문법상 허용되지 않는 위치에는 `final`을 붙이지 않습니다. 참조에 final을 붙여도 참조 대상 객체나 컬렉션까지 불변이 되는 것은 아닙니다.
 
-### Did you access static members through the class name?
+```java
+String normalizeName(final String name) {
+    final var normalizedName = name.strip();
+    return normalizedName;
+}
+```
 
-- Access static fields and methods through the class name, not through an instance.
+### Java 명명 규칙을 따랐는가?
 
-### Did you avoid `finalize()`?
+- 패키지 이름은 `lowercase`로 작성합니다.
+- class, interface, enum, record 이름은 `UpperCamelCase`로 작성합니다.
+- 메서드와 필드 이름은 `lowerCamelCase`로 작성합니다.
+- 의미상 상수인 경우에만 `UPPER_SNAKE_CASE`를 사용합니다.
+- 모든 `static final` 멤버를 상수로 취급하지 않습니다.
+- `userID` 대신 `userId`를 사용합니다.
 
-- Do not declare or use `finalize()`.
+### 필요한 곳에 `@Override`를 사용했는가?
 
-### Did you document public APIs?
+- 상속받은 동작을 재정의하거나 구현하는 메서드에는 `@Override`를 붙입니다.
 
-- Add Javadoc to public APIs by default.
+### 예외를 명시적으로 처리했는가?
 
-### Did you apply these rules to modern Java syntax?
+- 예외를 아무 처리 없이 무시하지 않습니다.
+- 각 예외를 상황에 맞게 처리하거나 기록하거나 전파합니다.
 
-- Apply the same style standards to modern Java features, including `switch` expressions, `record`, text blocks,
-  and Markdown-formatted Javadoc.
+### static 멤버에 클래스 이름으로 접근했는가?
+
+- static 필드와 메서드는 인스턴스가 아닌 클래스 이름으로 접근합니다.
+
+### `finalize()` 사용을 피했는가?
+
+- `finalize()`를 선언하거나 사용하지 않습니다.
+
+### 공개 API를 문서화했는가?
+
+- 공개 API에는 기본적으로 Javadoc을 작성합니다.
+
+### 최신 Java 문법에도 같은 규칙을 적용했는가?
+
+- `switch` 표현식, `record`, 텍스트 블록, Markdown 형식의 Javadoc 등 최신 Java 기능에도 같은 스타일 규칙을 적용합니다.

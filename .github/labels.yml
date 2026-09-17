@@ -1,15 +1,49 @@
-- name: "feature"
+- name: "feat"
   color: "1d76db"
   description: "새로운 기능 요청 또는 구현"
+  from_name: "feature"
 
-- name: "refactoring"
-  color: "0052cc"
+- name: "fix"
+  color: "d73a4a"
+  description: "버그 수정"
+
+- name: "refactor"
+  color: "6f42c1"
   description: "기존 기능의 개선 또는 리팩토링"
+  from_name: "refactoring"
 
 - name: "test"
-  color: "b60205"
+  color: "0e8a16"
   description: "실험적 기능 또는 테스트 구현"
 
 - name: "bug"
-  color: "f60205"
-  description: "실험적 기능 또는 테스트 구현"
+  color: "b60205"
+  description: "발견된 버그 또는 문제"
+
+- name: "chore"
+  color: "6a737d"
+  description: ""
+
+- name: "size/S"
+  color: "0e8a16"
+  description: "변경량이 작은 PR"
+
+- name: "size/M"
+  color: "fbca04"
+  description: "변경량이 중간인 PR"
+
+- name: "size/L"
+  color: "f9a825"
+  description: "변경량이 큰 PR"
+
+- name: "size/XL"
+  color: "b60205"
+  description: "변경량이 매우 큰 PR"
+
+- name: "review-needed"
+  color: "f9d0c4"
+  description: "리뷰가 필요한 PR"
+
+- name: "merge-pending"
+  color: "d4c5f9"
+  description: "승인 후 머지가 대기 중인 PR"

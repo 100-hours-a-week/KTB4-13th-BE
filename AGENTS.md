@@ -84,6 +84,7 @@ api ⇢ runtimeOnly ⇢ infrastructure:persistence
 - Domain 모델은 상태와 행위를 표현해야 하며 DTO처럼 작성하지 않습니다.
 - Command는 생성 시점에 업무 전제조건을 검증합니다.
 - Domain의 불변식과 상태 전이는 Domain 메서드가 검증합니다.
+- Lombok을 사용하는 Domain 모델은 [코드 스타일 문서](.docs/.convetions/CODE_STYLE_CONVETIONS.md)의 표준 annotation prefix를 사용합니다. 보호된 무인자 생성자는 Domain 생성 규칙과 불변식을 우회하는 데 사용하지 않습니다.
 - `Optional`은 반환값에만 제한적으로 사용하고 필드나 메서드 인자로 사용하지 않습니다.
 - 의미 없는 getter/setter와 범용 Builder를 자동으로 추가하지 않습니다.
 - 구현체의 접근 수준은 프레임워크와 모듈 경계가 허용하는 최소 범위로 유지합니다.

@@ -1,0 +1,5 @@
+# 저장소 전체 변경은 두 리뷰어에게 리뷰를 요청합니다.
+* @023-dev @yoonyoungyang
+
+# CODEOWNERS 변경도 동일한 리뷰어의 검토를 받습니다.
+/.github/CODEOWNERS @023-dev @yoonyoungyang

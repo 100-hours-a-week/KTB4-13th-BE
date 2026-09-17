@@ -38,3 +38,4 @@ out/
 ### VS Code ###
 .vscode/
 /.agents/
+/.docs/SKILL_DOCS.md

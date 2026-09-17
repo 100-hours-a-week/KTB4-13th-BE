@@ -4,29 +4,86 @@ on:
   pull_request:
     types: [opened, reopened, synchronize]
 
+concurrency:
+  group: pr-labeler-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  issues: write
+  pull-requests: read
+
 jobs:
   label:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
     steps:
-      - name: Apply label based on branch name
+      - name: Apply branch and size labels
         uses: actions/github-script@v7
         with:
           script: |
-            const branch = context.payload.pull_request.head.ref;
+            const pullRequest = (await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: context.payload.pull_request.number,
+            })).data;
+            const branch = pullRequest.head.ref;
             const labelMap = {
               'feat/': 'feat',
               'fix/':  'fix',
               'chore/': 'chore',
             };
+            const sizeLabels = ['size/S', 'size/M', 'size/L', 'size/XL'];
+            const labels = new Set(pullRequest.labels.map(({ name }) => name));
 
-            const label = Object.entries(labelMap).find(([prefix]) => branch.startsWith(prefix))?.[1];
-            if (label) {
+            const branchLabel = Object.entries(labelMap).find(([prefix]) => branch.startsWith(prefix))?.[1];
+            if (branchLabel && !labels.has(branchLabel)) {
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                labels: [label],
+                issue_number: pullRequest.number,
+                labels: [branchLabel],
               });
             }
+
+            if (branchLabel) {
+              for (const existingLabel of Object.values(labelMap).filter(label => label !== branchLabel)) {
+                if (labels.has(existingLabel)) {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pullRequest.number,
+                    name: existingLabel,
+                  });
+                }
+              }
+            }
+
+            const changes = Number(pullRequest.additions ?? 0) + Number(pullRequest.deletions ?? 0);
+            // 50줄까지 S, 51~200줄 M, 201~500줄 L, 501줄부터 XL.
+            const sizeLabel = changes <= 50
+              ? 'size/S'
+              : changes <= 200
+                ? 'size/M'
+                : changes <= 500
+                  ? 'size/L'
+                  : 'size/XL';
+
+            for (const existingLabel of sizeLabels.filter(label => label !== sizeLabel)) {
+              if (labels.has(existingLabel)) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pullRequest.number,
+                  name: existingLabel,
+                });
+              }
+            }
+
+            if (!labels.has(sizeLabel)) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullRequest.number,
+                labels: [sizeLabel],
+              });
+            }
+
+            core.info(`변경량 ${changes}줄에 ${sizeLabel} 라벨을 적용했습니다.`);

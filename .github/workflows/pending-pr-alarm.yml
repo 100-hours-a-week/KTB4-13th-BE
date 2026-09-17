@@ -1,0 +1,147 @@
+name: Pending PR Alarm
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check pending PRs
+        uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          script: |
+            const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+            if (!webhookUrl) {
+              core.warning('DISCORD_WEBHOOK_URL secret이 없어 알림을 건너뜁니다.');
+              return;
+            }
+
+            const oneDay = 24 * 60 * 60 * 1000;
+            const now = Date.now();
+            const reviewNeededLabel = 'review-needed';
+            const mergePendingLabel = 'merge-pending';
+            const pullRequests = await github.paginate(github.rest.pulls.list, {
+              ...context.repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            const notifyDiscord = async (pullRequest, title, color, reason) => {
+              const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  embeds: [{
+                    title,
+                    url: pullRequest.html_url,
+                    color,
+                    fields: [
+                      { name: 'Repository', value: context.repo.owner + '/' + context.repo.repo, inline: true },
+                      { name: 'PR', value: `#${pullRequest.number}`, inline: true },
+                      { name: '기준', value: reason },
+                    ],
+                  }],
+                }),
+              });
+
+              if (!response.ok) {
+                throw new Error(`Discord 알림 실패: HTTP ${response.status}`);
+              }
+            };
+
+            const updateLabel = async (pullRequest, labels, label, shouldHave) => {
+              if (shouldHave && !labels.has(label)) {
+                await github.rest.issues.addLabels({
+                  ...context.repo,
+                  issue_number: pullRequest.number,
+                  labels: [label],
+                });
+                labels.add(label);
+              } else if (!shouldHave && labels.has(label)) {
+                await github.rest.issues.removeLabel({
+                  ...context.repo,
+                  issue_number: pullRequest.number,
+                  name: label,
+                });
+                labels.delete(label);
+              }
+            };
+
+            for (const pullRequest of pullRequests) {
+              if (pullRequest.draft) {
+                continue;
+              }
+
+              const reviews = await github.paginate(github.rest.pulls.listReviews, {
+                ...context.repo,
+                pull_number: pullRequest.number,
+                per_page: 100,
+              });
+              const labels = new Set(pullRequest.labels.map(({ name }) => name));
+              const currentHeadReviews = reviews.filter(review =>
+                review.submitted_at && review.commit_id === pullRequest.head.sha);
+              const hasCurrentHeadReview = currentHeadReviews.length > 0;
+              const latestDecisionByReviewer = new Map();
+
+              for (const review of currentHeadReviews) {
+                if (!['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(review.state)
+                  || !review.user?.login) {
+                  continue;
+                }
+                const previous = latestDecisionByReviewer.get(review.user.login);
+                if (!previous || Date.parse(previous.submitted_at) <= Date.parse(review.submitted_at)) {
+                  latestDecisionByReviewer.set(review.user.login, review);
+                }
+              }
+
+              const approval = [...latestDecisionByReviewer.values()]
+                .filter(review => review.state === 'APPROVED')
+                .sort((left, right) => Date.parse(right.submitted_at) - Date.parse(left.submitted_at))[0];
+              const changesRequested = [...latestDecisionByReviewer.values()]
+                .some(review => review.state === 'CHANGES_REQUESTED');
+              const createdAt = Date.parse(pullRequest.created_at);
+              const approvalAt = approval ? Date.parse(approval.submitted_at) : NaN;
+              const reviewOverdue = !hasCurrentHeadReview
+                && Number.isFinite(createdAt)
+                && now - createdAt >= oneDay;
+              const mergeOverdue = Boolean(approval) && !changesRequested
+                && Number.isFinite(approvalAt)
+                && now - approvalAt >= oneDay;
+
+              if (reviewOverdue) {
+                await updateLabel(pullRequest, labels, mergePendingLabel, false);
+                if (!labels.has(reviewNeededLabel)) {
+                  await notifyDiscord(
+                    pullRequest,
+                    `리뷰 대기: ${pullRequest.title}`,
+                    16776960,
+                    'PR 생성 후 24시간 이상 리뷰 없음',
+                  );
+                }
+                await updateLabel(pullRequest, labels, reviewNeededLabel, true);
+              } else if (mergeOverdue) {
+                await updateLabel(pullRequest, labels, reviewNeededLabel, false);
+                if (!labels.has(mergePendingLabel)) {
+                  await notifyDiscord(
+                    pullRequest,
+                    `머지 대기: ${pullRequest.title}`,
+                    9699539,
+                    '승인 후 24시간 이상 머지되지 않음',
+                  );
+                }
+                await updateLabel(pullRequest, labels, mergePendingLabel, true);
+              } else {
+                await updateLabel(pullRequest, labels, reviewNeededLabel, false);
+                await updateLabel(pullRequest, labels, mergePendingLabel, false);
+              }
+            }

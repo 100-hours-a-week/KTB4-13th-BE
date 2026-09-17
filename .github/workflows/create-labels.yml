@@ -1,4 +1,4 @@
-name: create-labels.yml
+name: Sync repository labels
 
 on:
   push:
@@ -6,28 +6,24 @@ on:
       - 'main'
     paths:
       - '.github/labels.yml'
-      - '.github/workflows/labels.yml'
-  pull_request:
-    paths:
-      - '.github/labels.yml'
-      - '.github/workflows/labels.yml'
+      - '.github/workflows/create-labels.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
-  labeler:
+  sync:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
     steps:
-      -
-        name: Run Labeler
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Sync labels
         uses: crazy-max/ghaction-github-labeler@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           yaml-file: .github/labels.yml
-          dry-run: ${{ github.event_name == 'pull_request' }}
-          exclude: |
-            help*
-            *issue
-            *bug
-            *feature

@@ -1,14 +1,14 @@
-# Git Convention
+# Git 컨벤션
 
-## 1. Purpose
+## 1. 목적
 
-Define the roles of Issues, branches, commits, and pull requests, and how they connect.
-Requirements start in Issues, implementation is recorded in branches and commits, and review and integration take place through pull requests.
+Issue, Branch, Commit, Pull Request의 역할과 연결 규칙을 정의합니다.
+요구사항은 Issue에서 시작하고, 구현은 브랜치와 커밋으로 기록하며, 검토와 반영은 Pull Request에서 진행합니다.
 
-Follow the project skills for [Issues](../../.agents/skills/github-issue/SKILL.md), [commits](../../.agents/skills/github-commit/SKILL.md), and [pull requests](../../.agents/skills/github-pr/SKILL.md).
-Use [the label configuration](../../.github/labels.yml) as the local reference and check the target repository's actual labels before applying them. Write Issue and PR content and manually authored commit summaries in Korean unless the user requests another language.
+프로젝트의 [Issue 스킬](../../.agents/skills/github-issue/SKILL.md), [커밋 스킬](../../.agents/skills/github-commit/SKILL.md), [PR 스킬](../../.agents/skills/github-pr/SKILL.md)을 따릅니다.
+[라벨 설정](../../.github/labels.yml)을 로컬 기준으로 참고하되 적용 전에 대상 저장소의 실제 라벨을 확인합니다. 사용자가 다른 언어를 요청하지 않으면 Issue·PR 본문과 직접 작성하는 커밋 요약은 한국어로 작성합니다.
 
-## 2. Basic Workflow
+## 2. 기본 흐름
 
 ```text
 Issue
@@ -17,45 +17,45 @@ Issue
   -> Pull Request
   -> Review
   -> Merge
-  -> Issue closed
+  -> Issue 종료
 ```
 
-- Give each Issue one purpose and clear acceptance criteria.
-- Keep each branch and pull request focused on one Issue whenever possible.
-- Include only one logical change in each commit.
-- Include the Issue number in the branch name and pull request to preserve the connection between the Issue, branch, commits, and pull request.
-- Confirm the Issue as the implementation target before creating a branch linked to it.
+- 하나의 Issue는 하나의 목적과 명확한 완료 조건을 가집니다.
+- 하나의 브랜치와 PR은 가능한 한 하나의 Issue에 집중합니다.
+- 하나의 커밋에는 하나의 논리적 변경만 포함합니다.
+- Issue, 브랜치, 커밋, PR의 연결을 유지하도록 브랜치 이름과 PR에 Issue 번호를 포함합니다.
+- 구현 대상 Issue를 확정한 뒤 해당 Issue에 연결할 브랜치를 생성합니다.
 
-## 3. Issues
+## 3. Issue
 
-An Issue defines a requirement, bug, or documentation task to implement.
-Clarify the problem and acceptance criteria before changing code.
+Issue는 구현할 요구사항, 버그 또는 문서 작업을 정의하는 단위입니다.
+코드를 변경하기 전에 문제와 완료 조건을 명확히 합니다.
 
-### 3.1 Required Issue Content
+### 3.1 Issue에 포함할 내용
 
-- Title: State the task type and main purpose briefly.
-- Background: Explain why the work is needed.
-- Current behavior: Describe the current state for bugs or improvements.
-- Expected behavior: Describe the outcome users can observe.
-- Scope: State what this Issue will change.
-- Out of scope: State what this Issue will not change.
-- Acceptance criteria: Define criteria that can be verified through tests or observable results.
-- Dependencies: Link any prerequisite Issues or decisions.
+- 제목: 작업 유형과 핵심 목적을 짧게 작성합니다.
+- 배경: 작업이 필요한 이유를 설명합니다.
+- 현재 동작: 버그나 개선 작업이라면 현재 상태를 설명합니다.
+- 목표 동작: 사용자가 확인할 수 있는 기대 결과를 설명합니다.
+- 범위: 이번 Issue에서 변경할 내용을 작성합니다.
+- 범위 외: 이번 Issue에서 변경하지 않을 내용을 작성합니다.
+- 완료 조건: 테스트나 관찰 가능한 결과로 검증할 수 있게 작성합니다.
+- 의존성: 선행 Issue나 결정 사항이 있으면 연결합니다.
 
-### 3.2 Issue Titles
+### 3.2 Issue 제목
 
-Start the title with one of the following types.
+다음 유형 중 하나로 제목을 시작합니다.
 
-| Type | Purpose |
+| 유형 | 용도 |
 | --- | --- |
-| `feat` | Add a feature or user behavior |
-| `fix` | Fix a bug |
-| `refactor` | Improve structure without changing behavior |
-| `test` | Add or update tests |
-| `docs` | Add or update documentation |
-| `chore` | Change build configuration, settings, or tooling |
+| `feat` | 새로운 기능이나 사용자 동작 추가 |
+| `fix` | 버그 수정 |
+| `refactor` | 동작 변경 없이 구조 개선 |
+| `test` | 테스트 추가·수정 |
+| `docs` | 문서 추가·수정 |
+| `chore` | 빌드·설정·도구 변경 |
 
-Examples:
+예시:
 
 ```text
 feat: 예약 충돌 응답 추가
@@ -63,40 +63,40 @@ fix: 만료된 토큰 재발급 차단
 docs: Git 컨벤션 문서화
 ```
 
-When triage is requested, use the following roles only if the corresponding labels exist in the target repository:
+분류 작업을 요청받으면 대상 저장소에 해당 라벨이 존재할 때만 다음 역할을 사용합니다.
 
-| Role | Meaning |
+| 역할 | 의미 |
 | --- | --- |
-| `needs-triage` | Awaiting initial assessment |
-| `needs-info` | Awaiting information needed to proceed |
-| `ready-for-agent` | Scope and acceptance criteria are ready for agent implementation |
-| `ready-for-human` | Requires human implementation |
-| `wontfix` | Will not be implemented |
+| `needs-triage` | 초기 검토 대기 |
+| `needs-info` | 진행에 필요한 추가 정보 대기 |
+| `ready-for-agent` | 범위와 완료 조건이 정리되어 에이전트가 구현할 수 있는 상태 |
+| `ready-for-human` | 사람이 구현해야 하는 상태 |
+| `wontfix` | 구현하지 않기로 결정한 상태 |
 
-These roles are not provisioned by this document. Follow the Issue skill for missing labels and authorization to create labels or change triage status.
+이 문서가 라벨을 생성하지는 않습니다. 라벨이 없거나 라벨 생성·분류 상태 변경에 대한 승인이 필요하면 Issue 스킬을 따릅니다.
 
-### 3.3 Linking Issues and Branches
+### 3.3 Issue와 브랜치 연결
 
-Creating an Issue and creating a branch are separate steps. Creating an Issue does not automatically create a branch.
+Issue 생성과 브랜치 생성은 별도 단계입니다. Issue를 생성해도 브랜치가 자동으로 만들어지지는 않습니다.
 
-- Link a branch to an Issue to indicate that work is in progress.
-- Follow [4.1 Branch Names](#41-branch-names) when naming branches.
-- Follow the [Issue skill](../../.agents/skills/github-issue/SKILL.md) for Issue and branch procedures. Creating an Issue alone does not authorize branch creation, commits, or pushes.
+- Issue에 브랜치를 연결해 작업 중임을 표시합니다.
+- 브랜치 이름은 [4.1 브랜치 이름](#41-브랜치-이름)을 따릅니다.
+- Issue와 브랜치의 작업 절차는 [Issue 스킬](../../.agents/skills/github-issue/SKILL.md)을 따릅니다. Issue 생성 요청만으로 브랜치 생성, 커밋, Push가 승인되지는 않습니다.
 
-## 4. Branches
+## 4. 브랜치
 
-A branch provides an isolated workspace for implementing and verifying one Issue.
-Use `main` as the default branch. Do not work on it or push to it directly.
+브랜치는 하나의 Issue를 독립적으로 구현하고 검증하기 위한 작업 공간입니다.
+기본 브랜치는 `main`으로 두며, 직접 작업하거나 직접 Push하지 않습니다.
 
-### 4.1 Branch Names
+### 4.1 브랜치 이름
 
 ```text
 <type>/<issue-number>-<kebab-case-summary>
 ```
 
-Use the same types as Issues: `feat`, `fix`, `refactor`, `test`, `docs`, and `chore`.
+Issue와 동일하게 `feat`, `fix`, `refactor`, `test`, `docs`, `chore` 유형을 사용합니다.
 
-Examples:
+예시:
 
 ```text
 feat/123-reservation-conflict
@@ -104,27 +104,27 @@ fix/124-refresh-token
 docs/125-git-convention
 ```
 
-- Do not omit the Issue number.
-- Write a short English summary in lowercase kebab-case.
-- Do not mix unrelated tasks in one branch.
-- Check the latest state of `main` before creating a branch.
+- Issue 번호는 생략하지 않습니다.
+- 요약은 짧은 영어 소문자 kebab-case로 작성합니다.
+- 관련 없는 작업을 하나의 브랜치에 섞지 않습니다.
+- 브랜치를 만들기 전에 `main`의 최신 상태를 확인합니다.
 
-## 5. Commits
+## 5. 커밋
 
-A commit is the smallest unit that explains the change history.
-Each commit must contain one logical change that can be understood and reverted on its own.
+커밋은 변경 이력을 설명하는 최소 단위입니다.
+하나의 커밋에는 독립적으로 이해하고 되돌릴 수 있는 하나의 논리적 변경만 포함합니다.
 
-### 5.1 Commit Messages
+### 5.1 커밋 메시지
 
 ```text
 <type>: <short summary>(#<issue-number>)
 ```
 
-Use one of `feat`, `fix`, `refactor`, `test`, `docs`, or `chore` as the type.
-Write a short, imperative, action-oriented summary without a trailing period.
-Korean summaries are allowed, but must describe the change clearly.
+유형은 `feat`, `fix`, `refactor`, `test`, `docs`, `chore` 중 하나를 사용합니다.
+요약은 명령형·행동 중심으로 짧게 작성하고 끝에 마침표를 붙이지 않습니다.
+한국어 요약을 허용하되 변경 내용을 명확히 설명해야 합니다.
 
-Examples:
+예시:
 
 ```text
 feat: 예약 생성 API 추가(#123)
@@ -134,62 +134,62 @@ test: 예약 충돌 응답 검증 추가(#126)
 docs: Git 컨벤션 문서 추가(#127)
 ```
 
-### 5.2 Commit Rules
+### 5.2 커밋 규칙
 
-- Do not use messages such as `WIP` or meaningless `update` and `change`.
-- Do not combine changes with different purposes in one commit.
-- Do not combine behavior changes with large formatting changes in one commit.
-- Include relevant tests alongside changes that require testing.
-- Do not commit secrets, personal settings, or build outputs.
-- Check the relevant verification results after committing.
+- `WIP`, 의미 없는 `update`, `change` 같은 메시지는 사용하지 않습니다.
+- 목적이 다른 변경을 하나의 커밋에 섞지 않습니다.
+- 동작 변경과 대규모 포맷 변경을 하나의 커밋에 섞지 않습니다.
+- 테스트가 필요한 변경은 관련 테스트와 함께 커밋합니다.
+- 비밀값, 개인 설정, 빌드 산출물을 커밋하지 않습니다.
+- 커밋 후에는 관련 검증 결과를 확인합니다.
 
-## 6. Pull Requests
+## 6. Pull Request
 
-A pull request is the unit of review for integrating a branch into `main`.
-Follow the linked Issue's scope and acceptance criteria rather than introducing new requirements in the PR.
+PR은 브랜치의 변경을 `main`에 반영하기 위한 검토 단위입니다.
+PR에서 새 요구사항을 임의로 추가하지 않고 연결된 Issue의 범위와 완료 조건을 따릅니다.
 
-### 6.1 PR Titles
+### 6.1 PR 제목
 
-Use the same types as commit messages.
+커밋 메시지와 같은 유형을 사용합니다.
 
 ```text
 <type>: <short summary>
 ```
 
-Examples:
+예시:
 
 ```text
 feat: 예약 충돌 응답 추가
 docs: Git 컨벤션 문서화
 ```
 
-### 6.2 PR Body
+### 6.2 PR 본문
 
-Use [`.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md) as the single source for PR body sections and instructions. Fill it in Korean and record actual verification results, including checks that failed or were not run. Omit optional sections when they do not apply.
+PR 본문의 섹션과 작성 지침은 [`.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md)를 단일 기준으로 사용합니다. 한국어로 작성하고, 실패하거나 실행하지 못한 검증을 포함해 실제 검증 결과를 기록합니다. 해당하지 않는 선택 섹션은 생략합니다.
 
-Use an Issue-closing keyword such as `Closes #<issue-number>` or `Fixes #<issue-number>` in the PR body. These keywords close the Issue after merge when the PR targets the repository's default branch. Linking a branch to an Issue alone does not close it automatically.
+PR 본문에는 `Closes #<issue-number>` 또는 `Fixes #<issue-number>`처럼 Issue를 닫는 키워드를 사용합니다. 이 키워드는 PR이 저장소의 기본 브랜치를 대상으로 할 때 Merge 후 Issue를 닫습니다. 브랜치를 Issue에 연결한 것만으로는 자동 종료되지 않습니다.
 
-### 6.3 Before Opening a PR
+### 6.3 PR 등록 전 확인
 
-- Are all acceptance criteria of the linked Issue satisfied?
-- Does the change scope match the Issue?
-- Have the relevant tests and checks been run?
-- Have observable results such as API behavior, persisted state, permissions, and transactions been verified?
-- Are secrets and unnecessary files excluded?
-- Do the documentation and code agree?
-- Can the reviewer understand the reason for the change and how it was verified?
+- 연결된 Issue의 완료 조건을 모두 충족했는가?
+- 변경 범위가 Issue와 일치하는가?
+- 관련 테스트와 검증을 실행했는가?
+- API 동작, 저장 상태, 권한, 트랜잭션 등 관찰 가능한 결과를 확인했는가?
+- 비밀값과 불필요한 파일을 제외했는가?
+- 문서와 코드의 내용이 일치하는가?
+- 리뷰어가 변경 이유와 검증 방법을 이해할 수 있는가?
 
-### 6.4 Review and Merge
+### 6.4 리뷰와 Merge
 
-- Keep PRs small enough to review; a maximum of 400 changed lines is recommended.
-- Do not merge while review comments remain unresolved or required checks are failing.
-- Update the relevant files and verification results when addressing review feedback.
-- Link the Issue in the PR body so it can be closed after merge.
-- Commit, push, create PRs, and merge only within the user's explicit authorization. A request to perform the action is authorization for that scope; do not ask again for an already authorized action. Drafting alone does not authorize publication.
+- PR은 리뷰 가능한 크기로 유지하며, 변경 줄 수는 최대 400줄을 권장합니다.
+- 미해결 리뷰 의견이나 실패한 필수 검증이 있으면 Merge하지 않습니다.
+- 리뷰 의견을 반영하면 관련 파일과 검증 결과를 함께 갱신합니다.
+- Merge 후 Issue를 닫을 수 있도록 PR 본문에 Issue를 연결합니다.
+- 커밋, Push, PR 생성, Merge는 사용자가 명시적으로 승인한 범위에서만 수행합니다. 해당 작업을 수행해 달라는 요청은 그 범위에 대한 승인으로 간주하며, 이미 승인된 작업을 다시 확인받지 않습니다. 초안 작성 요청만으로 게시가 승인되지는 않습니다.
 
-## 7. Change Scope Principles
+## 7. 변경 범위 원칙
 
-- Change only the minimum files needed to meet the requirements.
-- Do not include unrelated refactoring, bulk formatting, or additional dependencies.
-- Record decisions that are difficult to reverse in documentation or an ADR before implementation.
-- When existing rules conflict, identify the differences and affected scope before overwriting them.
+- 요구사항을 충족하는 데 필요한 최소한의 파일만 변경합니다.
+- 관련 없는 리팩터링, 일괄 포맷 변경, 의존성 추가를 함께 포함하지 않습니다.
+- 되돌리기 어려운 결정은 구현 전에 문서나 ADR로 기록합니다.
+- 기존 규칙이 충돌하면 덮어쓰기 전에 차이와 영향 범위를 확인합니다.

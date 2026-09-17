@@ -21,6 +21,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Java
@@ -32,6 +33,9 @@ jobs:
 
       - name: Grant Gradle wrapper execute permission
         run: chmod +x gradlew
+
+      - name: Run Gradle check
+        run: ./gradlew check --no-daemon
 
       - name: Publish JaCoCo report to PR
         if: ${{ always() && github.event_name == 'pull_request' }}

@@ -1,5 +1,6 @@
 plugins {
     base
+    id("com.diffplug.spotless") version "8.10.2" apply false
     id("org.springframework.boot") version "4.1.1" apply false
     id("io.spring.dependency-management") version "1.1.7" apply false
 }
@@ -12,6 +13,18 @@ allprojects {
 configure(subprojects.filter { it.path != ":infrastructure" }) {
     apply(plugin = "java-library")
     apply(plugin = "io.spring.dependency-management")
+    apply(plugin = "com.diffplug.spotless")
+
+    configure<com.diffplug.gradle.spotless.SpotlessExtension> {
+        ratchetFrom("origin/main")
+        java {
+            palantirJavaFormat("2.98.0")
+            removeUnusedImports()
+            forbidWildcardImports()
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
+    }
 
     configure<io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension> {
         imports { mavenBom("org.springframework.boot:spring-boot-dependencies:4.1.1") }

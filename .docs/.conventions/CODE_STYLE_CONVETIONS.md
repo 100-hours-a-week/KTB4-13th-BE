@@ -49,6 +49,27 @@
 - 보호된 무인자 생성자는 인프라 또는 상태 복원을 위한 경계입니다. 도메인 생성은 불변식을 보장하는 생성자, 팩터리, Command 또는 도메인 메서드를 거쳐야 합니다.
 - record, enum, interface, 도메인 예외, 정책, 무인자 생성으로 유효하지 않은 도메인 상태가 만들어질 수 있는 클래스에는 이 어노테이션 묶음을 적용하지 않습니다. 적용 대상 모델에서 예외가 필요하면 사유를 기록합니다.
 
+### Spring 빈의 생성자 주입에 `@RequiredArgsConstructor`를 사용했는가?
+
+- Controller, UseCase·Application Service, Repository·Client 구현체의 필수 의존성은 `private final` 필드로 선언하고 `@RequiredArgsConstructor`로 주입합니다. 필드 대입만 하는 생성자는 직접 작성하지 않습니다.
+- 필드·setter 주입 대신 생성자 주입을 사용합니다. 생성자가 하나라면 `@Autowired`는 생략합니다.
+- 생성자에서 검증, 정규화, 추가 초기화 또는 `super(...)` 호출이 필요하면 직접 작성합니다. 수동 생성자와 같은 시그니처를 만드는 `@RequiredArgsConstructor`는 함께 사용하지 않습니다.
+- `@Qualifier`, `@Value` 등 생성자 매개변수 어노테이션이 필요하면 직접 생성자를 작성합니다. 필드 어노테이션이 Lombok 생성자 매개변수에 자동 복사된다고 가정하지 않습니다.
+- Domain과 Entity의 생성 규칙에는 이 DI 패턴을 일괄 적용하지 않습니다. 불변식을 검증하는 생성자·팩터리와 JPA 기본 생성자는 각각의 목적에 맞게 유지하고, 데이터 전달 타입은 기존 `record` 우선 규칙을 따릅니다.
+- `final`만으로 null 검증이 생성되지는 않습니다. 필수값 검증이 필요하면 `@NonNull` 또는 명시적인 생성자 검증을 사용합니다.
+- 실제 적용 전 해당 빌드의 Lombok `compileOnly`와 `annotationProcessor` 설정을 확인합니다. 테스트 소스에서도 사용한다면 테스트용 설정도 확인합니다.
+
+```java
+@RestController
+@RequiredArgsConstructor
+class SampleController {
+    private final SampleCreateUseCase createUseCase;
+    private final SampleQueryUseCase queryUseCase;
+}
+```
+
+위 예시는 의존성 선언 부분만 보여줍니다. 생성 대상 필드와 어노테이션 복사 설정은 [Lombok 공식 문서](https://projectlombok.org/features/constructor)를 따릅니다.
+
 ### 호출이 책임 경계를 지키는가?
 
 - 다른 객체의 내부 구조를 따라 들어가 그 객체의 일을 대신하지 않습니다. 해당 행위를 책임지는 객체에 동작을 둡니다.
@@ -63,10 +84,10 @@
 
 ### 외부 입력에 Jakarta Validation을 활용했는가?
 
-- Presentation DTO의 필수값, 범위, 길이, 형식 제약에는 `jakarta.validation.constraints`의 `@NotBlank`, `@NotNull`, `@Min`, `@Max`, `@Size`, `@Pattern`을 우선 사용합니다.
-- Controller에서 `@Valid` 또는 `@Validated`로 검증을 활성화하고, [`ApiExceptionHandler`](../../api/src/main/java/com/book/api/support/web/ApiExceptionHandler.java)의 HTTP 오류 계약을 따릅니다.
+- API DTO의 필수값, 범위, 길이, 형식 제약에는 `jakarta.validation.constraints`의 `@NotBlank`, `@NotNull`, `@Min`, `@Max`, `@Size`, `@Pattern`을 우선 사용합니다.
+- Controller에서 `@Valid` 또는 `@Validated`로 검증을 활성화하고, [`ApiExceptionHandler`](../../src/main/java/com/book/support/web/ApiExceptionHandler.java)의 HTTP 오류 계약을 따릅니다.
 - 같은 단순 HTTP 입력 검증을 DTO 생성자에 중복 작성하지 않습니다. Command와 Domain 객체는 HTTP를 거치지 않는 호출에서도 자신의 전제조건과 불변식을 보장해야 합니다.
-- 공통 비즈니스 오류에는 기술 중립적인 [`BusinessException`](../../common/src/main/java/com/book/common/exception/BusinessException.java) 계약을 사용하고, `api/support/web`에서 HTTP 응답으로 변환합니다.
+- 공통 비즈니스 오류에는 기술 중립적인 [`BusinessException`](../../src/main/java/com/book/common/exception/BusinessException.java) 계약을 사용하고, `support/web`에서 HTTP 응답으로 변환합니다.
 - null 기본값, 입력 정규화, 필드 간 조건, 도메인 불변식처럼 어노테이션만으로 표현하기 어려운 규칙은 생성자, Application 또는 Domain 계층에 둡니다.
 - 제약을 추가하면 잘못된 HTTP 입력에 대해 예상한 상태 코드와 오류 응답이 반환되는지 테스트합니다.
 

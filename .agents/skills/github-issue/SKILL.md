@@ -7,7 +7,7 @@ description: 이 프로젝트의 Git 규칙과 Issue 템플릿을 사용해 GitH
 
 ## 기준과 입력
 
-저장소 루트의 [Git 규칙](../../../.docs/.convetions/GIT_CONVETIONS.md)을 먼저 읽는다.
+저장소 루트의 [Git 규칙](../../../.docs/.conventions/GIT_CONVETIONS.md)을 먼저 읽는다.
 `git remote -v`와 `gh repo view`로 대상 저장소를 확인한다. 다른 프로젝트의 저장소명이나 라벨을 가져오지 않는다.
 
 유형에 맞는 `.github/ISSUE_TEMPLATE/` 파일을 읽는다.

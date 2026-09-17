@@ -23,7 +23,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            // 기준: .docs/.convetions/GIT_CONVETIONS.md 5.1, 5.2, 6.1
+            // 기준: .docs/.conventions/GIT_CONVETIONS.md 5.1, 5.2, 6.1
             // 로컬 검증: node --test .github/scripts/git-conventions.test.cjs
             const pr = context.payload.pull_request;
             const types = '(?:feat|fix|refactor|test|docs|chore)';

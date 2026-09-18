@@ -15,9 +15,10 @@ permissions:
 jobs:
   label:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Apply branch and size labels
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const pullRequest = (await github.rest.pulls.get({
@@ -61,13 +62,14 @@ jobs:
 
             const changes = Number(pullRequest.additions ?? 0) + Number(pullRequest.deletions ?? 0);
             // 50줄까지 S, 51~200줄 M, 201~500줄 L, 501줄부터 XL.
-            const sizeLabel = changes <= 50
-              ? 'size/S'
-              : changes <= 200
-                ? 'size/M'
-                : changes <= 500
-                  ? 'size/L'
-                  : 'size/XL';
+            let sizeLabel = 'size/XL';
+            if (changes <= 50) {
+              sizeLabel = 'size/S';
+            } else if (changes <= 200) {
+              sizeLabel = 'size/M';
+            } else if (changes <= 500) {
+              sizeLabel = 'size/L';
+            }
 
             for (const existingLabel of sizeLabels.filter(label => label !== sizeLabel)) {
               if (labels.has(existingLabel)) {

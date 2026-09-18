@@ -58,15 +58,40 @@ val integrationTest = tasks.register<Test>("integrationTest") {
 }
 
 jacoco { toolVersion = "0.8.15" }
+
+val logicClasses = files(layout.buildDirectory.dir("classes/java/main"))
+    .asFileTree
+    .matching {
+        include("com/book/core/**/application/usecase/**/*.class")
+        include("com/book/core/**/domain/**/*.class")
+    }
+
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
+    classDirectories.setFrom(logicClasses)
     reports {
         xml.required.set(true)
         html.required.set(true)
     }
 }
+
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.test)
+    classDirectories.setFrom(logicClasses)
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+        }
+    }
+}
+
 tasks.check {
     dependsOn(tasks.jacocoTestReport)
+    dependsOn(tasks.jacocoTestCoverageVerification)
     dependsOn(integrationTest)
 }
 tasks.jar { enabled = false }

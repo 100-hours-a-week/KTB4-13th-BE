@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.book.core.cart.application.port.CartRepository;
+import com.book.core.cart.application.usecase.CartAddUseCase;
 import com.book.core.sample.application.port.SampleRepository;
 import com.book.core.sample.application.usecase.SampleCreateUseCase;
 import com.book.core.sample.application.usecase.SampleQueryUseCase;
@@ -45,6 +47,8 @@ class BookApplicationTest {
         assertThat(context.getBeansOfType(SampleCreateUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(SampleQueryUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(SampleRepository.class)).hasSize(1);
+        assertThat(context.getBeansOfType(CartAddUseCase.class)).hasSize(1);
+        assertThat(context.getBeansOfType(CartRepository.class)).hasSize(1);
     }
 
     @Test

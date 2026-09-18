@@ -11,7 +11,12 @@
 ### 제어 흐름을 쉽게 이해할 수 있는가?
 
 - 중첩을 줄일 수 있다면 조기 반환을 우선합니다. 분리할 동작의 책임이 명확할 때 메서드로 추출합니다.
-- 선택지를 이해하기 쉬워진다면 `if`/`else`, 단순한 삼항 연산자, `switch` 표현식을 사용합니다. 중첩된 삼항 연산자와 깊게 중첩된 분기는 피합니다.
+- 선택지를 이해하기 쉬워진다면 `if`/`else` 또는 `switch` 표현식을 사용합니다. 깊게 중첩된 분기는 피합니다.
+
+### 삼항 연산자를 사용하지 않았는가?
+
+- 삼항 연산자(`condition ? value1 : value2`)를 사용하지 않습니다.
+- 조건에 따른 값이나 동작은 `if`/`else` 또는 `switch`로 명시적으로 작성합니다.
 
 ### 값 객체가 도메인 규칙을 표현하는가?
 
@@ -34,9 +39,9 @@
 - 불변식을 우회하는 공개 setter 대신 도메인 메서드로 불변식과 상태 전이를 보장합니다.
 - 호출자가 도메인 상태를 알아야 한다면 읽기 전용 접근자를 사용할 수 있습니다. DTO 접근자나 프레임워크가 요구하는 Entity 접근 방식이 도메인 행위를 대신하지는 않습니다.
 
-### Lombok을 사용하는 도메인 모델에 표준 어노테이션을 적용했는가?
+### Entity와 Domain 모델에 Lombok 표준 어노테이션을 적용했는가?
 
-도메인 모델에서 Lombok을 사용할 때는 클래스 선언 바로 위에 다음 어노테이션을 아래 순서대로 배치합니다.
+JPA Entity와 Lombok을 사용하는 Domain 모델에는 클래스 선언 바로 위에 다음 어노테이션을 아래 순서대로 배치합니다.
 
 ```java
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -46,8 +51,8 @@
 
 - `AccessLevel`, `Getter`, `NoArgsConstructor`, `Accessors`를 명시적으로 import하며 와일드카드 import를 사용하지 않습니다.
 - `@Accessors(fluent = true)`를 적용하면 호출자는 `getName()` 대신 `name()`을 사용합니다.
-- 보호된 무인자 생성자는 인프라 또는 상태 복원을 위한 경계입니다. 도메인 생성은 불변식을 보장하는 생성자, 팩터리, Command 또는 도메인 메서드를 거쳐야 합니다.
-- record, enum, interface, 도메인 예외, 정책, 무인자 생성으로 유효하지 않은 도메인 상태가 만들어질 수 있는 클래스에는 이 어노테이션 묶음을 적용하지 않습니다. 적용 대상 모델에서 예외가 필요하면 사유를 기록합니다.
+- `@NoArgsConstructor(access = AccessLevel.PROTECTED)`로 만든 보호된 무인자 생성자는 JPA 복원 또는 인프라 경계를 위한 것입니다. Domain 생성은 불변식을 보장하는 생성자, 팩터리, Command 또는 도메인 메서드를 거칩니다.
+- `record`, enum, interface, 도메인 예외, 정책, 무인자 생성으로 유효하지 않은 Domain 상태가 만들어질 수 있는 클래스에는 이 어노테이션 묶음을 적용하지 않습니다. 적용 대상 모델에서 예외가 필요하면 사유를 기록합니다.
 
 ### Spring 빈의 생성자 주입에 `@RequiredArgsConstructor`를 사용했는가?
 
@@ -85,9 +90,9 @@ class SampleController {
 ### 외부 입력에 Jakarta Validation을 활용했는가?
 
 - API DTO의 필수값, 범위, 길이, 형식 제약에는 `jakarta.validation.constraints`의 `@NotBlank`, `@NotNull`, `@Min`, `@Max`, `@Size`, `@Pattern`을 우선 사용합니다.
-- Controller에서 `@Valid` 또는 `@Validated`로 검증을 활성화하고, [`ApiExceptionHandler`](../../src/main/java/com/book/support/web/ApiExceptionHandler.java)의 HTTP 오류 계약을 따릅니다.
+- Controller에서 `@Valid` 또는 `@Validated`로 검증을 활성화하고, [`GlobalExceptionHandler`](../../src/main/java/com/book/common/exception/GlobalExceptionHandler.java)의 HTTP 오류 계약을 따릅니다.
 - 같은 단순 HTTP 입력 검증을 DTO 생성자에 중복 작성하지 않습니다. Command와 Domain 객체는 HTTP를 거치지 않는 호출에서도 자신의 전제조건과 불변식을 보장해야 합니다.
-- 공통 비즈니스 오류에는 기술 중립적인 [`BusinessException`](../../src/main/java/com/book/common/exception/BusinessException.java) 계약을 사용하고, `support/web`에서 HTTP 응답으로 변환합니다.
+- 공통 비즈니스 오류에는 기술 중립적인 [`BusinessException`](../../src/main/java/com/book/common/exception/BusinessException.java) 계약을 사용하고, `common/exception`에서 HTTP 응답으로 변환합니다.
 - null 기본값, 입력 정규화, 필드 간 조건, 도메인 불변식처럼 어노테이션만으로 표현하기 어려운 규칙은 생성자, Application 또는 Domain 계층에 둡니다.
 - 제약을 추가하면 잘못된 HTTP 입력에 대해 예상한 상태 코드와 오류 응답이 반환되는지 테스트합니다.
 
@@ -116,6 +121,7 @@ class SampleController {
 ### Java 파일마다 최상위 타입을 하나만 정의했는가?
 
 - 각 `.java` 파일에는 최상위 class, interface, enum 또는 record를 하나만 정의합니다.
+- 모든 class, interface, enum 및 record는 다른 타입 내부가 아닌 별도 `.java` 파일의 최상위 타입으로 선언합니다. 타입 간 소속은 패키지와 이름으로 표현합니다.
 
 ### 오버로딩한 메서드를 함께 배치했는가?
 

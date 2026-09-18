@@ -20,10 +20,15 @@ MySQL, Flyway, springdoc-openapi + Swagger UI, Lombok, JUnit 6 + AssertJ + Mocki
 ./gradlew bootJar
 ./gradlew bootRun
 ./gradlew test
+./gradlew integrationTest
 ./gradlew test --tests '*SampleUseCaseTest'
 ./gradlew spotlessApply
 ./gradlew test jacocoTestReport
 ```
+
+`test`는 Docker가 필요하지 않은 단위·Controller·아키텍처 테스트를 실행하고,
+`integrationTest`는 Testcontainers MySQL과 실제 Spring Context가 필요한 통합 테스트를 실행합니다.
+`check`는 두 테스트 작업을 모두 포함합니다.
 
 Swagger UI는 `/swagger-ui/index.html`, OpenAPI 명세는 `/v3/api-docs`입니다.
 문서 어노테이션은 Controller의 `api/spec` 인터페이스에서 관리합니다.
@@ -38,17 +43,16 @@ com.book
 │   ├── application/{command,result,usecase,port}
 │   ├── domain
 │   └── infrastructure/{persistence,client}
-├── common/exception
-└── support/{web,config}
+└── common/{config,domain,exception,logging,response}
 ```
 
 - Gradle 하위 모듈은 없습니다. `core`는 업무 기능을 묶는 패키지입니다.
 - 필요한 패키지만 만듭니다. 빈 client·converter·config 패키지는 미리 만들지 않습니다.
 - Controller는 구체 UseCase를 호출합니다. UseCase는 Domain과 Repository·Client Port를 조율합니다.
 - Infrastructure는 Port를 구현합니다. Application과 API는 Infrastructure 구현체를 참조하지 않습니다.
-- Domain은 Application·API·Infrastructure·Spring·JPA·Jackson에 의존하지 않습니다.
+- Domain 모델은 Application·API·Infrastructure·Spring·Jackson에 의존하지 않습니다. JPA 매핑과 `common/domain`의 `BaseTimeEntity`는 허용합니다.
 - 다른 기능의 Infrastructure를 직접 호출하지 않습니다. 기능 간 협력은 공개 UseCase 계약을 사용하고 순환 의존을 피합니다.
-- 공통 오류 계약은 `common/exception`, HTTP 예외 처리는 `support/web`이 소유합니다.
+- 공통 오류 계약과 전역 HTTP 예외 처리는 `common/exception/GlobalExceptionHandler`가 소유합니다.
 
 ## Spring 빈과 트랜잭션
 
@@ -62,9 +66,11 @@ com.book
 ## Java와 데이터 변환
 
 - Command, Result, 요청·응답 DTO는 불변 데이터 전달이 목적이면 `record`를 우선합니다.
-- Request의 `toCommand()`, Response의 `from(Result)`를 사용합니다. 별도 converter는 복잡하거나 재사용되는 변환에만 추가합니다.
+- 단순 필드 매핑은 Controller에서 직접 처리할 수 있습니다. 복잡하거나 재사용되는 변환은 Request의 `toCommand()`, Response의 `from(Result)` 또는 별도 converter로 분리합니다.
 - Command는 업무 전제조건을, Domain 생성자·메서드는 불변식과 상태 전이를 검증합니다.
-- Domain과 JPA Entity는 분리합니다. Domain을 DTO처럼 작성하거나 Domain·Entity를 HTTP 응답으로 직접 반환하지 않습니다.
+- 사용자 식별자는 API·Command·Port 전반에서 `userId`로 통일합니다.
+- Domain 모델이 JPA Entity를 겸합니다. 업무 상태·불변식·행위와 필요한 JPA 매핑을 같은 클래스에 둡니다. Domain 모델을 HTTP 응답으로 직접 반환하지 않습니다.
+- 영속 모델의 공개 생성자는 DB 필수값을 모두 받고, JPA 복원용 무인자 생성자만 유효성 검증을 우회할 수 있습니다.
 - Domain에 Lombok을 사용할 때는 코드 스타일의 적용 대상·예외·어노테이션 순서를 따릅니다. 생성 규칙을 우회하지 않습니다.
 - `Optional`은 반환값에만 제한적으로 사용합니다. 의미 없는 setter·범용 Builder를 추가하지 않습니다.
 - 재할당하지 않는 필드·지역 변수·매개변수의 `final` 규칙은 코드 스타일 문서를 따릅니다.
@@ -73,18 +79,18 @@ com.book
 ## 외부 접근
 
 - `application/port/{Feature}Repository`와 `infrastructure/persistence/repository/{Feature}RepositoryImpl`을 분리합니다.
-- Spring Data Repository는 `{Feature}JpaRepository`, Entity는 `{Feature}Entity`, 변환은 `{Feature}PersistenceMapper`를 사용합니다.
+- Spring Data Repository는 `{Feature}JpaRepository`를 사용하고 업무 모델은 `domain/{Feature}`에 둡니다. 도메인 대응 타입이 없는 실제 요구의 영속 전용 모델만 `infrastructure/persistence/entity`에 두며, 예상 기능을 위한 Entity·테이블은 만들지 않습니다.
 - 외부 연동은 `{Feature}Client` Port와 `{Feature}ClientImpl` 구현체로 분리합니다. 변환기는 출처가 드러나는 `{Feature}ExternalMapper`를 사용합니다.
-- JPA Entity·HTTP DTO·외부 SDK 타입을 Port와 UseCase의 입력·출력에 노출하지 않습니다.
+- 영속 전용 Entity·HTTP DTO·외부 SDK 타입을 Port와 UseCase의 입력·출력에 노출하지 않습니다. 업무 모델은 Port와 UseCase의 계약으로 사용할 수 있습니다.
 - JPA·외부 SDK 예외는 공통 오류 계약으로 변환하고 상세 원문을 HTTP 응답에 노출하지 않습니다.
-- 기능별 기술 설정은 해당 Infrastructure에, 여러 기능이 공유하는 애플리케이션 설정은 `support/config`에 둡니다.
-- `common`에는 실제로 여러 기능에서 의미와 규칙이 같은 기술 중립 코드만 둡니다.
+- 기능별 기술 설정은 해당 Infrastructure에, 여러 기능이 공유하는 애플리케이션 설정은 `common/config`에 둡니다.
+- `common`에는 기능에 종속되지 않고 여러 기능이 공유하는 코드를 둡니다. 추후 멀티모듈이나 독립 모듈로 분리할 때 기술 중립 코드를 우선합니다.
 
 ## 테스트와 검증
 
-- Domain 테스트는 Spring Context 없이, UseCase 테스트는 Repository·Client Port를 Fake 또는 Mock으로 대체해 실행합니다.
+- Domain 모델 테스트는 Spring Context 없이 업무 규칙을 검증하고, UseCase 테스트는 Repository·Client Port를 Fake 또는 Mock으로 대체해 실행합니다.
 - Controller 테스트는 입력 검증·Command 변환·HTTP 계약을 확인합니다.
-- Persistence 테스트는 매핑·쿼리·DB 제약을, Client 테스트는 요청·응답 변환·타임아웃·오류 변환을 확인합니다.
+- Persistence 테스트는 직접 JPA 모델의 매핑·쿼리·DB 제약을, Client 테스트는 요청·응답 변환·타임아웃·오류 변환을 확인합니다.
 - DB 통합 테스트는 격리된 Testcontainers MySQL을 사용합니다. Docker가 없다고 성공 처리하거나 자동 생략하지 않습니다.
 - `ArchitectureTest`로 Domain·Application·API의 의존 방향을 검사합니다.
 - Java·빌드·설정 변경 시 관련 테스트와 `./gradlew check`를 실행합니다.
@@ -96,13 +102,13 @@ com.book
 ## 변경 시 함께 확인할 파일
 
 - API: Controller 계약 테스트, request·response, spec와 OpenAPI 명세
-- DB: Domain, Entity, Repository Port·구현체, Mapper, `src/main/resources/db/migration`
+- DB: Domain 모델, 영속 전용 Entity가 있다면 해당 Entity, Repository Port·구현체, `src/main/resources/db/migration`
 - 외부 연동: Client Port·구현체, 외부 DTO, Mapper, 타임아웃·오류 처리
 - 빌드: `build.gradle.kts`, `settings.gradle.kts`, CI workflow
 
 ## 금지 사항
 
-- Domain에 `@Entity`, `@Column`, `@JsonProperty`, `@Service`를 추가하지 않습니다.
+- Domain 모델에는 필요한 `@Entity`, `@Column` 등 JPA 매핑을 적용할 수 있습니다. `@JsonProperty`, `@Service`는 추가하지 않습니다.
 - UseCase에서 JpaRepository·EntityManager·RestClient·외부 SDK를 직접 사용하지 않습니다.
 - Controller에 비즈니스 분기나 트랜잭션 로직을 작성하지 않습니다.
 - 비밀번호·토큰·키·서명된 URL·외부 응답 원문을 로그에 남기지 않습니다.

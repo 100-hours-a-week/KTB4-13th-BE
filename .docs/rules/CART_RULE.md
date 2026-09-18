@@ -1,153 +1,100 @@
-# 장바구니 상품 추가 규칙
+# 장바구니 도메인 규칙
 
-이 문서는 장바구니 상품 추가 기능의 확정 정책, 책임 경계, 테스트 기준을 기록합니다.
-구현 결과와 실행한 검증 결과는 PR 본문에 별도로 기록합니다.
-4절의 구현 흐름은 이후 기능을 추가할 때 따를 표준 구조이며, 세부 공통 규칙은 [아키텍처 문서](../ARCHITECTURE.md)와 `AGENTS.md`를 기준으로 합니다.
+이 문서는 장바구니의 비즈니스 정책, 상태 전이, 기능별 도메인 흐름과 미결정 정책을 기록합니다.
+구현 구조는 [아키텍처 문서](../ARCHITECTURE.md), 오류 계약은 [예외 처리 규칙](EXCEPTION_RULE.md)을 기준으로 합니다.
 
-## 1. 범위
+## 1. 범위와 생명주기
 
-이번 범위는 `POST /api/v1/cart/items`입니다.
+- 회원만 장바구니를 사용할 수 있습니다.
+- 회원가입이 완료될 때 회원의 장바구니를 생성합니다.
+- 첫 상품 추가 시에는 장바구니를 자동 생성하지 않습니다.
+- 비회원 장바구니는 지원하지 않습니다.
+- 로그인 시 비회원 장바구니와 회원 장바구니를 병합하지 않습니다.
+- 현재 범위는 장바구니 상품 추가입니다.
+- 조회·수량 변경·단건 삭제·다건 삭제와 주문 후 장바구니 차감은 별도 기능으로 다룹니다.
 
-- `userId`는 회원 기능이 완성될 때까지 요청 파라미터로 받습니다.
-- 회원가입 시 회원의 장바구니를 생성하며, 첫 상품 추가 시에는 장바구니를 자동 생성하지 않습니다.
-- 비회원은 장바구니 기능을 지원하지 않으며, 로그인 시 장바구니 병합 정책도 두지 않습니다.
-- 상품 기능과 `CartProductClient`가 없으므로 상품 존재·재고 확인은 수행하지 않습니다.
-- 조회·수량 변경·단건 삭제·다건 삭제 API와 해당 테스트는 별도 작업으로 둡니다.
-- 조회 API는 상품을 가장 최근에 추가한 순서로 조회합니다.
-- 결제 후 장바구니 차감은 주문·결제 연동 작업으로 남깁니다.
-- `Idempotency-Key` 저장·재생 응답은 주문·결제 연동 시 별도 정책으로 결정합니다.
+## 2. 비즈니스 규칙
 
-## 2. API 계약
+### 2.1 같은 상품은 요청 수량으로 대체합니다
 
-`POST /api/v1/cart/items?userId={userId}`
+같은 장바구니에 동일한 상품이 있으면 기존 수량에 더하지 않고 요청한 수량으로 대체합니다.
+예를 들어 기존 수량이 2개일 때 3개를 요청하면 최종 수량은 3개입니다.
 
-```json
-{
-  "cartId": 1,
-  "productId": 20,
-  "quantity": 3
-}
-```
+반복 요청의 결과는 요청 수량으로 수렴하지만, 요청 자체를 식별해 재처리 여부를 보장하는 정책은 아닙니다.
 
-| 항목 | 규칙 | 책임 |
-| --- | --- | --- |
-| `userId` | 양수인 `Long` 필수 | `CartController`의 요청 검증 |
-| `cartId` | null이 아니고 양수인 `Long` | `AddCartItemRequest`에서 검증하지만 현재 Command에는 포함하지 않음 |
-| `productId` | null이 아니고 양수인 `Long` | `AddCartItemRequest` |
-| `quantity` | null이 아니고 1~500인 `Integer` | `AddCartItemRequest`와 Domain |
-| 성공 응답 | `200`, `ApiResponse<Void>` | `CartController` |
-| 잘못된 HTTP 요청 | 공통 `E400` 응답 | Bean Validation과 `GlobalExceptionHandler` |
-| 장바구니 상품 한도 초과 | `E8000` (`CART_ITEM_LIMIT_EXCEEDED`) | `Cart` Domain과 `ErrorCode` |
+### 2.2 수량은 1~500개입니다
 
-## 3. 비즈니스·도메인 규칙
+- 장바구니 상품 수량은 항상 1개 이상 500개 이하여야 합니다.
+- 수량 변경에서 0을 삭제 의미로 허용하지 않습니다.
+- 삭제는 별도 기능으로 처리하며, 수량 변경 요청은 항상 1개 이상이어야 합니다.
+- 잘못된 수량은 장바구니 상태를 변경하기 전에 거부합니다.
 
-### 3.1 같은 상품은 요청 수량으로 대체한다
+### 2.3 서로 다른 상품은 최대 30개입니다
 
-같은 사용자의 장바구니에 동일한 상품이 있으면 기존 수량에 더하지 않고 요청한 수량으로 대체합니다.
-예를 들어 기존 수량이 2개일 때 `quantity: 3`을 요청하면 최종 수량은 3개입니다.
+- 장바구니에는 서로 다른 상품을 최대 30개까지 담을 수 있습니다.
+- 이미 담긴 상품의 수량을 바꾸는 것은 서로 다른 상품 수를 늘리지 않으므로 허용합니다.
+- 새 상품을 추가할 때 서로 다른 상품이 이미 30개라면 추가하지 않습니다.
 
-이 정책은 동일 상품에 대한 재시도 결과를 요청 상태로 수렴시키지만, 요청 식별자를 저장하는 강한 의미의 멱등성은 아닙니다.
+### 2.4 삭제된 항목을 다시 추가하면 복구합니다
 
-### 3.2 수량은 1~500개다
+- 삭제된 장바구니 항목에 같은 상품을 다시 추가하면 해당 항목을 활성 상태로 복구합니다.
+- 복구된 항목의 수량은 요청한 값으로 대체합니다.
+- 복구된 항목은 새 상품으로 세지 않습니다.
 
-- HTTP 형식·범위는 `AddCartItemRequest`에서 검증합니다.
-- `@Min`은 `장바구니 상품 수량은 1 이상이어야 합니다.`, `@Max`는 `장바구니 상품 수량은 500 이하여야 합니다.` 메시지를 사용합니다.
-- HTTP 외부에서 호출되는 Application 계약은 UseCase가 저장 상태와 필요한 전제조건을 확인합니다.
-- 최종 Domain 불변식은 `CartItem`이 보장합니다.
-- 데이터베이스의 `CHECK` 제약도 같은 범위를 보강합니다.
-- 수량 변경 API에서도 `0`을 삭제 의미로 허용하지 않습니다. 수량은 항상 1 이상이어야 합니다.
+### 2.5 주문 시점의 가격을 적용합니다
 
-잘못된 수량은 기존 장바구니 상태를 변경하기 전에 거부합니다.
+- 장바구니에는 상품 식별자와 수량만 저장합니다.
+- 장바구니에 담은 시점의 가격은 보장하지 않습니다.
+- 주문을 생성할 때 상품의 현재 가격을 적용합니다.
 
-### 3.3 장바구니에는 서로 다른 상품을 최대 30개까지 담는다
+### 2.6 조회는 최근 추가순입니다
 
-새 상품을 추가할 때 장바구니의 상품 수가 30개 이상이면 추가하지 않고 `CART_ITEM_LIMIT_EXCEEDED`를 발생시킵니다.
-이미 담긴 상품의 수량 대체는 상품 수를 늘리지 않으므로 허용합니다.
+장바구니 상품은 가장 최근에 추가된 상품부터 조회합니다.
 
-상품 수 제한은 장바구니 상태 불변식이므로 Controller나 Repository가 아니라 `Cart`가 판단합니다.
+## 3. 기능별 도메인 의사코드
 
-### 3.4 삭제된 장바구니 항목을 다시 추가한다
-
-삭제된 장바구니 항목에 같은 상품을 다시 추가하면 기존 항목을 복구하고 `ACTIVE` 상태로 변경합니다.
-기존 항목의 수량은 요청한 값으로 대체하며, 복구된 항목은 새 상품으로 세지 않습니다.
-
-### 3.5 주문 시점의 가격을 사용한다
-
-장바구니에는 상품 ID와 수량만 저장하고 상품 가격은 저장하지 않습니다.
-주문을 생성할 때 상품의 현재 가격을 적용하며, 장바구니에 담은 시점의 가격을 보장하지 않습니다.
-
-### 3.6 하나의 UseCase 트랜잭션으로 처리한다
-
-처리 흐름은 다음과 같습니다.
-
-1. `CartService`가 `AddCartItemCommand`를 받아 `AddCartItemUseCase` 호출을 조율합니다.
-2. `AddCartItemUseCase`가 쓰기 트랜잭션 안에서 `CartRepositoryPort`로 사용자 장바구니를 조회합니다. 회원가입 시 생성된 장바구니가 없으면 `CART_NOT_FOUND`를 발생시킵니다.
-3. `CartItemRepositoryPort`가 상품 항목을 조회하고, `Cart`와 `CartItem`이 상태를 변경합니다.
-4. `CartRepositoryAdapter`와 `CartItemRepositoryAdapter`가 Spring Data JPA Repository를 사용합니다.
-
-현재 `CartService`는 `addCartItem`에서 하나의 UseCase를 호출하며, 추후 CRUD와 추가 기능의 실행 순서를 조율하는 확장 지점으로 유지합니다.
-
-현재 범위에서는 별도 잠금 로직을 사용하지 않습니다. 사용자·상품 조합의 DB 유일 제약은 중복 항목을 막지만, 동시 요청의 직렬화나 재시도 응답까지 보장하지는 않습니다.
-
-### 3.7 데이터베이스 제약으로 핵심 불변식을 보강한다
-
-- 사용자당 장바구니 1개: `uk_carts_user_id`
-- 장바구니·상품 조합 1개: `uk_cart_item_cart_product`
-- 항목 수량 1~500: `ck_cart_item_quantity`
-- 장바구니 없는 항목 방지: `fk_cart_item_cart`
-
-### 3.8 추가적으로 검토할 사항
-
-- 동일 상품 추가, 30개 한도 초과 경쟁 요청의 처리 방식을 결정합니다.
-- 상품 기능이 구현된 후 판매 중지·품절 상품을 장바구니에 담을 수 있는지 결정합니다.
-
-## 4. 구현 위치와 책임
+### 3.1 상품 추가
 
 ```text
-CartController
-    → CartCommandConverter
-    → CartService (orchestration layer)
-    → AddCartItemUseCase
-    → CartRepositoryPort / CartItemRepositoryPort
-    ← CartRepositoryAdapter / CartItemRepositoryAdapter
-        → CartJpaRepository / CartItemJpaRepository
+상품 추가(회원, 상품, 수량):
+  1. 회원의 장바구니를 확인한다.
+  2. 장바구니가 없으면 추가하지 않는다.
+  3. 수량이 1~500인지 확인한다.
+  4. 같은 상품 항목이 있으면:
+       a. 삭제 상태라면 활성 상태로 복구한다.
+       b. 수량을 요청한 값으로 대체한다.
+  5. 같은 상품 항목이 없으면:
+       a. 서로 다른 상품이 30개인지 확인한다.
+       b. 30개라면 추가하지 않는다.
+       c. 아니라면 상품 항목을 추가한다.
 ```
 
-| 구성 요소 | 책임 |
-| --- | --- |
-| `CartController` | HTTP 입력 검증, Service 호출, HTTP 응답 반환 |
-| `CartCommandConverter` | `userId`와 `AddCartItemRequest`를 `AddCartItemCommand`로 변환 |
-| `CartService` | 향후 CRUD와 추가 기능을 포함한 기능 흐름의 orchestration layer |
-| `AddCartItemUseCase` | 트랜잭션 안에서 Port와 Domain 조율 |
-| `Cart` | 동일 상품 대체와 상품 수 제한 등 장바구니 상태 전이 |
-| `CartItem` | 상품 수량 불변식과 수량 상태 변경 |
-| `CartRepositoryPort` | Application이 사용하는 저장 계약 |
-| `CartRepositoryAdapter`, `CartItemRepositoryAdapter` | Port와 Spring Data JPA Repository 조합 |
-| `CartJpaRepository`, `CartItemJpaRepository` | Spring Data JPA 접근 |
+### 3.2 수량 변경
 
-Domain 모델이 JPA Entity를 겸하므로 업무 Domain용 별도 Entity나 `CartAddRequestEntity`를 만들지 않습니다.
-`Cart`와 `CartItem`은 공통 `id`, 상태, 생성·수정 시간 매핑을 `common/domain/BaseEntity`에서 상속합니다. 각 장바구니 Entity에 `@Id`와 `IDENTITY` 생성 전략을 중복 선언하지 않으며, 새 객체는 ID 없이 생성합니다.
-현재 Cart 저장 구현은 `CartRepositoryAdapter`, `CartItemRepositoryAdapter`가 Port와 Spring Data JPA Repository를 조합합니다. 복잡한 조인·통계·벌크 연산·프로젝션이 실제로 필요할 때만 Querydsl용 QueryRepository를 추가합니다.
-
-저장소의 `DataAccessException`·`PersistenceException`은 일괄적으로 `CoreException`으로 바꾸지 않고 전파합니다. 알려진 비즈니스 오류만 `CoreException`과 `ErrorCode`로 표현하며, 기술 예외의 HTTP 응답 변환은 `GlobalExceptionHandler`가 담당합니다.
-
-## 5. 테스트 기준
-
-| 테스트 | 검증할 케이스 |
-| --- | --- |
-| `CartTest` | 신규 상품 추가, 30개 초과 시 `CART_ITEM_LIMIT_EXCEEDED`, 잘못된 수량 입력 |
-| `CartAddUseCaseTest` | 장바구니 없음 오류, 기존 장바구니의 상품 추가·수량 대체, Port 호출 흐름 |
-| `CartControllerTest` | 요청 검증, Command 변환, 유효 요청의 HTTP 응답, 잘못된 요청의 Service 미호출 |
-| `CartRepositoryIntegrationTest` | 실제 MySQL의 장바구니·항목 유일성, 수량 대체, DB 제약 |
-| `ArchitectureTest` | Domain·Application·API의 의존 방향과 JPA Domain Entity 규칙 |
-
-현재 브랜치에서 실행한 검증 결과는 PR 본문에 기록하며, 컴파일·테스트가 통과하기 전까지 기능 완료로 표시하지 않습니다.
-
-## 6. 검증 명령
-
-```bash
-./gradlew spotlessApply
-./gradlew test
-TESTCONTAINERS_RYUK_DISABLED=true ./gradlew integrationTest --tests 'com.book.core.cart.infrastructure.persistence.repository.CartRepositoryIntegrationTest'
-./gradlew check
+```text
+수량 변경(상품 항목, 수량):
+  1. 수량이 1~500인지 확인한다.
+  2. 수량이 0이면 거부한다.
+  3. 상품 항목의 수량을 요청한 값으로 대체한다.
 ```
+
+### 3.3 장바구니 조회
+
+```text
+장바구니 조회(회원):
+  1. 회원의 장바구니 상품을 확인한다.
+  2. 가장 최근에 추가된 상품부터 반환한다.
+```
+
+### 3.4 상품 삭제
+
+```text
+상품 삭제(상품 항목):
+  1. 상품 항목을 논리 삭제 상태로 전환한다.
+  2. 같은 상품을 다시 추가하면 삭제 상태의 항목을 복구한다.
+```
+
+## 4. 추가 검토 사항
+
+- 동일 상품 추가와 30개 한도 초과 경쟁 요청의 처리 방식을 결정합니다.
+- 상품 기능이 구현된 후 판매 중지·품절 상품을 장바구니에 담을 수 있는지 결정합니다.

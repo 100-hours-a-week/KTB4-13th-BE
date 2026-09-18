@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.core.sample.application.port.SampleRepository;
 import com.book.core.sample.domain.Sample;
 import java.sql.SQLException;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,6 +21,7 @@ import org.testcontainers.mysql.MySQLContainer;
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers
+@Tag("integration")
 class SampleRepositoryIntegrationTest {
     @Container
     @ServiceConnection

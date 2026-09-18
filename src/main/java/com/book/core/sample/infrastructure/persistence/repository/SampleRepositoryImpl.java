@@ -1,10 +1,9 @@
 package com.book.core.sample.infrastructure.persistence.repository;
 
-import com.book.common.exception.BusinessException;
-import com.book.common.exception.CommonErrorCode;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorType;
 import com.book.core.sample.application.port.SampleRepository;
 import com.book.core.sample.domain.Sample;
-import com.book.core.sample.infrastructure.persistence.mapper.SamplePersistenceMapper;
 import jakarta.persistence.PersistenceException;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -19,18 +18,18 @@ class SampleRepositoryImpl implements SampleRepository {
     @Override
     public Sample save(final Sample sample) {
         try {
-            return SamplePersistenceMapper.toDomain(repository.saveAndFlush(SamplePersistenceMapper.toEntity(sample)));
+            return repository.saveAndFlush(sample);
         } catch (final DataAccessException | PersistenceException exception) {
-            throw new BusinessException(CommonErrorCode.STORAGE_FAILURE, exception);
+            throw new CoreException(ErrorType.STORAGE_FAILURE, exception);
         }
     }
 
     @Override
     public Optional<Sample> findById(final Long id) {
         try {
-            return repository.findById(id).map(SamplePersistenceMapper::toDomain);
+            return repository.findById(id);
         } catch (final DataAccessException | PersistenceException exception) {
-            throw new BusinessException(CommonErrorCode.STORAGE_FAILURE, exception);
+            throw new CoreException(ErrorType.STORAGE_FAILURE, exception);
         }
     }
 }

@@ -20,16 +20,20 @@ src/main/java/com/book/
 │   └── sample/
 │       ├── api/                # Controller, request, response, spec
 │       ├── application/        # command, result, usecase, port
-│       ├── domain/             # 업무 모델과 예외
+│       ├── domain/             # JPA 매핑을 포함한 업무 모델
 │       └── infrastructure/     # persistence, 필요 시 client
-├── common/exception/           # 기술 중립 공통 오류 계약
-└── support/web/                # 공통 HTTP 예외 처리
+├── common/
+│   ├── config/                 # 공유 설정
+│   ├── domain/                 # 공통 영속 생명주기
+│   ├── exception/              # CoreException, ErrorType, ErrorMessage와 전역 HTTP 예외 처리
+│   ├── logging/                # 요청 추적
+│   └── response/               # success/data 공통 응답 계약
 ```
 
 `core`는 Gradle 모듈이 아니라 업무 기능을 모은 패키지입니다.
 UseCase는 `@Service`가 붙은 구체 클래스이며 한 업무 흐름을 담당합니다.
 Controller → UseCase → Repository Port를 호출하고, Persistence 구현체가 Port를 구현합니다.
-Domain과 JPA Entity는 분리하고, Domain에는 Spring·JPA 의존성을 두지 않습니다.
+Domain 모델이 JPA Entity를 겸하며, API DTO와 영속 전용 기술 모델은 별도로 유지합니다.
 Spring 빈의 필수 의존성은 `private final`과 `@RequiredArgsConstructor`로 주입합니다.
 
 ## 로컬 실행
@@ -54,9 +58,9 @@ curl -i http://localhost:8080/api/v1/samples \
 curl -i http://localhost:8080/api/v1/samples/1
 ```
 
-생성은 201과 `Location`, 조회는 200을 반환합니다. 응답 필드는 `id`, `name`입니다.
+생성은 201과 `Location`, 조회는 200을 반환합니다. 성공 응답의 `data` 안에 `id`, `name`이 포함됩니다.
 이름은 앞뒤 공백 제거 후 1~100자이며 잘못된 요청은 400, 없는 ID는 404입니다.
-오류 응답 필드는 `code`, `message`입니다.
+성공 응답은 `success`, `data`를 사용하고, 오류 응답은 `success`, `code`, `message`, `traceId`를 포함합니다. `CoreException`에 안전한 부가 정보가 있으면 `data`가 추가됩니다.
 쓰기·읽기 전용 트랜잭션은 각 UseCase의 public 메서드가 담당합니다.
 
 - Swagger UI: `/swagger-ui/index.html`
@@ -68,12 +72,14 @@ curl -i http://localhost:8080/api/v1/samples/1
 ./gradlew clean check
 ./gradlew bootJar
 ./gradlew spotlessApply
+./gradlew test
+./gradlew integrationTest
 ./gradlew test --tests '*SampleUseCaseTest'
 ```
 
-`check`는 포맷, 단위 테스트, Controller 계약, 패키지 의존 방향,
-Testcontainers MySQL 통합 테스트와 전체 Application Context 구동을 검증합니다.
-Docker가 필요하며 사용할 수 없을 때 통합 테스트를 자동으로 생략하지 않습니다.
+`test`는 Docker가 필요하지 않은 단위·Controller·아키텍처 테스트를 검증합니다.
+`integrationTest`는 Testcontainers MySQL과 전체 Application Context를 검증하며 Docker가 필요합니다.
+`check`는 두 테스트 작업을 모두 실행하고, Docker가 없을 때 통합 테스트를 자동으로 생략하지 않습니다.
 테스트는 `test` 프로필과 일회용 `mysql:8.4.8` 컨테이너를 사용하므로 로컬 DB 인증정보가 필요 없습니다.
 
 Colima를 사용할 때 Testcontainers가 소켓을 찾지 못하면 해당 실행에만

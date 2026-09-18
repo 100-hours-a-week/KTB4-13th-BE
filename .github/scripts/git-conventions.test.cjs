@@ -25,7 +25,11 @@ async function run({ title = 'feat: 샘플 생성 API 추가', messages = ['feat
     async graphql(query, variables) {
       if (apiError) throw apiError;
       assert.match(query, /commits\(first: 100, after: \$cursor\)/);
-      assert.deepEqual(variables, { ...context.repo, number: 7, cursor: requests === 0 ? null : `page-${requests}` });
+      let cursor = null;
+      if (requests > 0) {
+        cursor = `page-${requests}`;
+      }
+      assert.deepEqual(variables, { ...context.repo, number: 7, cursor });
       const start = requests * 100;
       requests += 1;
       const current = {

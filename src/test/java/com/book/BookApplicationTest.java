@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.book.core.sample.application.port.SampleRepository;
 import com.book.core.sample.application.usecase.SampleCreateUseCase;
 import com.book.core.sample.application.usecase.SampleQueryUseCase;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +28,7 @@ import org.testcontainers.mysql.MySQLContainer;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Testcontainers
+@Tag("integration")
 class BookApplicationTest {
     @Container
     @ServiceConnection
@@ -51,8 +53,9 @@ class BookApplicationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"  통합 테스트  \"}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.name").value("통합 테스트"))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").isNumber())
+                .andExpect(jsonPath("$.data.name").value("통합 테스트"))
                 .andReturn()
                 .getResponse();
         mvc.perform(get(created.getHeader("Location")))
@@ -60,6 +63,6 @@ class BookApplicationTest {
                 .andExpect(content().json(created.getContentAsString()));
         mvc.perform(get("/api/v1/samples/9223372036854775807"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("SAMPLE_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").value("E401"));
     }
 }

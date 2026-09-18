@@ -12,10 +12,10 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
-    @ExceptionHandler(BusinessException.class)
-    ResponseEntity<ErrorResponse> handleBusiness(final BusinessException exception) {
-        final var error = exception.errorCode();
-        return ResponseEntity.status(error.statusCode()).body(ErrorResponse.of(error));
+    @ExceptionHandler(CoreException.class)
+    ResponseEntity<ErrorResponse> handleCoreException(final CoreException exception) {
+        final var error = exception.errorType();
+        return ResponseEntity.status(error.status()).body(ErrorResponse.of(error, exception.data()));
     }
 
     @ExceptionHandler({
@@ -26,13 +26,13 @@ class GlobalExceptionHandler {
         ConstraintViolationException.class
     })
     ResponseEntity<ErrorResponse> handleInvalidRequest(final Exception exception) {
-        final var error = CommonErrorCode.INVALID_REQUEST;
-        return ResponseEntity.badRequest().body(ErrorResponse.of(error));
+        final var error = ErrorType.INVALID_REQUEST;
+        return ResponseEntity.status(error.status()).body(ErrorResponse.of(error));
     }
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ErrorResponse> handleUnexpected(final Exception exception) {
-        final var error = CommonErrorCode.INTERNAL_ERROR;
-        return ResponseEntity.internalServerError().body(ErrorResponse.of(error));
+        final var error = ErrorType.DEFAULT_ERROR;
+        return ResponseEntity.status(error.status()).body(ErrorResponse.of(error));
     }
 }

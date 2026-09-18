@@ -3,8 +3,8 @@ package com.book.core.sample.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.book.common.exception.BusinessException;
-import com.book.core.sample.domain.exception.SampleErrorCode;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -29,14 +29,14 @@ class SampleTest {
     void 비어_있는_이름을_거부한다(final String name) {
         assertThatThrownBy(() -> Sample.create(name))
                 .isInstanceOfSatisfying(
-                        BusinessException.class,
+                        CoreException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(SampleErrorCode.INVALID_SAMPLE_NAME));
+                                assertThat(exception.errorType()).isEqualTo(ErrorType.INVALID_SAMPLE_NAME));
     }
 
     @Test
     void 이름이_101자이면_거부한다() {
-        assertThatThrownBy(() -> Sample.create("가".repeat(101))).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> Sample.create("가".repeat(101))).isInstanceOf(CoreException.class);
     }
 
     @Test
@@ -48,8 +48,8 @@ class SampleTest {
 
     @Test
     void 복원할_때도_불변식을_검증한다() {
-        assertThatThrownBy(() -> Sample.restore(null, "책")).isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> Sample.restore(0L, "책")).isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> Sample.restore(1L, " ")).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> Sample.restore(null, "책")).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> Sample.restore(0L, "책")).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> Sample.restore(1L, " ")).isInstanceOf(CoreException.class);
     }
 }

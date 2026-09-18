@@ -1,11 +1,7 @@
 package com.book.common.exception;
 
-public interface ErrorCode {
-    String code();
-
-    String message();
-
-    default int statusCode() {
-        return 400;
-    }
+public enum ErrorCode {
+    E500,
+    E400,
+    E401
 }

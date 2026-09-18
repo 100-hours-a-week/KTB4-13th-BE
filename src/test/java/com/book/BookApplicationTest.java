@@ -63,6 +63,6 @@ class BookApplicationTest {
                 .andExpect(content().json(created.getContentAsString()));
         mvc.perform(get("/api/v1/samples/9223372036854775807"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("SAMPLE_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").value("E401"));
     }
 }

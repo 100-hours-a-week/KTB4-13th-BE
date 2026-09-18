@@ -105,9 +105,10 @@ HTTP 입력의 형식·길이·필수값은 Bean Validation과 Controller의 `@V
 Command는 생성 시 업무 전제를, Domain은 불변식과 상태 전이를 검증합니다.
 권한이나 현재 저장 상태처럼 실행 시점에 확인할 조건은 UseCase가 Port를 통해 조회하여 검증합니다.
 
-공통 오류 계약은 `common/exception/BusinessException`, `ErrorCode`, `CommonErrorCode`입니다.
-`ErrorCode`는 오류 코드·메시지와 HTTP 상태 코드를 함께 제공합니다.
-기능별 오류 코드는 `core/{feature}/domain/exception`에 둡니다.
+공통 오류 계약은 `common/exception/CoreException`, `ErrorType`, `ErrorMessage`입니다.
+`ErrorCode`는 중앙 오류 코드 enum이며, HTTP 상태·메시지·로그 레벨은 `ErrorType`이 함께 제공합니다.
+기능별 오류 코드는 별도 `core/{feature}/domain/exception`에 만들지 않고 `common/exception/ErrorType`에서 관리합니다.
+`CoreException`의 `data`는 필요한 안전한 오류 부가 정보만 담고, 비밀번호·토큰·키·외부 응답 원문은 넣지 않습니다.
 JPA·외부 SDK 예외를 공통 계약으로 변환하고 `common/exception/GlobalExceptionHandler`가 HTTP 상태와 응답을 매핑합니다.
 민감한 오류 원문이나 인증정보를 응답·로그에 노출하지 않습니다.
 

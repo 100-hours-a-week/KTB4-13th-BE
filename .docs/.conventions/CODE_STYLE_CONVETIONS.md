@@ -92,7 +92,7 @@ class SampleController {
 - API DTO의 필수값, 범위, 길이, 형식 제약에는 `jakarta.validation.constraints`의 `@NotBlank`, `@NotNull`, `@Min`, `@Max`, `@Size`, `@Pattern`을 우선 사용합니다.
 - Controller에서 `@Valid` 또는 `@Validated`로 검증을 활성화하고, [`GlobalExceptionHandler`](../../src/main/java/com/book/common/exception/GlobalExceptionHandler.java)의 HTTP 오류 계약을 따릅니다.
 - 같은 단순 HTTP 입력 검증을 DTO 생성자에 중복 작성하지 않습니다. Command와 Domain 객체는 HTTP를 거치지 않는 호출에서도 자신의 전제조건과 불변식을 보장해야 합니다.
-- 공통 비즈니스 오류에는 기술 중립적인 [`BusinessException`](../../src/main/java/com/book/common/exception/BusinessException.java) 계약을 사용하고, `common/exception`에서 HTTP 응답으로 변환합니다.
+- 공통 비즈니스 오류에는 [`CoreException`](../../src/main/java/com/book/common/exception/CoreException.java)과 [`ErrorType`](../../src/main/java/com/book/common/exception/ErrorType.java) 계약을 사용하고, `common/exception`에서 HTTP 응답으로 변환합니다.
 - null 기본값, 입력 정규화, 필드 간 조건, 도메인 불변식처럼 어노테이션만으로 표현하기 어려운 규칙은 생성자, Application 또는 Domain 계층에 둡니다.
 - 제약을 추가하면 잘못된 HTTP 입력에 대해 예상한 상태 코드와 오류 응답이 반환되는지 테스트합니다.
 

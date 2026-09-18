@@ -6,8 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.book.common.exception.BusinessException;
-import com.book.common.exception.CommonErrorCode;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorType;
 import com.book.core.sample.domain.Sample;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -21,13 +21,13 @@ class SampleRepositoryImplTest {
         when(jpaRepository.findById(1L)).thenThrow(new DataAccessResourceFailureException("unavailable"));
         assertThatThrownBy(() -> adapter.save(Sample.create("책")))
                 .isInstanceOfSatisfying(
-                        BusinessException.class,
+                        CoreException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(CommonErrorCode.STORAGE_FAILURE));
+                                assertThat(exception.errorType()).isEqualTo(ErrorType.STORAGE_FAILURE));
         assertThatThrownBy(() -> adapter.findById(1L))
                 .isInstanceOfSatisfying(
-                        BusinessException.class,
+                        CoreException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(CommonErrorCode.STORAGE_FAILURE));
+                                assertThat(exception.errorType()).isEqualTo(ErrorType.STORAGE_FAILURE));
     }
 }

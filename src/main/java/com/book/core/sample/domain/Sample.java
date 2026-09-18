@@ -1,7 +1,7 @@
 package com.book.core.sample.domain;
 
-import com.book.common.exception.BusinessException;
-import com.book.core.sample.domain.exception.SampleErrorCode;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -37,18 +37,18 @@ public class Sample {
 
     public static Sample restore(final Long id, final String name) {
         if (id == null || id <= 0) {
-            throw new BusinessException(SampleErrorCode.INVALID_SAMPLE_ID);
+            throw new CoreException(ErrorType.INVALID_SAMPLE_ID);
         }
         return new Sample(id, name);
     }
 
     public static String normalizeName(final String name) {
         if (name == null || name.isBlank()) {
-            throw new BusinessException(SampleErrorCode.INVALID_SAMPLE_NAME);
+            throw new CoreException(ErrorType.INVALID_SAMPLE_NAME);
         }
         final String normalized = name.strip();
         if (normalized.length() > 100) {
-            throw new BusinessException(SampleErrorCode.INVALID_SAMPLE_NAME);
+            throw new CoreException(ErrorType.INVALID_SAMPLE_NAME);
         }
         return normalized;
     }

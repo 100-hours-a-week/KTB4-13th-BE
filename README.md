@@ -20,12 +20,12 @@ src/main/java/com/book/
 │   └── sample/
 │       ├── api/                # Controller, request, response, spec
 │       ├── application/        # command, result, usecase, port
-│       ├── domain/             # JPA 매핑을 포함한 업무 모델과 예외
+│       ├── domain/             # JPA 매핑을 포함한 업무 모델
 │       └── infrastructure/     # persistence, 필요 시 client
 ├── common/
 │   ├── config/                 # 공유 설정
 │   ├── domain/                 # 공통 영속 생명주기
-│   ├── exception/              # 공통 오류 계약과 전역 HTTP 예외 처리
+│   ├── exception/              # CoreException, ErrorType, ErrorMessage와 전역 HTTP 예외 처리
 │   ├── logging/                # 요청 추적
 │   └── response/               # success/data 공통 응답 계약
 ```
@@ -60,7 +60,7 @@ curl -i http://localhost:8080/api/v1/samples/1
 
 생성은 201과 `Location`, 조회는 200을 반환합니다. 성공 응답의 `data` 안에 `id`, `name`이 포함됩니다.
 이름은 앞뒤 공백 제거 후 1~100자이며 잘못된 요청은 400, 없는 ID는 404입니다.
-성공 응답은 `success`, `data`를 사용하고, 오류 응답은 `success`, `code`, `message`, `traceId`를 포함합니다.
+성공 응답은 `success`, `data`를 사용하고, 오류 응답은 `success`, `code`, `message`, `traceId`를 포함합니다. `CoreException`에 안전한 부가 정보가 있으면 `data`가 추가됩니다.
 쓰기·읽기 전용 트랜잭션은 각 UseCase의 public 메서드가 담당합니다.
 
 - Swagger UI: `/swagger-ui/index.html`

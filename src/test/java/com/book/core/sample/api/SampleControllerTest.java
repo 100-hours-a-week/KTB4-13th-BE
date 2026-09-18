@@ -8,15 +8,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.book.common.exception.BusinessException;
-import com.book.common.exception.CommonErrorCode;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorType;
 import com.book.core.sample.application.command.SampleCreateCommand;
 import com.book.core.sample.application.command.SampleQueryCommand;
 import com.book.core.sample.application.result.SampleCreateResult;
 import com.book.core.sample.application.result.SampleQueryResult;
 import com.book.core.sample.application.usecase.SampleCreateUseCase;
 import com.book.core.sample.application.usecase.SampleQueryUseCase;
-import com.book.core.sample.domain.exception.SampleErrorCode;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -71,7 +71,7 @@ class SampleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\" \"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+                .andExpect(jsonPath("$.code").value("E400"));
         verifyNoInteractions(createUseCase);
     }
 
@@ -82,7 +82,7 @@ class SampleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+                .andExpect(jsonPath("$.code").value("E400"));
         verifyNoInteractions(createUseCase);
     }
 
@@ -104,10 +104,10 @@ class SampleControllerTest {
     @Test
     void 존재하지_않는_ID는_404를_응답한다() throws Exception {
         when(queryUseCase.execute(new SampleQueryCommand(42L)))
-                .thenThrow(new BusinessException(SampleErrorCode.SAMPLE_NOT_FOUND));
+                .thenThrow(new CoreException(ErrorType.SAMPLE_NOT_FOUND));
         mvc.perform(MockMvcRequestBuilders.get("/api/v1/samples/{sampleId}", 42))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("SAMPLE_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").value("E401"));
     }
 
     @ParameterizedTest
@@ -121,14 +121,24 @@ class SampleControllerTest {
     @Test
     void 저장소_오류의_상세_원인은_HTTP_응답에_노출하지_않는다() throws Exception {
         when(queryUseCase.execute(any()))
-                .thenThrow(new BusinessException(
-                        CommonErrorCode.STORAGE_FAILURE, new IllegalStateException("internal database detail")));
+                .thenThrow(new CoreException(
+                        ErrorType.STORAGE_FAILURE, new IllegalStateException("internal database detail")));
         mvc.perform(MockMvcRequestBuilders.get("/api/v1/samples/1"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.code").value("STORAGE_FAILURE"))
+                .andExpect(jsonPath("$.code").value("E500"))
                 .andExpect(jsonPath("$.message").value("저장소 작업을 완료할 수 없습니다."))
                 .andExpect(jsonPath("$.traceId").isNotEmpty());
+    }
+
+    @Test
+    void 공통_예외의_안전한_부가정보를_data로_응답한다() throws Exception {
+        when(queryUseCase.execute(any()))
+                .thenThrow(new CoreException(ErrorType.INVALID_REQUEST, Map.of("field", "name")));
+        mvc.perform(MockMvcRequestBuilders.get("/api/v1/samples/1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("E400"))
+                .andExpect(jsonPath("$.data.field").value("name"));
     }
 
     @Test
@@ -136,7 +146,7 @@ class SampleControllerTest {
         when(queryUseCase.execute(any())).thenThrow(new IllegalStateException("internal detail"));
         mvc.perform(MockMvcRequestBuilders.get("/api/v1/samples/1"))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                .andExpect(jsonPath("$.code").value("E500"))
                 .andExpect(jsonPath("$.message").value("알 수 없는 오류가 발생했습니다."))
                 .andExpect(jsonPath("$.traceId").isNotEmpty());
     }

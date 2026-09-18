@@ -1,7 +1,7 @@
 package com.book.core.sample.infrastructure.persistence.repository;
 
-import com.book.common.exception.BusinessException;
-import com.book.common.exception.CommonErrorCode;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorType;
 import com.book.core.sample.application.port.SampleRepository;
 import com.book.core.sample.domain.Sample;
 import jakarta.persistence.PersistenceException;
@@ -20,7 +20,7 @@ class SampleRepositoryImpl implements SampleRepository {
         try {
             return repository.saveAndFlush(sample);
         } catch (final DataAccessException | PersistenceException exception) {
-            throw new BusinessException(CommonErrorCode.STORAGE_FAILURE, exception);
+            throw new CoreException(ErrorType.STORAGE_FAILURE, exception);
         }
     }
 
@@ -29,7 +29,7 @@ class SampleRepositoryImpl implements SampleRepository {
         try {
             return repository.findById(id);
         } catch (final DataAccessException | PersistenceException exception) {
-            throw new BusinessException(CommonErrorCode.STORAGE_FAILURE, exception);
+            throw new CoreException(ErrorType.STORAGE_FAILURE, exception);
         }
     }
 }

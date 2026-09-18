@@ -52,7 +52,7 @@ com.book
 - Infrastructure는 Port를 구현합니다. Application과 API는 Infrastructure 구현체를 참조하지 않습니다.
 - Domain 모델은 Application·API·Infrastructure·Spring·Jackson에 의존하지 않습니다. JPA 매핑과 `common/domain`의 `BaseTimeEntity`는 허용합니다.
 - 다른 기능의 Infrastructure를 직접 호출하지 않습니다. 기능 간 협력은 공개 UseCase 계약을 사용하고 순환 의존을 피합니다.
-- 공통 오류 계약과 전역 HTTP 예외 처리는 `common/exception/GlobalExceptionHandler`가 소유합니다.
+- 공통 오류 계약은 `common/exception/CoreException`, `ErrorType`, `ErrorMessage`가 소유하고, 전역 HTTP 예외 처리는 `common/exception/GlobalExceptionHandler`가 담당합니다.
 
 ## Spring 빈과 트랜잭션
 
@@ -82,7 +82,7 @@ com.book
 - Spring Data Repository는 `{Feature}JpaRepository`를 사용하고 업무 모델은 `domain/{Feature}`에 둡니다. 도메인 대응 타입이 없는 실제 요구의 영속 전용 모델만 `infrastructure/persistence/entity`에 두며, 예상 기능을 위한 Entity·테이블은 만들지 않습니다.
 - 외부 연동은 `{Feature}Client` Port와 `{Feature}ClientImpl` 구현체로 분리합니다. 변환기는 출처가 드러나는 `{Feature}ExternalMapper`를 사용합니다.
 - 영속 전용 Entity·HTTP DTO·외부 SDK 타입을 Port와 UseCase의 입력·출력에 노출하지 않습니다. 업무 모델은 Port와 UseCase의 계약으로 사용할 수 있습니다.
-- JPA·외부 SDK 예외는 공통 오류 계약으로 변환하고 상세 원문을 HTTP 응답에 노출하지 않습니다.
+- JPA·외부 SDK 예외는 `CoreException`과 `ErrorType`으로 변환하고 상세 원문을 HTTP 응답에 노출하지 않습니다.
 - 기능별 기술 설정은 해당 Infrastructure에, 여러 기능이 공유하는 애플리케이션 설정은 `common/config`에 둡니다.
 - `common`에는 기능에 종속되지 않고 여러 기능이 공유하는 코드를 둡니다. 추후 멀티모듈이나 독립 모듈로 분리할 때 기술 중립 코드를 우선합니다.
 

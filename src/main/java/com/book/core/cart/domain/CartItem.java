@@ -14,7 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-/** 장바구니 항목의 상품 식별자와 추가 수량 불변식을 관리합니다. */
+/** 장바구니 항목의 상품 식별자와 수량 대체 규칙을 관리합니다. */
 @Entity
 @Table(name = "cart_item")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -46,28 +46,11 @@ public class CartItem extends BaseEntity {
     }
 
     private CartItem(final Long id, final Long cartId, final long productId, final int quantity) {
-        requireId(productId);
-        if (id != null) {
-            requireId(id);
-        }
         requireQuantity(quantity);
         this.id = id;
         this.cartId = cartId;
         this.productId = productId;
         this.quantity = quantity;
-    }
-
-    public static void requireId(final long id) {
-        if (id <= 0) {
-            throw new CoreException(ErrorType.INVALID_REQUEST);
-        }
-    }
-
-    public static void requireId(final Long id) {
-        if (id == null) {
-            throw new CoreException(ErrorType.INVALID_REQUEST);
-        }
-        requireId(id.longValue());
     }
 
     public static void requireQuantity(final int quantity) {

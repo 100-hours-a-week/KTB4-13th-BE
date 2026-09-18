@@ -37,10 +37,6 @@ public class Cart extends BaseEntity {
     private List<CartItem> items = new ArrayList<>();
 
     public Cart(final Long id, final long userId, final List<CartItem> items) {
-        if (id != null) {
-            CartItem.requireId(id);
-        }
-        CartItem.requireId(userId);
         this.id = id;
         this.userId = userId;
         this.items = new ArrayList<>(items);
@@ -55,7 +51,6 @@ public class Cart extends BaseEntity {
     }
 
     public CartItem add(final long productId, final int quantity) {
-        CartItem.requireId(productId);
         CartItem.requireQuantity(quantity);
         final var existing = items.stream()
                 .filter((final var item) -> item.productId() == productId)

@@ -13,7 +13,7 @@ final class InMemoryCartRepository implements CartRepository {
     private long itemSequence;
 
     @Override
-    public Cart lockOrCreate(final long userId) {
+    public Cart findOrCreate(final long userId) {
         return carts.computeIfAbsent(userId, (final var id) -> new Cart(id, userId, List.of()));
     }
 

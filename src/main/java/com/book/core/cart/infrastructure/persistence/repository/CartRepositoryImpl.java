@@ -19,13 +19,10 @@ class CartRepositoryImpl implements CartRepository {
 
     @Override
     @Transactional
-    public Cart lockOrCreate(final long userId) {
+    public Cart findOrCreate(final long userId) {
         try {
             cartRepository.insertIfAbsent(userId);
-            return cartRepository
-                    .findByUserIdForUpdate(userId)
-                    .map(this::loadItems)
-                    .orElseThrow(this::storageFailure);
+            return cartRepository.findByUserId(userId).map(this::loadItems).orElseThrow(this::storageFailure);
         } catch (final DataAccessException | PersistenceException exception) {
             throw new CoreException(ErrorType.STORAGE_FAILURE, exception);
         }

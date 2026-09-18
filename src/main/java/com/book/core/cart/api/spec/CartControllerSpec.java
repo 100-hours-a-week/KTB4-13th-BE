@@ -20,7 +20,7 @@ public interface CartControllerSpec {
     @Operation(
             summary = "장바구니 상품 추가",
             description = "동일 장바구니에 같은 상품이 있으면 기존 수량에 누적하지 않고 요청한 수량으로 대체합니다. "
-                    + "같은 추가 요청을 반복해도 결과는 같습니다. quantity를 생략하면 1개를 추가합니다.")
+                    + "같은 추가 요청을 반복해도 결과는 같습니다. quantity는 1~500 범위로 필수 입력입니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "추가 성공"),
         @ApiResponse(responseCode = "400", description = "요청 오류")

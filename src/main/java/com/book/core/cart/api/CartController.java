@@ -27,7 +27,7 @@ class CartController implements CartControllerSpec {
     @Override
     public ResponseEntity<ApiResponse<Void>> add(
             @Positive @RequestParam("userId") final long userId, @Valid @RequestBody final CartAddRequest request) {
-        addUseCase.execute(new CartAddCommand(userId, request.productId(), request.quantityOrDefault()));
+        addUseCase.execute(new CartAddCommand(userId, request.productId(), request.quantity()));
         return ResponseEntity.ok(ApiResponse.ok());
     }
 }

@@ -13,7 +13,7 @@ public class CartAddUseCase {
 
     @Transactional
     public void execute(final CartAddCommand command) {
-        final var cart = cartRepository.lockOrCreate(command.userId());
+        final var cart = cartRepository.findOrCreate(command.userId());
         final var item = cart.add(command.productId(), command.quantity());
         cartRepository.saveItem(cart.id(), item);
     }

@@ -17,22 +17,25 @@ Spring Boot와 Java 기반의 단일 모듈 프로젝트입니다.
 src/main/java/com/book/
 ├── BookApplication.java
 ├── core/
-│   └── sample/
+│   └── {feature}/
 │       ├── api/                # Controller, request, response, spec
-│       ├── application/        # command, result, usecase, port
+│       │   └── converter/       # HTTP 입력·출력 변환
+│       ├── application/        # command, result, service, usecase, port
 │       ├── domain/             # JPA 매핑을 포함한 업무 모델
 │       └── infrastructure/     # persistence, 필요 시 client
 ├── common/
 │   ├── config/                 # 공유 설정
 │   ├── domain/                 # 공통 영속 생명주기
-│   ├── exception/              # CoreException, ErrorType, ErrorMessage와 전역 HTTP 예외 처리
+│   ├── exception/              # CoreException, ErrorCode와 전역 HTTP 예외 처리
 │   ├── logging/                # 요청 추적
 │   └── response/               # success/data 공통 응답 계약
 ```
 
 `core`는 Gradle 모듈이 아니라 업무 기능을 모은 패키지입니다.
-UseCase는 `@Service`가 붙은 구체 클래스이며 한 업무 흐름을 담당합니다.
-Controller → UseCase → Repository Port를 호출하고, Persistence 구현체가 Port를 구현합니다.
+신규·수정 기능은 `Controller → CommandConverter → FeatureService → ActionUseCase → Domain/Port` 흐름을 따릅니다.
+`FeatureService`는 CRUD와 추가 기능의 실행 순서를 조율하는 orchestration layer이고, `ActionUseCase`는 트랜잭션과 업무 흐름을 담당합니다.
+저장소는 `RepositoryPort → RepositoryAdapter → JpaRepository` 순서로 연결합니다.
+현재 `CartService`가 이 구조의 기준이며, 기존 `Sample`의 직접 UseCase 호출 구조는 새 기능의 템플릿으로 사용하지 않습니다.
 Domain 모델이 JPA Entity를 겸하며, API DTO와 영속 전용 기술 모델은 별도로 유지합니다.
 Spring 빈의 필수 의존성은 `private final`과 `@RequiredArgsConstructor`로 주입합니다.
 

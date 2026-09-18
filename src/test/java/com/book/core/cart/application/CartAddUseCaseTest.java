@@ -34,6 +34,9 @@ class CartAddUseCaseTest {
 
     @Test
     void Command는_양수_ID와_유효한_수량을_요구한다() {
+        assertThatThrownBy(() -> new CartAddCommand(null, 20L, 1)).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> new CartAddCommand(1L, null, 1)).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> new CartAddCommand(1L, 20L, null)).isInstanceOf(CoreException.class);
         assertThatThrownBy(() -> new CartAddCommand(0L, 20L, 1)).isInstanceOf(CoreException.class);
         assertThatThrownBy(() -> new CartAddCommand(1L, 0L, 1)).isInstanceOf(CoreException.class);
         assertThatThrownBy(() -> new CartAddCommand(1L, 20L, 0)).isInstanceOf(CoreException.class);

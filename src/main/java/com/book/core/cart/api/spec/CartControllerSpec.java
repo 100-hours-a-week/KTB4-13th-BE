@@ -27,7 +27,7 @@ public interface CartControllerSpec {
     })
     ResponseEntity<com.book.common.response.ApiResponse<Void>> add(
             @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
-                    final long userId,
+                    final Long userId,
             @RequestBody(required = true, content = @Content(schema = @Schema(implementation = CartAddRequest.class)))
                     @Valid
                     final CartAddRequest request);

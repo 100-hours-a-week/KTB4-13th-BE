@@ -1,5 +1,6 @@
 package com.book.core.sample.api;
 
+import com.book.common.response.ApiResponse;
 import com.book.core.sample.api.request.SampleCreateRequest;
 import com.book.core.sample.api.response.SampleCreateResponse;
 import com.book.core.sample.api.response.SampleQueryResponse;
@@ -27,15 +28,18 @@ class SampleController implements SampleControllerSpec {
 
     @PostMapping
     @Override
-    public ResponseEntity<SampleCreateResponse> create(@Valid @RequestBody final SampleCreateRequest request) {
+    public ResponseEntity<ApiResponse<SampleCreateResponse>> create(
+            @Valid @RequestBody final SampleCreateRequest request) {
         final SampleCreateResponse response = SampleCreateResponse.from(createUseCase.execute(request.toCommand()));
         return ResponseEntity.created(URI.create("/api/v1/samples/" + response.id()))
-                .body(response);
+                .body(ApiResponse.ok(response));
     }
 
     @GetMapping("/{sampleId}")
     @Override
-    public SampleQueryResponse query(@PathVariable final Long sampleId) {
-        return SampleQueryResponse.from(queryUseCase.execute(new SampleQueryCommand(sampleId)));
+    public ApiResponse<SampleQueryResponse> query(@PathVariable final Long sampleId) {
+        final SampleQueryResponse response =
+                SampleQueryResponse.from(queryUseCase.execute(new SampleQueryCommand(sampleId)));
+        return ApiResponse.ok(response);
     }
 }

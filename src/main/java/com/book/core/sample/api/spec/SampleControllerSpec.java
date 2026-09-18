@@ -18,13 +18,10 @@ public interface SampleControllerSpec {
 
     @Operation(summary = "샘플 생성", description = "샘플 이름을 등록하고 생성된 샘플 정보를 반환합니다.")
     @ApiResponses({
-        @ApiResponse(
-                responseCode = "201",
-                description = "샘플 생성 성공",
-                content = @Content(schema = @Schema(implementation = SampleCreateResponse.class))),
+        @ApiResponse(responseCode = "201", description = "샘플 생성 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않거나 이름 규칙을 위반함")
     })
-    ResponseEntity<SampleCreateResponse> create(
+    ResponseEntity<com.book.common.response.ApiResponse<SampleCreateResponse>> create(
             @RequestBody(
                             description = "생성할 샘플 정보",
                             required = true,
@@ -33,13 +30,10 @@ public interface SampleControllerSpec {
 
     @Operation(summary = "샘플 단건 조회", description = "샘플 ID로 샘플 정보를 조회합니다.")
     @ApiResponses({
-        @ApiResponse(
-                responseCode = "200",
-                description = "샘플 조회 성공",
-                content = @Content(schema = @Schema(implementation = SampleQueryResponse.class))),
+        @ApiResponse(responseCode = "200", description = "샘플 조회 성공"),
         @ApiResponse(responseCode = "400", description = "샘플 ID가 양수가 아님"),
         @ApiResponse(responseCode = "404", description = "샘플을 찾을 수 없음")
     })
-    SampleQueryResponse query(
+    com.book.common.response.ApiResponse<SampleQueryResponse> query(
             @Parameter(description = "조회할 샘플 ID", required = true, example = "1") final Long sampleId);
 }

@@ -3,16 +3,14 @@ package com.book.core.sample.domain.exception;
 import com.book.common.exception.ErrorCode;
 
 public enum SampleErrorCode implements ErrorCode {
-    INVALID_SAMPLE_NAME("이름은 앞뒤 공백을 제외하고 1자 이상 100자 이하여야 합니다.", Category.INVALID_INPUT),
-    INVALID_SAMPLE_ID("샘플 ID는 양수여야 합니다.", Category.INVALID_INPUT),
-    SAMPLE_NOT_FOUND("샘플을 찾을 수 없습니다.", Category.NOT_FOUND);
+    INVALID_SAMPLE_NAME("이름은 앞뒤 공백을 제외하고 1자 이상 100자 이하여야 합니다."),
+    INVALID_SAMPLE_ID("샘플 ID는 양수여야 합니다."),
+    SAMPLE_NOT_FOUND("샘플을 찾을 수 없습니다.");
 
     private final String message;
-    private final Category category;
 
-    SampleErrorCode(final String message, final Category category) {
+    SampleErrorCode(final String message) {
         this.message = message;
-        this.category = category;
     }
 
     @Override
@@ -26,7 +24,10 @@ public enum SampleErrorCode implements ErrorCode {
     }
 
     @Override
-    public Category category() {
-        return category;
+    public int statusCode() {
+        return switch (this) {
+            case SAMPLE_NOT_FOUND -> 404;
+            default -> 400;
+        };
     }
 }

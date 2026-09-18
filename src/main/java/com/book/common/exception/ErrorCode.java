@@ -5,11 +5,7 @@ public interface ErrorCode {
 
     String message();
 
-    Category category();
-
-    enum Category {
-        INVALID_INPUT,
-        NOT_FOUND,
-        INTERNAL_ERROR
+    default int statusCode() {
+        return 400;
     }
 }

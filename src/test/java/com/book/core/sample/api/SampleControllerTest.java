@@ -4,7 +4,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -49,8 +48,9 @@ class SampleControllerTest {
                         .content("{\"name\":\"  책  \"}"))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/v1/samples/1"))
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.name").value("책"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.name").value("책"));
         verify(createUseCase).execute(new SampleCreateCommand("책"));
     }
 
@@ -59,8 +59,9 @@ class SampleControllerTest {
         when(queryUseCase.execute(new SampleQueryCommand(42L))).thenReturn(new SampleQueryResult(42L, "책"));
         mvc.perform(MockMvcRequestBuilders.get("/api/v1/samples/{sampleId}", 42))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(42))
-                .andExpect(jsonPath("$.name").value("책"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(42))
+                .andExpect(jsonPath("$.data.name").value("책"));
         verify(queryUseCase).execute(new SampleQueryCommand(42L));
     }
 
@@ -93,7 +94,7 @@ class SampleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"  " + name + "  \"}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value(name));
+                .andExpect(jsonPath("$.data.name").value(name));
         mvc.perform(MockMvcRequestBuilders.post("/api/v1/samples")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"" + name + "가\"}"))
@@ -124,6 +125,19 @@ class SampleControllerTest {
                         CommonErrorCode.STORAGE_FAILURE, new IllegalStateException("internal database detail")));
         mvc.perform(MockMvcRequestBuilders.get("/api/v1/samples/1"))
                 .andExpect(status().isInternalServerError())
-                .andExpect(content().json("{\"code\":\"STORAGE_FAILURE\",\"message\":\"저장소 작업을 완료할 수 없습니다.\"}"));
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("STORAGE_FAILURE"))
+                .andExpect(jsonPath("$.message").value("저장소 작업을 완료할 수 없습니다."))
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
+    }
+
+    @Test
+    void 예상하지_못한_예외는_내부_오류로_응답한다() throws Exception {
+        when(queryUseCase.execute(any())).thenThrow(new IllegalStateException("internal detail"));
+        mvc.perform(MockMvcRequestBuilders.get("/api/v1/samples/1"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                .andExpect(jsonPath("$.message").value("알 수 없는 오류가 발생했습니다."))
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 }

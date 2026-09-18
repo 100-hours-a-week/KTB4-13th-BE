@@ -3,8 +3,8 @@ package com.book.core.cart.infrastructure.persistence.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.book.core.cart.application.command.CartAddCommand;
-import com.book.core.cart.application.usecase.CartAddUseCase;
+import com.book.core.cart.application.command.AddCartItemCommand;
+import com.book.core.cart.application.usecase.AddCartItemUseCase;
 import java.sql.SQLException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -28,15 +28,15 @@ class CartRepositoryIntegrationTest {
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
 
     @Autowired
-    CartAddUseCase addUseCase;
+    AddCartItemUseCase addUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
 
     @Test
     void 같은_사용자의_같은_상품_추가는_한_항목의_수량을_대체한다() {
-        addUseCase.execute(new CartAddCommand(1001L, 2001L, 2));
-        addUseCase.execute(new CartAddCommand(1001L, 2001L, 4));
+        addUseCase.execute(new AddCartItemCommand(1001L, 2001L, 2));
+        addUseCase.execute(new AddCartItemCommand(1001L, 2001L, 4));
 
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM carts WHERE user_id = ?", Integer.class, 1001L))
                 .isEqualTo(1);
@@ -56,7 +56,7 @@ class CartRepositoryIntegrationTest {
 
     @Test
     void 마이그레이션은_수량_범위를_DB에서도_검증한다() {
-        addUseCase.execute(new CartAddCommand(1002L, 2002L, 1));
+        addUseCase.execute(new AddCartItemCommand(1002L, 2002L, 1));
         final Long cartId = jdbc.queryForObject("SELECT id FROM carts WHERE user_id = ?", Long.class, 1002L);
 
         assertThatThrownBy(() -> jdbc.update(

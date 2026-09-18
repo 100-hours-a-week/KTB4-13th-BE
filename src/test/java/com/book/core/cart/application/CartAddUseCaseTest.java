@@ -4,42 +4,87 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.CoreException;
-import com.book.core.cart.application.command.CartAddCommand;
-import com.book.core.cart.application.usecase.CartAddUseCase;
+import com.book.common.exception.ErrorCode;
+import com.book.core.cart.application.command.AddCartItemCommand;
+import com.book.core.cart.application.port.CartItemRepositoryPort;
+import com.book.core.cart.application.port.CartRepositoryPort;
+import com.book.core.cart.application.usecase.AddCartItemUseCase;
+import com.book.core.cart.domain.Cart;
+import com.book.core.cart.domain.CartItem;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class CartAddUseCaseTest {
-    private final InMemoryCartRepository repository = new InMemoryCartRepository();
-    private final CartAddUseCase useCase = new CartAddUseCase(repository);
+    private final FakeCartRepository cartRepository = new FakeCartRepository();
+    private final FakeCartItemRepository cartItemRepository = new FakeCartItemRepository();
+    private final AddCartItemUseCase useCase = new AddCartItemUseCase(cartRepository, cartItemRepository);
 
     @Test
-    void 같은_상품_추가_요청은_수량을_대체한다() {
-        useCase.execute(new CartAddCommand(1L, 20L, 2));
-        useCase.execute(new CartAddCommand(1L, 20L, 4));
-
-        assertThat(repository.cart(1L).items())
-                .extracting(item -> item.quantity())
-                .containsExactly(4);
+    void 장바구니가_없으면_찾을_수_없다는_오류를_반환한다() {
+        assertThatThrownBy(() -> useCase.execute(new AddCartItemCommand(1L, 20L, 2)))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        (final var exception) ->
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_NOT_FOUND));
     }
 
     @Test
-    void 첫_추가_요청은_장바구니를_생성하고_상품을_저장한다() {
-        useCase.execute(new CartAddCommand(1L, 20L, 2));
+    void 기존_장바구니에_새_상품을_추가한다() {
+        final var cart = new Cart(1L, 1L, List.of());
+        cartRepository.cart = cart;
 
-        assertThat(repository.cart(1L).items()).singleElement().satisfies(item -> {
+        useCase.execute(new AddCartItemCommand(1L, 20L, 2));
+
+        assertThat(cart.items()).singleElement().satisfies(item -> {
             assertThat(item.productId()).isEqualTo(20L);
             assertThat(item.quantity()).isEqualTo(2);
         });
     }
 
     @Test
-    void Command는_양수_ID와_유효한_수량을_요구한다() {
-        assertThatThrownBy(() -> new CartAddCommand(null, 20L, 1)).isInstanceOf(CoreException.class);
-        assertThatThrownBy(() -> new CartAddCommand(1L, null, 1)).isInstanceOf(CoreException.class);
-        assertThatThrownBy(() -> new CartAddCommand(1L, 20L, null)).isInstanceOf(CoreException.class);
-        assertThatThrownBy(() -> new CartAddCommand(0L, 20L, 1)).isInstanceOf(CoreException.class);
-        assertThatThrownBy(() -> new CartAddCommand(1L, 0L, 1)).isInstanceOf(CoreException.class);
-        assertThatThrownBy(() -> new CartAddCommand(1L, 20L, 0)).isInstanceOf(CoreException.class);
-        assertThatThrownBy(() -> new CartAddCommand(1L, 20L, 501)).isInstanceOf(CoreException.class);
+    void 기존_상품의_수량을_대체하고_삭제된_상품은_활성화한다() {
+        final var cart = new Cart(1L, 1L, List.of());
+        final var item = CartItem.from(1L, 20L, 2);
+        item.delete();
+        cartRepository.cart = cart;
+        cartItemRepository.item = Optional.of(item);
+
+        useCase.execute(new AddCartItemCommand(1L, 20L, 4));
+
+        assertThat(item.quantity()).isEqualTo(4);
+        assertThat(item.isActive()).isTrue();
+    }
+
+    @Test
+    void 새_상품의_잘못된_수량은_상품을_추가하지_않는다() {
+        final var cart = new Cart(1L, 1L, List.of());
+        cartRepository.cart = cart;
+
+        assertThatThrownBy(() -> useCase.execute(new AddCartItemCommand(1L, 20L, 501)))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        (final var exception) ->
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_CART_ITEM_QUANTITY));
+
+        assertThat(cart.items()).isEmpty();
+    }
+
+    private static final class FakeCartRepository implements CartRepositoryPort {
+        private Cart cart;
+
+        @Override
+        public Optional<Cart> findByUserId(final Long userId) {
+            return Optional.ofNullable(cart);
+        }
+    }
+
+    private static final class FakeCartItemRepository implements CartItemRepositoryPort {
+        private Optional<CartItem> item = Optional.empty();
+
+        @Override
+        public Optional<CartItem> findByCartIdAndProductId(final Long cartId, final Long productId) {
+            return item;
+        }
     }
 }

@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorType;
+import com.book.common.exception.ErrorCode;
 import com.book.core.sample.application.command.SampleCreateCommand;
 import com.book.core.sample.application.command.SampleQueryCommand;
 import com.book.core.sample.application.result.SampleCreateResult;
@@ -22,6 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -104,7 +105,7 @@ class SampleControllerTest {
     @Test
     void 존재하지_않는_ID는_404를_응답한다() throws Exception {
         when(queryUseCase.execute(new SampleQueryCommand(42L)))
-                .thenThrow(new CoreException(ErrorType.SAMPLE_NOT_FOUND));
+                .thenThrow(new CoreException(ErrorCode.SAMPLE_NOT_FOUND));
         mvc.perform(MockMvcRequestBuilders.get("/api/v1/samples/{sampleId}", 42))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("E401"));
@@ -119,22 +120,20 @@ class SampleControllerTest {
     }
 
     @Test
-    void 저장소_오류의_상세_원인은_HTTP_응답에_노출하지_않는다() throws Exception {
-        when(queryUseCase.execute(any()))
-                .thenThrow(new CoreException(
-                        ErrorType.STORAGE_FAILURE, new IllegalStateException("internal database detail")));
+    void 저장소_오류는_상세_원인을_HTTP_응답에_노출하지_않는다() throws Exception {
+        when(queryUseCase.execute(any())).thenThrow(new DataAccessResourceFailureException("internal database detail"));
         mvc.perform(MockMvcRequestBuilders.get("/api/v1/samples/1"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("E500"))
-                .andExpect(jsonPath("$.message").value("저장소 작업을 완료할 수 없습니다."))
+                .andExpect(jsonPath("$.message").value("알 수 없는 오류가 발생했습니다."))
                 .andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 
     @Test
     void 공통_예외의_안전한_부가정보를_data로_응답한다() throws Exception {
         when(queryUseCase.execute(any()))
-                .thenThrow(new CoreException(ErrorType.INVALID_REQUEST, Map.of("field", "name")));
+                .thenThrow(new CoreException(ErrorCode.INVALID_REQUEST, Map.of("field", "name")));
         mvc.perform(MockMvcRequestBuilders.get("/api/v1/samples/1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("E400"))

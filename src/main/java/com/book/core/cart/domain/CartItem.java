@@ -2,19 +2,15 @@ package com.book.core.cart.domain;
 
 import com.book.common.domain.BaseEntity;
 import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorType;
+import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-/** 장바구니 항목의 상품 식별자와 수량 대체 규칙을 관리합니다. */
 @Entity
 @Table(name = "cart_item")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -24,43 +20,35 @@ public class CartItem extends BaseEntity {
     private static final int MIN_QUANTITY = 1;
     private static final int MAX_QUANTITY = 500;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
     @Column(name = "cart_id", nullable = false)
     private Long cartId;
 
     @Column(name = "product_id", nullable = false)
-    private long productId;
+    private Long productId;
 
     @Column(nullable = false)
-    private int quantity;
+    private Integer quantity;
 
-    public CartItem(final Long id, final long productId, final int quantity) {
-        this(id, null, productId, quantity);
-    }
-
-    public CartItem(final long cartId, final long productId, final int quantity) {
-        this(null, cartId, productId, quantity);
-    }
-
-    private CartItem(final Long id, final Long cartId, final long productId, final int quantity) {
-        requireQuantity(quantity);
-        this.id = id;
+    public CartItem(final Long id, final Long cartId, final Long productId, final Integer quantity) {
+        super(id);
         this.cartId = cartId;
         this.productId = productId;
-        this.quantity = quantity;
+        applyQuantity(quantity);
     }
 
-    public static void requireQuantity(final int quantity) {
-        if (quantity < MIN_QUANTITY || quantity > MAX_QUANTITY) {
-            throw new CoreException(ErrorType.INVALID_REQUEST);
+    /** 수량이 허용 범위에 속하는지 확인합니다. */
+    public static boolean isQuantityInRange(final int quantity) {
+        return quantity >= MIN_QUANTITY && quantity <= MAX_QUANTITY;
+    }
+
+    public static CartItem from(Long cartId, Long productId, Integer quantity) {
+        return new CartItem(null, cartId, productId, quantity);
+    }
+
+    public void applyQuantity(final int quantity) {
+        if (!isQuantityInRange(quantity)) {
+            throw new CoreException(ErrorCode.INVALID_CART_ITEM_QUANTITY);
         }
-    }
-
-    public CartItem replaceQuantity(final int quantity) {
-        requireQuantity(quantity);
-        return new CartItem(id, cartId, productId, quantity);
+        this.quantity = quantity;
     }
 }

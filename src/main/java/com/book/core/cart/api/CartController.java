@@ -1,10 +1,10 @@
 package com.book.core.cart.api;
 
 import com.book.common.response.ApiResponse;
-import com.book.core.cart.api.request.CartAddRequest;
+import com.book.core.cart.api.converter.CartCommandConverter;
+import com.book.core.cart.api.request.AddCartItemRequest;
 import com.book.core.cart.api.spec.CartControllerSpec;
-import com.book.core.cart.application.command.CartAddCommand;
-import com.book.core.cart.application.usecase.CartAddUseCase;
+import com.book.core.cart.application.service.CartService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -21,13 +21,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/cart")
 class CartController implements CartControllerSpec {
-    private final CartAddUseCase addUseCase;
+    private final CartService cartService;
+    private final CartCommandConverter commandConverter;
 
     @PostMapping("/items")
     @Override
-    public ResponseEntity<ApiResponse<Void>> add(
-            @Positive @RequestParam("userId") final Long userId, @Valid @RequestBody final CartAddRequest request) {
-        addUseCase.execute(new CartAddCommand(userId, request.productId(), request.quantity()));
+    public ResponseEntity<ApiResponse<Void>> addCartItem(
+            @Positive @RequestParam("userId") final Long userId,
+            @Valid @RequestBody final AddCartItemRequest request
+    ) {
+        final var command = commandConverter.toAddCartItemCommand(userId, request);
+        cartService.addCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 }

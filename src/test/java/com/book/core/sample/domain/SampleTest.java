@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorType;
+import com.book.common.exception.ErrorCode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -31,7 +31,7 @@ class SampleTest {
                 .isInstanceOfSatisfying(
                         CoreException.class,
                         (final var exception) ->
-                                assertThat(exception.errorType()).isEqualTo(ErrorType.INVALID_SAMPLE_NAME));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_SAMPLE_NAME));
     }
 
     @Test

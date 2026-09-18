@@ -1,12 +1,10 @@
 package com.book.core.cart.infrastructure.persistence.repository;
 
 import com.book.core.cart.domain.CartItem;
-import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-interface CartItemJpaRepository extends JpaRepository<CartItem, Long> {
-    List<CartItem> findAllByCartIdOrderByCreatedAtAscIdAsc(long cartId);
+import java.util.Optional;
 
-    Optional<CartItem> findByCartIdAndId(long cartId, long id);
+interface CartItemJpaRepository extends JpaRepository<CartItem, Long> {
+    Optional<CartItem> findByCartIdAndProductId(Long cartId, Long userId);
 }

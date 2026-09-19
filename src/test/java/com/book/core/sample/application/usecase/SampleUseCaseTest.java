@@ -7,7 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorType;
+import com.book.common.exception.ErrorCode;
 import com.book.core.sample.application.command.SampleCreateCommand;
 import com.book.core.sample.application.command.SampleQueryCommand;
 import com.book.core.sample.application.port.SampleRepository;
@@ -52,7 +52,7 @@ class SampleUseCaseTest {
                 .isInstanceOfSatisfying(
                         CoreException.class,
                         (final var exception) ->
-                                assertThat(exception.errorType()).isEqualTo(ErrorType.SAMPLE_NOT_FOUND));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.SAMPLE_NOT_FOUND));
     }
 
     @Test

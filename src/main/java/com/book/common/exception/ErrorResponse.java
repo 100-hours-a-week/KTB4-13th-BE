@@ -1,22 +1,22 @@
 package com.book.common.exception;
 
-public final class ErrorMessage {
+public final class ErrorResponse {
     private final String code;
     private final String message;
     private final Object data;
 
-    private ErrorMessage(final String code, final String message, final Object data) {
+    private ErrorResponse(final String code, final String message, final Object data) {
         this.code = code;
         this.message = message;
         this.data = data;
     }
 
-    public ErrorMessage(final ErrorType errorType) {
-        this(errorType, null);
+    public ErrorResponse(final ErrorCode errorCode) {
+        this(errorCode, null);
     }
 
-    public ErrorMessage(final ErrorType errorType, final Object data) {
-        this(errorType.code().name(), errorType.message(), data);
+    public ErrorResponse(final ErrorCode errorCode, final Object data) {
+        this(errorCode.code(), errorCode.message(), data);
     }
 
     public String code() {

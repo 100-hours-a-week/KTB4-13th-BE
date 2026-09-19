@@ -54,6 +54,14 @@ JPA Entity와 Lombok을 사용하는 Domain 모델에는 클래스 선언 바로
 - `@NoArgsConstructor(access = AccessLevel.PROTECTED)`로 만든 보호된 무인자 생성자는 JPA 복원 또는 인프라 경계를 위한 것입니다. Domain 생성은 불변식을 보장하는 생성자, 팩터리, Command 또는 도메인 메서드를 거칩니다.
 - `record`, enum, interface, 도메인 예외, 정책, 무인자 생성으로 유효하지 않은 Domain 상태가 만들어질 수 있는 클래스에는 이 어노테이션 묶음을 적용하지 않습니다. 적용 대상 모델에서 예외가 필요하면 사유를 기록합니다.
 
+### JPA Entity의 공통 식별자 매핑을 일관되게 했는가?
+
+- 여러 Domain Entity가 `id`, `status`, `created_at`, `updated_at`을 공유하면 `common/domain/BaseEntity`를 상속합니다.
+- `@Id`와 `@GeneratedValue(strategy = GenerationType.IDENTITY)`는 `BaseEntity`에 한 번만 선언하고, 하위 Entity에 같은 식별자 필드를 중복 선언하지 않습니다.
+- 기존 ID를 전달하는 복원·테스트 생성자는 `super(id)`를 호출합니다. 신규 객체는 ID를 직접 만들지 않고 `null`로 생성해 DB 생성 전략을 따릅니다.
+- `BaseEntity`의 공통 컬럼이 필요하지 않은 Entity까지 상속시키지 않습니다. 해당 Entity는 필요한 식별자 매핑을 자체적으로 선언합니다.
+- ID만 공유한다는 이유로 별도 `BaseIdEntity`를 미리 만들지 않습니다. 실제로 서로 다른 생명주기 조합이 생길 때만 공통 타입을 분리합니다.
+
 ### Spring 빈의 생성자 주입에 `@RequiredArgsConstructor`를 사용했는가?
 
 - Controller, UseCase·Application Service, Repository·Client 구현체의 필수 의존성은 `private final` 필드로 선언하고 `@RequiredArgsConstructor`로 주입합니다. 필드 대입만 하는 생성자는 직접 작성하지 않습니다.
@@ -67,13 +75,27 @@ JPA Entity와 Lombok을 사용하는 Domain 모델에는 클래스 선언 바로
 ```java
 @RestController
 @RequiredArgsConstructor
-class SampleController {
-    private final SampleCreateUseCase createUseCase;
-    private final SampleQueryUseCase queryUseCase;
+class CartController {
+    private final CartService cartService;
 }
 ```
 
 위 예시는 의존성 선언 부분만 보여줍니다. 생성 대상 필드와 어노테이션 복사 설정은 [Lombok 공식 문서](https://projectlombok.org/features/constructor)를 따릅니다.
+
+### 기능별 Service orchestration layer를 유지하는가?
+
+- Controller는 `{Feature}Service`만 호출하고 UseCase·Repository·Adapter를 직접 주입하지 않습니다.
+- `{Feature}Service`는 기능의 CRUD와 추가 동작을 담당하는 UseCase들의 실행 순서를 조율합니다. 현재 UseCase가 하나뿐이어도 이후 확장 지점으로 유지합니다.
+- Service에는 Domain 규칙, 트랜잭션, JPA Repository 호출을 넣지 않습니다. 트랜잭션과 업무 흐름은 각 UseCase가 담당합니다.
+- Service가 단순히 하나의 UseCase를 위임하는 현재 단계도 유효한 구조입니다. 기능이 늘어날 때 Controller 계약을 바꾸지 않고 Service 안에서 조율 대상을 추가합니다.
+
+### API 경계의 Converter
+
+- 신규로 만들거나 수정하는 HTTP API는 요청 DTO·경로 변수·쿼리 파라미터를 직접 조합해 Command를 만들지 않고, 기능별 `api/converter/{Feature}CommandConverter`를 호출합니다. 기존 `Request.toCommand()`는 해당 기능을 수정할 때 함께 정리합니다.
+- CommandConverter는 표현 변환만 담당합니다. 입력 검증은 Bean Validation, 업무 전제조건은 Command·UseCase·Domain이 담당합니다.
+- UseCase 결과를 응답 DTO로 바꾸는 변환이 복잡하거나 여러 Controller에서 재사용될 때만 `api/converter/{Feature}ResultConverter`를 둡니다.
+- Converter에는 트랜잭션, 저장소 호출, 외부 API 호출, 비즈니스 분기를 넣지 않습니다.
+- HTTP 입력이 없는 API에는 CommandConverter를 만들지 않습니다. 응답 변환이 없거나 `Void` 응답이면 ResultConverter도 만들지 않습니다.
 
 ### 호출이 책임 경계를 지키는가?
 
@@ -92,7 +114,7 @@ class SampleController {
 - API DTO의 필수값, 범위, 길이, 형식 제약에는 `jakarta.validation.constraints`의 `@NotBlank`, `@NotNull`, `@Min`, `@Max`, `@Size`, `@Pattern`을 우선 사용합니다.
 - Controller에서 `@Valid` 또는 `@Validated`로 검증을 활성화하고, [`GlobalExceptionHandler`](../../src/main/java/com/book/common/exception/GlobalExceptionHandler.java)의 HTTP 오류 계약을 따릅니다.
 - 같은 단순 HTTP 입력 검증을 DTO 생성자에 중복 작성하지 않습니다. Command와 Domain 객체는 HTTP를 거치지 않는 호출에서도 자신의 전제조건과 불변식을 보장해야 합니다.
-- 공통 비즈니스 오류에는 [`CoreException`](../../src/main/java/com/book/common/exception/CoreException.java)과 [`ErrorType`](../../src/main/java/com/book/common/exception/ErrorType.java) 계약을 사용하고, `common/exception`에서 HTTP 응답으로 변환합니다.
+- 공통 비즈니스 오류에는 [`CoreException`](../../src/main/java/com/book/common/exception/CoreException.java)과 [`ErrorCode`](../../src/main/java/com/book/common/exception/ErrorCode.java) 계약을 사용하고, `common/exception`에서 HTTP 응답으로 변환합니다.
 - null 기본값, 입력 정규화, 필드 간 조건, 도메인 불변식처럼 어노테이션만으로 표현하기 어려운 규칙은 생성자, Application 또는 Domain 계층에 둡니다.
 - 제약을 추가하면 잘못된 HTTP 입력에 대해 예상한 상태 코드와 오류 응답이 반환되는지 테스트합니다.
 

@@ -14,8 +14,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 class GlobalExceptionHandler {
     @ExceptionHandler(CoreException.class)
     ResponseEntity<ErrorResponse> handleCoreException(final CoreException exception) {
-        final var error = exception.errorType();
-        return ResponseEntity.status(error.status()).body(ErrorResponse.of(error, exception.data()));
+        final var errorCode = exception.errorCode();
+        return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode, exception.data()));
     }
 
     @ExceptionHandler({
@@ -26,13 +26,13 @@ class GlobalExceptionHandler {
         ConstraintViolationException.class
     })
     ResponseEntity<ErrorResponse> handleInvalidRequest(final Exception exception) {
-        final var error = ErrorType.INVALID_REQUEST;
-        return ResponseEntity.status(error.status()).body(ErrorResponse.of(error));
+        final var errorCode = ErrorCode.INVALID_REQUEST;
+        return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode));
     }
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ErrorResponse> handleUnexpected(final Exception exception) {
-        final var error = ErrorType.DEFAULT_ERROR;
-        return ResponseEntity.status(error.status()).body(ErrorResponse.of(error));
+        final var errorCode = ErrorCode.DEFAULT_ERROR;
+        return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode));
     }
 }

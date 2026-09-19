@@ -20,8 +20,4 @@ public abstract class BaseTimeEntity {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    public void touch() {
-        this.updatedAt = LocalDateTime.now();
-    }
 }

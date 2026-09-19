@@ -41,7 +41,9 @@ class SampleRepositoryIntegrationTest {
         assertThat(found.id()).isEqualTo(second.id());
         assertThat(found.name()).isEqualTo("둘째 책");
         assertThat(repository.findById(Long.MAX_VALUE)).isEmpty();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1", Integer.class))
+        assertThat(jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '1' AND success = 1",
+                        Integer.class))
                 .isEqualTo(1);
     }
 

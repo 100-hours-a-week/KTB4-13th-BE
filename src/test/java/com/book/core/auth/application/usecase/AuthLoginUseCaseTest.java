@@ -17,6 +17,7 @@ import com.book.core.user.application.command.UserResolveCommand;
 import com.book.core.user.application.result.UserResolveResult;
 import com.book.core.user.application.usecase.UserResolveUseCase;
 import com.book.core.user.domain.ProviderType;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -34,6 +35,9 @@ class AuthLoginUseCaseTest {
     @Mock
     TokenIssuer tokenIssuer;
 
+    @Mock
+    RefreshSessionRegistrationUseCase refreshSessionRegistrationUseCase;
+
     @Test
     void 검증한_OAuth_identity로_회원을_resolve하고_발급한_token을_반환한다() {
         final AuthLoginCommand command = new AuthLoginCommand(ProviderType.KAKAO, "id-token");
@@ -42,7 +46,8 @@ class AuthLoginUseCaseTest {
         when(userResolveUseCase.execute(
                         new UserResolveCommand(ProviderType.KAKAO, "provider-123", "reader@example.com")))
                 .thenReturn(new UserResolveResult(42L));
-        when(tokenIssuer.issue(42L)).thenReturn(new IssuedTokens("access-token", "refresh-token"));
+        final Instant refreshExpiresAt = Instant.parse("2030-01-09T03:04:05Z");
+        when(tokenIssuer.issue(42L)).thenReturn(new IssuedTokens("access-token", "refresh-token", refreshExpiresAt));
 
         final var result = useCase().execute(command);
 
@@ -53,6 +58,7 @@ class AuthLoginUseCaseTest {
         assertThat(resolveCommand.getValue().providerUserId()).isEqualTo("provider-123");
         assertThat(resolveCommand.getValue().providerEmail()).isEqualTo("reader@example.com");
         verify(tokenIssuer).issue(42L);
+        verify(refreshSessionRegistrationUseCase).execute(42L, "refresh-token", refreshExpiresAt);
         assertThat(result.accessToken()).isEqualTo("access-token");
         assertThat(result.refreshToken()).isEqualTo("refresh-token");
     }
@@ -64,7 +70,8 @@ class AuthLoginUseCaseTest {
                 .thenReturn(new OAuthIdentity("provider-123", null));
         when(userResolveUseCase.execute(new UserResolveCommand(ProviderType.KAKAO, "provider-123", null)))
                 .thenReturn(new UserResolveResult(42L));
-        when(tokenIssuer.issue(42L)).thenReturn(new IssuedTokens("access-token", "refresh-token"));
+        final Instant refreshExpiresAt = Instant.parse("2030-01-09T03:04:05Z");
+        when(tokenIssuer.issue(42L)).thenReturn(new IssuedTokens("access-token", "refresh-token", refreshExpiresAt));
 
         useCase().execute(command);
 
@@ -81,7 +88,7 @@ class AuthLoginUseCaseTest {
 
         assertThatThrownBy(() -> useCase().execute(command)).isSameAs(exception);
 
-        verifyNoInteractions(userResolveUseCase, tokenIssuer);
+        verifyNoInteractions(userResolveUseCase, tokenIssuer, refreshSessionRegistrationUseCase);
     }
 
     @Test
@@ -95,10 +102,26 @@ class AuthLoginUseCaseTest {
 
         assertThatThrownBy(() -> useCase().execute(command)).isSameAs(exception);
 
-        verifyNoInteractions(tokenIssuer);
+        verifyNoInteractions(tokenIssuer, refreshSessionRegistrationUseCase);
+    }
+
+    @Test
+    void token_발급이_실패하면_refresh_session을_저장하지_않는다() {
+        final AuthLoginCommand command = new AuthLoginCommand(ProviderType.KAKAO, "id-token");
+        final BusinessException exception = new BusinessException(CommonErrorCode.STORAGE_FAILURE);
+        when(oAuthProviderClient.verify(ProviderType.KAKAO, "id-token"))
+                .thenReturn(new OAuthIdentity("provider-123", null));
+        when(userResolveUseCase.execute(new UserResolveCommand(ProviderType.KAKAO, "provider-123", null)))
+                .thenReturn(new UserResolveResult(42L));
+        when(tokenIssuer.issue(42L)).thenThrow(exception);
+
+        assertThatThrownBy(() -> useCase().execute(command)).isSameAs(exception);
+
+        verifyNoInteractions(refreshSessionRegistrationUseCase);
     }
 
     private AuthLoginUseCase useCase() {
-        return new AuthLoginUseCase(oAuthProviderClient, userResolveUseCase, tokenIssuer);
+        return new AuthLoginUseCase(
+                oAuthProviderClient, userResolveUseCase, tokenIssuer, refreshSessionRegistrationUseCase);
     }
 }

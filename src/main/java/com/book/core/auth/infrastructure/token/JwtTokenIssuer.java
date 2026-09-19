@@ -7,6 +7,7 @@ import com.book.core.auth.domain.exception.AuthErrorCode;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -39,13 +40,13 @@ public class JwtTokenIssuer implements TokenIssuer {
 
     @Override
     public IssuedTokens issue(final Long userId) {
-        final Instant issuedAt = clock.instant();
+        final Instant issuedAt = clock.instant().truncatedTo(ChronoUnit.SECONDS);
+        final Instant refreshExpiresAt = issuedAt.plus(properties.refreshTokenExpiration());
         try {
             final String accessToken =
                     issueToken(userId, issuedAt, properties.accessTokenExpiration(), ACCESS_TOKEN_TYPE);
-            final String refreshToken =
-                    issueToken(userId, issuedAt, properties.refreshTokenExpiration(), REFRESH_TOKEN_TYPE);
-            return new IssuedTokens(accessToken, refreshToken);
+            final String refreshToken = issueToken(userId, issuedAt, refreshExpiresAt, REFRESH_TOKEN_TYPE);
+            return new IssuedTokens(accessToken, refreshToken, refreshExpiresAt);
         } catch (final JwtEncodingException exception) {
             throw new BusinessException(AuthErrorCode.TOKEN_ISSUE_FAILURE, exception);
         }
@@ -53,10 +54,15 @@ public class JwtTokenIssuer implements TokenIssuer {
 
     private String issueToken(
             final Long userId, final Instant issuedAt, final Duration expiration, final String tokenType) {
+        return issueToken(userId, issuedAt, issuedAt.plus(expiration), tokenType);
+    }
+
+    private String issueToken(
+            final Long userId, final Instant issuedAt, final Instant expiresAt, final String tokenType) {
         final JwtClaimsSet claims = JwtClaimsSet.builder()
                 .subject(userId.toString())
                 .issuedAt(issuedAt)
-                .expiresAt(issuedAt.plus(expiration))
+                .expiresAt(expiresAt)
                 .claim(TOKEN_TYPE_CLAIM, tokenType)
                 .build();
         return jwtEncoder.encode(JwtEncoderParameters.from(JWT_HEADER, claims)).getTokenValue();

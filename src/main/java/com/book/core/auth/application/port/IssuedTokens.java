@@ -1,3 +1,5 @@
 package com.book.core.auth.application.port;
 
-public record IssuedTokens(String accessToken, String refreshToken) {}
+import java.time.Instant;
+
+public record IssuedTokens(String accessToken, String refreshToken, Instant refreshExpiresAt) {}

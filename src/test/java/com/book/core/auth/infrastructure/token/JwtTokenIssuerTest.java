@@ -56,6 +56,7 @@ class JwtTokenIssuerTest {
         assertThat(tokens.accessToken()).isNotEqualTo(tokens.refreshToken());
         assertToken(tokens.accessToken(), JwtTokenIssuer.ACCESS_TOKEN_TYPE, NOW.plus(ACCESS_TOKEN_EXPIRATION));
         assertToken(tokens.refreshToken(), JwtTokenIssuer.REFRESH_TOKEN_TYPE, NOW.plus(REFRESH_TOKEN_EXPIRATION));
+        assertThat(tokens.refreshExpiresAt()).isEqualTo(NOW.plus(REFRESH_TOKEN_EXPIRATION));
     }
 
     @Test

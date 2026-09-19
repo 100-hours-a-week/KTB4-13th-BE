@@ -18,6 +18,7 @@ public class AuthLoginUseCase {
     private final OAuthProviderClient oAuthProviderClient;
     private final UserResolveUseCase userResolveUseCase;
     private final TokenIssuer tokenIssuer;
+    private final RefreshSessionRegistrationUseCase refreshSessionRegistrationUseCase;
 
     public AuthLoginResult execute(final AuthLoginCommand command) {
         final OAuthIdentity identity = oAuthProviderClient.verify(command.providerType(), command.idToken());
@@ -25,6 +26,7 @@ public class AuthLoginUseCase {
                 new UserResolveCommand(command.providerType(), identity.providerUserId(), identity.providerEmail());
         final UserResolveResult user = userResolveUseCase.execute(userResolveCommand);
         final IssuedTokens tokens = tokenIssuer.issue(user.userId());
+        refreshSessionRegistrationUseCase.execute(user.userId(), tokens.refreshToken(), tokens.refreshExpiresAt());
         return new AuthLoginResult(tokens.accessToken(), tokens.refreshToken());
     }
 }

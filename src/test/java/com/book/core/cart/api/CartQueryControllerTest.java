@@ -19,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessResourceFailureException;
-import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,14 +34,12 @@ class CartQueryControllerTest {
     CartService cartService;
 
     @Test
-    void 인증된_회원의_장바구니를_쿼리나_본문없이_조회한다() throws Exception {
+    void userId로_장바구니를_조회한다() throws Exception {
         final CartQueryCommand command = new CartQueryCommand(42L);
         when(cartService.getCart(command))
                 .thenReturn(new CartQueryResult(List.of(new CartItemQueryResult(11L, 200L, 2))));
 
-        mvc.perform(get("/api/v1/cart")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
-                        .principal(() -> "42"))
+        mvc.perform(get("/api/v1/cart").param("userId", "42"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.items[0].cartItemId").value(11))
@@ -57,27 +54,25 @@ class CartQueryControllerTest {
         final CartQueryCommand command = new CartQueryCommand(42L);
         when(cartService.getCart(command)).thenReturn(new CartQueryResult(List.of()));
 
-        mvc.perform(get("/api/v1/cart")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
-                        .principal(() -> "42"))
+        mvc.perform(get("/api/v1/cart").param("userId", "42"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items").isEmpty());
     }
 
     @Test
-    void Authorization이_없으면_401을_응답하고_Service를_호출하지_않는다() throws Exception {
-        mvc.perform(get("/api/v1/cart").principal(() -> "42"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("E401"));
+    void userId가_누락되면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
+        mvc.perform(get("/api/v1/cart"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(cartService);
     }
 
     @Test
-    void 인증된_Principal이_없으면_401을_응답하고_Service를_호출하지_않는다() throws Exception {
-        mvc.perform(get("/api/v1/cart").header(HttpHeaders.AUTHORIZATION, "Bearer expired-token"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("E401"));
+    void userId가_양수가_아니면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
+        mvc.perform(get("/api/v1/cart").param("userId", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(cartService);
     }
@@ -87,9 +82,7 @@ class CartQueryControllerTest {
         when(cartService.getCart(any(CartQueryCommand.class)))
                 .thenThrow(new DataAccessResourceFailureException("database detail"));
 
-        mvc.perform(get("/api/v1/cart")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
-                        .principal(() -> "42"))
+        mvc.perform(get("/api/v1/cart").param("userId", "42"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("E500"))
                 .andExpect(jsonPath("$.message").value("알 수 없는 오류가 발생했습니다."));

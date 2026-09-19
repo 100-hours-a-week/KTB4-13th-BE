@@ -3,11 +3,15 @@ package com.book.core.cart.infrastructure.persistence.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.cart.application.command.AddCartItemCommand;
 import com.book.core.cart.application.command.GetCartCommand;
+import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
 import com.book.core.cart.application.usecase.GetCartUseCase;
+import com.book.core.cart.application.usecase.ModifyCartItemUseCase;
 import java.sql.SQLException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -35,6 +39,9 @@ class CartRepositoryIntegrationTest {
 
     @Autowired
     GetCartUseCase getCartUseCase;
+
+    @Autowired
+    ModifyCartItemUseCase modifyCartItemUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -91,7 +98,52 @@ class CartRepositoryIntegrationTest {
                         org.assertj.core.groups.Tuple.tuple(2003L, 3), org.assertj.core.groups.Tuple.tuple(2002L, 2));
     }
 
+    @Test
+    void 요청_회원의_활성_상품_수량을_실제_데이터베이스에서_변경한다() {
+        createCart(1004L);
+        addUseCase.execute(new AddCartItemCommand(1004L, 2004L, 2));
+        final Long cartItemId = findCartItemId(1004L, 2004L);
+
+        modifyCartItemUseCase.execute(new ModifyCartItemCommand(1004L, cartItemId, 4));
+
+        assertThat(jdbc.queryForObject("SELECT quantity FROM cart_item WHERE id = ?", Integer.class, cartItemId))
+                .isEqualTo(4);
+    }
+
+    @Test
+    void 다른_회원이나_삭제된_상품은_수량을_변경하지_않는다() {
+        createCart(1005L);
+        createCart(1006L);
+        addUseCase.execute(new AddCartItemCommand(1005L, 2005L, 2));
+        final Long cartItemId = findCartItemId(1005L, 2005L);
+
+        assertThatThrownBy(() -> modifyCartItemUseCase.execute(new ModifyCartItemCommand(1006L, cartItemId, 4)))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        (final var exception) ->
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+
+        jdbc.update("UPDATE cart_item SET status = 'DELETED' WHERE id = ?", cartItemId);
+        assertThatThrownBy(() -> modifyCartItemUseCase.execute(new ModifyCartItemCommand(1005L, cartItemId, 4)))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        (final var exception) ->
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+
+        assertThat(jdbc.queryForObject("SELECT quantity FROM cart_item WHERE id = ?", Integer.class, cartItemId))
+                .isEqualTo(2);
+    }
+
     private void createCart(final long userId) {
         jdbc.update("INSERT INTO carts (user_id) VALUES (?)", userId);
+    }
+
+    private Long findCartItemId(final long userId, final long productId) {
+        return jdbc.queryForObject("""
+                SELECT item.id
+                FROM cart_item item
+                JOIN carts cart ON cart.id = item.cart_id
+                WHERE cart.user_id = ? AND item.product_id = ?
+                """, Long.class, userId, productId);
     }
 }

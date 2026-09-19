@@ -6,3 +6,7 @@ spring:
 auth:
   kakao:
     client-id: test-kakao-client-id
+  token:
+    secret: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZg==
+    access-token-expiration: 1h
+    refresh-token-expiration: 7d

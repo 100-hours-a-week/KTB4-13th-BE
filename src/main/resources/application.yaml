@@ -9,3 +9,7 @@ spring:
 auth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID}
+  token:
+    secret: ${JWT_SECRET}
+    access-token-expiration: 1h
+    refresh-token-expiration: 7d

@@ -4,7 +4,9 @@ import com.book.common.exception.ErrorCode;
 
 public enum AuthErrorCode implements ErrorCode {
     INVALID_ID_TOKEN("ID Token이 유효하지 않습니다.", Category.UNAUTHORIZED),
-    OAUTH_PROVIDER_UNAVAILABLE("외부 인증 서비스를 사용할 수 없습니다.", Category.EXTERNAL_SERVICE_ERROR);
+    INVALID_ACCESS_TOKEN("Access Token이 유효하지 않습니다.", Category.UNAUTHORIZED),
+    OAUTH_PROVIDER_UNAVAILABLE("외부 인증 서비스를 사용할 수 없습니다.", Category.EXTERNAL_SERVICE_ERROR),
+    TOKEN_ISSUE_FAILURE("인증 토큰을 발급할 수 없습니다.", Category.INTERNAL_ERROR);
 
     private final String message;
     private final Category category;

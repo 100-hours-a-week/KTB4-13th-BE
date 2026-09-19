@@ -19,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -45,7 +46,7 @@ class BookApplicationTest {
     @MockitoBean
     OAuthProviderClient oAuthProviderClient;
 
-    @MockitoBean
+    @Autowired
     TokenIssuer tokenIssuer;
 
     @Test
@@ -58,7 +59,9 @@ class BookApplicationTest {
 
     @Test
     void HTTP_생성과_조회를_실제_MySQL까지_연결한다() throws Exception {
+        final String authorization = "Bearer " + tokenIssuer.issue(1L).accessToken();
         final var created = mvc.perform(post("/api/v1/samples")
+                        .header(HttpHeaders.AUTHORIZATION, authorization)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"  통합 테스트  \"}"))
                 .andExpect(status().isCreated())
@@ -66,10 +69,10 @@ class BookApplicationTest {
                 .andExpect(jsonPath("$.name").value("통합 테스트"))
                 .andReturn()
                 .getResponse();
-        mvc.perform(get(created.getHeader("Location")))
+        mvc.perform(get(created.getHeader("Location")).header(HttpHeaders.AUTHORIZATION, authorization))
                 .andExpect(status().isOk())
                 .andExpect(content().json(created.getContentAsString()));
-        mvc.perform(get("/api/v1/samples/9223372036854775807"))
+        mvc.perform(get("/api/v1/samples/9223372036854775807").header(HttpHeaders.AUTHORIZATION, authorization))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("SAMPLE_NOT_FOUND"));
     }

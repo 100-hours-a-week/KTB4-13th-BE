@@ -34,6 +34,4 @@ class ApiExceptionHandler {
     ResponseEntity<ErrorResponse> handleInvalidRequest(final Exception exception) {
         return ResponseEntity.badRequest().body(new ErrorResponse("INVALID_REQUEST", "요청 형식이 올바르지 않습니다."));
     }
-
-    record ErrorResponse(String code, String message) {}
 }

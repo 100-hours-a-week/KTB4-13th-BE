@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.book.core.auth.application.port.OAuthProviderClient;
+import com.book.core.auth.application.port.TokenIssuer;
+import com.book.core.auth.application.usecase.AuthLoginUseCase;
 import com.book.core.sample.application.port.SampleRepository;
 import com.book.core.sample.application.usecase.SampleCreateUseCase;
 import com.book.core.sample.application.usecase.SampleQueryUseCase;
@@ -18,6 +21,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -38,8 +42,15 @@ class BookApplicationTest {
     @Autowired
     ApplicationContext context;
 
+    @MockitoBean
+    OAuthProviderClient oAuthProviderClient;
+
+    @MockitoBean
+    TokenIssuer tokenIssuer;
+
     @Test
     void 전체_Context에_각_UseCase와_Repository가_한_개씩_등록된다() {
+        assertThat(context.getBeansOfType(AuthLoginUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(SampleCreateUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(SampleQueryUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(SampleRepository.class)).hasSize(1);

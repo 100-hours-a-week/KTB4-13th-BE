@@ -3,6 +3,8 @@ package com.book.core.sample.infrastructure.persistence.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.book.core.auth.application.port.OAuthProviderClient;
+import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.sample.application.port.SampleRepository;
 import com.book.core.sample.domain.Sample;
 import java.sql.SQLException;
@@ -13,6 +15,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -30,6 +33,12 @@ class SampleRepositoryIntegrationTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @MockitoBean
+    OAuthProviderClient oAuthProviderClient;
+
+    @MockitoBean
+    TokenIssuer tokenIssuer;
 
     @Test
     void 마이그레이션으로_생성한_테이블에_저장하고_정확한_ID로_조회한다() {

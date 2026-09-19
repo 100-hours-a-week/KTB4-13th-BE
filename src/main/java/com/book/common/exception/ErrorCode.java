@@ -9,8 +9,10 @@ public interface ErrorCode {
 
     enum Category {
         INVALID_INPUT,
+        UNAUTHORIZED,
         NOT_FOUND,
         CONFLICT,
+        EXTERNAL_SERVICE_ERROR,
         INTERNAL_ERROR
     }
 }

@@ -2,3 +2,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+
+auth:
+  kakao:
+    client-id: test-kakao-client-id

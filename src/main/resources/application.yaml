@@ -5,3 +5,7 @@ spring:
     default: local
   config:
     import: classpath:persistence.yml
+
+auth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID}

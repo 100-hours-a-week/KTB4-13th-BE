@@ -35,6 +35,7 @@ class CartRepositoryIntegrationTest {
 
     @Test
     void 같은_사용자의_같은_상품_추가는_한_항목의_수량을_대체한다() {
+        createCart(1001L);
         addUseCase.execute(new AddCartItemCommand(1001L, 2001L, 2));
         addUseCase.execute(new AddCartItemCommand(1001L, 2001L, 4));
 
@@ -56,6 +57,7 @@ class CartRepositoryIntegrationTest {
 
     @Test
     void 마이그레이션은_수량_범위를_DB에서도_검증한다() {
+        createCart(1002L);
         addUseCase.execute(new AddCartItemCommand(1002L, 2002L, 1));
         final Long cartId = jdbc.queryForObject("SELECT id FROM carts WHERE user_id = ?", Long.class, 1002L);
 
@@ -64,5 +66,9 @@ class CartRepositoryIntegrationTest {
                 .isInstanceOf(UncategorizedSQLException.class)
                 .rootCause()
                 .isInstanceOf(SQLException.class);
+    }
+
+    private void createCart(final long userId) {
+        jdbc.update("INSERT INTO carts (user_id) VALUES (?)", userId);
     }
 }

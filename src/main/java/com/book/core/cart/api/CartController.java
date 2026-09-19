@@ -27,9 +27,7 @@ class CartController implements CartControllerSpec {
     @PostMapping("/items")
     @Override
     public ResponseEntity<ApiResponse<Void>> addCartItem(
-            @Positive @RequestParam("userId") final Long userId,
-            @Valid @RequestBody final AddCartItemRequest request
-    ) {
+            @Positive @RequestParam("userId") final Long userId, @Valid @RequestBody final AddCartItemRequest request) {
         final var command = commandConverter.toAddCartItemCommand(userId, request);
         cartService.addCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());

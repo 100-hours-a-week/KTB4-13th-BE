@@ -33,7 +33,7 @@ class CartControllerTest {
         mvc.perform(post("/api/v1/cart/items")
                         .param("userId", "42")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"cartId\":1,\"productId\":20}"))
+                        .content("{\"productId\":20}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("E400"));
 
@@ -45,7 +45,7 @@ class CartControllerTest {
         mvc.perform(post("/api/v1/cart/items")
                         .param("userId", "42")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"cartId\":1,\"productId\":20,\"quantity\":3}"))
+                        .content("{\"productId\":20,\"quantity\":3}"))
                 .andExpect(status().isOk());
 
         verify(cartService).addCartItem(new AddCartItemCommand(42L, 20L, 3));
@@ -56,7 +56,7 @@ class CartControllerTest {
         mvc.perform(post("/api/v1/cart/items")
                         .param("userId", "42")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"cartId\":1,\"productId\":0,\"quantity\":1}"))
+                        .content("{\"productId\":0,\"quantity\":1}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("E400"));
 
@@ -68,7 +68,7 @@ class CartControllerTest {
         mvc.perform(post("/api/v1/cart/items")
                         .param("userId", "42")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"cartId\":1,\"productId\":20,\"quantity\":0}"))
+                        .content("{\"productId\":20,\"quantity\":0}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("E400"));
 
@@ -80,7 +80,7 @@ class CartControllerTest {
         mvc.perform(post("/api/v1/cart/items")
                         .param("userId", "0")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"cartId\":1,\"productId\":20,\"quantity\":1}"))
+                        .content("{\"productId\":20,\"quantity\":1}"))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(cartService);

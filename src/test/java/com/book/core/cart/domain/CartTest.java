@@ -1,34 +1,26 @@
 package com.book.core.cart.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import java.util.List;
-import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class CartTest {
     @Test
-    void 상품을_추가한다() {
-        final var cart = new Cart(1L, 1L, List.of());
-        final var item = CartItem.from(1L, 20L, 2);
+    void 상품이_29개면_추가할_수_있다() {
+        final var cart = new Cart(1L, 1L);
 
-        final var added = cart.addItem(item);
-
-        assertThat(added).isSameAs(item);
-        assertThat(cart.items()).containsExactly(item);
+        assertThatCode(() -> cart.validateCanAddItem(29)).doesNotThrowAnyException();
     }
 
     @Test
     void 상품이_30개로_가득_차면_새_상품을_거부한다() {
-        final var items = IntStream.rangeClosed(1, 30)
-                .mapToObj((final var productId) -> CartItem.from(1L, (long) productId, 1))
-                .toList();
-        final var cart = new Cart(1L, 1L, items);
+        final var cart = new Cart(1L, 1L);
 
-        assertThatThrownBy(() -> cart.addItem(CartItem.from(1L, 31L, 1)))
+        assertThatThrownBy(() -> cart.validateCanAddItem(30))
                 .isInstanceOfSatisfying(
                         CoreException.class,
                         (final var exception) ->

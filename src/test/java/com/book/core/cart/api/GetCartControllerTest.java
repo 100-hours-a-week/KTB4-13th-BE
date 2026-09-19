@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.core.cart.api.converter.CartCommandConverter;
+import com.book.core.cart.api.converter.CartResultConverter;
 import com.book.core.cart.application.command.GetCartCommand;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.result.GetCartResult;
@@ -24,7 +25,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(CartController.class)
-@Import(CartCommandConverter.class)
+@Import({CartCommandConverter.class, CartResultConverter.class})
 @ActiveProfiles("test")
 class GetCartControllerTest {
     @Autowired

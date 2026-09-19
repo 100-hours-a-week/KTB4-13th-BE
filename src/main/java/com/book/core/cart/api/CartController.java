@@ -2,6 +2,7 @@ package com.book.core.cart.api;
 
 import com.book.common.response.ApiResponse;
 import com.book.core.cart.api.converter.CartCommandConverter;
+import com.book.core.cart.api.converter.CartResultConverter;
 import com.book.core.cart.api.request.AddCartItemRequest;
 import com.book.core.cart.api.response.CartResponse;
 import com.book.core.cart.api.spec.CartControllerSpec;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 class CartController implements CartControllerSpec {
     private final CartService cartService;
     private final CartCommandConverter commandConverter;
+    private final CartResultConverter resultConverter;
 
     @Override
     @PostMapping("/items")
@@ -39,7 +41,7 @@ class CartController implements CartControllerSpec {
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCart(@Positive @RequestParam("userId") final Long userId) {
         final var command = commandConverter.toGetCartCommand(userId);
-        final var cartResponse = CartResponse.from(cartService.getCart(command));
+        final var cartResponse = resultConverter.toGetCartResponse(cartService.getCart(command));
         return ResponseEntity.ok(ApiResponse.ok(cartResponse));
     }
 }

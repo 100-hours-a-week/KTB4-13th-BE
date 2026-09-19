@@ -2,26 +2,26 @@ package com.book.core.cart.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.book.core.cart.application.command.CartQueryCommand;
+import com.book.core.cart.application.command.GetCartCommand;
 import com.book.core.cart.application.port.CartItemRepositoryPort;
 import com.book.core.cart.application.port.CartRepositoryPort;
-import com.book.core.cart.application.result.CartItemQueryResult;
-import com.book.core.cart.application.result.CartQueryResult;
-import com.book.core.cart.application.usecase.QueryCartUseCase;
+import com.book.core.cart.application.result.GetCartItemResult;
+import com.book.core.cart.application.result.GetCartResult;
+import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-class CartQueryUseCaseTest {
+class GetCartUseCaseTest {
     private final FakeCartRepository cartRepository = new FakeCartRepository();
     private final FakeCartItemRepository cartItemRepository = new FakeCartItemRepository();
-    private final QueryCartUseCase useCase = new QueryCartUseCase(cartRepository, cartItemRepository);
+    private final GetCartUseCase useCase = new GetCartUseCase(cartRepository, cartItemRepository);
 
     @Test
     void 장바구니가_없으면_빈_items를_반환한다() {
-        final CartQueryResult result = useCase.execute(new CartQueryCommand(42L));
+        final GetCartResult result = useCase.execute(new GetCartCommand(42L));
 
         assertThat(result.items()).isEmpty();
         assertThat(cartItemRepository.requestedCartId).isNull();
@@ -32,12 +32,11 @@ class CartQueryUseCaseTest {
         cartRepository.cart = new Cart(7L, 42L);
         cartItemRepository.items = List.of(new CartItem(11L, 7L, 200L, 2), new CartItem(10L, 7L, 100L, 1));
 
-        final CartQueryResult result = useCase.execute(new CartQueryCommand(42L));
+        final GetCartResult result = useCase.execute(new GetCartCommand(42L));
 
         assertThat(cartItemRepository.requestedCartId).isEqualTo(7L);
         assertThat(result.items())
-                .extracting(
-                        CartItemQueryResult::cartItemId, CartItemQueryResult::productId, CartItemQueryResult::quantity)
+                .extracting(GetCartItemResult::cartItemId, GetCartItemResult::productId, GetCartItemResult::quantity)
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple(11L, 200L, 2),
                         org.assertj.core.groups.Tuple.tuple(10L, 100L, 1));

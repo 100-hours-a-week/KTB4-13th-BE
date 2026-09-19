@@ -9,9 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.core.cart.api.converter.CartCommandConverter;
-import com.book.core.cart.application.command.CartQueryCommand;
-import com.book.core.cart.application.result.CartItemQueryResult;
-import com.book.core.cart.application.result.CartQueryResult;
+import com.book.core.cart.application.command.GetCartCommand;
+import com.book.core.cart.application.result.GetCartItemResult;
+import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.service.CartService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(CartController.class)
 @Import(CartCommandConverter.class)
 @ActiveProfiles("test")
-class CartQueryControllerTest {
+class GetCartControllerTest {
     @Autowired
     MockMvc mvc;
 
@@ -35,9 +35,8 @@ class CartQueryControllerTest {
 
     @Test
     void userId로_장바구니를_조회한다() throws Exception {
-        final CartQueryCommand command = new CartQueryCommand(42L);
-        when(cartService.getCart(command))
-                .thenReturn(new CartQueryResult(List.of(new CartItemQueryResult(11L, 200L, 2))));
+        final GetCartCommand command = new GetCartCommand(42L);
+        when(cartService.getCart(command)).thenReturn(new GetCartResult(List.of(new GetCartItemResult(11L, 200L, 2))));
 
         mvc.perform(get("/api/v1/cart").param("userId", "42"))
                 .andExpect(status().isOk())
@@ -51,8 +50,8 @@ class CartQueryControllerTest {
 
     @Test
     void 장바구니가_없으면_빈_items를_200으로_응답한다() throws Exception {
-        final CartQueryCommand command = new CartQueryCommand(42L);
-        when(cartService.getCart(command)).thenReturn(new CartQueryResult(List.of()));
+        final GetCartCommand command = new GetCartCommand(42L);
+        when(cartService.getCart(command)).thenReturn(new GetCartResult(List.of()));
 
         mvc.perform(get("/api/v1/cart").param("userId", "42"))
                 .andExpect(status().isOk())
@@ -79,7 +78,7 @@ class CartQueryControllerTest {
 
     @Test
     void 조회_저장소_오류는_상세_원인없이_E500을_응답한다() throws Exception {
-        when(cartService.getCart(any(CartQueryCommand.class)))
+        when(cartService.getCart(any(GetCartCommand.class)))
                 .thenThrow(new DataAccessResourceFailureException("database detail"));
 
         mvc.perform(get("/api/v1/cart").param("userId", "42"))

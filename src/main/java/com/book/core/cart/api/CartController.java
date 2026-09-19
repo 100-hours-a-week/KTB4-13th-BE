@@ -38,7 +38,8 @@ class CartController implements CartControllerSpec {
     @Override
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCart(@Positive @RequestParam("userId") final Long userId) {
-        final var command = commandConverter.toCartQueryCommand(userId);
-        return ResponseEntity.ok(ApiResponse.ok(CartResponse.from(cartService.getCart(command))));
+        final var command = commandConverter.toGetCartCommand(userId);
+        final var cartResponse = CartResponse.from(cartService.getCart(command));
+        return ResponseEntity.ok(ApiResponse.ok(cartResponse));
     }
 }

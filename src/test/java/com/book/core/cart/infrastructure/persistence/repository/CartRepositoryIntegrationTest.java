@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.cart.application.command.AddCartItemCommand;
-import com.book.core.cart.application.command.CartQueryCommand;
-import com.book.core.cart.application.result.CartItemQueryResult;
+import com.book.core.cart.application.command.GetCartCommand;
+import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
-import com.book.core.cart.application.usecase.QueryCartUseCase;
+import com.book.core.cart.application.usecase.GetCartUseCase;
 import java.sql.SQLException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ class CartRepositoryIntegrationTest {
     AddCartItemUseCase addUseCase;
 
     @Autowired
-    QueryCartUseCase queryUseCase;
+    GetCartUseCase getCartUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -83,10 +83,10 @@ class CartRepositoryIntegrationTest {
         final Long cartId = jdbc.queryForObject("SELECT id FROM carts WHERE user_id = ?", Long.class, 1003L);
         jdbc.update("UPDATE cart_item SET status = 'DELETED' WHERE cart_id = ? AND product_id = ?", cartId, 2001L);
 
-        final var result = queryUseCase.execute(new CartQueryCommand(1003L));
+        final var result = getCartUseCase.execute(new GetCartCommand(1003L));
 
         assertThat(result.items())
-                .extracting(CartItemQueryResult::productId, CartItemQueryResult::quantity)
+                .extracting(GetCartItemResult::productId, GetCartItemResult::quantity)
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple(2003L, 3), org.assertj.core.groups.Tuple.tuple(2002L, 2));
     }

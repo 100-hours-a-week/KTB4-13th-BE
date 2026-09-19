@@ -1,6 +1,7 @@
 package com.book.core.cart.application.port;
 
 import com.book.core.cart.domain.CartItem;
+import java.util.List;
 import java.util.Optional;
 
 public interface CartItemRepositoryPort {
@@ -9,4 +10,6 @@ public interface CartItemRepositoryPort {
     CartItem save(final CartItem cartItem);
 
     int countActiveByCartId(final Long cartId);
+
+    List<CartItem> findActiveByCartId(final Long cartId);
 }

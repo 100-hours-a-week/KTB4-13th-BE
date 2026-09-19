@@ -1,6 +1,7 @@
 package com.book.core.auth.infrastructure.token;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -29,6 +30,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(SecurityIntegrationTest.ProtectedTestController.class)
@@ -60,6 +62,11 @@ class SecurityIntegrationTest {
     @Autowired
     @Qualifier(JwtTokenConfiguration.TOKEN_JWT_ENCODER)
     JwtEncoder jwtEncoder;
+
+    @Test
+    void Login_endpoint는_Access_Token_없이_접근할_수_있다() throws Exception {
+        mvc.perform(post("/api/v1/auth/kakao/login")).andExpect(status().isOk());
+    }
 
     @Test
     void 유효한_Access_Token으로_authenticated_SecurityContext와_userId를_만든다() throws Exception {
@@ -121,6 +128,11 @@ class SecurityIntegrationTest {
 
     @RestController
     public static class ProtectedTestController {
+        @PostMapping("/api/v1/auth/{providerType}/login")
+        Map<String, String> loginEndpoint() {
+            return Map.of("result", "SUCCESS");
+        }
+
         @GetMapping("/test/protected")
         Map<String, Object> protectedEndpoint(final Authentication authentication) {
             final Jwt principal = (Jwt) authentication.getPrincipal();

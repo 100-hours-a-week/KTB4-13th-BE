@@ -4,6 +4,8 @@ spring:
       ddl-auto: validate
 
 auth:
+  cookie:
+    secure: false
   kakao:
     client-id: test-kakao-client-id
   token:

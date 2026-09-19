@@ -18,6 +18,7 @@ class ApiExceptionHandler {
                 switch (error.category()) {
                     case INVALID_INPUT -> HttpStatus.BAD_REQUEST;
                     case NOT_FOUND -> HttpStatus.NOT_FOUND;
+                    case CONFLICT -> HttpStatus.CONFLICT;
                     case INTERNAL_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR;
                 };
         return ResponseEntity.status(status).body(new ErrorResponse(error.code(), error.message()));

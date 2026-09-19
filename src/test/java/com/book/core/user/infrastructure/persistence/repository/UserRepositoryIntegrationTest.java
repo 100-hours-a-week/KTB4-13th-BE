@@ -5,11 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.CommonErrorCode;
+import com.book.core.user.application.command.UserResolveCommand;
 import com.book.core.user.application.port.UserProviderRepository;
 import com.book.core.user.application.port.UserRepository;
+import com.book.core.user.application.usecase.UserRegistrationUseCase;
 import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
+import com.book.core.user.domain.exception.UserErrorCode;
 import java.sql.Timestamp;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +37,9 @@ class UserRepositoryIntegrationTest {
 
     @Autowired
     UserProviderRepository userProviderRepository;
+
+    @Autowired
+    UserRegistrationUseCase userRegistrationUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -70,7 +76,7 @@ class UserRepositoryIntegrationTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(CommonErrorCode.STORAGE_FAILURE));
+                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.NICKNAME_CONFLICT));
 
         jdbc.update("UPDATE users SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", first.id());
         assertThat(jdbc.queryForObject("SELECT active_flag FROM users WHERE id = ?", Integer.class, first.id()))
@@ -91,7 +97,7 @@ class UserRepositoryIntegrationTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(CommonErrorCode.STORAGE_FAILURE));
+                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.PROVIDER_IDENTITY_CONFLICT));
 
         jdbc.update("UPDATE user_providers SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", first.id());
         assertThat(userProviderRepository.findActiveByProviderTypeAndProviderUserId(
@@ -119,5 +125,39 @@ class UserRepositoryIntegrationTest {
                         BusinessException.class,
                         (final var exception) ->
                                 assertThat(exception.errorCode()).isEqualTo(CommonErrorCode.STORAGE_FAILURE));
+    }
+
+    @Test
+    void nickname_충돌_시도는_provider를_저장하지_않는다() {
+        userRepository.save(User.create("가입충돌닉네임"));
+        final UserResolveCommand command =
+                new UserResolveCommand(ProviderType.KAKAO, "nickname-rollback-provider", null);
+
+        assertThatThrownBy(() -> userRegistrationUseCase.execute(command, "가입충돌닉네임"))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        (final var exception) ->
+                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.NICKNAME_CONFLICT));
+        assertThat(jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM user_providers WHERE provider_user_id = ?",
+                        Integer.class,
+                        "nickname-rollback-provider"))
+                .isZero();
+    }
+
+    @Test
+    void provider_identity_충돌_시도는_먼저_저장한_User까지_rollback한다() {
+        final User existingUser = userRepository.save(User.create("기존연결회원"));
+        userProviderRepository.save(
+                UserProvider.create(existingUser.id(), ProviderType.KAKAO, "registration-conflict", null));
+        final UserResolveCommand command = new UserResolveCommand(ProviderType.KAKAO, "registration-conflict", null);
+
+        assertThatThrownBy(() -> userRegistrationUseCase.execute(command, "롤백대상회원"))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        (final var exception) ->
+                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.PROVIDER_IDENTITY_CONFLICT));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE nickname = ?", Integer.class, "롤백대상회원"))
+                .isZero();
     }
 }

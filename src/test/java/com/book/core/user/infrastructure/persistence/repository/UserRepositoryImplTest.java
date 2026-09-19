@@ -9,8 +9,12 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.CommonErrorCode;
 import com.book.core.user.domain.User;
+import com.book.core.user.domain.exception.UserErrorCode;
+import java.sql.SQLException;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
 
 class UserRepositoryImplTest {
     @Test
@@ -29,5 +33,21 @@ class UserRepositoryImplTest {
                         BusinessException.class,
                         (final var exception) ->
                                 assertThat(exception.errorCode()).isEqualTo(CommonErrorCode.STORAGE_FAILURE));
+    }
+
+    @Test
+    void nickname_UNIQUE_위반을_nickname_충돌로_변환한다() {
+        final UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        final var adapter = new UserRepositoryImpl(jpaRepository);
+        final var hibernateException = new ConstraintViolationException(
+                "duplicate", new SQLException("duplicate", "23000", 1062), "uk_users_nickname_active_flag");
+        when(jpaRepository.saveAndFlush(any()))
+                .thenThrow(new DataIntegrityViolationException("duplicate", hibernateException));
+
+        assertThatThrownBy(() -> adapter.save(User.create("북적이")))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        (final var exception) ->
+                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.NICKNAME_CONFLICT));
     }
 }

@@ -10,6 +10,7 @@ public interface ErrorCode {
     enum Category {
         INVALID_INPUT,
         NOT_FOUND,
+        CONFLICT,
         INTERNAL_ERROR
     }
 }

@@ -123,6 +123,11 @@ class CartAddUseCaseTest {
         private int activeItemCount;
 
         @Override
+        public Optional<CartItem> findActiveByUserIdAndId(final Long userId, final Long cartItemId) {
+            return Optional.empty();
+        }
+
+        @Override
         public Optional<CartItem> findByCartIdAndProductId(final Long cartId, final Long productId) {
             return item;
         }

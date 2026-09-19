@@ -35,4 +35,14 @@ class CartTest {
                         (final var exception) ->
                                 assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_CART_ITEM_QUANTITY));
     }
+
+    @Test
+    void 활성_장바구니_상품을_삭제하면_DELETED_상태로_전이한다() {
+        final var item = new CartItem(11L, 1L, 20L, 2);
+
+        item.delete();
+
+        assertThat(item.isDeleted()).isTrue();
+        assertThat(item.isActive()).isFalse();
+    }
 }

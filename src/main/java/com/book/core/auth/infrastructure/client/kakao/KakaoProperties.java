@@ -6,4 +6,7 @@ import org.springframework.validation.annotation.Validated;
 
 @Validated
 @ConfigurationProperties("auth.kakao")
-public record KakaoProperties(@NotBlank String clientId) {}
+public record KakaoProperties(
+        @NotBlank String restApiKey,
+        @NotBlank String clientSecret,
+        @NotBlank String redirectUri) {}

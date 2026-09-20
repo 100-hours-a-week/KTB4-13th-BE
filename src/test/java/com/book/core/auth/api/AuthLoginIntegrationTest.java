@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.book.core.auth.application.port.OAuthIdentity;
 import com.book.core.auth.application.port.OAuthProviderClient;
+import com.book.core.auth.application.port.OAuthTokenClient;
 import com.book.core.auth.application.port.RefreshTokenHasher;
 import com.book.core.user.domain.ProviderType;
 import java.time.LocalDateTime;
@@ -60,9 +61,14 @@ class AuthLoginIntegrationTest {
     @MockitoBean
     OAuthProviderClient oAuthProviderClient;
 
+    @MockitoBean
+    OAuthTokenClient oAuthTokenClient;
+
     @Test
     void 로그인_HTTP_요청이_회원과_RefreshSession_저장과_Cookie_응답까지_연결된다() throws Exception {
-        when(oAuthProviderClient.verify(ProviderType.KAKAO, "kakao-id-token"))
+        when(oAuthTokenClient.exchangeForIdToken(ProviderType.KAKAO, "authorization-code", "code-verifier"))
+                .thenReturn("kakao-id-token");
+        when(oAuthProviderClient.verify(ProviderType.KAKAO, "kakao-id-token", "nonce"))
                 .thenReturn(new OAuthIdentity("provider-123", "reader@example.com"));
 
         final MvcResult firstLogin = login();
@@ -98,7 +104,8 @@ class AuthLoginIntegrationTest {
     private MvcResult login() throws Exception {
         final MvcResult result = mvc.perform(post("/api/v1/auth/kakao/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"idToken\":\"kakao-id-token\"}"))
+                        .content("{\"authorizationCode\":\"authorization-code\","
+                                + "\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.accessToken").isString())

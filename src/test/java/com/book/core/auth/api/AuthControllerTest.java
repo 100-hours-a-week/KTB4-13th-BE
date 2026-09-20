@@ -42,13 +42,14 @@ class AuthControllerTest {
     AuthLoginUseCase authLoginUseCase;
 
     @Test
-    void kakao_ID_Token으로_로그인하고_Access_Token과_Refresh_Cookie를_응답한다() throws Exception {
-        when(authLoginUseCase.execute(new AuthLoginCommand(ProviderType.KAKAO, "kakao-id-token")))
-                .thenReturn(new AuthLoginResult("access-token", "refresh-token"));
+    void kakao_인가_코드로_로그인하고_Access_Token과_Refresh_Cookie를_응답한다() throws Exception {
+        final AuthLoginCommand command =
+                new AuthLoginCommand(ProviderType.KAKAO, "authorization-code", "code-verifier", "nonce");
+        when(authLoginUseCase.execute(command)).thenReturn(new AuthLoginResult("access-token", "refresh-token"));
 
         final var response = mvc.perform(post("/api/v1/auth/kakao/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"idToken\":\"kakao-id-token\"}"))
+                        .content(loginRequest()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.accessToken").value("access-token"))
@@ -57,7 +58,7 @@ class AuthControllerTest {
                 .andReturn()
                 .getResponse();
 
-        verify(authLoginUseCase).execute(new AuthLoginCommand(ProviderType.KAKAO, "kakao-id-token"));
+        verify(authLoginUseCase).execute(command);
         final String setCookie = response.getHeader(HttpHeaders.SET_COOKIE);
         assertThat(setCookie)
                 .contains("refreshToken=refresh-token")
@@ -69,8 +70,42 @@ class AuthControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"{}", "{\"idToken\":null}", "{\"idToken\":\"\"}", "{\"idToken\":\" \"}"})
-    void idToken이_누락_null_blank이면_400을_응답한다(final String body) throws Exception {
+    @ValueSource(
+            strings = {
+                "{\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}",
+                "{\"authorizationCode\":null,\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}",
+                "{\"authorizationCode\":\"\",\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}",
+                "{\"authorizationCode\":\" \",\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}"
+            })
+    void authorizationCode가_누락_null_blank이면_400을_응답한다(final String body) throws Exception {
+        assertInvalidRequest(body);
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "{\"authorizationCode\":\"authorization-code\",\"nonce\":\"nonce\"}",
+                "{\"authorizationCode\":\"authorization-code\",\"codeVerifier\":null,\"nonce\":\"nonce\"}",
+                "{\"authorizationCode\":\"authorization-code\",\"codeVerifier\":\"\",\"nonce\":\"nonce\"}",
+                "{\"authorizationCode\":\"authorization-code\",\"codeVerifier\":\" \",\"nonce\":\"nonce\"}"
+            })
+    void codeVerifier가_누락_null_blank이면_400을_응답한다(final String body) throws Exception {
+        assertInvalidRequest(body);
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "{\"authorizationCode\":\"authorization-code\",\"codeVerifier\":\"code-verifier\"}",
+                "{\"authorizationCode\":\"authorization-code\",\"codeVerifier\":\"code-verifier\",\"nonce\":null}",
+                "{\"authorizationCode\":\"authorization-code\",\"codeVerifier\":\"code-verifier\",\"nonce\":\"\"}",
+                "{\"authorizationCode\":\"authorization-code\",\"codeVerifier\":\"code-verifier\",\"nonce\":\" \"}"
+            })
+    void nonce가_누락_null_blank이면_400을_응답한다(final String body) throws Exception {
+        assertInvalidRequest(body);
+    }
+
+    private void assertInvalidRequest(final String body) throws Exception {
         mvc.perform(post("/api/v1/auth/kakao/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
@@ -84,10 +119,15 @@ class AuthControllerTest {
     void 지원하지_않는_provider는_400을_응답한다() throws Exception {
         mvc.perform(post("/api/v1/auth/google/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"idToken\":\"id-token\"}"))
+                        .content(loginRequest()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
         verifyNoInteractions(authLoginUseCase);
+    }
+
+    private String loginRequest() {
+        return "{\"authorizationCode\":\"authorization-code\","
+                + "\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}";
     }
 }

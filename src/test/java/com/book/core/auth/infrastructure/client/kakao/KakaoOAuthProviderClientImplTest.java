@@ -37,6 +37,7 @@ class KakaoOAuthProviderClientImplTest {
     private static final String CLIENT_ID = "test-kakao-client-id";
     private static final String KEY_ID = "test-key-id";
     private static final String PROVIDER_USER_ID = "123456789";
+    private static final String EXPECTED_NONCE = "expected-nonce";
     private static final Instant NOW = Instant.now();
 
     private RSAKey signingKey;
@@ -52,7 +53,7 @@ class KakaoOAuthProviderClientImplTest {
     void 정상_RS256_ID_Token의_sub와_email을_OAuthIdentity로_반환한다() {
         final String idToken = token(signingKey, SignatureAlgorithm.RS256, PROVIDER_USER_ID, "reader@example.com");
 
-        final var identity = client.verify(ProviderType.KAKAO, idToken);
+        final var identity = client.verify(ProviderType.KAKAO, idToken, EXPECTED_NONCE);
 
         assertThat(identity.providerUserId()).isEqualTo(PROVIDER_USER_ID);
         assertThat(identity.providerEmail()).isEqualTo("reader@example.com");
@@ -62,7 +63,7 @@ class KakaoOAuthProviderClientImplTest {
     void email_claim이_없으면_null을_반환한다() {
         final String idToken = token(signingKey, SignatureAlgorithm.RS256, PROVIDER_USER_ID, null);
 
-        final var identity = client.verify(ProviderType.KAKAO, idToken);
+        final var identity = client.verify(ProviderType.KAKAO, idToken, EXPECTED_NONCE);
 
         assertThat(identity.providerEmail()).isNull();
     }
@@ -76,7 +77,8 @@ class KakaoOAuthProviderClientImplTest {
                 CLIENT_ID,
                 NOW.minusSeconds(60),
                 PROVIDER_USER_ID,
-                null);
+                null,
+                EXPECTED_NONCE);
 
         assertError(idToken, AuthErrorCode.INVALID_ID_TOKEN, ErrorCode.Category.UNAUTHORIZED);
     }
@@ -90,7 +92,8 @@ class KakaoOAuthProviderClientImplTest {
                 CLIENT_ID,
                 NOW.plusSeconds(300),
                 PROVIDER_USER_ID,
-                null);
+                null,
+                EXPECTED_NONCE);
 
         assertError(idToken, AuthErrorCode.INVALID_ID_TOKEN, ErrorCode.Category.UNAUTHORIZED);
     }
@@ -104,7 +107,8 @@ class KakaoOAuthProviderClientImplTest {
                 "other-client-id",
                 NOW.plusSeconds(300),
                 PROVIDER_USER_ID,
-                null);
+                null,
+                EXPECTED_NONCE);
 
         assertError(idToken, AuthErrorCode.INVALID_ID_TOKEN, ErrorCode.Category.UNAUTHORIZED);
     }
@@ -139,6 +143,36 @@ class KakaoOAuthProviderClientImplTest {
     }
 
     @Test
+    void nonce가_다르면_UNAUTHORIZED로_변환한다() {
+        final String idToken = token(
+                signingKey,
+                SignatureAlgorithm.RS256,
+                KakaoOAuthClientConfiguration.KAKAO_ISSUER,
+                CLIENT_ID,
+                NOW.plusSeconds(300),
+                PROVIDER_USER_ID,
+                null,
+                "other-nonce");
+
+        assertError(idToken, AuthErrorCode.INVALID_ID_TOKEN, ErrorCode.Category.UNAUTHORIZED);
+    }
+
+    @Test
+    void nonce가_없으면_UNAUTHORIZED로_변환한다() {
+        final String idToken = token(
+                signingKey,
+                SignatureAlgorithm.RS256,
+                KakaoOAuthClientConfiguration.KAKAO_ISSUER,
+                CLIENT_ID,
+                NOW.plusSeconds(300),
+                PROVIDER_USER_ID,
+                null,
+                null);
+
+        assertError(idToken, AuthErrorCode.INVALID_ID_TOKEN, ErrorCode.Category.UNAUTHORIZED);
+    }
+
+    @Test
     void JWKS_조회_실패는_EXTERNAL_SERVICE_ERROR로_변환한다() {
         final JwtDecoder failedDecoder = mock(JwtDecoder.class);
         final RemoteKeySourceException remoteFailure =
@@ -146,7 +180,7 @@ class KakaoOAuthProviderClientImplTest {
         when(failedDecoder.decode("id-token")).thenThrow(new JwtException("decode failed", remoteFailure));
         final var failedClient = new KakaoOAuthProviderClientImpl(failedDecoder);
 
-        assertThatThrownBy(() -> failedClient.verify(ProviderType.KAKAO, "id-token"))
+        assertThatThrownBy(() -> failedClient.verify(ProviderType.KAKAO, "id-token", EXPECTED_NONCE))
                 .isInstanceOfSatisfying(BusinessException.class, (final var exception) -> {
                     assertThat(exception.errorCode()).isEqualTo(AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE);
                     assertThat(exception.errorCode().category()).isEqualTo(ErrorCode.Category.EXTERNAL_SERVICE_ERROR);
@@ -171,7 +205,8 @@ class KakaoOAuthProviderClientImplTest {
                 CLIENT_ID,
                 NOW.plusSeconds(300),
                 subject,
-                email);
+                email,
+                EXPECTED_NONCE);
     }
 
     private String token(
@@ -181,7 +216,8 @@ class KakaoOAuthProviderClientImplTest {
             final String audience,
             final Instant expiresAt,
             final String subject,
-            final String email) {
+            final String email,
+            final String nonce) {
         final JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
                 .issuer(issuer)
                 .audience(List.of(audience))
@@ -193,6 +229,9 @@ class KakaoOAuthProviderClientImplTest {
         if (email != null) {
             claims.claim("email", email);
         }
+        if (nonce != null) {
+            claims.claim("nonce", nonce);
+        }
         final JwsHeader headers =
                 JwsHeader.with(algorithm).keyId(key.getKeyID()).build();
         final JWKSource<SecurityContext> jwkSource = new ImmutableJWKSet<>(new JWKSet(key));
@@ -202,7 +241,7 @@ class KakaoOAuthProviderClientImplTest {
     }
 
     private void assertError(final String idToken, final AuthErrorCode errorCode, final ErrorCode.Category category) {
-        assertThatThrownBy(() -> client.verify(ProviderType.KAKAO, idToken))
+        assertThatThrownBy(() -> client.verify(ProviderType.KAKAO, idToken, EXPECTED_NONCE))
                 .isInstanceOfSatisfying(BusinessException.class, (final var exception) -> {
                     assertThat(exception.errorCode()).isEqualTo(errorCode);
                     assertThat(exception.errorCode().category()).isEqualTo(category);

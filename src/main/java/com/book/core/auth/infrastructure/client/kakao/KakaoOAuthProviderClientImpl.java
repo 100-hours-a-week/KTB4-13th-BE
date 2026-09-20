@@ -16,6 +16,7 @@ import org.springframework.util.StringUtils;
 @Component
 public class KakaoOAuthProviderClientImpl implements OAuthProviderClient {
     private static final String EMAIL_CLAIM = "email";
+    private static final String NONCE_CLAIM = "nonce";
 
     private final JwtDecoder jwtDecoder;
 
@@ -25,14 +26,14 @@ public class KakaoOAuthProviderClientImpl implements OAuthProviderClient {
     }
 
     @Override
-    public OAuthIdentity verify(final ProviderType providerType, final String idToken) {
-        if (!StringUtils.hasText(idToken)) {
+    public OAuthIdentity verify(final ProviderType providerType, final String idToken, final String expectedNonce) {
+        if (!StringUtils.hasText(idToken) || !StringUtils.hasText(expectedNonce)) {
             throw new BusinessException(AuthErrorCode.INVALID_ID_TOKEN);
         }
 
         try {
             final Jwt jwt = jwtDecoder.decode(idToken);
-            return toIdentity(jwt);
+            return toIdentity(jwt, expectedNonce);
         } catch (final JwtException exception) {
             if (hasRemoteKeySourceCause(exception)) {
                 throw new BusinessException(AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE, exception);
@@ -43,9 +44,13 @@ public class KakaoOAuthProviderClientImpl implements OAuthProviderClient {
         }
     }
 
-    private OAuthIdentity toIdentity(final Jwt jwt) {
+    private OAuthIdentity toIdentity(final Jwt jwt, final String expectedNonce) {
         final String providerUserId = jwt.getSubject();
-        if (!StringUtils.hasText(providerUserId) || jwt.getExpiresAt() == null) {
+        final String nonce = jwt.getClaimAsString(NONCE_CLAIM);
+        if (!StringUtils.hasText(providerUserId)
+                || jwt.getExpiresAt() == null
+                || !StringUtils.hasText(nonce)
+                || !expectedNonce.equals(nonce)) {
             throw new BusinessException(AuthErrorCode.INVALID_ID_TOKEN);
         }
         return new OAuthIdentity(providerUserId, jwt.getClaimAsString(EMAIL_CLAIM));

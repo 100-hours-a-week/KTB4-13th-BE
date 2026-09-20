@@ -8,11 +8,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.core.auth.application.port.OAuthProviderClient;
+import com.book.core.auth.application.port.OAuthTokenClient;
 import com.book.core.auth.application.port.RefreshSessionRepository;
 import com.book.core.auth.application.port.RefreshTokenHasher;
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.application.usecase.AuthLoginUseCase;
 import com.book.core.auth.infrastructure.client.kakao.KakaoOAuthProviderClientImpl;
+import com.book.core.auth.infrastructure.client.kakao.KakaoOAuthTokenClientImpl;
 import com.book.core.auth.infrastructure.token.JwtTokenIssuer;
 import com.book.core.sample.application.port.SampleRepository;
 import com.book.core.sample.application.usecase.SampleCreateUseCase;
@@ -56,6 +58,9 @@ class BookApplicationTest {
     OAuthProviderClient oAuthProviderClient;
 
     @Autowired
+    OAuthTokenClient oAuthTokenClient;
+
+    @Autowired
     TokenIssuer tokenIssuer;
 
     @Autowired
@@ -85,6 +90,7 @@ class BookApplicationTest {
         assertThat(context.getBeansOfType(SampleQueryUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(SampleRepository.class)).hasSize(1);
         assertThat(oAuthProviderClient).isInstanceOf(KakaoOAuthProviderClientImpl.class);
+        assertThat(oAuthTokenClient).isInstanceOf(KakaoOAuthTokenClientImpl.class);
         assertThat(tokenIssuer).isInstanceOf(JwtTokenIssuer.class);
         assertThat(nicknameGenerator).isInstanceOf(RandomNicknameGenerator.class);
         assertThat(AopUtils.getTargetClass(refreshTokenHasher).getSimpleName()).isEqualTo("Sha256RefreshTokenHasher");

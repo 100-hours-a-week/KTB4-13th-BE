@@ -18,9 +18,24 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
+    void 유효하지_않은_인가_코드를_401로_변환한다() {
+        final var response = handler.handleBusiness(new BusinessException(AuthErrorCode.INVALID_AUTHORIZATION_CODE));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
     void 외부_인증_서비스_장애를_502로_변환한다() {
         final var response = handler.handleBusiness(new BusinessException(AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    }
+
+    @Test
+    void 외부_인증_서비스_설정_오류를_500으로_변환한다() {
+        final var response =
+                handler.handleBusiness(new BusinessException(AuthErrorCode.OAUTH_PROVIDER_CONFIGURATION_ERROR));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

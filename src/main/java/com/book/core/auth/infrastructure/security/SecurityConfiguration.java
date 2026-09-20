@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
@@ -18,9 +19,11 @@ public class SecurityConfiguration {
     SecurityFilterChain securityFilterChain(
             final HttpSecurity http,
             @Qualifier("serviceJwtDecoder") final JwtDecoder serviceJwtDecoder,
-            final JwtAuthenticationEntryPoint authenticationEntryPoint)
+            final JwtAuthenticationEntryPoint authenticationEntryPoint,
+            final CorsConfigurationSource corsConfigurationSource)
             throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable)
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource))
+                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)

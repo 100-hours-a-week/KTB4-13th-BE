@@ -1,13 +1,17 @@
 package com.book.core.auth.infrastructure.token;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
+import com.book.support.config.WebCorsConfiguration;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -22,6 +26,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -39,16 +44,19 @@ import org.springframework.web.bind.annotation.RestController;
     JwtAuthenticationEntryPoint.class,
     JwtTokenConfiguration.class,
     JwtTokenIssuer.class,
+    WebCorsConfiguration.class,
     SecurityIntegrationTest.ProtectedTestController.class
 })
 @TestPropertySource(
         properties = {
             "auth.token.secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZg==",
             "auth.token.access-token-expiration=1h",
-            "auth.token.refresh-token-expiration=7d"
+            "auth.token.refresh-token-expiration=7d",
+            "app.cors.allowed-origin=http://localhost:5173"
         })
 class SecurityIntegrationTest {
     private static final Long USER_ID = 42L;
+    private static final String FRONTEND_ORIGIN = "http://localhost:5173";
 
     @Autowired
     MockMvc mvc;
@@ -66,6 +74,41 @@ class SecurityIntegrationTest {
     @Test
     void Login_endpoint는_Access_Token_없이_접근할_수_있다() throws Exception {
         mvc.perform(post("/api/v1/auth/kakao/login")).andExpect(status().isOk());
+    }
+
+    @Test
+    void 허용된_origin의_login_preflight에_credentials와_method와_header를_응답한다() throws Exception {
+        mvc.perform(options("/api/v1/auth/kakao/login")
+                        .header(HttpHeaders.ORIGIN, FRONTEND_ORIGIN)
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, HttpMethod.POST.name())
+                        .header(
+                                HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS,
+                                HttpHeaders.AUTHORIZATION + ", " + HttpHeaders.CONTENT_TYPE))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, FRONTEND_ORIGIN))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true"))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, containsString("POST")))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, containsString("Authorization")))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, containsString("Content-Type")));
+    }
+
+    @Test
+    void 허용된_origin의_login_POST에_CORS_header를_응답한다() throws Exception {
+        mvc.perform(post("/api/v1/auth/kakao/login").header(HttpHeaders.ORIGIN, FRONTEND_ORIGIN))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, FRONTEND_ORIGIN))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true"));
+    }
+
+    @Test
+    void 허용되지_않은_origin의_preflight를_거부한다() throws Exception {
+        mvc.perform(options("/api/v1/auth/kakao/login")
+                        .header(HttpHeaders.ORIGIN, "http://malicious.example")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, HttpMethod.POST.name())
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, HttpHeaders.CONTENT_TYPE))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN))
+                .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS));
     }
 
     @Test

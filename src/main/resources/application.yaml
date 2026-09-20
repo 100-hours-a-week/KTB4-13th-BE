@@ -6,6 +6,10 @@ spring:
   config:
     import: classpath:persistence.yml
 
+app:
+  cors:
+    allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+
 auth:
   cookie:
     secure: ${AUTH_COOKIE_SECURE:false}

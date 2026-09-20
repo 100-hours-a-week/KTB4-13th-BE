@@ -8,5 +8,5 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties("auth.kakao")
 public record KakaoProperties(
         @NotBlank String restApiKey,
-        @NotBlank String clientSecret,
+        String clientSecret,
         @NotBlank String redirectUri) {}

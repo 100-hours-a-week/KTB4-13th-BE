@@ -18,6 +18,9 @@ import java.io.IOException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -30,20 +33,17 @@ import org.springframework.web.client.RestClient;
 class KakaoOAuthTokenClientImplTest {
     private static final String AUTHORIZATION_CODE = "authorization-code";
     private static final String CODE_VERIFIER = "code-verifier";
+    private static final String CLIENT_SECRET = "test-kakao-client-secret";
 
     private MockRestServiceServer server;
+    private RestClient.Builder restClientBuilder;
     private KakaoOAuthTokenClientImpl client;
 
     @BeforeEach
     void setUp() {
-        final RestClient.Builder builder = RestClient.builder().baseUrl(KakaoOAuthClientConfiguration.KAKAO_ISSUER);
-        server = MockRestServiceServer.bindTo(builder).build();
-        client = new KakaoOAuthTokenClientImpl(
-                builder.build(),
-                new KakaoProperties(
-                        "test-kakao-rest-api-key",
-                        "test-kakao-client-secret",
-                        "http://localhost:3000/oauth/kakao/callback"));
+        restClientBuilder = RestClient.builder().baseUrl(KakaoOAuthClientConfiguration.KAKAO_ISSUER);
+        server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        client = createClient(CLIENT_SECRET);
     }
 
     @AfterEach
@@ -54,6 +54,21 @@ class KakaoOAuthTokenClientImplTest {
     @Test
     void 인가_코드와_PKCE_verifier를_교환해_ID_Token만_반환한다() {
         expectTokenRequest(withSuccess(
+                "{\"access_token\":\"kakao-access-token\",\"refresh_token\":\"kakao-refresh-token\","
+                        + "\"id_token\":\"kakao-id-token\"}",
+                MediaType.APPLICATION_JSON));
+
+        final String idToken = client.exchangeForIdToken(ProviderType.KAKAO, AUTHORIZATION_CODE, CODE_VERIFIER);
+
+        assertThat(idToken).isEqualTo("kakao-id-token");
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = " ")
+    void Client_Secret이_없거나_blank이면_해당_parameter를_제외한다(final String clientSecret) {
+        client = createClient(clientSecret);
+        expectTokenRequestWithoutClientSecret(withSuccess(
                 "{\"access_token\":\"kakao-access-token\",\"refresh_token\":\"kakao-refresh-token\","
                         + "\"id_token\":\"kakao-id-token\"}",
                 MediaType.APPLICATION_JSON));
@@ -121,10 +136,20 @@ class KakaoOAuthTokenClientImplTest {
     }
 
     private void expectTokenRequest(final ResponseCreator responseCreator) {
+        expectTokenRequest(responseCreator, true);
+    }
+
+    private void expectTokenRequestWithoutClientSecret(final ResponseCreator responseCreator) {
+        expectTokenRequest(responseCreator, false);
+    }
+
+    private void expectTokenRequest(final ResponseCreator responseCreator, final boolean includesClientSecret) {
         final MultiValueMap<String, String> expected = new LinkedMultiValueMap<>();
         expected.add("grant_type", "authorization_code");
         expected.add("client_id", "test-kakao-rest-api-key");
-        expected.add("client_secret", "test-kakao-client-secret");
+        if (includesClientSecret) {
+            expected.add("client_secret", CLIENT_SECRET);
+        }
         expected.add("redirect_uri", "http://localhost:3000/oauth/kakao/callback");
         expected.add("code", AUTHORIZATION_CODE);
         expected.add("code_verifier", CODE_VERIFIER);
@@ -133,6 +158,13 @@ class KakaoOAuthTokenClientImplTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED))
                 .andExpect(content().formData(expected))
                 .andRespond(responseCreator);
+    }
+
+    private KakaoOAuthTokenClientImpl createClient(final String clientSecret) {
+        return new KakaoOAuthTokenClientImpl(
+                restClientBuilder.build(),
+                new KakaoProperties(
+                        "test-kakao-rest-api-key", clientSecret, "http://localhost:3000/oauth/kakao/callback"));
     }
 
     private void assertError(final AuthErrorCode errorCode, final ErrorCode.Category category) {

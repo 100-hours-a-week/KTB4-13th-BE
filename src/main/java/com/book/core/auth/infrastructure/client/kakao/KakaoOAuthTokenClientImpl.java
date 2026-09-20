@@ -65,7 +65,9 @@ public class KakaoOAuthTokenClientImpl implements OAuthTokenClient {
         final MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "authorization_code");
         form.add("client_id", properties.restApiKey());
-        form.add("client_secret", properties.clientSecret());
+        if (StringUtils.hasText(properties.clientSecret())) {
+            form.add("client_secret", properties.clientSecret());
+        }
         form.add("redirect_uri", properties.redirectUri());
         form.add("code", authorizationCode);
         form.add("code_verifier", codeVerifier);

@@ -37,41 +37,41 @@ class AddressRegisterUseCaseTest {
             assertThat(address.address()).isEqualTo("서울시 강남구");
             assertThat(address.detailAddress()).isEqualTo("101호");
             assertThat(address.isActive()).isTrue();
-            assertThat(address.isDefault()).isFalse();
+            assertThat(address.isDefaultAddress()).isFalse();
         });
     }
 
     @Test
-    void 첫_주소는_isDefault가_false여도_기본_배송지로_등록한다() {
+    void 첫_주소는_isDefaultAddress가_false여도_기본_배송지로_등록한다() {
         addressRepository.activeCount = 0;
 
         useCase.execute(new RegisterAddressCommand(7L, "집", "12345", "서울시 강남구", null, false));
 
-        assertThat(addressRepository.savedAddress.isDefault()).isTrue();
+        assertThat(addressRepository.savedAddress.isDefaultAddress()).isTrue();
     }
 
     @Test
-    void isDefault가_false면_기존_기본_배송지를_유지한다() {
+    void isDefaultAddress가_false면_기존_기본_배송지를_유지한다() {
         final var currentDefault = Address.of(7L, "기존", "11111", "서울시 중구", null, true);
         addressRepository.activeCount = 1;
         addressRepository.defaultAddress = currentDefault;
 
         useCase.execute(new RegisterAddressCommand(7L, "회사", "12345", "서울시 강남구", null, false));
 
-        assertThat(currentDefault.isDefault()).isTrue();
-        assertThat(addressRepository.savedAddress.isDefault()).isFalse();
+        assertThat(currentDefault.isDefaultAddress()).isTrue();
+        assertThat(addressRepository.savedAddress.isDefaultAddress()).isFalse();
     }
 
     @Test
-    void isDefault가_true면_기존_기본_배송지를_해제하고_새_주소를_기본으로_등록한다() {
+    void isDefaultAddress가_true면_기존_기본_배송지를_해제하고_새_주소를_기본으로_등록한다() {
         final var currentDefault = Address.of(7L, "기존", "11111", "서울시 중구", null, true);
         addressRepository.activeCount = 1;
         addressRepository.defaultAddress = currentDefault;
 
         useCase.execute(new RegisterAddressCommand(7L, "회사", "12345", "서울시 강남구", null, true));
 
-        assertThat(currentDefault.isDefault()).isFalse();
-        assertThat(addressRepository.savedAddress.isDefault()).isTrue();
+        assertThat(currentDefault.isDefaultAddress()).isFalse();
+        assertThat(addressRepository.savedAddress.isDefaultAddress()).isTrue();
     }
 
     @Test
@@ -83,10 +83,20 @@ class AddressRegisterUseCaseTest {
         assertThatThrownBy(() -> useCase.execute(new RegisterAddressCommand(7L, "회사", "12345", "서울시 강남구", null, true)))
                 .isInstanceOfSatisfying(
                         CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ADDRESS_LIMIT_EXCEEDED));
 
         assertThat(addressRepository.savedAddress).isNull();
-        assertThat(currentDefault.isDefault()).isTrue();
+        assertThat(currentDefault.isDefaultAddress()).isTrue();
+    }
+
+    @Test
+    void 활성_주소지_한도_초과는_주소_생성보다_먼저_실패한다() {
+        addressRepository.activeCount = 3;
+
+        assertThatThrownBy(() -> useCase.execute(new RegisterAddressCommand(7L, " ", "12345", "서울시 강남구", null, false)))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ADDRESS_LIMIT_EXCEEDED));
     }
 
     @Test
@@ -99,10 +109,10 @@ class AddressRegisterUseCaseTest {
         assertThatThrownBy(() -> useCase.execute(new RegisterAddressCommand(7L, "기존", "11111", "서울시 중구", null, true)))
                 .isInstanceOfSatisfying(
                         CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.DUPLICATE_ADDRESS));
 
         assertThat(addressRepository.savedAddress).isNull();
-        assertThat(currentDefault.isDefault()).isTrue();
+        assertThat(currentDefault.isDefaultAddress()).isTrue();
     }
 
     @Test
@@ -125,7 +135,7 @@ class AddressRegisterUseCaseTest {
         assertThatThrownBy(() -> useCase.execute(new RegisterAddressCommand(7L, "회사", "12345", "서울시 강남구", null, true)))
                 .isInstanceOf(IllegalStateException.class);
 
-        assertThat(currentDefault.isDefault()).isTrue();
+        assertThat(currentDefault.isDefaultAddress()).isTrue();
     }
 
     private static final class FakeAddressRepository implements AddressRepositoryPort {

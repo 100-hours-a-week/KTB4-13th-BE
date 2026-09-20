@@ -3,6 +3,7 @@ package com.book.core.address.domain;
 import com.book.common.domain.BaseEntity;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import io.micrometer.common.util.StringUtils;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -62,31 +63,36 @@ public class Address extends BaseEntity {
         return new Address(null, userId, label, postalCode, address, detailAddress, defaultAddress);
     }
 
-    public boolean isDefault() {
+    public static Address register(
+            final long userId,
+            final String label,
+            final String postalCode,
+            final String address,
+            final String detailAddress) {
+        return of(userId, label, postalCode, address, detailAddress, false);
+    }
+
+    public boolean isDefaultAddress() {
         return defaultAddress;
     }
 
-    public void makeDefault() {
+    public void setDefaultAddress() {
         this.defaultAddress = true;
     }
 
-    public void releaseDefault() {
+    public void unsetDefaultAddress() {
         this.defaultAddress = false;
     }
 
     private static String normalizeRequired(final String value) {
-        if (value == null) {
+        if (StringUtils.isBlank(value)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        final String normalized = value.strip();
-        if (normalized.isEmpty()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-        return normalized;
+        return value.strip();
     }
 
     private static String normalizeDetail(final String value) {
-        if (value == null) {
+        if (StringUtils.isBlank(value)) {
             return null;
         }
         final String normalized = value.strip();

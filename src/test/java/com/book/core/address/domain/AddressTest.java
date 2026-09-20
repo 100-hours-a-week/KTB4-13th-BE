@@ -18,7 +18,7 @@ class AddressTest {
         assertThat(address.address()).isEqualTo("서울시 강남구");
         assertThat(address.detailAddress()).isNull();
         assertThat(address.isActive()).isTrue();
-        assertThat(address.isDefault()).isFalse();
+        assertThat(address.isDefaultAddress()).isFalse();
     }
 
     @Test
@@ -40,10 +40,10 @@ class AddressTest {
     void 기본_배송지_상태를_전환한다() {
         final var address = Address.of(1L, "집", "12345", "서울시 강남구", null, false);
 
-        address.makeDefault();
-        assertThat(address.isDefault()).isTrue();
+        address.setDefaultAddress();
+        assertThat(address.isDefaultAddress()).isTrue();
 
-        address.releaseDefault();
-        assertThat(address.isDefault()).isFalse();
+        address.unsetDefaultAddress();
+        assertThat(address.isDefaultAddress()).isFalse();
     }
 }

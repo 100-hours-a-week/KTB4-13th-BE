@@ -21,6 +21,18 @@ interface CartItemJpaRepository extends JpaRepository<CartItem, Long> {
             @Param("cartItemId") final Long cartItemId,
             @Param("status") final EntityStatus status);
 
+    @Query("""
+            select item
+            from CartItem item
+            where item.id in :cartItemIds
+              and item.cartId in (select cart.id from Cart cart where cart.userId = :userId)
+              and item.status = :status
+            """)
+    List<CartItem> findByUserIdAndIdsAndStatus(
+            @Param("userId") final Long userId,
+            @Param("cartItemIds") final List<Long> cartItemIds,
+            @Param("status") final EntityStatus status);
+
     Optional<CartItem> findByCartIdAndProductId(final Long cartId, final Long productId);
 
     int countByCartIdAndStatus(final Long cartId, final EntityStatus status);

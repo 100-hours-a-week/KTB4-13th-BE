@@ -7,12 +7,15 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.cart.application.command.AddCartItemCommand;
 import com.book.core.cart.application.command.DeleteCartItemCommand;
+import com.book.core.cart.application.command.DeleteCartItemsCommand;
 import com.book.core.cart.application.command.GetCartCommand;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
 import com.book.core.cart.application.usecase.DeleteCartItemUseCase;
+import com.book.core.cart.application.usecase.DeleteCartItemsUseCase;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import java.sql.SQLException;
+import java.util.List;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +45,9 @@ class CartRepositoryIntegrationTest {
 
     @Autowired
     DeleteCartItemUseCase deleteUseCase;
+
+    @Autowired
+    DeleteCartItemsUseCase deleteItemsUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -140,6 +146,73 @@ class CartRepositoryIntegrationTest {
                 .isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT status FROM cart_item WHERE id = ?", String.class, cartItemId))
                 .isEqualTo("DELETED");
+    }
+
+    @Test
+    void 다건_삭제는_요청_회원의_활성_항목을_DELETED로_변경하고_행을_물리_삭제하지_않는다() {
+        createCart(1007L);
+        addUseCase.execute(new AddCartItemCommand(1007L, 2007L, 2));
+        addUseCase.execute(new AddCartItemCommand(1007L, 2008L, 3));
+        final Long firstCartItemId = findCartItemId(1007L, 2007L);
+        final Long secondCartItemId = findCartItemId(1007L, 2008L);
+
+        deleteItemsUseCase.execute(new DeleteCartItemsCommand(1007L, List.of(firstCartItemId, secondCartItemId)));
+
+        assertThat(jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM cart_item WHERE id IN (?, ?)",
+                        Integer.class,
+                        firstCartItemId,
+                        secondCartItemId))
+                .isEqualTo(2);
+        assertThat(jdbc.queryForList(
+                        "SELECT status FROM cart_item WHERE id IN (?, ?) ORDER BY id",
+                        String.class,
+                        firstCartItemId,
+                        secondCartItemId))
+                .containsExactly("DELETED", "DELETED");
+        assertThat(jdbc.queryForList(
+                        "SELECT quantity FROM cart_item WHERE id IN (?, ?) ORDER BY id",
+                        Integer.class,
+                        firstCartItemId,
+                        secondCartItemId))
+                .containsExactly(2, 3);
+    }
+
+    @Test
+    void 다건_삭제에_소유하지_않거나_이미_삭제된_상품이_포함되면_전체를_변경하지_않는다() {
+        createCart(1008L);
+        createCart(1009L);
+        addUseCase.execute(new AddCartItemCommand(1008L, 2009L, 2));
+        addUseCase.execute(new AddCartItemCommand(1009L, 2010L, 3));
+        final Long ownedCartItemId = findCartItemId(1008L, 2009L);
+        final Long foreignCartItemId = findCartItemId(1009L, 2010L);
+
+        assertThatThrownBy(() -> deleteItemsUseCase.execute(
+                        new DeleteCartItemsCommand(1008L, List.of(ownedCartItemId, foreignCartItemId))))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        (final var exception) ->
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(jdbc.queryForList(
+                        "SELECT status FROM cart_item WHERE id IN (?, ?) ORDER BY id",
+                        String.class,
+                        ownedCartItemId,
+                        foreignCartItemId))
+                .containsExactly("ACTIVE", "ACTIVE");
+
+        jdbc.update("UPDATE cart_item SET status = 'DELETED' WHERE id = ?", foreignCartItemId);
+        assertThatThrownBy(() -> deleteItemsUseCase.execute(
+                        new DeleteCartItemsCommand(1008L, List.of(ownedCartItemId, foreignCartItemId))))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        (final var exception) ->
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(jdbc.queryForList(
+                        "SELECT status FROM cart_item WHERE id IN (?, ?) ORDER BY id",
+                        String.class,
+                        ownedCartItemId,
+                        foreignCartItemId))
+                .containsExactly("ACTIVE", "DELETED");
     }
 
     private void createCart(final long userId) {

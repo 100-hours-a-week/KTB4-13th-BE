@@ -60,6 +60,16 @@ class JwtTokenIssuerTest {
     }
 
     @Test
+    void 같은_사용자에게_같은_시각에_발급해도_새_Refresh_Token을_생성한다() {
+        final IssuedTokens first = tokenIssuer.issue(USER_ID);
+        final IssuedTokens second = tokenIssuer.issue(USER_ID);
+
+        assertThat(second.refreshToken()).isNotEqualTo(first.refreshToken());
+        assertThat(decoder(secretKey).decode(second.refreshToken()).getId())
+                .isNotEqualTo(decoder(secretKey).decode(first.refreshToken()).getId());
+    }
+
+    @Test
     void 올바른_Secret으로_signature를_검증할_수_있다() {
         final IssuedTokens tokens = tokenIssuer.issue(USER_ID);
 

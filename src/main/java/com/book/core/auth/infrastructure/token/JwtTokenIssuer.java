@@ -8,6 +8,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -60,6 +61,7 @@ public class JwtTokenIssuer implements TokenIssuer {
     private String issueToken(
             final Long userId, final Instant issuedAt, final Instant expiresAt, final String tokenType) {
         final JwtClaimsSet claims = JwtClaimsSet.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(userId.toString())
                 .issuedAt(issuedAt)
                 .expiresAt(expiresAt)

@@ -3,6 +3,7 @@ package com.book;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.book.core.address.domain.Address;
 import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
 import com.book.core.sample.domain.Sample;
@@ -80,6 +81,7 @@ class ArchitectureTest {
     @Test
     void 업무_모델은_JPA_Entity를_겸한다() {
         assertThat(Sample.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(Address.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Cart.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(CartItem.class.isAnnotationPresent(Entity.class)).isTrue();
     }

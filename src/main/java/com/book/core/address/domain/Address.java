@@ -83,6 +83,14 @@ public class Address extends BaseEntity {
         this.defaultAddress = false;
     }
 
+    public void updateFrom(final Address updatedAddress) {
+        this.label = updatedAddress.label;
+        this.postalCode = updatedAddress.postalCode;
+        this.address = updatedAddress.address;
+        this.detailAddress = updatedAddress.detailAddress;
+        this.defaultAddress = updatedAddress.defaultAddress;
+    }
+
     private static String normalizeRequired(final String value) {
         if (value == null || value.isBlank()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);

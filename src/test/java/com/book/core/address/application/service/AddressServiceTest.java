@@ -7,16 +7,21 @@ import static org.mockito.Mockito.when;
 
 import com.book.core.address.application.command.GetAddressesCommand;
 import com.book.core.address.application.command.RegisterAddressCommand;
+import com.book.core.address.application.command.UpdateAddressCommand;
 import com.book.core.address.application.result.GetAddressesResult;
+import com.book.core.address.application.result.UpdateAddressResult;
 import com.book.core.address.application.usecase.GetAddressesUseCase;
 import com.book.core.address.application.usecase.RegisterAddressUseCase;
+import com.book.core.address.application.usecase.UpdateAddressUseCase;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AddressServiceTest {
     private final RegisterAddressUseCase registerAddressUseCase = mock(RegisterAddressUseCase.class);
     private final GetAddressesUseCase getAddressesUseCase = mock(GetAddressesUseCase.class);
-    private final AddressService addressService = new AddressService(registerAddressUseCase, getAddressesUseCase);
+    private final UpdateAddressUseCase updateAddressUseCase = mock(UpdateAddressUseCase.class);
+    private final AddressService addressService =
+            new AddressService(registerAddressUseCase, getAddressesUseCase, updateAddressUseCase);
 
     @Test
     void 배송지_등록_Command를_등록_UseCase에_전달한다() {
@@ -36,5 +41,16 @@ class AddressServiceTest {
         assertThat(addressService.getAddresses(command)).isSameAs(result);
 
         verify(getAddressesUseCase).execute(command);
+    }
+
+    @Test
+    void 배송지_수정_Command를_수정_UseCase에_전달하고_결과를_반환한다() {
+        final var command = mock(UpdateAddressCommand.class);
+        final var result = new UpdateAddressResult(101L);
+        when(updateAddressUseCase.execute(command)).thenReturn(result);
+
+        assertThat(addressService.updateAddress(command)).isSameAs(result);
+
+        verify(updateAddressUseCase).execute(command);
     }
 }

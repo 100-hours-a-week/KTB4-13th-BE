@@ -4,7 +4,6 @@ import com.book.common.domain.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,14 +21,9 @@ public class Category extends BaseEntity {
     @Column(nullable = false, length = 255)
     private String path;
 
-    public Category(final Long id, final String name, final String path, final LocalDateTime deletedAt) {
-        super(id, deletedAt);
+    public Category(final Long id, final String name, final String path) {
+        super(id);
         this.name = name;
         this.path = path;
-    }
-
-    @Override
-    public boolean isActive() {
-        return deletedAt() == null;
     }
 }

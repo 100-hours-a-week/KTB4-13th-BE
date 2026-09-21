@@ -1,5 +1,6 @@
 package com.book.core.category.infrastructure.persistence.repository;
 
+import com.book.common.domain.EntityStatus;
 import com.book.core.category.application.port.CategoryRepositoryPort;
 import com.book.core.category.domain.Category;
 import java.util.List;
@@ -13,6 +14,6 @@ public class CategoryRepositoryAdapter implements CategoryRepositoryPort {
 
     @Override
     public List<Category> findActiveCategories() {
-        return jpaRepository.findAllByDeletedAtIsNull();
+        return jpaRepository.findAllByStatus(EntityStatus.ACTIVE);
     }
 }

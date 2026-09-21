@@ -15,8 +15,7 @@ class GetCategoriesUseCaseTest {
 
     @Test
     void 활성_카테고리_목록을_조회_결과로_변환한다() {
-        categoryRepository.categories =
-                List.of(new Category(7L, "소설", "도서/소설", null), new Category(8L, "에세이", "도서/에세이", null));
+        categoryRepository.categories = List.of(new Category(7L, "소설", "도서/소설"), new Category(8L, "에세이", "도서/에세이"));
 
         final var result = useCase.execute();
 

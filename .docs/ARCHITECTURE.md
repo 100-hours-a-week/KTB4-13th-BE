@@ -119,7 +119,7 @@ Controller와 Domain에는 트랜잭션을 두지 않습니다.
 - 결과 응답의 변환이 필요할 때만 `ResultConverter`를 둡니다. 응답이 없거나 단순한 정적 응답이면 만들지 않습니다.
 - Domain 모델은 별도 업무 Entity를 두지 않습니다. Domain 모델을 HTTP 응답으로 직접 반환하지 않습니다.
 - 사용자 식별자는 API·Command·Port 전반에서 `userId`로 통일합니다.
-- 여러 JPA Domain 모델이 `id`, `status`, `created_at`, `updated_at`, `deleted_at`을 공유하면 `common/domain/BaseEntity`를 상속합니다. 기능 Domain 모델마다 `@Id`와 `@GeneratedValue(strategy = GenerationType.IDENTITY)`를 중복 선언하지 않습니다.
+- 여러 JPA Domain 모델이 `id`, `status`, `created_at`, `updated_at`을 공유하면 `common/domain/BaseEntity`를 상속합니다. 기능 Domain 모델마다 `@Id`와 `@GeneratedValue(strategy = GenerationType.IDENTITY)`를 중복 선언하지 않습니다.
 - 공통 생명주기 컬럼이 없는 Entity까지 `BaseEntity`를 강제하지 않습니다. 공통 기반을 사용하지 않는 모델은 필요한 식별자 매핑을 자체적으로 둡니다.
 - 영속 모델의 공개 생성자는 DB 필수값을 모두 받고, 기존 ID를 복원하는 생성자는 `super(id)`를 호출합니다. 신규 Domain 객체는 ID 없이 생성하고, JPA 복원용 보호된 무인자 생성자만 유효성 검증을 우회할 수 있습니다.
 - Command·Result·DTO는 불변 데이터 전달이 목적이면 record를 우선합니다.
@@ -143,7 +143,7 @@ Command는 생성 시 업무 전제를, Domain은 불변식과 상태 전이를 
 ## 6. 공통 코드와 접근 수준
 
 - `common`에는 기능에 종속되지 않고 여러 기능이 공유하는 코드를 둡니다. 추후 멀티모듈이나 독립 모듈로 분리할 때 기술 중립 코드를 우선합니다.
-- `common/domain`에는 여러 JPA Entity가 공유하는 영속성 생명주기 타입만 둡니다. `BaseEntity`는 공유 `id`·상태를, `BaseTimeEntity`는 생성·수정·삭제 시간을 소유합니다. 업무 규칙은 두지 않습니다.
+- `common/domain`에는 여러 JPA Entity가 공유하는 영속성 생명주기 타입만 둡니다. `BaseEntity`는 공유 `id`·상태·시간을, `BaseTimeEntity`는 생성·수정 시간을 소유합니다. 업무 규칙은 두지 않습니다.
 - `common/response`에는 `ApiResponse<T>(success, data)`, `ErrorResponse(success, code, message, traceId, data)` 및 페이지 응답 계약을 둡니다. `ErrorResponse.data`에는 안전한 부가 정보만 담습니다.
 - 전역 HTTP 예외 처리와 공유 애플리케이션 설정은 각각 `common/exception`, `common/config`에 둡니다.
 - 기능별 DB·외부 연동 설정은 해당 Infrastructure가 소유합니다.

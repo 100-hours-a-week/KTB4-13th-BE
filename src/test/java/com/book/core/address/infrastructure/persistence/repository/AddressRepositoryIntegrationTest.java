@@ -151,4 +151,18 @@ class AddressRepositoryIntegrationTest {
                         values.get("address")))
                 .isInstanceOf(DataAccessException.class);
     }
+
+    @Test
+    void 주소지_마이그레이션은_deleted_at과_order_addresses를_추가하지_않는다() {
+        assertThat(jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM information_schema.columns "
+                                + "WHERE table_schema = DATABASE() AND table_name = 'addresses' AND column_name = 'deleted_at'",
+                        Integer.class))
+                .isZero();
+        assertThat(jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM information_schema.tables "
+                                + "WHERE table_schema = DATABASE() AND table_name = 'order_addresses'",
+                        Integer.class))
+                .isZero();
+    }
 }

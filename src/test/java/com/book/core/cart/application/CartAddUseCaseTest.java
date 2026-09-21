@@ -11,6 +11,7 @@ import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
 import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -109,6 +110,11 @@ class CartAddUseCaseTest {
         public Optional<Cart> findByUserIdWithLock(final Long userId) {
             return Optional.ofNullable(cart);
         }
+
+        @Override
+        public Optional<Cart> findByUserId(final Long userId) {
+            return Optional.ofNullable(cart);
+        }
     }
 
     private static final class FakeCartItemRepository implements CartItemRepositoryPort {
@@ -130,6 +136,11 @@ class CartAddUseCaseTest {
         @Override
         public int countActiveByCartId(final Long cartId) {
             return activeItemCount;
+        }
+
+        @Override
+        public List<CartItem> findActiveByCartId(final Long cartId) {
+            return List.of();
         }
     }
 }

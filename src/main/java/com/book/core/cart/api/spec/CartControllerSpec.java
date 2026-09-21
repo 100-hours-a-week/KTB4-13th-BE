@@ -1,6 +1,7 @@
 package com.book.core.cart.api.spec;
 
 import com.book.core.cart.api.request.AddCartItemRequest;
+import com.book.core.cart.api.response.CartResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -33,4 +34,14 @@ public interface CartControllerSpec {
                             content = @Content(schema = @Schema(implementation = AddCartItemRequest.class)))
                     @Valid
                     final AddCartItemRequest request);
+
+    @Operation(summary = "장바구니 조회", description = "userId에 해당하는 활성 장바구니 항목을 최근 추가순으로 조회합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "장바구니 조회 성공"),
+        @ApiResponse(responseCode = "400", description = "userId가 없거나 양수가 아님"),
+        @ApiResponse(responseCode = "500", description = "장바구니 조회 실패")
+    })
+    ResponseEntity<com.book.common.response.ApiResponse<CartResponse>> getCart(
+            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
+                    final Long userId);
 }

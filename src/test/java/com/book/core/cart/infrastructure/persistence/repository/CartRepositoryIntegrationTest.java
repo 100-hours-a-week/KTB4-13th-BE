@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.cart.application.command.AddCartItemCommand;
+import com.book.core.cart.application.command.GetCartCommand;
+import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
+import com.book.core.cart.application.usecase.GetCartUseCase;
 import java.sql.SQLException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -29,6 +32,9 @@ class CartRepositoryIntegrationTest {
 
     @Autowired
     AddCartItemUseCase addUseCase;
+
+    @Autowired
+    GetCartUseCase getCartUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -66,6 +72,23 @@ class CartRepositoryIntegrationTest {
                 .isInstanceOf(UncategorizedSQLException.class)
                 .rootCause()
                 .isInstanceOf(SQLException.class);
+    }
+
+    @Test
+    void 조회는_활성_항목만_최근_추가순으로_반환한다() {
+        createCart(1003L);
+        addUseCase.execute(new AddCartItemCommand(1003L, 2001L, 1));
+        addUseCase.execute(new AddCartItemCommand(1003L, 2002L, 2));
+        addUseCase.execute(new AddCartItemCommand(1003L, 2003L, 3));
+        final Long cartId = jdbc.queryForObject("SELECT id FROM carts WHERE user_id = ?", Long.class, 1003L);
+        jdbc.update("UPDATE cart_item SET status = 'DELETED' WHERE cart_id = ? AND product_id = ?", cartId, 2001L);
+
+        final var result = getCartUseCase.execute(new GetCartCommand(1003L));
+
+        assertThat(result.items())
+                .extracting(GetCartItemResult::productId, GetCartItemResult::quantity)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(2003L, 3), org.assertj.core.groups.Tuple.tuple(2002L, 2));
     }
 
     private void createCart(final long userId) {

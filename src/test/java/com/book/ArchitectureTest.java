@@ -4,9 +4,11 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.core.address.domain.Address;
+import com.book.core.book.domain.Book;
 import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
 import com.book.core.category.domain.Category;
+import com.book.core.product.domain.Product;
 import com.book.core.sample.domain.Sample;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -86,5 +88,7 @@ class ArchitectureTest {
         assertThat(Cart.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(CartItem.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Category.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(Book.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(Product.class.isAnnotationPresent(Entity.class)).isTrue();
     }
 }

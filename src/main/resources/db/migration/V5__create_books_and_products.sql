@@ -1,0 +1,32 @@
+CREATE TABLE books (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    isbn13 VARCHAR(20),
+    isbn10 VARCHAR(20),
+    title VARCHAR(255) NOT NULL,
+    author VARCHAR(255) NOT NULL,
+    description TEXT,
+    publisher VARCHAR(255) NOT NULL,
+    category VARCHAR(255) NOT NULL,
+    published_at DATE NOT NULL,
+    cover_image_url VARCHAR(255),
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+CREATE TABLE products (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    book_id BIGINT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    thumbnail_url VARCHAR(255),
+    sale_price DECIMAL(19, 2) NOT NULL,
+    discounted_price DECIMAL(19, 2) NOT NULL,
+    cost_price DECIMAL(19, 2) NOT NULL,
+    stock_quantity INTEGER NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    CONSTRAINT fk_products_book FOREIGN KEY (book_id) REFERENCES books (id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;

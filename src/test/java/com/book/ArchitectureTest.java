@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.book.core.address.domain.Address;
 import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
+import com.book.core.category.domain.Category;
 import com.book.core.sample.domain.Sample;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -84,5 +85,6 @@ class ArchitectureTest {
         assertThat(Address.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Cart.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(CartItem.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(Category.class.isAnnotationPresent(Entity.class)).isTrue();
     }
 }

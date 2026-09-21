@@ -56,7 +56,7 @@ JPA Entity와 Lombok을 사용하는 Domain 모델에는 클래스 선언 바로
 
 ### JPA Entity의 공통 식별자 매핑을 일관되게 했는가?
 
-- 여러 Domain Entity가 `id`, `status`, `created_at`, `updated_at`을 공유하면 `common/domain/BaseEntity`를 상속합니다.
+- 여러 Domain Entity가 `id`, `status`, `created_at`, `updated_at`, `deleted_at`을 공유하면 `common/domain/BaseEntity`를 상속합니다.
 - `@Id`와 `@GeneratedValue(strategy = GenerationType.IDENTITY)`는 `BaseEntity`에 한 번만 선언하고, 하위 Entity에 같은 식별자 필드를 중복 선언하지 않습니다.
 - 기존 ID를 전달하는 복원·테스트 생성자는 `super(id)`를 호출합니다. 신규 객체는 ID를 직접 만들지 않고 `null`로 생성해 DB 생성 전략을 따릅니다.
 - `BaseEntity`의 공통 컬럼이 필요하지 않은 Entity까지 상속시키지 않습니다. 해당 Entity는 필요한 식별자 매핑을 자체적으로 선언합니다.

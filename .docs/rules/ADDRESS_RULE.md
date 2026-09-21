@@ -8,7 +8,7 @@
 - 주소지는 요청 회원의 소유로 저장합니다.
 - 등록 시 상태는 `EntityStatus.ACTIVE`입니다.
 - 활성 주소지는 `EntityStatus.ACTIVE`인 주소지입니다.
-- `deleted_at` 컬럼과 관련 마이그레이션은 추가하지 않습니다.
+- `deleted_at`은 공통 `BaseTimeEntity` 생명주기 컬럼으로 저장합니다.
 - 주소지 삭제·복구·삭제 후 기본 배송지 승격은 구현하지 않습니다.
 - 향후 삭제가 필요하면 프로젝트의 `EntityStatus.DELETED`와 `Address.delete()` 규칙을 재사용합니다.
 - 주문 시점의 `order_addresses` 스냅샷은 생성하거나 수정하지 않습니다.

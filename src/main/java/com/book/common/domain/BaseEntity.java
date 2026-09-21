@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,6 +28,11 @@ public abstract class BaseEntity extends BaseTimeEntity {
     private EntityStatus status = EntityStatus.ACTIVE;
 
     protected BaseEntity(final Long id) {
+        this.id = id;
+    }
+
+    protected BaseEntity(final Long id, final LocalDateTime deletedAt) {
+        super(deletedAt);
         this.id = id;
     }
 

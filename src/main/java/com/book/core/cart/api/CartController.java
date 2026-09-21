@@ -5,6 +5,7 @@ import com.book.core.cart.api.converter.CartCommandConverter;
 import com.book.core.cart.api.converter.CartResultConverter;
 import com.book.core.cart.api.request.AddCartItemRequest;
 import com.book.core.cart.api.request.DeleteCartItemsRequest;
+import com.book.core.cart.api.request.ModifyCartItemRequest;
 import com.book.core.cart.api.response.CartResponse;
 import com.book.core.cart.api.spec.CartControllerSpec;
 import com.book.core.cart.application.service.CartService;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -57,6 +59,17 @@ class CartController implements CartControllerSpec {
             @Valid @RequestBody final DeleteCartItemsRequest request) {
         final var command = commandConverter.toDeleteCartItemsCommand(userId, request);
         cartService.deleteCartItems(command);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @PutMapping("/items/{cartItemId}")
+    public ResponseEntity<ApiResponse<Void>> modifyCartItem(
+            @Positive @RequestParam("userId") final Long userId,
+            @Positive @PathVariable("cartItemId") final Long cartItemId,
+            @Valid @RequestBody final ModifyCartItemRequest request) {
+        final var command = commandConverter.toModifyCartItemCommand(userId, cartItemId, request);
+        cartService.modifyCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 

@@ -22,6 +22,7 @@ dependencies {
     implementation("org.springframework.security:spring-security-oauth2-jose")
     implementation("org.springframework.security:spring-security-oauth2-resource-server")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
+    implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
     runtimeOnly("org.flywaydb:flyway-mysql")
     runtimeOnly("com.mysql:mysql-connector-j")
     compileOnly("org.projectlombok:lombok")
@@ -42,18 +43,60 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags("integration")
+    }
     finalizedBy(tasks.jacocoTestReport)
 }
+
+val integrationTest = tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests that require external infrastructure."
+    group = "verification"
+    useJUnitPlatform {
+        includeTags("integration")
+    }
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    shouldRunAfter(tasks.test)
+}
+
 jacoco { toolVersion = "0.8.15" }
+
+val logicClasses = files(layout.buildDirectory.dir("classes/java/main"))
+    .asFileTree
+    .matching {
+        include("com/book/core/**/application/usecase/**/*.class")
+        include("com/book/core/**/domain/**/*.class")
+    }
+
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
+    classDirectories.setFrom(logicClasses)
     reports {
         xml.required.set(true)
         html.required.set(true)
     }
 }
-tasks.check { dependsOn(tasks.jacocoTestReport) }
+
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.test)
+    classDirectories.setFrom(logicClasses)
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(tasks.jacocoTestReport)
+    dependsOn(tasks.jacocoTestCoverageVerification)
+    dependsOn(integrationTest)
+}
 tasks.jar { enabled = false }
 
 spotless {

@@ -1,6 +1,6 @@
 package com.book.core.auth.infrastructure.security;
 
-import com.book.core.auth.domain.exception.AuthErrorCode;
+import com.book.common.exception.ErrorCode;
 import com.book.support.web.ErrorResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,7 +27,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
             final HttpServletResponse response,
             final AuthenticationException exception)
             throws IOException, ServletException {
-        final AuthErrorCode errorCode = AuthErrorCode.INVALID_ACCESS_TOKEN;
+        final ErrorCode errorCode = ErrorCode.INVALID_ACCESS_TOKEN;
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

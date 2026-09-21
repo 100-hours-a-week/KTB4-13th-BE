@@ -1,12 +1,12 @@
 package com.book.core.sample.application.command;
 
-import com.book.common.exception.BusinessException;
-import com.book.core.sample.domain.exception.SampleErrorCode;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 
 public record SampleQueryCommand(Long sampleId) {
     public SampleQueryCommand {
         if (sampleId == null || sampleId <= 0) {
-            throw new BusinessException(SampleErrorCode.INVALID_SAMPLE_ID);
+            throw new CoreException(ErrorCode.INVALID_SAMPLE_ID);
         }
     }
 }

@@ -1,19 +1,11 @@
 package com.book.common.exception;
 
-public class BusinessException extends RuntimeException {
-    private final ErrorCode errorCode;
-
+public class BusinessException extends CoreException {
     public BusinessException(final ErrorCode errorCode) {
-        super(errorCode.message());
-        this.errorCode = errorCode;
+        super(errorCode);
     }
 
     public BusinessException(final ErrorCode errorCode, final Throwable cause) {
-        super(errorCode.message(), cause);
-        this.errorCode = errorCode;
-    }
-
-    public ErrorCode errorCode() {
-        return errorCode;
+        super(errorCode, cause);
     }
 }

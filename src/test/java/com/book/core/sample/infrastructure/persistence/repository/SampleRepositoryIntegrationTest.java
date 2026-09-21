@@ -8,6 +8,7 @@ import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.sample.application.port.SampleRepository;
 import com.book.core.sample.domain.Sample;
 import java.sql.SQLException;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,6 +24,7 @@ import org.testcontainers.mysql.MySQLContainer;
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers
+@Tag("integration")
 class SampleRepositoryIntegrationTest {
     @Container
     @ServiceConnection
@@ -50,10 +52,8 @@ class SampleRepositoryIntegrationTest {
         assertThat(found.id()).isEqualTo(second.id());
         assertThat(found.name()).isEqualTo("둘째 책");
         assertThat(repository.findById(Long.MAX_VALUE)).isEmpty();
-        assertThat(jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '1' AND success = 1",
-                        Integer.class))
-                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1", Integer.class))
+                .isEqualTo(4);
     }
 
     @Test

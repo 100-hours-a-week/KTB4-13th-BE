@@ -1,10 +1,15 @@
 package com.book;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import com.book.core.cart.domain.Cart;
+import com.book.core.cart.domain.CartItem;
+import com.book.core.sample.domain.Sample;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import jakarta.persistence.Entity;
 import org.junit.jupiter.api.Test;
 
 class ArchitectureTest {
@@ -13,19 +18,20 @@ class ArchitectureTest {
             .importPackages("com.book");
 
     @Test
-    void 도메인은_상위_계층과_외부_기술에_의존하지_않는다() {
+    void 도메인_모델은_상위_계층과_웹_기술에_의존하지_않는다() {
         noClasses()
                 .that()
-                .resideInAPackage("..domain..")
+                .resideInAPackage("com.book.core..domain..")
                 .should()
                 .dependOnClassesThat()
                 .resideInAnyPackage(
                         "..application..",
                         "..api..",
                         "..infrastructure..",
-                        "com.book.support..",
+                        "com.book.common.config..",
+                        "com.book.common.logging..",
+                        "com.book.common.response..",
                         "org.springframework..",
-                        "jakarta.persistence..",
                         "com.fasterxml.jackson..")
                 .check(CLASSES);
     }
@@ -40,7 +46,9 @@ class ArchitectureTest {
                 .resideInAnyPackage(
                         "..api..",
                         "..infrastructure..",
-                        "com.book.support..",
+                        "com.book.common.config..",
+                        "com.book.common.logging..",
+                        "com.book.common.response..",
                         "jakarta.persistence..",
                         "org.springframework.data..",
                         "org.springframework.web..")
@@ -56,5 +64,23 @@ class ArchitectureTest {
                 .dependOnClassesThat()
                 .resideInAnyPackage("..infrastructure..")
                 .check(CLASSES);
+    }
+
+    @Test
+    void 공통_코드는_기능에_의존하지_않는다() {
+        noClasses()
+                .that()
+                .resideInAPackage("com.book.common..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAPackage("com.book.core..")
+                .check(CLASSES);
+    }
+
+    @Test
+    void 업무_모델은_JPA_Entity를_겸한다() {
+        assertThat(Sample.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(Cart.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(CartItem.class.isAnnotationPresent(Entity.class)).isTrue();
     }
 }

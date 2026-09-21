@@ -17,6 +17,7 @@ jobs:
   gradle-check:
     name: Gradle check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -43,7 +44,7 @@ jobs:
           test -s build/reports/jacoco/test/jacocoTestReport.xml
           test -s build/reports/jacoco/test/html/index.html
 
-      - name: Publish JaCoCo report to PR
+      - name: Publish JaCoCo report to PR (informational)
         if: ${{ always() && github.event_name == 'pull_request' }}
         continue-on-error: true
         uses: madrapps/jacoco-report@50d3aff4548aa991e6753342d9ba291084e63848 # v1.7.2
@@ -51,7 +52,6 @@ jobs:
           title: "테스트 커버리지"
           paths: ${{ github.workspace }}/build/reports/jacoco/test/jacocoTestReport.xml
           token: ${{ secrets.GITHUB_TOKEN }}
-          min-coverage-overall: 90
           update-comment: true
 
       - name: Upload JaCoCo report

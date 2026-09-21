@@ -7,7 +7,7 @@ description: 변경 내용을 분석해 이 프로젝트의 Git 규칙에 맞는
 
 ## 변경 확인
 
-저장소 루트의 [Git 규칙](../../../.docs/.convetions/GIT_CONVETIONS.md)을 읽는다.
+저장소 루트의 [Git 규칙](../../../.docs/.conventions/GIT_CONVETIONS.md)을 읽는다.
 `git status --short`, 현재 브랜치, `git diff`, `git diff --cached`와 관련 미추적 파일을 확인한다.
 기존에 스테이징된 변경과 이번 요청 범위를 구분한다.
 

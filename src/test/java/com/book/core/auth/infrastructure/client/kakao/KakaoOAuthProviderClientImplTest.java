@@ -240,7 +240,7 @@ class KakaoOAuthProviderClientImplTest {
                 .getTokenValue();
     }
 
-    private void assertError(final String idToken, final AuthErrorCode errorCode, final ErrorCode.Category category) {
+    private void assertError(final String idToken, final ErrorCode errorCode, final ErrorCode.Category category) {
         assertThatThrownBy(() -> client.verify(ProviderType.KAKAO, idToken, EXPECTED_NONCE))
                 .isInstanceOfSatisfying(BusinessException.class, (final var exception) -> {
                     assertThat(exception.errorCode()).isEqualTo(errorCode);

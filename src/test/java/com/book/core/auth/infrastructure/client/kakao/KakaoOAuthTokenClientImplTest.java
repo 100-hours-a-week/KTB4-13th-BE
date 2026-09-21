@@ -167,7 +167,7 @@ class KakaoOAuthTokenClientImplTest {
                         "test-kakao-rest-api-key", clientSecret, "http://localhost:3000/oauth/kakao/callback"));
     }
 
-    private void assertError(final AuthErrorCode errorCode, final ErrorCode.Category category) {
+    private void assertError(final ErrorCode errorCode, final ErrorCode.Category category) {
         assertThatThrownBy(() -> client.exchangeForIdToken(ProviderType.KAKAO, AUTHORIZATION_CODE, CODE_VERIFIER))
                 .isInstanceOfSatisfying(BusinessException.class, (final var exception) -> {
                     assertThat(exception.errorCode()).isEqualTo(errorCode);

@@ -16,11 +16,14 @@ import com.book.core.auth.application.usecase.AuthLoginUseCase;
 import com.book.core.auth.infrastructure.client.kakao.KakaoOAuthProviderClientImpl;
 import com.book.core.auth.infrastructure.client.kakao.KakaoOAuthTokenClientImpl;
 import com.book.core.auth.infrastructure.token.JwtTokenIssuer;
+import com.book.core.cart.application.port.CartRepositoryPort;
+import com.book.core.cart.application.usecase.AddCartItemUseCase;
 import com.book.core.sample.application.port.SampleRepository;
 import com.book.core.sample.application.usecase.SampleCreateUseCase;
 import com.book.core.sample.application.usecase.SampleQueryUseCase;
 import com.book.core.user.application.port.NicknameGenerator;
 import com.book.core.user.infrastructure.nickname.RandomNicknameGenerator;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +46,7 @@ import org.testcontainers.mysql.MySQLContainer;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Testcontainers
+@Tag("integration")
 class BookApplicationTest {
     @Container
     @ServiceConnection
@@ -89,6 +93,8 @@ class BookApplicationTest {
         assertThat(context.getBeansOfType(SampleCreateUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(SampleQueryUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(SampleRepository.class)).hasSize(1);
+        assertThat(context.getBeansOfType(AddCartItemUseCase.class)).hasSize(1);
+        assertThat(context.getBeansOfType(CartRepositoryPort.class)).hasSize(1);
         assertThat(oAuthProviderClient).isInstanceOf(KakaoOAuthProviderClientImpl.class);
         assertThat(oAuthTokenClient).isInstanceOf(KakaoOAuthTokenClientImpl.class);
         assertThat(tokenIssuer).isInstanceOf(JwtTokenIssuer.class);
@@ -108,8 +114,9 @@ class BookApplicationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"  통합 테스트  \"}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.name").value("통합 테스트"))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").isNumber())
+                .andExpect(jsonPath("$.data.name").value("통합 테스트"))
                 .andReturn()
                 .getResponse();
         mvc.perform(get(created.getHeader("Location")).header(HttpHeaders.AUTHORIZATION, authorization))
@@ -117,6 +124,6 @@ class BookApplicationTest {
                 .andExpect(content().json(created.getContentAsString()));
         mvc.perform(get("/api/v1/samples/9223372036854775807").header(HttpHeaders.AUTHORIZATION, authorization))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("SAMPLE_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").value("E401"));
     }
 }

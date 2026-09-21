@@ -7,7 +7,7 @@ description: 현재 브랜치와 연결된 Issue를 확인해 이 프로젝트�
 
 ## 범위 확인
 
-저장소 루트의 [Git 규칙](../../../.docs/.convetions/GIT_CONVETIONS.md)과
+저장소 루트의 [Git 규칙](../../../.docs/.conventions/GIT_CONVETIONS.md)과
 `.github/PULL_REQUEST_TEMPLATE.md`를 읽는다.
 `git remote -v`, 현재 브랜치, `git status --short`, 기존 PR을 확인한다.
 base는 규칙의 `main`으로 두고 최신 원격 참조를 확보한 후

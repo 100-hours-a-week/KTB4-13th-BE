@@ -6,12 +6,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.book.common.exception.BusinessException;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.sample.application.command.SampleCreateCommand;
 import com.book.core.sample.application.command.SampleQueryCommand;
 import com.book.core.sample.application.port.SampleRepository;
 import com.book.core.sample.domain.Sample;
-import com.book.core.sample.domain.exception.SampleErrorCode;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,17 +50,17 @@ class SampleUseCaseTest {
         when(repository.findById(42L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> new SampleQueryUseCase(repository).execute(new SampleQueryCommand(42L)))
                 .isInstanceOfSatisfying(
-                        BusinessException.class,
+                        CoreException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(SampleErrorCode.SAMPLE_NOT_FOUND));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.SAMPLE_NOT_FOUND));
     }
 
     @Test
     void Command는_생성할_때_업무_전제조건을_검증한다() {
-        assertThatThrownBy(() -> new SampleCreateCommand(" ")).isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> new SampleCreateCommand("가".repeat(101))).isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> new SampleQueryCommand(null)).isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> new SampleQueryCommand(0L)).isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> new SampleQueryCommand(-1L)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> new SampleCreateCommand(" ")).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> new SampleCreateCommand("가".repeat(101))).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> new SampleQueryCommand(null)).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> new SampleQueryCommand(0L)).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> new SampleQueryCommand(-1L)).isInstanceOf(CoreException.class);
     }
 }

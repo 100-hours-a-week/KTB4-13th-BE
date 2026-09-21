@@ -1,0 +1,36 @@
+package com.book.core.address.api.spec;
+
+import com.book.core.address.api.request.RegisterAddressRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestParam;
+
+@Tag(name = "Address", description = "배송지 API")
+public interface AddressControllerSpec {
+    @Operation(summary = "배송지 등록", description = "요청 회원의 활성 배송지를 등록합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "배송지 등록 성공"),
+        @ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않거나 등록 정책을 위반함"),
+        @ApiResponse(responseCode = "401", description = "인증 연동 시 인증 정보가 유효하지 않음"),
+        @ApiResponse(responseCode = "500", description = "알 수 없는 오류")
+    })
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> registerAddress(
+            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
+                    final Long userId,
+            @RequestBody(
+                            description = "등록할 배송지 정보",
+                            required = true,
+                            content = @Content(schema = @Schema(implementation = RegisterAddressRequest.class)))
+                    @Valid
+                    final RegisterAddressRequest request);
+}

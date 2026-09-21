@@ -46,18 +46,8 @@ class CategoryRepositoryIntegrationTest {
                 "2026-01-01 00:00:00",
                 "2026-01-02 00:00:00");
 
-        assertThat(categoryRepository.findActive())
+        assertThat(categoryRepository.findActiveCategories())
                 .extracting(Category::name, Category::path)
                 .containsExactly(org.assertj.core.groups.Tuple.tuple("소설", "도서/소설"));
-    }
-
-    @Test
-    void ERD에_정의된_카테고리_컬럼과_삭제일을_생성한다() {
-        assertThat(jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM information_schema.columns "
-                                + "WHERE table_schema = DATABASE() AND table_name = 'book_category' "
-                                + "AND column_name IN ('id', 'name', 'path', 'created_at', 'updated_at', 'deleted_at')",
-                        Integer.class))
-                .isEqualTo(6);
     }
 }

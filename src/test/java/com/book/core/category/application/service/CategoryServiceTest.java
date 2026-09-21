@@ -16,7 +16,7 @@ class CategoryServiceTest {
 
     @Test
     void 카테고리_목록_조회를_UseCase에_위임한다() {
-        final var result = new GetCategoriesResult(List.of());
+        final var result = GetCategoriesResult.of(List.of());
         when(getCategoriesUseCase.execute()).thenReturn(result);
 
         assertThat(categoryService.getCategories()).isSameAs(result);

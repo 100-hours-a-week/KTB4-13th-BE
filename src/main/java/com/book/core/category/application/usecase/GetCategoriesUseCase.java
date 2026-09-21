@@ -14,9 +14,9 @@ public class GetCategoriesUseCase {
 
     @Transactional(readOnly = true)
     public GetCategoriesResult execute() {
-        final var categories = categoryRepository.findActive().stream()
+        final var categories = categoryRepository.findActiveCategories().stream()
                 .map(GetCategoryItemResult::from)
                 .toList();
-        return new GetCategoriesResult(categories);
+        return GetCategoriesResult.of(categories);
     }
 }

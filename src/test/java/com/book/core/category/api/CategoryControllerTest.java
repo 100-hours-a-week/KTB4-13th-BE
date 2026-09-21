@@ -29,7 +29,7 @@ class CategoryControllerTest {
     @Test
     void 상품_카테고리_목록을_공개_API_응답으로_반환한다() throws Exception {
         when(categoryService.getCategories())
-                .thenReturn(new GetCategoriesResult(List.of(new GetCategoryItemResult(7L, "소설", "도서/소설"))));
+                .thenReturn(GetCategoriesResult.of(List.of(new GetCategoryItemResult(7L, "소설", "도서/소설"))));
 
         mvc.perform(get("/api/v1/categories"))
                 .andExpect(status().isOk())
@@ -43,7 +43,7 @@ class CategoryControllerTest {
 
     @Test
     void 카테고리가_없으면_빈_목록을_반환한다() throws Exception {
-        when(categoryService.getCategories()).thenReturn(new GetCategoriesResult(List.of()));
+        when(categoryService.getCategories()).thenReturn(GetCategoriesResult.of(List.of()));
 
         mvc.perform(get("/api/v1/categories"))
                 .andExpect(status().isOk())

@@ -40,7 +40,7 @@ class GetCategoriesUseCaseTest {
         private boolean called;
 
         @Override
-        public List<Category> findActive() {
+        public List<Category> findActiveCategories() {
             called = true;
             return categories;
         }

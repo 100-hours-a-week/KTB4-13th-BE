@@ -12,7 +12,7 @@ public class CategoryRepositoryAdapter implements CategoryRepositoryPort {
     private final CategoryJpaRepository jpaRepository;
 
     @Override
-    public List<Category> findActive() {
-        return jpaRepository.findByDeletedAtIsNull();
+    public List<Category> findActiveCategories() {
+        return jpaRepository.findAllByDeletedAtIsNull();
     }
 }

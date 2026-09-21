@@ -1,6 +1,7 @@
 package com.book.core.cart.api.spec;
 
 import com.book.core.cart.api.request.AddCartItemRequest;
+import com.book.core.cart.api.request.ModifyCartItemRequest;
 import com.book.core.cart.api.response.CartResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Cart", description = "장바구니 API")
@@ -34,6 +36,23 @@ public interface CartControllerSpec {
                             content = @Content(schema = @Schema(implementation = AddCartItemRequest.class)))
                     @Valid
                     final AddCartItemRequest request);
+
+    @Operation(summary = "장바구니 상품 수량 변경", description = "요청 회원의 활성 장바구니 상품 수량을 변경합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "수량 변경 성공"),
+        @ApiResponse(responseCode = "400", description = "요청 오류"),
+        @ApiResponse(responseCode = "404", description = "장바구니 상품을 찾을 수 없음")
+    })
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> modifyCartItem(
+            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
+                    final Long userId,
+            @Parameter(in = ParameterIn.PATH, required = true, example = "11") @Positive @PathVariable("cartItemId")
+                    final Long cartItemId,
+            @RequestBody(
+                            required = true,
+                            content = @Content(schema = @Schema(implementation = ModifyCartItemRequest.class)))
+                    @Valid
+                    final ModifyCartItemRequest request);
 
     @Operation(summary = "장바구니 조회", description = "userId에 해당하는 활성 장바구니 항목을 최근 추가순으로 조회합니다.")
     @ApiResponses({

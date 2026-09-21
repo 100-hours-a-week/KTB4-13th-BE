@@ -12,7 +12,7 @@ import com.book.core.address.domain.Address;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-class AddressRegisterUseCaseTest {
+class RegisterAddressUseCaseTest {
     private final FakeAddressRepository addressRepository = new FakeAddressRepository();
     private final RegisterAddressUseCase useCase = new RegisterAddressUseCase(addressRepository);
 

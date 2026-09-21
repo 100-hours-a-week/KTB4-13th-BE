@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.core.address.api.converter.AddressCommandConverter;
+import com.book.core.address.api.converter.AddressResultConverter;
 import com.book.core.address.application.command.RegisterAddressCommand;
 import com.book.core.address.application.service.AddressService;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AddressController.class)
-@Import(AddressCommandConverter.class)
+@Import({AddressCommandConverter.class, AddressResultConverter.class})
 @ActiveProfiles("test")
 class AddressControllerTest {
     @Autowired

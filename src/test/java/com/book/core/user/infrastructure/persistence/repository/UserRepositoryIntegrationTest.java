@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.CommonErrorCode;
+import com.book.core.auth.application.port.OAuthProviderClient;
+import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.user.application.command.UserResolveCommand;
 import com.book.core.user.application.port.UserProviderRepository;
 import com.book.core.user.application.port.UserRepository;
@@ -20,6 +22,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -43,6 +46,12 @@ class UserRepositoryIntegrationTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @MockitoBean
+    OAuthProviderClient oAuthProviderClient;
+
+    @MockitoBean
+    TokenIssuer tokenIssuer;
 
     @Test
     void DB가_timestamp와_activeFlag를_생성하고_nullable_email을_저장한다() {

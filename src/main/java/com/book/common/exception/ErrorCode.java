@@ -11,6 +11,19 @@ public enum ErrorCode {
     DEFAULT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E500", "알 수 없는 오류가 발생했습니다.", LogLevel.ERROR),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "E400", "요청 형식이 올바르지 않습니다.", LogLevel.INFO),
     STORAGE_FAILURE(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_FAILURE", "저장소 작업을 완료할 수 없습니다.", LogLevel.ERROR),
+    INVALID_AUTHORIZATION_CODE(
+            HttpStatus.UNAUTHORIZED, "INVALID_AUTHORIZATION_CODE", "인가 코드가 유효하지 않습니다.", LogLevel.INFO),
+    INVALID_ID_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_ID_TOKEN", "ID Token이 유효하지 않습니다.", LogLevel.INFO),
+    OAUTH_PROVIDER_UNAVAILABLE(
+            HttpStatus.BAD_GATEWAY, "OAUTH_PROVIDER_UNAVAILABLE", "외부 인증 서비스를 사용할 수 없습니다.", LogLevel.ERROR),
+    OAUTH_PROVIDER_CONFIGURATION_ERROR(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "OAUTH_PROVIDER_CONFIGURATION_ERROR",
+            "외부 인증 서비스 설정이 올바르지 않습니다.",
+            LogLevel.ERROR),
+    OAUTH_TOKEN_EXCHANGE_FAILURE(
+            HttpStatus.INTERNAL_SERVER_ERROR, "OAUTH_TOKEN_EXCHANGE_FAILURE", "외부 인증 토큰을 발급받을 수 없습니다.", LogLevel.ERROR),
+    TOKEN_ISSUE_FAILURE(HttpStatus.INTERNAL_SERVER_ERROR, "TOKEN_ISSUE_FAILURE", "인증 토큰을 발급할 수 없습니다.", LogLevel.ERROR),
     INVALID_USER_ID(HttpStatus.BAD_REQUEST, "INVALID_USER_ID", "회원 ID는 양수여야 합니다.", LogLevel.INFO),
     INVALID_NICKNAME(HttpStatus.BAD_REQUEST, "INVALID_NICKNAME", "닉네임은 앞뒤 공백을 제외하고 2자 이상 20자 이하여야 합니다.", LogLevel.INFO),
     INVALID_USER_PROVIDER_ID(HttpStatus.BAD_REQUEST, "INVALID_USER_PROVIDER_ID", "회원 연동 ID는 양수여야 합니다.", LogLevel.INFO),

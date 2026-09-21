@@ -1,86 +1,39 @@
 package com.book.core.address.api.request;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.Set;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
-public final class UpdateAddressRequest {
-    private String label;
-    private boolean labelProvided;
-    private String postalCode;
-    private boolean postalCodeProvided;
-    private String address;
-    private boolean addressProvided;
-    private String detailAddress;
-    private boolean detailAddressProvided;
-    private Boolean defaultAddress;
-    private boolean defaultAddressProvided;
+@JsonDeserialize(using = UpdateAddressRequestDeserializer.class)
+public record UpdateAddressRequest(
+        String label,
+        String postalCode,
+        String address,
+        String detailAddress,
+        Boolean isDefaultAddress,
+        @JsonIgnore Set<String> providedFields) {
 
-    @JsonProperty("label")
-    public void setLabel(final String label) {
-        this.labelProvided = true;
-        this.label = label;
-    }
-
-    @JsonProperty("postalCode")
-    public void setPostalCode(final String postalCode) {
-        this.postalCodeProvided = true;
-        this.postalCode = postalCode;
-    }
-
-    @JsonProperty("address")
-    public void setAddress(final String address) {
-        this.addressProvided = true;
-        this.address = address;
-    }
-
-    @JsonProperty("detailAddress")
-    public void setDetailAddress(final String detailAddress) {
-        this.detailAddressProvided = true;
-        this.detailAddress = detailAddress;
-    }
-
-    @JsonProperty("isDefaultAddress")
-    public void setDefaultAddress(final Boolean defaultAddress) {
-        this.defaultAddressProvided = true;
-        this.defaultAddress = defaultAddress;
-    }
-
-    public String label() {
-        return label;
+    public UpdateAddressRequest {
+        providedFields = Set.copyOf(providedFields);
     }
 
     public boolean hasLabel() {
-        return labelProvided;
-    }
-
-    public String postalCode() {
-        return postalCode;
+        return providedFields.contains("label");
     }
 
     public boolean hasPostalCode() {
-        return postalCodeProvided;
-    }
-
-    public String address() {
-        return address;
+        return providedFields.contains("postalCode");
     }
 
     public boolean hasAddress() {
-        return addressProvided;
-    }
-
-    public String detailAddress() {
-        return detailAddress;
+        return providedFields.contains("address");
     }
 
     public boolean hasDetailAddress() {
-        return detailAddressProvided;
-    }
-
-    public Boolean defaultAddress() {
-        return defaultAddress;
+        return providedFields.contains("detailAddress");
     }
 
     public boolean hasDefaultAddress() {
-        return defaultAddressProvided;
+        return providedFields.contains("isDefaultAddress");
     }
 }

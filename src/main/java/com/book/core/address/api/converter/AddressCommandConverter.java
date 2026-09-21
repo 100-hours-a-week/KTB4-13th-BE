@@ -34,7 +34,7 @@ public class AddressCommandConverter {
                 toPatchField(request.hasPostalCode(), request.postalCode()),
                 toPatchField(request.hasAddress(), request.address()),
                 toPatchField(request.hasDetailAddress(), request.detailAddress()),
-                toPatchField(request.hasDefaultAddress(), request.defaultAddress()));
+                toPatchField(request.hasDefaultAddress(), request.isDefaultAddress()));
     }
 
     private static <T> PatchField<T> toPatchField(final boolean provided, final T value) {

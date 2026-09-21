@@ -16,14 +16,8 @@ public class GetAddressesUseCase {
     @Transactional(readOnly = true)
     public GetAddressesResult execute(final GetAddressesCommand command) {
         final var addresses = addressRepository.findActiveByUserId(command.userId()).stream()
-                .map((final var address) -> new GetAddressItemResult(
-                        address.id(),
-                        address.label(),
-                        address.postalCode(),
-                        address.address(),
-                        address.detailAddress(),
-                        address.isDefaultAddress()))
+                .map(GetAddressItemResult::from)
                 .toList();
-        return new GetAddressesResult(addresses);
+        return GetAddressesResult.of(addresses);
     }
 }

@@ -19,7 +19,8 @@ class CategoryController implements CategoryControllerSpec {
     @Override
     @GetMapping
     public ResponseEntity<ApiResponse<CategoryListResponse>> getCategories() {
-        final var response = CategoryListResponse.from(categoryService.getCategories());
+        final var result = categoryService.getCategories();
+        final var response = CategoryListResponse.from(result);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

@@ -2,7 +2,7 @@ name: PR Labeler
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
 
 concurrency:
   group: pr-labeler-${{ github.event.pull_request.number }}
@@ -34,7 +34,9 @@ jobs:
               'test/': 'test',
               'docs/': 'chore',
             };
-            const sizeLabels = ['size/S', 'size/M', 'size/L', 'size/XL'];
+            const sizeLabels = ['size/S', 'size/M', 'size/L', 'size/XL', 'size/XXL'];
+            const xxlExceptionLabel = 'size/XXL-exempt';
+            const xxlMarker = '<!-- pr-size-xxl-guard -->';
             const labels = new Set(pullRequest.labels.map(({ name }) => name));
 
             const branchLabel = Object.entries(labelMap).find(([prefix]) => branch.startsWith(prefix))?.[1];
@@ -61,7 +63,7 @@ jobs:
             }
 
             const changes = Number(pullRequest.additions ?? 0) + Number(pullRequest.deletions ?? 0);
-            // 50줄까지 S, 51~200줄 M, 201~500줄 L, 501줄부터 XL.
+            // 50줄까지 S, 51~200줄 M, 201~500줄 L, 501~1,500줄 XL, 1,501줄부터 XXL.
             let sizeLabel = 'size/XL';
             if (changes <= 50) {
               sizeLabel = 'size/S';
@@ -69,6 +71,10 @@ jobs:
               sizeLabel = 'size/M';
             } else if (changes <= 500) {
               sizeLabel = 'size/L';
+            } else if (changes <= 1500) {
+              sizeLabel = 'size/XL';
+            } else {
+              sizeLabel = 'size/XXL';
             }
 
             for (const existingLabel of sizeLabels.filter(label => label !== sizeLabel)) {
@@ -89,6 +95,74 @@ jobs:
                 issue_number: pullRequest.number,
                 labels: [sizeLabel],
               });
+            }
+
+            const isXxl = sizeLabel === 'size/XXL';
+            const isExempt = labels.has(xxlExceptionLabel);
+            const shouldRequestChanges = isXxl && !isExempt && !pullRequest.draft;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo,
+              issue_number: pullRequest.number,
+              per_page: 100,
+            });
+            const xxlComment = comments.find(comment => comment.body?.includes(xxlMarker));
+            let commentBody = null;
+
+            if (shouldRequestChanges) {
+              commentBody = `${xxlMarker}\n변경량이 ${changes}줄로 \`size/XXL\` 기준(1,501줄 이상)입니다. 리뷰 가능한 단위로 분리해 주세요. 정당한 예외라면 \`${xxlExceptionLabel}\` 라벨을 적용할 수 있습니다.`;
+            } else if (isXxl && isExempt) {
+              commentBody = `${xxlMarker}\n\`${xxlExceptionLabel}\` 라벨이 적용되어 자동 분리 요청을 생략했습니다.`;
+            } else if (isXxl && pullRequest.draft) {
+              commentBody = `${xxlMarker}\n초안 PR이므로 자동 분리 요청을 대기 중입니다.`;
+            } else if (xxlComment) {
+              commentBody = `${xxlMarker}\n현재 변경량은 ${changes}줄로 \`size/XXL\` 기준을 벗어나 자동 분리 요청을 해제했습니다.`;
+            }
+
+            if (commentBody && xxlComment && xxlComment.body !== commentBody) {
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: xxlComment.id,
+                body: commentBody,
+              });
+            } else if (commentBody && !xxlComment && shouldRequestChanges) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: pullRequest.number,
+                body: commentBody,
+              });
+            }
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              ...context.repo,
+              pull_number: pullRequest.number,
+              per_page: 100,
+            });
+            const xxlReviews = reviews.filter(review => review.body?.includes(xxlMarker));
+            const changesRequestedReviews = xxlReviews.filter(review => review.state === 'CHANGES_REQUESTED');
+
+            if (shouldRequestChanges && changesRequestedReviews.length === 0) {
+              await github.rest.pulls.createReview({
+                ...context.repo,
+                pull_number: pullRequest.number,
+                body: `${xxlMarker}\n변경량이 1,501줄 이상입니다. PR을 분리하거나 \`${xxlExceptionLabel}\` 라벨을 적용해 예외를 표시해 주세요.`,
+                event: 'REQUEST_CHANGES',
+              });
+            } else if (!shouldRequestChanges) {
+              for (const review of changesRequestedReviews) {
+                try {
+                  await github.rest.pulls.dismissReview({
+                    ...context.repo,
+                    pull_number: pullRequest.number,
+                    review_id: review.id,
+                    message: isExempt
+                      ? 'XXL 예외 라벨이 적용되어 자동 변경 요청을 해제합니다.'
+                      : '변경량이 XXL 기준을 벗어나 자동 변경 요청을 해제합니다.',
+                    event: 'DISMISS',
+                  });
+                } catch (error) {
+                  core.warning(`자동 변경 요청 해제 실패(review ${review.id}): ${error.message}`);
+                }
+              }
             }
 
             core.info(`변경량 ${changes}줄에 ${sizeLabel} 라벨을 적용했습니다.`);

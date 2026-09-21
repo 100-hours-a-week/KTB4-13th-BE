@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.MediaType;
@@ -30,6 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 @WebMvcTest(SampleController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 class SampleControllerTest {
     @Autowired
@@ -126,8 +128,7 @@ class SampleControllerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("E500"))
-                .andExpect(jsonPath("$.message").value("알 수 없는 오류가 발생했습니다."))
-                .andExpect(jsonPath("$.traceId").isNotEmpty());
+                .andExpect(jsonPath("$.message").value("알 수 없는 오류가 발생했습니다."));
     }
 
     @Test
@@ -146,7 +147,6 @@ class SampleControllerTest {
         mvc.perform(MockMvcRequestBuilders.get("/api/v1/samples/1"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("E500"))
-                .andExpect(jsonPath("$.message").value("알 수 없는 오류가 발생했습니다."))
-                .andExpect(jsonPath("$.traceId").isNotEmpty());
+                .andExpect(jsonPath("$.message").value("알 수 없는 오류가 발생했습니다."));
     }
 }

@@ -32,8 +32,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
@@ -78,6 +80,13 @@ class BookApplicationTest {
     @Qualifier("kakaoJwtDecoder")
     JwtDecoder kakaoJwtDecoder;
 
+    @Autowired
+    @Qualifier("serviceJwtDecoder")
+    JwtDecoder serviceJwtDecoder;
+
+    @Autowired
+    SecurityFilterChain securityFilterChain;
+
     @Test
     void 전체_Context에_각_UseCase와_Repository가_한_개씩_등록된다() {
         assertThat(context.getBeansOfType(AuthLoginUseCase.class)).hasSize(1);
@@ -93,12 +102,15 @@ class BookApplicationTest {
         assertThat(AopUtils.getTargetClass(refreshTokenHasher).getSimpleName()).isEqualTo("Sha256RefreshTokenHasher");
         assertThat(AopUtils.getTargetClass(refreshSessionRepository).getSimpleName())
                 .isEqualTo("RefreshSessionRepositoryImpl");
-        assertThat(kakaoJwtDecoder).isNotNull();
+        assertThat(kakaoJwtDecoder).isNotSameAs(serviceJwtDecoder);
+        assertThat(securityFilterChain).isNotNull();
     }
 
     @Test
     void HTTP_생성과_조회를_실제_MySQL까지_연결한다() throws Exception {
+        final String authorization = "Bearer " + tokenIssuer.issue(1L).accessToken();
         final var created = mvc.perform(post("/api/v1/samples")
+                        .header(HttpHeaders.AUTHORIZATION, authorization)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"  통합 테스트  \"}"))
                 .andExpect(status().isCreated())
@@ -107,10 +119,10 @@ class BookApplicationTest {
                 .andExpect(jsonPath("$.data.name").value("통합 테스트"))
                 .andReturn()
                 .getResponse();
-        mvc.perform(get(created.getHeader("Location")))
+        mvc.perform(get(created.getHeader("Location")).header(HttpHeaders.AUTHORIZATION, authorization))
                 .andExpect(status().isOk())
                 .andExpect(content().json(created.getContentAsString()));
-        mvc.perform(get("/api/v1/samples/9223372036854775807"))
+        mvc.perform(get("/api/v1/samples/9223372036854775807").header(HttpHeaders.AUTHORIZATION, authorization))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("E401"));
     }

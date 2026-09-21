@@ -5,6 +5,7 @@
 - 상품 상세 조회 API는 공개 `GET /api/v1/products/{productId}`다.
 - 상품 상세 API의 경로와 응답 식별자는 모두 `productId`를 사용한다.
 - 활성 상품과 상품이 참조하는 활성 도서만 조회한다. 활성 상태는 `status = ACTIVE`다.
+- 상품을 찾을 수 없거나 활성 상태가 아니면 E404 `상품을 찾을 수 없습니다.`를 반환한다.
 - 상품은 `products.book_id`로 `books.id`를 참조한다.
 - HTTP 응답 외피는 프로젝트의 `ApiResponse` 계약(`success`, `data`)을 따른다.
 - 현재 Flyway에 리뷰·쿠폰 테이블이 없으므로 상세 응답의 `reviewCount`와 `reviewRate`는 0, `coupons`는 빈 목록으로 반환한다.

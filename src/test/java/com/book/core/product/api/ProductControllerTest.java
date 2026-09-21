@@ -91,7 +91,7 @@ class ProductControllerTest {
         mvc.perform(get("/api/v1/products/20"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("E404"))
-                .andExpect(jsonPath("$.message").value("해당 데이터를 찾을 수 없습니다."));
+                .andExpect(jsonPath("$.message").value("상품을 찾을 수 없습니다."));
     }
 
     @Test

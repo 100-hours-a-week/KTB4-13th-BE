@@ -16,7 +16,7 @@ public enum ErrorCode {
     CART_ITEM_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "E8000", "장바구니에 담을 수 있는 상품 수를 초과했습니다.", LogLevel.INFO),
     INVALID_CART_ITEM_QUANTITY(HttpStatus.BAD_REQUEST, "E400", "장바구니 상품 수량은 1 이상 500 이하여야 합니다.", LogLevel.INFO),
     CART_NOT_FOUND(HttpStatus.NOT_FOUND, "E401", "장바구니를 찾을 수 없습니다.", LogLevel.INFO),
-    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "해당 데이터를 찾을 수 없습니다.", LogLevel.INFO),
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "상품을 찾을 수 없습니다.", LogLevel.INFO),
     INVALID_SAMPLE_NAME(HttpStatus.BAD_REQUEST, "E400", "이름은 앞뒤 공백을 제외하고 1자 이상 100자 이하여야 합니다.", LogLevel.INFO),
     INVALID_SAMPLE_ID(HttpStatus.BAD_REQUEST, "E400", "샘플 ID는 양수여야 합니다.", LogLevel.INFO),
     SAMPLE_NOT_FOUND(HttpStatus.NOT_FOUND, "E401", "샘플을 찾을 수 없습니다.", LogLevel.INFO);

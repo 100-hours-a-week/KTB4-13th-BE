@@ -13,11 +13,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
 import java.security.Principal;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Address", description = "배송지 API")
@@ -30,7 +28,7 @@ public interface AddressControllerSpec {
         @ApiResponse(responseCode = "500", description = "알 수 없는 오류")
     })
     ResponseEntity<com.book.common.response.ApiResponse<Void>> registerAddress(
-            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
+            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @RequestParam("userId")
                     final Long userId,
             @RequestBody(
                             description = "등록할 배송지 정보",
@@ -47,13 +45,11 @@ public interface AddressControllerSpec {
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @ApiResponse(responseCode = "500", description = "알 수 없는 오류")
     })
-    ResponseEntity<com.book.common.response.ApiResponse<AddressListResponse>> listAddresses(
-            @Parameter(
-                            in = ParameterIn.HEADER,
-                            name = HttpHeaders.AUTHORIZATION,
-                            required = true,
-                            example = "Bearer {accessToken}")
-                    @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
-                    final String authorization,
+    @Parameter(
+            in = ParameterIn.HEADER,
+            name = HttpHeaders.AUTHORIZATION,
+            required = true,
+            example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<AddressListResponse>> getAddresses(
             @Parameter(hidden = true) final Principal principal);
 }

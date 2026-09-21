@@ -1,6 +1,6 @@
 package com.book.core.address.application.result;
 
-public record ListAddressItemResult(
+public record GetAddressItemResult(
         Long addressId,
         String addressLabel,
         String addressPostalCode,

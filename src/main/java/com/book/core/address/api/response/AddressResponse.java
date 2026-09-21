@@ -1,6 +1,6 @@
 package com.book.core.address.api.response;
 
-import com.book.core.address.application.result.ListAddressItemResult;
+import com.book.core.address.application.result.GetAddressItemResult;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record AddressResponse(
@@ -10,7 +10,7 @@ public record AddressResponse(
         String address,
         String detailAddress,
         boolean isDefault) {
-    public static AddressResponse from(final ListAddressItemResult result) {
+    public static AddressResponse from(final GetAddressItemResult result) {
         return new AddressResponse(
                 result.addressId(),
                 result.addressLabel(),

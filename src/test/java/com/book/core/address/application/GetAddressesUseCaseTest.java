@@ -2,19 +2,19 @@ package com.book.core.address.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.book.core.address.application.command.ListAddressCommand;
+import com.book.core.address.application.command.GetAddressesCommand;
 import com.book.core.address.application.port.AddressRepositoryPort;
-import com.book.core.address.application.result.ListAddressItemResult;
-import com.book.core.address.application.result.ListAddressResult;
-import com.book.core.address.application.usecase.ListAddressUseCase;
+import com.book.core.address.application.result.GetAddressItemResult;
+import com.book.core.address.application.result.GetAddressesResult;
+import com.book.core.address.application.usecase.GetAddressesUseCase;
 import com.book.core.address.domain.Address;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-class ListAddressUseCaseTest {
+class GetAddressesUseCaseTest {
     private final FakeAddressRepository addressRepository = new FakeAddressRepository();
-    private final ListAddressUseCase useCase = new ListAddressUseCase(addressRepository);
+    private final GetAddressesUseCase useCase = new GetAddressesUseCase(addressRepository);
 
     @Test
     void 요청_회원의_활성_주소지_목록을_조회_결과로_변환한다() {
@@ -22,17 +22,17 @@ class ListAddressUseCaseTest {
                 new Address(101L, 42L, "집", "06236", "서울특별시 강남구 테헤란로 1", "101호", true),
                 new Address(102L, 42L, "회사", "06237", "서울특별시 강남구 테헤란로 2", null, false));
 
-        final ListAddressResult result = useCase.execute(new ListAddressCommand(42L));
+        final GetAddressesResult result = useCase.execute(new GetAddressesCommand(42L));
 
         assertThat(addressRepository.requestedUserId).isEqualTo(42L);
         assertThat(result.addresses())
                 .extracting(
-                        ListAddressItemResult::addressId,
-                        ListAddressItemResult::addressLabel,
-                        ListAddressItemResult::addressPostalCode,
-                        ListAddressItemResult::address,
-                        ListAddressItemResult::detailAddress,
-                        ListAddressItemResult::defaultAddress)
+                        GetAddressItemResult::addressId,
+                        GetAddressItemResult::addressLabel,
+                        GetAddressItemResult::addressPostalCode,
+                        GetAddressItemResult::address,
+                        GetAddressItemResult::detailAddress,
+                        GetAddressItemResult::defaultAddress)
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple(101L, "집", "06236", "서울특별시 강남구 테헤란로 1", "101호", true),
                         org.assertj.core.groups.Tuple.tuple(102L, "회사", "06237", "서울특별시 강남구 테헤란로 2", null, false));
@@ -40,7 +40,7 @@ class ListAddressUseCaseTest {
 
     @Test
     void 주소지가_없으면_빈_목록을_반환한다() {
-        final ListAddressResult result = useCase.execute(new ListAddressCommand(42L));
+        final GetAddressesResult result = useCase.execute(new GetAddressesCommand(42L));
 
         assertThat(result.addresses()).isEmpty();
     }

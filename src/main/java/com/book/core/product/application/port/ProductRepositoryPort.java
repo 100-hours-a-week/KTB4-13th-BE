@@ -4,5 +4,5 @@ import com.book.core.product.domain.Product;
 import java.util.Optional;
 
 public interface ProductRepositoryPort {
-    Optional<Product> findActiveById(Long productId);
+    Optional<Product> findActiveById(final Long productId);
 }

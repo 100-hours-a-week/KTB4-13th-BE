@@ -149,7 +149,10 @@ class AddressRepositoryIntegrationTest {
                 jdbc.queryForObject("SELECT id FROM addresses WHERE user_id = ?", Long.class, 10007L);
 
         assertThat(addressRepository.findActiveByIdAndUserId(activeAddress.id(), 10006L))
-                .hasValue(activeAddress);
+                .hasValueSatisfying(address -> {
+                    assertThat(address.id()).isEqualTo(activeAddress.id());
+                    assertThat(address.userId()).isEqualTo(10006L);
+                });
         assertThat(addressRepository.findActiveByIdAndUserId(activeAddress.id(), 99999L))
                 .isEmpty();
         assertThat(addressRepository.findActiveByIdAndUserId(deletedAddressId, 10007L))

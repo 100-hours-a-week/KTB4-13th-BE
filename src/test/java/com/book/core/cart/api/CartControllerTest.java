@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.core.cart.api.converter.CartCommandConverter;
+import com.book.core.cart.api.converter.CartResultConverter;
 import com.book.core.cart.application.command.AddCartItemCommand;
 import com.book.core.cart.application.service.CartService;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(CartController.class)
-@Import(CartCommandConverter.class)
+@Import({CartCommandConverter.class, CartResultConverter.class})
 @ActiveProfiles("test")
 class CartControllerTest {
     @Autowired

@@ -14,6 +14,11 @@ public class CartRepositoryAdapter implements CartRepositoryPort {
 
     @Override
     public Optional<Cart> findByUserIdWithLock(final Long userId) {
+        return jpaRepository.findByUserIdWithLock(userId);
+    }
+
+    @Override
+    public Optional<Cart> findByUserId(final Long userId) {
         return jpaRepository.findByUserId(userId);
     }
 }

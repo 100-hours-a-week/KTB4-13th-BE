@@ -38,7 +38,15 @@
 
 - name: "size/XL"
   color: "b60205"
-  description: "변경량이 매우 큰 PR"
+  description: "변경량이 큰 PR(501~1,500줄)"
+
+- name: "size/XXL"
+  color: "8b0000"
+  description: "변경량이 매우 큰 PR(1,501줄 이상)"
+
+- name: "size/XXL-exempt"
+  color: "6a737d"
+  description: "XXL PR 자동 분리 요청 예외"
 
 - name: "review-needed"
   color: "f9d0c4"

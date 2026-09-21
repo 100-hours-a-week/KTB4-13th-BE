@@ -37,6 +37,16 @@ class CartTest {
     }
 
     @Test
+    void 활성_장바구니_상품을_삭제하면_DELETED_상태로_전이한다() {
+        final var item = new CartItem(11L, 1L, 20L, 2);
+
+        item.delete();
+
+        assertThat(item.isDeleted()).isTrue();
+        assertThat(item.isActive()).isFalse();
+    }
+
+    @Test
     void 수량은_1개부터_500개까지_허용한다() {
         assertThatCode(() -> CartItem.from(1L, 20L, 1)).doesNotThrowAnyException();
         assertThatCode(() -> CartItem.from(1L, 20L, 500)).doesNotThrowAnyException();

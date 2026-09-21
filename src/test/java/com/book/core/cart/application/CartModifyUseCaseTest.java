@@ -81,6 +81,11 @@ class CartModifyUseCaseTest {
         }
 
         @Override
+        public List<CartItem> findActiveByUserIdAndIds(final Long userId, final List<Long> cartItemIds) {
+            return List.of();
+        }
+
+        @Override
         public Optional<CartItem> findByCartIdAndProductId(final Long cartId, final Long productId) {
             return Optional.empty();
         }

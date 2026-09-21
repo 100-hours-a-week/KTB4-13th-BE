@@ -135,6 +135,43 @@ class AddressRepositoryIntegrationTest {
                 .isFalse();
     }
 
+    @Test
+    void 수정_대상은_주소지_ID와_회원_ID가_일치하는_ACTIVE_주소만_조회한다() {
+        final Address activeAddress = addressRepository.save(Address.of(10006L, "집", "12345", "서울시 강남구", null, false));
+        jdbc.update(
+                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, status) "
+                        + "VALUES (?, ?, ?, ?, false, 'DELETED')",
+                10007L,
+                "삭제 주소",
+                "12346",
+                "서울시 중구");
+        final Long deletedAddressId =
+                jdbc.queryForObject("SELECT id FROM addresses WHERE user_id = ?", Long.class, 10007L);
+
+        assertThat(addressRepository.findActiveByIdAndUserId(activeAddress.id(), 10006L))
+                .hasValue(activeAddress);
+        assertThat(addressRepository.findActiveByIdAndUserId(activeAddress.id(), 99999L))
+                .isEmpty();
+        assertThat(addressRepository.findActiveByIdAndUserId(deletedAddressId, 10007L))
+                .isEmpty();
+    }
+
+    @Test
+    void 수정_대상_자기_자신은_중복_주소지로_판정하지_않는다() {
+        final Address address = addressRepository.save(Address.of(10008L, "집", "12345", "서울시 강남구", "101호", false));
+        final Address sameAddress = new Address(
+                address.id(),
+                address.userId(),
+                address.label(),
+                "54321",
+                address.address(),
+                address.detailAddress(),
+                address.isDefaultAddress());
+
+        assertThat(addressRepository.existsActiveDuplicateAddress(10008L, sameAddress))
+                .isFalse();
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"label", "postal_code", "address"})
     void 필수_주소지_컬럼의_공백은_DB_제약_예외를_전파한다(final String blankColumn) {

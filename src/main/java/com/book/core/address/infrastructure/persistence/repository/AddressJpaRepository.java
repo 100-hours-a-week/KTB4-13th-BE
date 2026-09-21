@@ -14,6 +14,8 @@ interface AddressJpaRepository extends JpaRepository<Address, Long> {
     Optional<Address> findByUserIdAndDefaultAddressAndStatus(
             final Long userId, final boolean defaultAddress, final EntityStatus status);
 
+    Optional<Address> findByIdAndUserIdAndStatus(final Long id, final Long userId, final EntityStatus status);
+
     List<Address> findByUserIdAndStatusOrderByDefaultAddressDescCreatedAtAscIdAsc(
             final Long userId, final EntityStatus status);
 
@@ -22,6 +24,7 @@ interface AddressJpaRepository extends JpaRepository<Address, Long> {
             from Address address
             where address.userId = :userId
               and address.status = :status
+              and (:addressId is null or address.id <> :addressId)
               and address.label = :label
               and address.address = :address
               and ((:detailAddress is null and address.detailAddress is null)
@@ -29,6 +32,7 @@ interface AddressJpaRepository extends JpaRepository<Address, Long> {
             """)
     boolean existsActiveDuplicateAddress(
             @Param("userId") final Long userId,
+            @Param("addressId") final Long addressId,
             @Param("label") final String label,
             @Param("address") final String address,
             @Param("detailAddress") final String detailAddress,

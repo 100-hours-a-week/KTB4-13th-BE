@@ -9,6 +9,7 @@ import com.book.core.address.application.command.RegisterAddressCommand;
 import com.book.core.address.application.port.AddressRepositoryPort;
 import com.book.core.address.application.usecase.RegisterAddressUseCase;
 import com.book.core.address.domain.Address;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -167,6 +168,11 @@ class RegisterAddressUseCaseTest {
             }
             savedAddress = address;
             return address;
+        }
+
+        @Override
+        public List<Address> findActiveByUserId(final Long userId) {
+            return List.of();
         }
     }
 }

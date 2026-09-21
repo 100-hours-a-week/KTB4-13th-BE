@@ -68,6 +68,61 @@ class AddressRepositoryIntegrationTest {
     }
 
     @Test
+    void 활성_주소를_기본_배송지_우선_생성일_오름차순으로_조회한다() {
+        jdbc.update(
+                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, status, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                10005L,
+                "오래된 주소",
+                "12345",
+                "서울시 중구",
+                false,
+                "ACTIVE",
+                "2026-01-01 00:00:00",
+                "2026-01-01 00:00:00");
+        jdbc.update(
+                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, status, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                10005L,
+                "기본 주소",
+                "12346",
+                "서울시 강남구",
+                true,
+                "ACTIVE",
+                "2026-01-02 00:00:00",
+                "2026-01-02 00:00:00");
+        jdbc.update(
+                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, status, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                10005L,
+                "삭제 주소",
+                "12347",
+                "서울시 서초구",
+                true,
+                "DELETED",
+                "2025-12-31 00:00:00",
+                "2025-12-31 00:00:00");
+        jdbc.update(
+                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, status, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                10005L,
+                "최근 주소",
+                "12348",
+                "서울시 송파구",
+                false,
+                "ACTIVE",
+                "2026-01-03 00:00:00",
+                "2026-01-03 00:00:00");
+
+        assertThat(addressRepository.findActiveByUserId(10005L))
+                .extracting(Address::label, Address::isDefaultAddress)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("기본 주소", true),
+                        org.assertj.core.groups.Tuple.tuple("오래된 주소", false),
+                        org.assertj.core.groups.Tuple.tuple("최근 주소", false));
+    }
+
+    @Test
     void 동일_주소와_상세주소의_중복_판정은_별칭까지_확인하고_우편번호는_사용하지_않는다() {
         addressRepository.save(Address.of(10003L, "집", "12345", "서울시 강남구", "101호", false));
 

@@ -3,6 +3,7 @@ package com.book.core.address.infrastructure.persistence.repository;
 import com.book.common.domain.EntityStatus;
 import com.book.core.address.application.port.AddressRepositoryPort;
 import com.book.core.address.domain.Address;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -31,5 +32,11 @@ public class AddressRepositoryAdapter implements AddressRepositoryPort {
     @Override
     public Address save(final Address address) {
         return jpaRepository.save(address);
+    }
+
+    @Override
+    public List<Address> findActiveByUserId(final Long userId) {
+        return jpaRepository.findByUserIdAndStatusOrderByDefaultAddressDescCreatedAtAscIdAsc(
+                userId, EntityStatus.ACTIVE);
     }
 }

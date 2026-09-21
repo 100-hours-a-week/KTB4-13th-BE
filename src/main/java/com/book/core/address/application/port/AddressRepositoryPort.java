@@ -1,6 +1,7 @@
 package com.book.core.address.application.port;
 
 import com.book.core.address.domain.Address;
+import java.util.List;
 import java.util.Optional;
 
 public interface AddressRepositoryPort {
@@ -11,4 +12,6 @@ public interface AddressRepositoryPort {
     Optional<Address> findActiveDefaultByUserId(final Long userId);
 
     Address save(final Address address);
+
+    List<Address> findActiveByUserId(final Long userId);
 }

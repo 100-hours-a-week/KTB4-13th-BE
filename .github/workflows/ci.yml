@@ -11,13 +11,15 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   gradle-check:
     name: Gradle check
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -64,3 +66,52 @@ jobs:
             build/reports/jacoco/test/jacocoTestReport.xml
           if-no-files-found: error
           retention-days: 14
+
+  publish-image:
+    name: Publish backend image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: gradle-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_CI_ROLE_ARN: ${{ vars.AWS_CI_ROLE_ARN }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Validate image publishing configuration
+        run: |
+          for name in AWS_REGION AWS_CI_ROLE_ARN ECR_REPOSITORY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::GitHub Variable $name 값이 없습니다."
+              exit 1
+            fi
+          done
+
+          [[ "$AWS_REGION" =~ ^[a-z]{2}-[a-z]+-[0-9]+$ ]]
+          [[ "$ECR_REPOSITORY" =~ ^[A-Za-z0-9._/-]+$ ]]
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ env.AWS_CI_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
+
+      - name: Build and push Docker image
+        env:
+          BACKEND_IMAGE: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        run: |
+          docker compose -f compose.build.yml build backend
+          docker compose -f compose.build.yml push backend

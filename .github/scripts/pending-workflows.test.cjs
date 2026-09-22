@@ -58,3 +58,43 @@ test('PR 크기 라벨과 대기 알림 workflow 계약을 유지한다', () => 
   assert.match(pendingAlarm, /now - approvalAt >= oneDay/);
   assert.equal(existsSync(join(root, '.github/workflows/sync-label.yml')), false);
 });
+
+test('CI가 SHA 이미지를 게시하고 CD가 Digest 기준으로 안전하게 배포한다', () => {
+  const ciWorkflow = read('.github/workflows/ci.yml');
+  const cdWorkflow = read('.github/workflows/cd.yml');
+  const buildCompose = read('compose.build.yml');
+  const deployScript = read('scripts/deploy_backend.sh');
+
+  assert.match(ciWorkflow, /AWS_CI_ROLE_ARN/);
+  assert.match(ciWorkflow, /docker compose -f compose\.build\.yml build backend/);
+  assert.match(ciWorkflow, /docker compose -f compose\.build\.yml push backend/);
+
+  assert.match(cdWorkflow, /workflows:\n      - CI/);
+  assert.match(cdWorkflow, /github\.event\.workflow_run\.event == 'push'/);
+  assert.match(cdWorkflow, /github\.event\.workflow_run\.head_branch == 'main'/);
+  assert.match(cdWorkflow, /ref: .*github\.event\.workflow_run\.head_sha/);
+  assert.match(cdWorkflow, /id-token: write/);
+  assert.match(cdWorkflow, /environment: production/);
+  assert.match(cdWorkflow, /image_uri=.*@\$IMAGE_DIGEST/);
+  assert.match(cdWorkflow, /aws ssm send-command/);
+  assert.match(cdWorkflow, /mktemp \/tmp\/deploy-backend-ssm\.XXXXXX/);
+  assert.match(cdWorkflow, /deadline=\$\(\(SECONDS \+ 900\)\)/);
+  assert.doesNotMatch(cdWorkflow, /aws ssm wait command-executed/);
+  assert.doesNotMatch(cdWorkflow, /docker compose -f compose\.build\.yml/);
+  assert.doesNotMatch(cdWorkflow, /amazon-ecr-login/);
+  assert.doesNotMatch(cdWorkflow, /AWS_ACCESS_KEY_ID|ssh-action|:latest/);
+
+  assert.match(buildCompose, /image: \$\{BACKEND_IMAGE:\?BACKEND_IMAGE is required\}/);
+  assert.match(buildCompose, /dockerfile: Dockerfile/);
+
+  assert.match(deployScript, /docker compose --env-file/);
+  assert.match(deployScript, /up -d --no-deps/);
+  assert.match(deployScript, /previous-release\.env/);
+  assert.match(deployScript, /rollback \|\| true/);
+  assert.match(deployScript, /api\/v1\/categories|health_url/);
+  assert.match(deployScript, /docker compose version/);
+  assert.match(deployScript, /flock -n 9/);
+  assert.match(deployScript, /deploy_dir_owner/);
+  assert.match(deployScript, /verify_running_image/);
+  assert.match(deployScript, /trap 'rm -f -- "\$candidate_file"' EXIT/);
+});

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.core.address.application.command.PatchField;
 import com.book.core.address.application.command.UpdateAddressCommand;
 import com.book.core.address.application.port.AddressRepositoryPort;
 import com.book.core.address.application.result.UpdateAddressResult;
@@ -23,25 +22,19 @@ class UpdateAddressUseCaseTest {
     private final UpdateAddressUseCase useCase = new UpdateAddressUseCase(addressRepository);
 
     @Test
-    void 전달된_필드만_정규화해_수정하고_생략된_필드는_유지한다() {
-        addressRepository.target = new Address(101L, 42L, "집", "06236", "서울시 강남구", "101호", false);
+    void 전체_주소지_정보를_정규화해_수정하고_기본_배송지_상태는_유지한다() {
+        addressRepository.target = new Address(101L, 42L, "집", "06236", "서울시 강남구", "101호", true);
 
-        final UpdateAddressResult result = useCase.execute(new UpdateAddressCommand(
-                42L,
-                101L,
-                PatchField.of(" 회사 "),
-                PatchField.absent(),
-                PatchField.absent(),
-                PatchField.absent(),
-                PatchField.absent()));
+        final UpdateAddressResult result =
+                useCase.execute(new UpdateAddressCommand(42L, 101L, " 회사 ", " 12345 ", " 서울시 중구 ", " 202호 "));
 
         assertThat(result.addressId()).isEqualTo(101L);
         assertThat(addressRepository.savedAddress).satisfies(address -> {
             assertThat(address.label()).isEqualTo("회사");
-            assertThat(address.postalCode()).isEqualTo("06236");
-            assertThat(address.address()).isEqualTo("서울시 강남구");
-            assertThat(address.detailAddress()).isEqualTo("101호");
-            assertThat(address.isDefaultAddress()).isFalse();
+            assertThat(address.postalCode()).isEqualTo("12345");
+            assertThat(address.address()).isEqualTo("서울시 중구");
+            assertThat(address.detailAddress()).isEqualTo("202호");
+            assertThat(address.isDefaultAddress()).isTrue();
         });
     }
 
@@ -51,73 +44,9 @@ class UpdateAddressUseCaseTest {
     void detailAddress에_null이나_공백을_전달하면_NULL로_수정한다(final String detailAddress) {
         addressRepository.target = new Address(101L, 42L, "집", "06236", "서울시 강남구", "101호", false);
 
-        useCase.execute(new UpdateAddressCommand(
-                42L,
-                101L,
-                PatchField.absent(),
-                PatchField.absent(),
-                PatchField.absent(),
-                PatchField.of(detailAddress),
-                PatchField.absent()));
+        useCase.execute(new UpdateAddressCommand(42L, 101L, "집", "06236", "서울시 강남구", detailAddress));
 
         assertThat(addressRepository.savedAddress.detailAddress()).isNull();
-    }
-
-    @Test
-    void 기본_배송지로_변경하면_기존_기본_배송지를_해제한다() {
-        final var currentDefault = Address.of(42L, "기존", "11111", "서울시 중구", null, true);
-        addressRepository.target = new Address(101L, 42L, "집", "06236", "서울시 강남구", null, false);
-        addressRepository.defaultAddress = currentDefault;
-
-        useCase.execute(new UpdateAddressCommand(
-                42L,
-                101L,
-                PatchField.absent(),
-                PatchField.absent(),
-                PatchField.absent(),
-                PatchField.absent(),
-                PatchField.of(true)));
-
-        assertThat(addressRepository.savedAddress.isDefaultAddress()).isTrue();
-        assertThat(currentDefault.isDefaultAddress()).isFalse();
-    }
-
-    @Test
-    void 현재_기본_배송지의_false_변경은_E400으로_거부한다() {
-        addressRepository.target = new Address(101L, 42L, "집", "06236", "서울시 강남구", null, true);
-
-        assertThatThrownBy(() -> useCase.execute(new UpdateAddressCommand(
-                        42L,
-                        101L,
-                        PatchField.absent(),
-                        PatchField.absent(),
-                        PatchField.absent(),
-                        PatchField.absent(),
-                        PatchField.of(false))))
-                .isInstanceOfSatisfying(
-                        CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
-
-        assertThat(addressRepository.savedAddress).isNull();
-    }
-
-    @Test
-    void 다른_활성_주소지의_false_변경은_기존_기본_배송지를_유지한다() {
-        final var currentDefault = Address.of(42L, "기존", "11111", "서울시 중구", null, true);
-        addressRepository.target = new Address(101L, 42L, "집", "06236", "서울시 강남구", null, false);
-        addressRepository.defaultAddress = currentDefault;
-
-        useCase.execute(new UpdateAddressCommand(
-                42L,
-                101L,
-                PatchField.absent(),
-                PatchField.absent(),
-                PatchField.absent(),
-                PatchField.absent(),
-                PatchField.of(false)));
-
-        assertThat(currentDefault.isDefaultAddress()).isTrue();
-        assertThat(addressRepository.savedAddress.isDefaultAddress()).isFalse();
     }
 
     @Test
@@ -125,14 +54,7 @@ class UpdateAddressUseCaseTest {
         addressRepository.target = new Address(101L, 42L, "집", "06236", "서울시 강남구", null, false);
         addressRepository.duplicate = true;
 
-        assertThatThrownBy(() -> useCase.execute(new UpdateAddressCommand(
-                        42L,
-                        101L,
-                        PatchField.of("회사"),
-                        PatchField.absent(),
-                        PatchField.absent(),
-                        PatchField.absent(),
-                        PatchField.absent())))
+        assertThatThrownBy(() -> useCase.execute(new UpdateAddressCommand(42L, 101L, "회사", "06236", "서울시 강남구", null)))
                 .isInstanceOfSatisfying(
                         CoreException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.DUPLICATE_ADDRESS));
@@ -142,14 +64,7 @@ class UpdateAddressUseCaseTest {
 
     @Test
     void 수정_대상이_없거나_요청_회원의_소유가_아니면_E403으로_거부한다() {
-        assertThatThrownBy(() -> useCase.execute(new UpdateAddressCommand(
-                        42L,
-                        101L,
-                        PatchField.of("회사"),
-                        PatchField.absent(),
-                        PatchField.absent(),
-                        PatchField.absent(),
-                        PatchField.absent())))
+        assertThatThrownBy(() -> useCase.execute(new UpdateAddressCommand(42L, 101L, "회사", "06236", "서울시 강남구", null)))
                 .isInstanceOfSatisfying(
                         CoreException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.FORBIDDEN));
@@ -157,7 +72,6 @@ class UpdateAddressUseCaseTest {
 
     private static final class FakeAddressRepository implements AddressRepositoryPort {
         private Address target;
-        private Address defaultAddress;
         private boolean duplicate;
         private Address savedAddress;
 
@@ -173,7 +87,7 @@ class UpdateAddressUseCaseTest {
 
         @Override
         public Optional<Address> findActiveDefaultByUserId(final Long userId) {
-            return Optional.ofNullable(defaultAddress);
+            return Optional.empty();
         }
 
         @Override

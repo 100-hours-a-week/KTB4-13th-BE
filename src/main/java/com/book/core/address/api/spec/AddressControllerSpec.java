@@ -95,5 +95,4 @@ public interface AddressControllerSpec {
                     final Long userId,
             @Parameter(in = ParameterIn.PATH, required = true, example = "101") @Positive @PathVariable("addressId")
                     final Long addressId);
-
 }

@@ -77,7 +77,7 @@ Controller → {Feature}CommandConverter → {Feature}Service → {Action}UseCas
 6. `application/port/{Feature}RepositoryPort`는 저장 계약을 정의하고, `infrastructure/persistence/repository/{Feature}RepositoryAdapter`가 `{Feature}JpaRepository`를 조합해 구현합니다.
 7. 응답 변환이 복잡하거나 재사용될 때만 `api/converter/{Feature}ResultConverter`를 추가합니다. `Void` 성공 응답처럼 변환이 없으면 만들지 않습니다.
 
-기존 `Sample`처럼 Service·Converter 없이 직접 UseCase나 `RepositoryImpl`을 호출하는 구조는 레거시 예시입니다. 새 기능의 기준으로 복사하지 않으며, 기존 기능을 수정할 때도 요청 범위를 넘어 일괄 개편하지 않습니다.
+Service·Converter 없이 직접 UseCase나 Repository 구현체를 호출하는 구조는 새 기능의 기준으로 복사하지 않습니다. 기존 기능을 수정할 때도 요청 범위를 넘어 일괄 개편하지 않습니다.
 
 ## 3. UseCase와 주입
 
@@ -87,7 +87,7 @@ Controller의 진입점으로서 여러 CRUD·추가 기능 UseCase의 실행 �
 
 `application/usecase`의 `{Feature}{Action}UseCase`는 구체 클래스입니다.
 현재 코드에서는 `@Service` 또는 프로젝트의 `@UseCase`로 Spring 빈을 등록합니다.
-예: `SampleCreateUseCase`, `SampleQueryUseCase`.
+예: `RegisterAddressUseCase`, `GetAddressesUseCase`.
 한 업무 흐름마다 하나를 두며 동일 역할의 인터페이스와 Service 구현체를 쌍으로 만들지 않습니다.
 Repository·Client는 외부 기술을 격리하고 단위 테스트에서 대체하기 위해 Port를 유지합니다.
 

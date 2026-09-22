@@ -1,7 +1,7 @@
 # book
 
 Spring Boot와 Java 기반의 단일 모듈 프로젝트입니다.
-기본 패키지는 `com.book`이며 Sample 생성과 ID 단건 조회를 제공합니다.
+기본 패키지는 `com.book`이며 주소지 등록·조회와 장바구니 기능을 제공합니다.
 
 ## 구성
 
@@ -35,7 +35,7 @@ src/main/java/com/book/
 신규·수정 기능은 `Controller → CommandConverter → FeatureService → ActionUseCase → Domain/Port` 흐름을 따릅니다.
 `FeatureService`는 CRUD와 추가 기능의 실행 순서를 조율하는 orchestration layer이고, `ActionUseCase`는 트랜잭션과 업무 흐름을 담당합니다.
 저장소는 `RepositoryPort → RepositoryAdapter → JpaRepository` 순서로 연결합니다.
-현재 `CartService`가 이 구조의 기준이며, 기존 `Sample`의 직접 UseCase 호출 구조는 새 기능의 템플릿으로 사용하지 않습니다.
+현재 `CartService`와 `AddressService`가 이 구조의 기준입니다.
 Domain 모델이 JPA Entity를 겸하며, API DTO와 영속 전용 기술 모델은 별도로 유지합니다.
 Spring 빈의 필수 의존성은 `private final`과 `@RequiredArgsConstructor`로 주입합니다.
 
@@ -54,15 +54,12 @@ Java 25와 로컬 MySQL이 필요합니다. MySQL에 `book` 데이터베이스�
 Flyway가 테이블을 생성하고 Hibernate가 매핑을 검증합니다.
 
 ```bash
-curl -i http://localhost:8080/api/v1/samples \
+curl -i 'http://localhost:8080/api/v1/user-addresses?userId=42' \
   -H 'Content-Type: application/json' \
-  -d '{"name":"첫 샘플"}'
-
-curl -i http://localhost:8080/api/v1/samples/1
+  -d '{"label":"집","postalCode":"12345","address":"서울시 강남구","detailAddress":"101호","isDefault":true}'
 ```
 
-생성은 201과 `Location`, 조회는 200을 반환합니다. 성공 응답의 `data` 안에 `id`, `name`이 포함됩니다.
-이름은 앞뒤 공백 제거 후 1~100자이며 잘못된 요청은 400, 없는 ID는 404입니다.
+주소지 등록은 200을 반환하며, 잘못된 요청은 400입니다. 주소지 조회는 인증된 사용자의 활성 주소지를 반환합니다.
 성공 응답은 `success`, `data`를 사용하고, 오류 응답은 `success`, `code`, `message`, `traceId`를 포함합니다. `CoreException`에 안전한 부가 정보가 있으면 `data`가 추가됩니다.
 쓰기·읽기 전용 트랜잭션은 각 UseCase의 public 메서드가 담당합니다.
 
@@ -77,7 +74,7 @@ curl -i http://localhost:8080/api/v1/samples/1
 ./gradlew spotlessApply
 ./gradlew test
 ./gradlew integrationTest
-./gradlew test --tests '*SampleUseCaseTest'
+./gradlew test --tests '*GetAddressesUseCaseTest'
 ```
 
 `test`는 Docker가 필요하지 않은 단위·Controller·아키텍처 테스트를 검증합니다.

@@ -21,7 +21,7 @@ MySQL, Flyway, springdoc-openapi + Swagger UI, Lombok, JUnit 6 + AssertJ + Mocki
 ./gradlew bootRun
 ./gradlew test
 ./gradlew integrationTest
-./gradlew test --tests '*SampleUseCaseTest'
+./gradlew test --tests '*GetAddressesUseCaseTest'
 ./gradlew spotlessApply
 ./gradlew test jacocoTestReport
 ```

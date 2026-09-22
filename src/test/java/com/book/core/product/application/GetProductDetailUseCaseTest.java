@@ -12,6 +12,7 @@ import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.domain.Product;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -73,6 +74,11 @@ class GetProductDetailUseCaseTest {
         @Override
         public Optional<Product> findActiveById(final Long productId) {
             return Optional.ofNullable(product);
+        }
+
+        @Override
+        public List<Product> findActiveProducts(final Long categoryId, final Long cursor, final int limit) {
+            return List.of();
         }
     }
 }

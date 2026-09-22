@@ -9,6 +9,7 @@ import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
 import com.book.core.category.domain.Category;
 import com.book.core.product.domain.Product;
+import com.book.core.product.domain.ProductCategory;
 import com.book.core.sample.domain.Sample;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -90,5 +91,6 @@ class ArchitectureTest {
         assertThat(Category.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Book.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Product.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(ProductCategory.class.isAnnotationPresent(Entity.class)).isTrue();
     }
 }

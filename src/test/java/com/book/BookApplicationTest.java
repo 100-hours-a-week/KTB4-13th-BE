@@ -1,17 +1,15 @@
 package com.book;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.book.core.address.application.port.AddressRepositoryPort;
+import com.book.core.address.application.usecase.GetAddressesUseCase;
+import com.book.core.address.application.usecase.RegisterAddressUseCase;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
-import com.book.core.sample.application.port.SampleRepository;
-import com.book.core.sample.application.usecase.SampleCreateUseCase;
-import com.book.core.sample.application.usecase.SampleQueryUseCase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,29 +42,29 @@ class BookApplicationTest {
 
     @Test
     void 전체_Context에_각_UseCase와_Repository가_한_개씩_등록된다() {
-        assertThat(context.getBeansOfType(SampleCreateUseCase.class)).hasSize(1);
-        assertThat(context.getBeansOfType(SampleQueryUseCase.class)).hasSize(1);
-        assertThat(context.getBeansOfType(SampleRepository.class)).hasSize(1);
+        assertThat(context.getBeansOfType(RegisterAddressUseCase.class)).hasSize(1);
+        assertThat(context.getBeansOfType(GetAddressesUseCase.class)).hasSize(1);
+        assertThat(context.getBeansOfType(AddressRepositoryPort.class)).hasSize(1);
         assertThat(context.getBeansOfType(AddCartItemUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(CartRepositoryPort.class)).hasSize(1);
     }
 
     @Test
-    void HTTP_생성과_조회를_실제_MySQL까지_연결한다() throws Exception {
-        final var created = mvc.perform(post("/api/v1/samples")
+    void HTTP_주소지_등록을_실제_MySQL까지_연결한다() throws Exception {
+        mvc.perform(post("/api/v1/user-addresses")
+                        .param("userId", "42")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"  통합 테스트  \"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").isNumber())
-                .andExpect(jsonPath("$.data.name").value("통합 테스트"))
-                .andReturn()
-                .getResponse();
-        mvc.perform(get(created.getHeader("Location")))
+                        .content("""
+                                {
+                                  "label": "집",
+                                  "postalCode": "12345",
+                                  "address": "서울시 강남구",
+                                  "detailAddress": "101호",
+                                  "isDefault": true
+                                }
+                                """))
                 .andExpect(status().isOk())
-                .andExpect(content().json(created.getContentAsString()));
-        mvc.perform(get("/api/v1/samples/9223372036854775807"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("E401"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 }

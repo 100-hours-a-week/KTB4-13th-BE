@@ -24,6 +24,9 @@ dependencies {
     runtimeOnly("com.mysql:mysql-connector-j")
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("com.querydsl:querydsl-apt:5.1.0:jakarta")
+    annotationProcessor("jakarta.annotation:jakarta.annotation-api")
+    annotationProcessor("jakarta.persistence:jakarta.persistence-api")
 
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
@@ -64,6 +67,7 @@ val logicClasses = files(layout.buildDirectory.dir("classes/java/main"))
     .matching {
         include("com/book/core/**/application/usecase/**/*.class")
         include("com/book/core/**/domain/**/*.class")
+        exclude("com/book/core/**/domain/Q*.class")
     }
 
 tasks.jacocoTestReport {

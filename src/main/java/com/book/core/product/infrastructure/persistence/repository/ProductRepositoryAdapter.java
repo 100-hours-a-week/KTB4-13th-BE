@@ -6,13 +6,13 @@ import com.book.core.product.domain.Product;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
 public class ProductRepositoryAdapter implements ProductRepositoryPort {
     private final ProductJpaRepository jpaRepository;
+    private final ProductQueryRepository queryRepository;
 
     @Override
     public Optional<Product> findActiveById(final Long productId) {
@@ -21,10 +21,6 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort {
 
     @Override
     public List<Product> findActiveProducts(final Long categoryId, final Long cursor, final int limit) {
-        final var pageable = PageRequest.of(0, limit);
-        if (categoryId == null) {
-            return jpaRepository.findAllActive(EntityStatus.ACTIVE, cursor, pageable);
-        }
-        return jpaRepository.findAllActiveByCategory(categoryId, EntityStatus.ACTIVE, cursor, pageable);
+        return queryRepository.findActiveProducts(categoryId, cursor, limit);
     }
 }

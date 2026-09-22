@@ -9,4 +9,6 @@ public interface RefreshSessionRepository {
     Optional<RefreshSession> findActiveByUserId(final Long userId);
 
     Optional<RefreshSession> findActiveByTokenHash(final String tokenHash);
+
+    Optional<RefreshSession> findActiveByTokenHashForUpdate(final String tokenHash);
 }

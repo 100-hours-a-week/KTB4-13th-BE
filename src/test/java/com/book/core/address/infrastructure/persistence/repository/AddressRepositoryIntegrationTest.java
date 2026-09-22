@@ -160,6 +160,70 @@ class AddressRepositoryIntegrationTest {
     }
 
     @Test
+    void 삭제_대상을_제외하고_같은_회원의_최신_ACTIVE_주소를_조회하며_생성일이_같으면_ID가_큰_주소를_선택한다() {
+        jdbc.update(
+                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, status, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                10009L,
+                "삭제 대상",
+                "12345",
+                "서울시 중구",
+                true,
+                "ACTIVE",
+                "2026-01-01 00:00:00",
+                "2026-01-01 00:00:00");
+        final Long targetId = jdbc.queryForObject(
+                "SELECT id FROM addresses WHERE user_id = ? AND label = ?", Long.class, 10009L, "삭제 대상");
+        jdbc.update(
+                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, status, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                10009L,
+                "최근 주소 A",
+                "12346",
+                "서울시 강남구",
+                false,
+                "ACTIVE",
+                "2026-01-02 00:00:00",
+                "2026-01-02 00:00:00");
+        jdbc.update(
+                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, status, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                10009L,
+                "최근 주소 B",
+                "12347",
+                "서울시 서초구",
+                false,
+                "ACTIVE",
+                "2026-01-02 00:00:00",
+                "2026-01-02 00:00:00");
+        jdbc.update(
+                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, status, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                10009L,
+                "삭제된 최신 주소",
+                "12348",
+                "서울시 송파구",
+                false,
+                "DELETED",
+                "2026-01-03 00:00:00",
+                "2026-01-03 00:00:00");
+        jdbc.update(
+                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, status, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                10010L,
+                "다른 회원의 최신 주소",
+                "12349",
+                "서울시 마포구",
+                false,
+                "ACTIVE",
+                "2026-01-04 00:00:00",
+                "2026-01-04 00:00:00");
+
+        assertThat(addressRepository.findLatestActiveByUserIdExcludingId(10009L, targetId))
+                .hasValueSatisfying(address -> assertThat(address.label()).isEqualTo("최근 주소 B"));
+    }
+
+    @Test
     void 수정_대상_자기_자신은_중복_주소지로_판정하지_않는다() {
         final Address address = addressRepository.save(Address.of(10008L, "집", "12345", "서울시 강남구", "101호", false));
         final Address sameAddress = new Address(

@@ -32,6 +32,11 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.book.core.auth.application.usecase.AuthLogoutUseCase;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -44,6 +49,9 @@ class AuthControllerTest {
 
     @MockitoBean
     AuthLoginUseCase authLoginUseCase;
+
+    @MockitoBean
+    AuthLogoutUseCase authLogoutUseCase;
 
     @MockitoBean
     AuthReissueUseCase authReissueUseCase;
@@ -173,5 +181,39 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
 
         verifyNoInteractions(authReissueUseCase);
+    }
+
+    @Test
+    void Access_Token으로_로그아웃하고_Refresh_Cookie를_만료한다() throws Exception {
+        final Jwt jwt = Jwt.withTokenValue("access-token")
+            .header("alg", "HS512")
+            .subject("42")
+            .claim("tokenType", "ACCESS")
+            .build();
+
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+
+        try {
+            final MockHttpServletResponse response = mvc.perform(post("/api/v1/auth/logout"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse();
+
+            verify(authLogoutUseCase).execute(42L);
+
+            assertThat(response.getContentAsString()).isEmpty();
+
+            final String setCookie = response.getHeader(HttpHeaders.SET_COOKIE);
+
+            assertThat(setCookie)
+                .contains("refreshToken=")
+                .contains("Path=/api/v1/auth")
+                .contains("Max-Age=0")
+                .contains("HttpOnly")
+                .contains("SameSite=Lax")
+                .doesNotContain("Secure");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 }

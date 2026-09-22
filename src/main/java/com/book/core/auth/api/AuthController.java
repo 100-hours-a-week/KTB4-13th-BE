@@ -24,12 +24,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.book.core.auth.application.usecase.AuthLogoutUseCase;
+
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/auth")
 class AuthController implements AuthControllerSpec {
     private final AuthLoginUseCase authLoginUseCase;
+    private final AuthLogoutUseCase authLogoutUseCase;
     private final AuthReissueUseCase authReissueUseCase;
     private final RefreshTokenCookieFactory refreshTokenCookieFactory;
 
@@ -59,6 +64,22 @@ class AuthController implements AuthControllerSpec {
                 .header(HttpHeaders.SET_COOKIE, refreshCookie)
                 .body(SuccessResponse.of(AuthReissueResponse.from(result)));
     }
+
+    @PostMapping("/logout")
+    @Override
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal final Jwt jwt) {
+        final Long userId = Long.valueOf(jwt.getSubject());
+
+        authLogoutUseCase.execute(userId);
+
+        final String expiredRefreshCookie =
+            refreshTokenCookieFactory.expire().toString();
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, expiredRefreshCookie)
+            .build();
+    }
+
 
     private String extractRefreshToken(final HttpServletRequest request) {
         final Cookie[] cookies = request.getCookies();

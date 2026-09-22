@@ -63,4 +63,13 @@ class AddressController implements AddressControllerSpec {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
+    @Override
+    @PutMapping("/{addressId}/default")
+    public ResponseEntity<ApiResponse<UpdateAddressResponse>> setDefaultAddress(
+            @Positive @RequestParam("userId") final Long userId,
+            @Positive @PathVariable("addressId") final Long addressId) {
+        final var command = commandConverter.toSetDefaultAddressCommand(userId, addressId);
+        final var response = resultConverter.toSetDefaultAddressResponse(addressService.setDefaultAddress(command));
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
 }

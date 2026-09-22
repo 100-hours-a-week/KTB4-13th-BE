@@ -4,6 +4,7 @@ import com.book.core.address.api.request.RegisterAddressRequest;
 import com.book.core.address.api.request.UpdateAddressRequest;
 import com.book.core.address.application.command.GetAddressesCommand;
 import com.book.core.address.application.command.RegisterAddressCommand;
+import com.book.core.address.application.command.SetDefaultAddressCommand;
 import com.book.core.address.application.command.UpdateAddressCommand;
 import org.springframework.stereotype.Component;
 
@@ -27,5 +28,9 @@ public class AddressCommandConverter {
             final Long userId, final Long addressId, final UpdateAddressRequest request) {
         return new UpdateAddressCommand(
                 userId, addressId, request.label(), request.postalCode(), request.address(), request.detailAddress());
+    }
+
+    public SetDefaultAddressCommand toSetDefaultAddressCommand(final Long userId, final Long addressId) {
+        return new SetDefaultAddressCommand(userId, addressId);
     }
 }

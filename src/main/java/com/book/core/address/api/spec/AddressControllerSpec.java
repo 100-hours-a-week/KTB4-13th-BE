@@ -76,4 +76,24 @@ public interface AddressControllerSpec {
                     @Valid
                     final UpdateAddressRequest request);
 
+    @Operation(summary = "기본 배송지 지정", description = "요청 회원의 활성 배송지를 기본 배송지로 지정합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "기본 배송지 지정 성공"),
+        @ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @ApiResponse(responseCode = "403", description = "기본 배송지 지정 대상에 접근할 수 없음"),
+        @ApiResponse(responseCode = "500", description = "알 수 없는 오류")
+    })
+    @Parameter(
+            in = ParameterIn.HEADER,
+            name = HttpHeaders.AUTHORIZATION,
+            required = true,
+            example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<UpdateAddressResponse>> setDefaultAddress(
+            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
+                    final Long userId,
+            @Parameter(in = ParameterIn.PATH, required = true, example = "101") @Positive @PathVariable("addressId")
+                    final Long addressId);
+
 }

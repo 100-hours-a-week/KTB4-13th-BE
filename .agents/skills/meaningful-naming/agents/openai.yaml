@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meaningful Naming"
+  short_description: "Review Java names and method intent"
+  default_prompt: "Use $meaningful-naming to review or choose intention-revealing Java names and function boundaries."

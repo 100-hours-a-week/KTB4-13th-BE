@@ -44,7 +44,7 @@ class SampleRepositoryIntegrationTest {
         assertThat(found.name()).isEqualTo("둘째 책");
         assertThat(repository.findById(Long.MAX_VALUE)).isEmpty();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1", Integer.class))
-                .isEqualTo(5);
+                .isEqualTo(6);
     }
 
     @Test

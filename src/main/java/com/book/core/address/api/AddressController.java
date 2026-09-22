@@ -59,7 +59,8 @@ class AddressController implements AddressControllerSpec {
             @Positive @PathVariable("addressId") final Long addressId,
             @Valid @RequestBody final UpdateAddressRequest request) {
         final var command = commandConverter.toUpdateAddressCommand(userId, addressId, request);
-        final var response = resultConverter.toUpdateAddressResponse(addressService.updateAddress(command));
+        final var result = addressService.updateAddress(command);
+        final var response = resultConverter.toUpdateAddressResponse(result);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
@@ -69,7 +70,8 @@ class AddressController implements AddressControllerSpec {
             @Positive @RequestParam("userId") final Long userId,
             @Positive @PathVariable("addressId") final Long addressId) {
         final var command = commandConverter.toSetDefaultAddressCommand(userId, addressId);
-        final var response = resultConverter.toSetDefaultAddressResponse(addressService.setDefaultAddress(command));
+        final var result = addressService.setDefaultAddress(command);
+        final var response = resultConverter.toSetDefaultAddressResponse(result);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

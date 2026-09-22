@@ -11,6 +11,7 @@ public enum ErrorCode {
     DEFAULT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E500", "알 수 없는 오류가 발생했습니다.", LogLevel.ERROR),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "E400", "요청 형식이 올바르지 않습니다.", LogLevel.INFO),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "E401", "인증 정보가 유효하지 않습니다.", LogLevel.INFO),
+    FORBIDDEN(HttpStatus.FORBIDDEN, "E403", "올바르지 않은 접근입니다.", LogLevel.INFO),
     ADDRESS_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "E400", "활성 주소지는 최대 3개까지 등록할 수 있습니다.", LogLevel.INFO),
     DUPLICATE_ADDRESS(HttpStatus.BAD_REQUEST, "E400", "동일한 주소·상세주소·별칭이 이미 등록되어 있습니다.", LogLevel.INFO),
     CART_ITEM_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "E8000", "장바구니에 담을 수 있는 상품 수를 초과했습니다.", LogLevel.INFO),

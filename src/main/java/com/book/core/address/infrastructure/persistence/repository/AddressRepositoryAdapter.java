@@ -21,12 +21,17 @@ public class AddressRepositoryAdapter implements AddressRepositoryPort {
     @Override
     public boolean existsActiveDuplicateAddress(final Long userId, final Address address) {
         return jpaRepository.existsActiveDuplicateAddress(
-                userId, address.label(), address.address(), address.detailAddress(), EntityStatus.ACTIVE);
+                userId, address.id(), address.label(), address.address(), address.detailAddress(), EntityStatus.ACTIVE);
     }
 
     @Override
     public Optional<Address> findActiveDefaultByUserId(final Long userId) {
         return jpaRepository.findByUserIdAndDefaultAddressAndStatus(userId, true, EntityStatus.ACTIVE);
+    }
+
+    @Override
+    public Optional<Address> findActiveByIdAndUserId(final Long addressId, final Long userId) {
+        return jpaRepository.findByIdAndUserIdAndStatus(addressId, userId, EntityStatus.ACTIVE);
     }
 
     @Override

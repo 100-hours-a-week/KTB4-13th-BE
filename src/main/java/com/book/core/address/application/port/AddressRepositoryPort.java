@@ -11,6 +11,8 @@ public interface AddressRepositoryPort {
 
     Optional<Address> findActiveDefaultByUserId(final Long userId);
 
+    Optional<Address> findActiveByIdAndUserId(final Long addressId, final Long userId);
+
     Address save(final Address address);
 
     List<Address> findActiveByUserId(final Long userId);

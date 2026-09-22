@@ -7,6 +7,7 @@ import static com.book.core.product.domain.QProductCategory.productCategory;
 
 import com.book.common.domain.EntityStatus;
 import com.book.core.product.domain.Product;
+import com.book.core.product.domain.QProduct;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -39,7 +40,13 @@ class ProductQueryRepository {
         if (cursor == null) {
             return null;
         }
-        return product.id.lt(cursor);
+        final var cursorProduct = new QProduct("cursorProduct");
+        final var cursorCreatedAt = JPAExpressions.select(cursorProduct.createdAt)
+                .from(cursorProduct)
+                .where(cursorProduct.id.eq(cursor));
+        return product.createdAt
+                .lt(cursorCreatedAt)
+                .or(product.createdAt.eq(cursorCreatedAt).and(product.id.lt(cursor)));
     }
 
     private BooleanExpression categoryPredicate(final Long categoryId) {

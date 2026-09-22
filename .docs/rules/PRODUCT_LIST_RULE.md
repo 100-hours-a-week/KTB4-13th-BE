@@ -7,7 +7,7 @@
 - `categoryId`, `sort`, `cursor`, `limit`을 선택적 Query Parameter로 받는다.
 - 조회 대상은 활성 상품과 활성 도서이며, 카테고리 필터를 사용할 때 활성 카테고리와 활성 연결만 포함한다.
 - 정렬은 API 명세서의 `createdAt DESC, id DESC`를 고정 적용한다.
-- `cursor`는 마지막 상품 식별자인 양의 정수 문자열로 해석하며, 다음 조회는 `product.id < cursor` 조건을 사용한다.
+- `cursor`는 마지막 상품 식별자인 양의 정수 문자열로 해석한다. 조회 시 커서 상품의 `createdAt`을 기준으로 `(createdAt DESC, id DESC)` 복합 커서 조건을 적용한다.
 - `limit`이 없으면 임시로 20개를 사용한다. 응답의 다음 커서는 실제 다음 데이터가 있을 때 마지막 `itemId`를 문자열로 반환한다.
 - HTTP 응답 외피는 프로젝트의 `ApiResponse` 계약(`success`, `data`)을 따른다.
 - 리뷰·주문 테이블이 현재 Flyway에 없으므로 `orderCount`, `reviewCount`, `reviewRate`는 0으로 반환한다.

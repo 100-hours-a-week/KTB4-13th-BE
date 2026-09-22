@@ -47,7 +47,7 @@ class ProductRepositoryIntegrationTest {
     }
 
     @Test
-    void 카테고리와_활성_조건을_적용하고_ID_내림차순_커서로_상품을_조회한다() {
+    void 카테고리와_활성_조건을_적용하고_생성일과_ID_기준_커서로_상품을_조회한다() {
         insertCategory(3001L, "소설", "ACTIVE");
         insertCategory(3002L, "삭제 카테고리", "DELETED");
         insertBook(1003L, "목록 도서 1", "ACTIVE");
@@ -55,9 +55,9 @@ class ProductRepositoryIntegrationTest {
         insertBook(1005L, "목록 도서 3", "ACTIVE");
         insertBook(1006L, "삭제 도서", "DELETED");
         insertBook(1007L, "비활성 연결 도서", "ACTIVE");
-        insertProduct(2101L, 1003L, "상품 1", "ACTIVE", Timestamp.valueOf("2026-01-01 00:00:00"));
+        insertProduct(2101L, 1003L, "상품 1", "ACTIVE", Timestamp.valueOf("2026-01-03 00:00:00"));
         insertProduct(2102L, 1004L, "상품 2", "ACTIVE", Timestamp.valueOf("2026-01-01 00:00:00"));
-        insertProduct(2103L, 1005L, "상품 3", "ACTIVE", Timestamp.valueOf("2026-01-01 00:00:00"));
+        insertProduct(2103L, 1005L, "상품 3", "ACTIVE", Timestamp.valueOf("2026-01-02 00:00:00"));
         insertProduct(2104L, 1006L, "삭제 도서 상품", "ACTIVE", Timestamp.valueOf("2026-01-01 00:00:00"));
         insertProduct(2105L, 1007L, "비활성 연결 상품", "ACTIVE", Timestamp.valueOf("2026-01-01 00:00:00"));
         insertProductCategory(3101L, 3001L, 2101L, "ACTIVE");
@@ -67,11 +67,11 @@ class ProductRepositoryIntegrationTest {
         insertProductCategory(3105L, 3002L, 2101L, "ACTIVE");
         insertProductCategory(3106L, 3001L, 2105L, "DELETED");
 
-        final var firstPage = productRepository.findActiveProducts(3001L, null, 3);
-        final var secondPage = productRepository.findActiveProducts(3001L, 2102L, 3);
+        final var firstPage = productRepository.findActiveProducts(3001L, null, 1);
+        final var secondPage = productRepository.findActiveProducts(3001L, 2101L, 2);
 
-        assertThat(firstPage).extracting(product -> product.id()).containsExactly(2103L, 2102L, 2101L);
-        assertThat(secondPage).extracting(product -> product.id()).containsExactly(2101L);
+        assertThat(firstPage).extracting(product -> product.id()).containsExactly(2101L);
+        assertThat(secondPage).extracting(product -> product.id()).containsExactly(2103L, 2102L);
     }
 
     private void insertBook(final long id, final String title, final String status) {

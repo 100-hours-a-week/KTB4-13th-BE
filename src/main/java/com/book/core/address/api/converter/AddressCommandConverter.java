@@ -2,6 +2,7 @@ package com.book.core.address.api.converter;
 
 import com.book.core.address.api.request.RegisterAddressRequest;
 import com.book.core.address.api.request.UpdateAddressRequest;
+import com.book.core.address.application.command.DeleteAddressCommand;
 import com.book.core.address.application.command.GetAddressesCommand;
 import com.book.core.address.application.command.RegisterAddressCommand;
 import com.book.core.address.application.command.SetDefaultAddressCommand;
@@ -32,5 +33,9 @@ public class AddressCommandConverter {
 
     public SetDefaultAddressCommand toSetDefaultAddressCommand(final Long userId, final Long addressId) {
         return new SetDefaultAddressCommand(userId, addressId);
+    }
+
+    public DeleteAddressCommand toDeleteAddressCommand(final Long userId, final Long addressId) {
+        return new DeleteAddressCommand(userId, addressId);
     }
 }

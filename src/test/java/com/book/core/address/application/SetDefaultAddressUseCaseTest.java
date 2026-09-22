@@ -90,5 +90,10 @@ class SetDefaultAddressUseCaseTest {
             }
             return Optional.empty();
         }
+
+        @Override
+        public Optional<Address> findLatestActiveByUserIdExcludingId(final Long userId, final Long addressId) {
+            return Optional.empty();
+        }
     }
 }

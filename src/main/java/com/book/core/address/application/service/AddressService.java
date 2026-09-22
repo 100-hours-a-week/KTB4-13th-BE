@@ -1,5 +1,6 @@
 package com.book.core.address.application.service;
 
+import com.book.core.address.application.command.DeleteAddressCommand;
 import com.book.core.address.application.command.GetAddressesCommand;
 import com.book.core.address.application.command.RegisterAddressCommand;
 import com.book.core.address.application.command.SetDefaultAddressCommand;
@@ -7,6 +8,7 @@ import com.book.core.address.application.command.UpdateAddressCommand;
 import com.book.core.address.application.result.GetAddressesResult;
 import com.book.core.address.application.result.SetDefaultAddressResult;
 import com.book.core.address.application.result.UpdateAddressResult;
+import com.book.core.address.application.usecase.DeleteAddressUseCase;
 import com.book.core.address.application.usecase.GetAddressesUseCase;
 import com.book.core.address.application.usecase.RegisterAddressUseCase;
 import com.book.core.address.application.usecase.SetDefaultAddressUseCase;
@@ -21,6 +23,7 @@ public class AddressService {
     private final GetAddressesUseCase getAddressesUseCase;
     private final UpdateAddressUseCase updateAddressUseCase;
     private final SetDefaultAddressUseCase setDefaultAddressUseCase;
+    private final DeleteAddressUseCase deleteAddressUseCase;
 
     public void registerAddress(final RegisterAddressCommand command) {
         registerAddressUseCase.execute(command);
@@ -36,5 +39,9 @@ public class AddressService {
 
     public SetDefaultAddressResult setDefaultAddress(final SetDefaultAddressCommand command) {
         return setDefaultAddressUseCase.execute(command);
+    }
+
+    public void deleteAddress(final DeleteAddressCommand command) {
+        deleteAddressUseCase.execute(command);
     }
 }

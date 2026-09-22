@@ -16,6 +16,9 @@ interface AddressJpaRepository extends JpaRepository<Address, Long> {
 
     Optional<Address> findByIdAndUserIdAndStatus(final Long id, final Long userId, final EntityStatus status);
 
+    Optional<Address> findFirstByUserIdAndStatusAndIdNotOrderByCreatedAtDescIdDesc(
+            final Long userId, final EntityStatus status, final Long id);
+
     List<Address> findByUserIdAndStatusOrderByDefaultAddressDescCreatedAtAscIdAsc(
             final Long userId, final EntityStatus status);
 

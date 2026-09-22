@@ -70,6 +70,11 @@ class GetAddressesUseCaseTest {
         }
 
         @Override
+        public Optional<Address> findLatestActiveByUserIdExcludingId(final Long userId, final Long addressId) {
+            return Optional.empty();
+        }
+
+        @Override
         public Address save(final Address address) {
             return address;
         }

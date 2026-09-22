@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.book.core.address.application.command.DeleteAddressCommand;
 import com.book.core.address.application.command.GetAddressesCommand;
 import com.book.core.address.application.command.RegisterAddressCommand;
 import com.book.core.address.application.command.SetDefaultAddressCommand;
@@ -12,6 +13,7 @@ import com.book.core.address.application.command.UpdateAddressCommand;
 import com.book.core.address.application.result.GetAddressesResult;
 import com.book.core.address.application.result.SetDefaultAddressResult;
 import com.book.core.address.application.result.UpdateAddressResult;
+import com.book.core.address.application.usecase.DeleteAddressUseCase;
 import com.book.core.address.application.usecase.GetAddressesUseCase;
 import com.book.core.address.application.usecase.RegisterAddressUseCase;
 import com.book.core.address.application.usecase.SetDefaultAddressUseCase;
@@ -24,8 +26,13 @@ class AddressServiceTest {
     private final GetAddressesUseCase getAddressesUseCase = mock(GetAddressesUseCase.class);
     private final UpdateAddressUseCase updateAddressUseCase = mock(UpdateAddressUseCase.class);
     private final SetDefaultAddressUseCase setDefaultAddressUseCase = mock(SetDefaultAddressUseCase.class);
+    private final DeleteAddressUseCase deleteAddressUseCase = mock(DeleteAddressUseCase.class);
     private final AddressService addressService = new AddressService(
-            registerAddressUseCase, getAddressesUseCase, updateAddressUseCase, setDefaultAddressUseCase);
+            registerAddressUseCase,
+            getAddressesUseCase,
+            updateAddressUseCase,
+            setDefaultAddressUseCase,
+            deleteAddressUseCase);
 
     @Test
     void 배송지_등록_Command를_등록_UseCase에_전달한다() {
@@ -67,5 +74,14 @@ class AddressServiceTest {
         assertThat(addressService.setDefaultAddress(command)).isSameAs(result);
 
         verify(setDefaultAddressUseCase).execute(command);
+    }
+
+    @Test
+    void 배송지_삭제_Command를_삭제_UseCase에_전달한다() {
+        final var command = new DeleteAddressCommand(1L, 101L);
+
+        addressService.deleteAddress(command);
+
+        verify(deleteAddressUseCase).execute(command);
     }
 }

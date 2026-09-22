@@ -35,6 +35,12 @@ public class AddressRepositoryAdapter implements AddressRepositoryPort {
     }
 
     @Override
+    public Optional<Address> findLatestActiveByUserIdExcludingId(final Long userId, final Long addressId) {
+        return jpaRepository.findFirstByUserIdAndStatusAndIdNotOrderByCreatedAtDescIdDesc(
+                userId, EntityStatus.ACTIVE, addressId);
+    }
+
+    @Override
     public Address save(final Address address) {
         return jpaRepository.save(address);
     }

@@ -13,6 +13,8 @@ public interface AddressRepositoryPort {
 
     Optional<Address> findActiveByIdAndUserId(final Long addressId, final Long userId);
 
+    Optional<Address> findLatestActiveByUserIdExcludingId(final Long userId, final Long addressId);
+
     Address save(final Address address);
 
     List<Address> findActiveByUserId(final Long userId);

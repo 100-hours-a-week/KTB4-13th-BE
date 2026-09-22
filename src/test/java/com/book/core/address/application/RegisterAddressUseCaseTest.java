@@ -167,6 +167,11 @@ class RegisterAddressUseCaseTest {
         }
 
         @Override
+        public Optional<Address> findLatestActiveByUserIdExcludingId(final Long userId, final Long addressId) {
+            return Optional.empty();
+        }
+
+        @Override
         public Address save(final Address address) {
             if (failOnSave) {
                 throw new IllegalStateException("save failed");

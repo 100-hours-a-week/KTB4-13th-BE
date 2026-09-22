@@ -95,4 +95,24 @@ public interface AddressControllerSpec {
                     final Long userId,
             @Parameter(in = ParameterIn.PATH, required = true, example = "101") @Positive @PathVariable("addressId")
                     final Long addressId);
+
+    @Operation(summary = "배송지 삭제", description = "요청 회원의 배송지를 삭제합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "배송지 삭제 성공"),
+        @ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @ApiResponse(responseCode = "403", description = "삭제 대상 배송지에 접근할 수 없음"),
+        @ApiResponse(responseCode = "500", description = "알 수 없는 오류")
+    })
+    @Parameter(
+            in = ParameterIn.HEADER,
+            name = HttpHeaders.AUTHORIZATION,
+            required = true,
+            example = "Bearer {accessToken}")
+    ResponseEntity<Void> deleteAddress(
+            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
+                    final Long userId,
+            @Parameter(in = ParameterIn.PATH, required = true, example = "101") @Positive @PathVariable("addressId")
+                    final Long addressId);
 }

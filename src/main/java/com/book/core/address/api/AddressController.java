@@ -15,6 +15,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -73,5 +74,15 @@ class AddressController implements AddressControllerSpec {
         final var result = addressService.setDefaultAddress(command);
         final var response = resultConverter.toSetDefaultAddressResponse(result);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Override
+    @DeleteMapping("/{addressId}")
+    public ResponseEntity<Void> deleteAddress(
+            @Positive @RequestParam("userId") final Long userId,
+            @Positive @PathVariable("addressId") final Long addressId) {
+        final var command = commandConverter.toDeleteAddressCommand(userId, addressId);
+        addressService.deleteAddress(command);
+        return ResponseEntity.ok().build();
     }
 }

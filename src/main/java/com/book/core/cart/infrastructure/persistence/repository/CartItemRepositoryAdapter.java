@@ -1,6 +1,5 @@
 package com.book.core.cart.infrastructure.persistence.repository;
 
-import com.book.common.domain.EntityStatus;
 import com.book.core.cart.application.port.CartItemRepositoryPort;
 import com.book.core.cart.domain.CartItem;
 import java.util.List;
@@ -26,11 +25,11 @@ public class CartItemRepositoryAdapter implements CartItemRepositoryPort {
 
     @Override
     public int countActiveByCartId(final Long cartId) {
-        return jpaRepository.countByCartIdAndStatus(cartId, EntityStatus.ACTIVE);
+        return jpaRepository.countByCartIdAndDeletedAtIsNull(cartId);
     }
 
     @Override
     public List<CartItem> findActiveByCartId(final Long cartId) {
-        return jpaRepository.findByCartIdAndStatusOrderByCreatedAtDescIdDesc(cartId, EntityStatus.ACTIVE);
+        return jpaRepository.findByCartIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(cartId);
     }
 }

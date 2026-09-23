@@ -5,7 +5,6 @@ import static com.book.core.category.domain.QCategory.category;
 import static com.book.core.product.domain.QProduct.product;
 import static com.book.core.product.domain.QProductCategory.productCategory;
 
-import com.book.common.domain.EntityStatus;
 import com.book.core.product.domain.Product;
 import com.book.core.product.domain.QProduct;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -21,14 +20,13 @@ class ProductQueryRepository {
     private final JPAQueryFactory queryFactory;
 
     List<Product> findActiveProducts(final Long categoryId, final Long cursor, final int limit) {
-        final var activeStatus = EntityStatus.ACTIVE;
         return queryFactory
                 .selectFrom(product)
                 .join(product.book, book)
                 .fetchJoin()
                 .where(
-                        product.status.eq(activeStatus),
-                        book.status.eq(activeStatus),
+                        product.deletedAt.isNull(),
+                        book.deletedAt.isNull(),
                         cursorPredicate(cursor),
                         categoryPredicate(categoryId))
                 .orderBy(product.createdAt.desc(), product.id.desc())
@@ -53,15 +51,14 @@ class ProductQueryRepository {
         if (categoryId == null) {
             return null;
         }
-        final var activeStatus = EntityStatus.ACTIVE;
         return JPAExpressions.selectOne()
                 .from(productCategory)
                 .join(productCategory.category, category)
                 .where(
                         productCategory.product.eq(product),
-                        productCategory.status.eq(activeStatus),
+                        productCategory.deletedAt.isNull(),
                         category.id.eq(categoryId),
-                        category.status.eq(activeStatus))
+                        category.deletedAt.isNull())
                 .exists();
     }
 }

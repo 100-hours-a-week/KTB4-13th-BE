@@ -1,6 +1,5 @@
 package com.book.core.product.infrastructure.persistence.repository;
 
-import com.book.common.domain.EntityStatus;
 import com.book.core.product.application.port.ProductRepositoryPort;
 import com.book.core.product.domain.Product;
 import java.util.List;
@@ -16,7 +15,7 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort {
 
     @Override
     public Optional<Product> findActiveById(final Long productId) {
-        return jpaRepository.findActiveById(productId, EntityStatus.ACTIVE);
+        return jpaRepository.findActiveById(productId);
     }
 
     @Override

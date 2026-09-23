@@ -41,14 +41,18 @@ public class CartItem extends BaseEntity {
         return quantity >= MIN_QUANTITY && quantity <= MAX_QUANTITY;
     }
 
+    public static void validateQuantity(final int quantity) {
+        if (!isQuantityInRange(quantity)) {
+            throw new CoreException(ErrorCode.INVALID_CART_ITEM_QUANTITY);
+        }
+    }
+
     public static CartItem from(Long cartId, Long productId, Integer quantity) {
         return new CartItem(null, cartId, productId, quantity);
     }
 
     public void applyQuantity(final int quantity) {
-        if (!isQuantityInRange(quantity)) {
-            throw new CoreException(ErrorCode.INVALID_CART_ITEM_QUANTITY);
-        }
+        validateQuantity(quantity);
         this.quantity = quantity;
     }
 }

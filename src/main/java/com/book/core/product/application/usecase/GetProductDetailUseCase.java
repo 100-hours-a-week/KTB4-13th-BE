@@ -21,4 +21,12 @@ public class GetProductDetailUseCase {
                 .map(GetProductDetailResult::from)
                 .orElseThrow(() -> new CoreException(ErrorCode.PRODUCT_NOT_FOUND));
     }
+
+    @Transactional(readOnly = true)
+    public void validateAvailableStock(final Long productId, final int requestedQuantity) {
+        final var product = execute(new GetProductDetailCommand(productId));
+        if (product.stockQuantity() < requestedQuantity) {
+            throw new CoreException(ErrorCode.INSUFFICIENT_PRODUCT_STOCK);
+        }
+    }
 }

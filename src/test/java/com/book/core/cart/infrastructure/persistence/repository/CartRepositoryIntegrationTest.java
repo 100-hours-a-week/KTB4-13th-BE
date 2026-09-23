@@ -42,6 +42,7 @@ class CartRepositoryIntegrationTest {
     @Test
     void 같은_사용자의_같은_상품_추가는_한_항목의_수량을_대체한다() {
         createCart(1001L);
+        createProduct(2001L, 3001L, 10);
         addUseCase.execute(new AddCartItemCommand(1001L, 2001L, 2));
         addUseCase.execute(new AddCartItemCommand(1001L, 2001L, 4));
 
@@ -64,7 +65,8 @@ class CartRepositoryIntegrationTest {
     @Test
     void 마이그레이션은_수량_범위를_DB에서도_검증한다() {
         createCart(1002L);
-        addUseCase.execute(new AddCartItemCommand(1002L, 2002L, 1));
+        createProduct(2011L, 3011L, 10);
+        addUseCase.execute(new AddCartItemCommand(1002L, 2011L, 1));
         final Long cartId = jdbc.queryForObject("SELECT id FROM carts WHERE user_id = ?", Long.class, 1002L);
 
         assertThatThrownBy(() -> jdbc.update(
@@ -77,21 +79,39 @@ class CartRepositoryIntegrationTest {
     @Test
     void 조회는_활성_항목만_최근_추가순으로_반환한다() {
         createCart(1003L);
-        addUseCase.execute(new AddCartItemCommand(1003L, 2001L, 1));
-        addUseCase.execute(new AddCartItemCommand(1003L, 2002L, 2));
-        addUseCase.execute(new AddCartItemCommand(1003L, 2003L, 3));
+        createProduct(2021L, 3021L, 10);
+        createProduct(2022L, 3022L, 10);
+        createProduct(2023L, 3023L, 10);
+        addUseCase.execute(new AddCartItemCommand(1003L, 2021L, 1));
+        addUseCase.execute(new AddCartItemCommand(1003L, 2022L, 2));
+        addUseCase.execute(new AddCartItemCommand(1003L, 2023L, 3));
         final Long cartId = jdbc.queryForObject("SELECT id FROM carts WHERE user_id = ?", Long.class, 1003L);
-        jdbc.update("UPDATE cart_item SET status = 'DELETED' WHERE cart_id = ? AND product_id = ?", cartId, 2001L);
+        jdbc.update("UPDATE cart_item SET status = 'DELETED' WHERE cart_id = ? AND product_id = ?", cartId, 2021L);
 
         final var result = getCartUseCase.execute(new GetCartCommand(1003L));
 
         assertThat(result.items())
                 .extracting(GetCartItemResult::productId, GetCartItemResult::quantity)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(2003L, 3), org.assertj.core.groups.Tuple.tuple(2002L, 2));
+                        org.assertj.core.groups.Tuple.tuple(2023L, 3), org.assertj.core.groups.Tuple.tuple(2022L, 2));
     }
 
     private void createCart(final long userId) {
         jdbc.update("INSERT INTO carts (user_id) VALUES (?)", userId);
     }
+
+    private void createProduct(final long productId, final long bookId, final int stockQuantity) {
+        jdbc.update("""
+                INSERT INTO books (
+                    id, title, author, publisher, category, published_at, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+                """, bookId, "도서" + bookId, "작가", "출판사", "소설", "2026-01-01", "ACTIVE");
+        jdbc.update("""
+                INSERT INTO products (
+                    id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity,
+                    status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+                """, productId, bookId, "상품" + productId, 20000.00, 18000.00, 12000.00, stockQuantity);
+    }
+
 }

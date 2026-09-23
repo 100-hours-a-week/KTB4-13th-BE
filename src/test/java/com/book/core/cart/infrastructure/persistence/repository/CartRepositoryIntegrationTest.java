@@ -3,11 +3,15 @@ package com.book.core.cart.infrastructure.persistence.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.cart.application.command.AddCartItemCommand;
 import com.book.core.cart.application.command.GetCartCommand;
+import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
 import com.book.core.cart.application.usecase.GetCartUseCase;
+import com.book.core.cart.application.usecase.ModifyCartItemUseCase;
 import java.sql.SQLException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -35,6 +39,9 @@ class CartRepositoryIntegrationTest {
 
     @Autowired
     GetCartUseCase getCartUseCase;
+
+    @Autowired
+    ModifyCartItemUseCase modifyCartItemUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -96,6 +103,68 @@ class CartRepositoryIntegrationTest {
                         org.assertj.core.groups.Tuple.tuple(2023L, 3), org.assertj.core.groups.Tuple.tuple(2022L, 2));
     }
 
+    @Test
+    void 재고가_부족하면_추가하지_않고_기존_장바구니를_보존한다() {
+        createCart(1004L);
+        createProduct(2031L, 3031L, 2);
+
+        assertThatThrownBy(() -> addUseCase.execute(new AddCartItemCommand(1004L, 2031L, 3)))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INSUFFICIENT_PRODUCT_STOCK));
+
+        assertThat(jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM cart_item item JOIN carts cart ON cart.id = item.cart_id WHERE cart.user_id = ?",
+                        Integer.class,
+                        1004L))
+                .isZero();
+    }
+
+    @Test
+    void 수량_변경은_소유권과_활성_상태를_확인하고_실제_수량을_변경한다() {
+        createCart(1005L);
+        createProduct(2041L, 3041L, 10);
+        addUseCase.execute(new AddCartItemCommand(1005L, 2041L, 2));
+        final Long cartItemId = jdbc.queryForObject(
+                "SELECT item.id FROM cart_item item JOIN carts cart ON cart.id = item.cart_id WHERE cart.user_id = ?",
+                Long.class,
+                1005L);
+
+        assertThatThrownBy(() -> modifyCartItemUseCase.execute(new ModifyCartItemCommand(9999L, cartItemId, 4)))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(quantityOf(cartItemId)).isEqualTo(2);
+
+        modifyCartItemUseCase.execute(new ModifyCartItemCommand(1005L, cartItemId, 4));
+        assertThat(quantityOf(cartItemId)).isEqualTo(4);
+
+        jdbc.update("UPDATE cart_item SET status = 'DELETED' WHERE id = ?", cartItemId);
+        assertThatThrownBy(() -> modifyCartItemUseCase.execute(new ModifyCartItemCommand(1005L, cartItemId, 5)))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(quantityOf(cartItemId)).isEqualTo(4);
+    }
+
+    @Test
+    void 삭제된_장바구니의_상품은_수량을_변경하지_않는다() {
+        createCart(1006L);
+        createProduct(2051L, 3051L, 10);
+        addUseCase.execute(new AddCartItemCommand(1006L, 2051L, 1));
+        final Long cartItemId = jdbc.queryForObject(
+                "SELECT item.id FROM cart_item item JOIN carts cart ON cart.id = item.cart_id WHERE cart.user_id = ?",
+                Long.class,
+                1006L);
+        jdbc.update("UPDATE carts SET status = 'DELETED' WHERE user_id = ?", 1006L);
+
+        assertThatThrownBy(() -> modifyCartItemUseCase.execute(new ModifyCartItemCommand(1006L, cartItemId, 2)))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(quantityOf(cartItemId)).isEqualTo(1);
+    }
+
     private void createCart(final long userId) {
         jdbc.update("INSERT INTO carts (user_id) VALUES (?)", userId);
     }
@@ -114,4 +183,7 @@ class CartRepositoryIntegrationTest {
                 """, productId, bookId, "상품" + productId, 20000.00, 18000.00, 12000.00, stockQuantity);
     }
 
+    private int quantityOf(final Long cartItemId) {
+        return jdbc.queryForObject("SELECT quantity FROM cart_item WHERE id = ?", Integer.class, cartItemId);
+    }
 }

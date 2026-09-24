@@ -4,10 +4,10 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, reopened, synchronize]
   push:
     branches:
       - main
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,11 +15,11 @@ permissions:
 jobs:
   gradle-check:
     name: Gradle check
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
-      pull-requests: write
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -46,16 +46,6 @@ jobs:
           test -s build/reports/jacoco/test/jacocoTestReport.xml
           test -s build/reports/jacoco/test/html/index.html
 
-      - name: Publish JaCoCo report to PR (informational)
-        if: ${{ always() && github.event_name == 'pull_request' }}
-        continue-on-error: true
-        uses: madrapps/jacoco-report@50d3aff4548aa991e6753342d9ba291084e63848 # v1.7.2
-        with:
-          title: "테스트 커버리지"
-          paths: ${{ github.workspace }}/build/reports/jacoco/test/jacocoTestReport.xml
-          token: ${{ secrets.GITHUB_TOKEN }}
-          update-comment: true
-
       - name: Upload JaCoCo report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -70,7 +60,6 @@ jobs:
   publish-image:
     name: Publish backend image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: gradle-check
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

@@ -4,7 +4,7 @@ import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.UserProvider;
 import java.util.Optional;
 
-public interface UserProviderRepository {
+public interface UserProviderRepositoryPort {
     UserProvider save(final UserProvider userProvider);
 
     Optional<UserProvider> findActiveByProviderTypeAndProviderUserId(

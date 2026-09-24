@@ -20,6 +20,8 @@ public enum ErrorCode {
     INVALID_PROVIDER_EMAIL(
             HttpStatus.BAD_REQUEST, "INVALID_PROVIDER_EMAIL", "소셜 로그인 이메일은 254자 이하여야 합니다.", LogLevel.INFO),
     NICKNAME_CONFLICT(HttpStatus.CONFLICT, "NICKNAME_CONFLICT", "동일한 활성 닉네임이 이미 존재합니다.", LogLevel.INFO),
+    NICKNAME_GENERATION_FAILED(
+            HttpStatus.INTERNAL_SERVER_ERROR, "NICKNAME_GENERATION_FAILED", "닉네임을 생성하지 못했습니다.", LogLevel.ERROR),
     PROVIDER_IDENTITY_CONFLICT(
             HttpStatus.CONFLICT, "PROVIDER_IDENTITY_CONFLICT", "동일한 활성 소셜 로그인 계정이 이미 존재합니다.", LogLevel.INFO),
     USER_PROVIDER_USER_NOT_FOUND(
@@ -51,25 +53,5 @@ public enum ErrorCode {
         this.code = code;
         this.message = message;
         this.logLevel = logLevel;
-    }
-
-    public Category category() {
-        return switch (status) {
-            case BAD_REQUEST -> Category.INVALID_INPUT;
-            case UNAUTHORIZED -> Category.UNAUTHORIZED;
-            case NOT_FOUND -> Category.NOT_FOUND;
-            case CONFLICT -> Category.CONFLICT;
-            case BAD_GATEWAY -> Category.EXTERNAL_SERVICE_ERROR;
-            default -> Category.INTERNAL_ERROR;
-        };
-    }
-
-    public enum Category {
-        INVALID_INPUT,
-        UNAUTHORIZED,
-        NOT_FOUND,
-        CONFLICT,
-        EXTERNAL_SERVICE_ERROR,
-        INTERNAL_ERROR
     }
 }

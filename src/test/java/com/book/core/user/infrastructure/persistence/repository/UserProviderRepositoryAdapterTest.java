@@ -7,7 +7,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.book.common.exception.BusinessException;
-import com.book.common.exception.CommonErrorCode;
 import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.UserProvider;
 import com.book.core.user.domain.exception.UserErrorCode;
@@ -17,30 +16,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 
-class UserProviderRepositoryImplTest {
+class UserProviderRepositoryAdapterTest {
     @Test
-    void 저장과_활성_조회에서_발생한_기술_예외를_공통_계약으로_변환한다() {
+    void provider_identity_UNIQUE_위반이_아닌_기술_예외는_그대로_전파한다() {
         final UserProviderJpaRepository jpaRepository = mock(UserProviderJpaRepository.class);
-        final var adapter = new UserProviderRepositoryImpl(jpaRepository);
-        when(jpaRepository.saveAndFlush(any())).thenThrow(new DataAccessResourceFailureException("unavailable"));
-        when(jpaRepository.findByProviderTypeAndProviderUserIdAndDeletedAtIsNull(ProviderType.KAKAO, "123"))
-                .thenThrow(new DataAccessResourceFailureException("unavailable"));
+        final var adapter = new UserProviderRepositoryAdapter(jpaRepository);
+        final var technicalException = new DataAccessResourceFailureException("unavailable");
+        when(jpaRepository.saveAndFlush(any())).thenThrow(technicalException);
+
         assertThatThrownBy(() -> adapter.save(UserProvider.create(42L, ProviderType.KAKAO, "123", null)))
-                .isInstanceOfSatisfying(
-                        BusinessException.class,
-                        (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(CommonErrorCode.STORAGE_FAILURE));
-        assertThatThrownBy(() -> adapter.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "123"))
-                .isInstanceOfSatisfying(
-                        BusinessException.class,
-                        (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(CommonErrorCode.STORAGE_FAILURE));
+                .isSameAs(technicalException);
     }
 
     @Test
     void provider_identity_UNIQUE_위반을_provider_충돌로_변환한다() {
         final UserProviderJpaRepository jpaRepository = mock(UserProviderJpaRepository.class);
-        final var adapter = new UserProviderRepositoryImpl(jpaRepository);
+        final var adapter = new UserProviderRepositoryAdapter(jpaRepository);
         final var hibernateException = new ConstraintViolationException(
                 "duplicate", new SQLException("duplicate", "23000", 1062), "uk_user_providers_identity_active_flag");
         when(jpaRepository.saveAndFlush(any()))
@@ -51,5 +42,17 @@ class UserProviderRepositoryImplTest {
                         BusinessException.class,
                         (final var exception) ->
                                 assertThat(exception.errorCode()).isEqualTo(UserErrorCode.PROVIDER_IDENTITY_CONFLICT));
+    }
+
+    @Test
+    void 활성_조회에서_발생한_기술_예외는_그대로_전파한다() {
+        final UserProviderJpaRepository jpaRepository = mock(UserProviderJpaRepository.class);
+        final var adapter = new UserProviderRepositoryAdapter(jpaRepository);
+        final var technicalException = new DataAccessResourceFailureException("unavailable");
+        when(jpaRepository.findByProviderTypeAndProviderUserIdAndDeletedAtIsNull(ProviderType.KAKAO, "123"))
+                .thenThrow(technicalException);
+
+        assertThatThrownBy(() -> adapter.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "123"))
+                .isSameAs(technicalException);
     }
 }

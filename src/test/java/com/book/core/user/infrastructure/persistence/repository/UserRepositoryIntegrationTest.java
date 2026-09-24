@@ -4,10 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.BusinessException;
-import com.book.common.exception.CommonErrorCode;
-import com.book.core.user.application.command.UserResolveCommand;
-import com.book.core.user.application.port.UserProviderRepository;
-import com.book.core.user.application.port.UserRepository;
+import com.book.core.user.application.command.UserRegistrationCommand;
+import com.book.core.user.application.port.UserProviderRepositoryPort;
+import com.book.core.user.application.port.UserRepositoryPort;
 import com.book.core.user.application.usecase.UserRegistrationUseCase;
 import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.User;
@@ -18,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Container;
@@ -33,10 +33,10 @@ class UserRepositoryIntegrationTest {
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
 
     @Autowired
-    UserRepository userRepository;
+    UserRepositoryPort userRepository;
 
     @Autowired
-    UserProviderRepository userProviderRepository;
+    UserProviderRepositoryPort userProviderRepository;
 
     @Autowired
     UserRegistrationUseCase userRegistrationUseCase;
@@ -118,22 +118,19 @@ class UserRepositoryIntegrationTest {
     }
 
     @Test
-    void 존재하지_않는_회원_ID의_provider_연결은_FK가_차단한다() {
+    void 존재하지_않는_회원_ID의_provider_연결은_FK_기술_예외를_그대로_전파한다() {
         assertThatThrownBy(() -> userProviderRepository.save(
                         UserProvider.create(Long.MAX_VALUE, ProviderType.KAKAO, "orphan-provider", null)))
-                .isInstanceOfSatisfying(
-                        BusinessException.class,
-                        (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(CommonErrorCode.STORAGE_FAILURE));
+                .isInstanceOf(DataAccessException.class);
     }
 
     @Test
     void nickname_충돌_시도는_provider를_저장하지_않는다() {
         userRepository.save(User.create("가입충돌닉네임"));
-        final UserResolveCommand command =
-                new UserResolveCommand(ProviderType.KAKAO, "nickname-rollback-provider", null);
+        final UserRegistrationCommand command =
+                new UserRegistrationCommand(ProviderType.KAKAO, "nickname-rollback-provider", null, "가입충돌닉네임");
 
-        assertThatThrownBy(() -> userRegistrationUseCase.execute(command, "가입충돌닉네임"))
+        assertThatThrownBy(() -> userRegistrationUseCase.execute(command))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
@@ -150,9 +147,10 @@ class UserRepositoryIntegrationTest {
         final User existingUser = userRepository.save(User.create("기존연결회원"));
         userProviderRepository.save(
                 UserProvider.create(existingUser.id(), ProviderType.KAKAO, "registration-conflict", null));
-        final UserResolveCommand command = new UserResolveCommand(ProviderType.KAKAO, "registration-conflict", null);
+        final UserRegistrationCommand command =
+                new UserRegistrationCommand(ProviderType.KAKAO, "registration-conflict", null, "롤백대상회원");
 
-        assertThatThrownBy(() -> userRegistrationUseCase.execute(command, "롤백대상회원"))
+        assertThatThrownBy(() -> userRegistrationUseCase.execute(command))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->

@@ -2,18 +2,48 @@ package com.book.core.user.domain;
 
 import com.book.common.exception.BusinessException;
 import com.book.core.user.domain.exception.UserErrorCode;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
-public final class UserProvider {
+@Entity
+@Table(name = "user_providers")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+@Accessors(fluent = true)
+public class UserProvider {
     private static final int MAX_PROVIDER_USER_ID_LENGTH = 255;
     private static final int MAX_PROVIDER_EMAIL_LENGTH = 254;
 
-    private final Long id;
-    private final Long userId;
-    private final ProviderType providerType;
-    private final String providerUserId;
-    private final String providerEmail;
-    private final LocalDateTime deletedAt;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "provider_type", nullable = false, length = 50)
+    private ProviderType providerType;
+
+    @Column(name = "provider_user_id", nullable = false, length = 255)
+    private String providerUserId;
+
+    @Column(name = "provider_email", length = 254)
+    private String providerEmail;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     private UserProvider(
             final Long id,
@@ -83,29 +113,5 @@ public final class UserProvider {
 
     public boolean isActive() {
         return deletedAt == null;
-    }
-
-    public Long id() {
-        return id;
-    }
-
-    public Long userId() {
-        return userId;
-    }
-
-    public ProviderType providerType() {
-        return providerType;
-    }
-
-    public String providerUserId() {
-        return providerUserId;
-    }
-
-    public String providerEmail() {
-        return providerEmail;
-    }
-
-    public LocalDateTime deletedAt() {
-        return deletedAt;
     }
 }

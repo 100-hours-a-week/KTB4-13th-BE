@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.BusinessException;
-import com.book.core.user.domain.exception.UserErrorCode;
+import com.book.common.exception.ErrorCode;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
@@ -55,12 +55,12 @@ class UserProviderTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.INVALID_USER_ID));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_USER_ID));
         assertThatThrownBy(() -> UserProvider.create(42L, null, "123", null))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.INVALID_PROVIDER_TYPE));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_PROVIDER_TYPE));
     }
 
     @Test
@@ -69,7 +69,7 @@ class UserProviderTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.INVALID_PROVIDER_USER_ID));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_PROVIDER_USER_ID));
         assertThatThrownBy(() -> UserProvider.create(42L, ProviderType.KAKAO, "a".repeat(256), null))
                 .isInstanceOf(BusinessException.class);
     }
@@ -80,7 +80,7 @@ class UserProviderTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.INVALID_PROVIDER_EMAIL));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_PROVIDER_EMAIL));
     }
 
     @Test
@@ -91,6 +91,6 @@ class UserProviderTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.INVALID_USER_PROVIDER_ID));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_USER_PROVIDER_ID));
     }
 }

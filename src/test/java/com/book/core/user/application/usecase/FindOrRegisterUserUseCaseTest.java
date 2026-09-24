@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.book.common.exception.BusinessException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.user.application.command.FindOrRegisterUserCommand;
 import com.book.core.user.application.command.UserRegistrationCommand;
 import com.book.core.user.application.port.NicknameGenerator;
@@ -17,7 +18,6 @@ import com.book.core.user.application.port.UserRepositoryPort;
 import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
-import com.book.core.user.domain.exception.UserErrorCode;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -65,8 +65,8 @@ class FindOrRegisterUserUseCaseTest {
         assertThatThrownBy(() -> useCase().execute(command))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
-                        (final var exception) -> assertThat(exception.errorCode())
-                                .isEqualTo(UserErrorCode.USER_PROVIDER_USER_NOT_FOUND));
+                        (final var exception) ->
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.USER_PROVIDER_USER_NOT_FOUND));
     }
 
     @Test
@@ -83,7 +83,7 @@ class FindOrRegisterUserUseCaseTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.USER_PROVIDER_USER_INACTIVE));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.USER_PROVIDER_USER_INACTIVE));
     }
 
     @Test
@@ -111,7 +111,7 @@ class FindOrRegisterUserUseCaseTest {
         when(nicknameGenerator.generate()).thenReturn("고요한독자1000", "고요한독자1001");
         when(userRegistrationUseCase.execute(
                         new UserRegistrationCommand(ProviderType.KAKAO, "retry-once", null, "고요한독자1000")))
-                .thenThrow(new BusinessException(UserErrorCode.NICKNAME_CONFLICT));
+                .thenThrow(new BusinessException(ErrorCode.NICKNAME_CONFLICT));
         when(userRegistrationUseCase.execute(
                         new UserRegistrationCommand(ProviderType.KAKAO, "retry-once", null, "고요한독자1001")))
                 .thenReturn(42L);
@@ -130,16 +130,16 @@ class FindOrRegisterUserUseCaseTest {
         when(nicknameGenerator.generate()).thenReturn("고요한독자1000", "고요한독자1001", "고요한독자1002", "고요한독자1003", "고요한독자1004");
         when(userRegistrationUseCase.execute(
                         new UserRegistrationCommand(ProviderType.KAKAO, "retry-many", null, "고요한독자1000")))
-                .thenThrow(new BusinessException(UserErrorCode.NICKNAME_CONFLICT));
+                .thenThrow(new BusinessException(ErrorCode.NICKNAME_CONFLICT));
         when(userRegistrationUseCase.execute(
                         new UserRegistrationCommand(ProviderType.KAKAO, "retry-many", null, "고요한독자1001")))
-                .thenThrow(new BusinessException(UserErrorCode.NICKNAME_CONFLICT));
+                .thenThrow(new BusinessException(ErrorCode.NICKNAME_CONFLICT));
         when(userRegistrationUseCase.execute(
                         new UserRegistrationCommand(ProviderType.KAKAO, "retry-many", null, "고요한독자1002")))
-                .thenThrow(new BusinessException(UserErrorCode.NICKNAME_CONFLICT));
+                .thenThrow(new BusinessException(ErrorCode.NICKNAME_CONFLICT));
         when(userRegistrationUseCase.execute(
                         new UserRegistrationCommand(ProviderType.KAKAO, "retry-many", null, "고요한독자1003")))
-                .thenThrow(new BusinessException(UserErrorCode.NICKNAME_CONFLICT));
+                .thenThrow(new BusinessException(ErrorCode.NICKNAME_CONFLICT));
         when(userRegistrationUseCase.execute(
                         new UserRegistrationCommand(ProviderType.KAKAO, "retry-many", null, "고요한독자1004")))
                 .thenReturn(42L);
@@ -158,13 +158,13 @@ class FindOrRegisterUserUseCaseTest {
                 .thenReturn(Optional.empty());
         when(nicknameGenerator.generate()).thenReturn("고요한독자1000", "고요한독자1001", "고요한독자1002", "고요한독자1003", "고요한독자1004");
         when(userRegistrationUseCase.execute(any(UserRegistrationCommand.class)))
-                .thenThrow(new BusinessException(UserErrorCode.NICKNAME_CONFLICT));
+                .thenThrow(new BusinessException(ErrorCode.NICKNAME_CONFLICT));
 
         assertThatThrownBy(() -> useCase().execute(command))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.NICKNAME_GENERATION_FAILED));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.NICKNAME_GENERATION_FAILED));
         verify(nicknameGenerator, times(5)).generate();
     }
 
@@ -177,13 +177,13 @@ class FindOrRegisterUserUseCaseTest {
         when(nicknameGenerator.generate()).thenReturn("행복한독자1234");
         when(userRegistrationUseCase.execute(
                         new UserRegistrationCommand(ProviderType.KAKAO, "conflict-provider", null, "행복한독자1234")))
-                .thenThrow(new BusinessException(UserErrorCode.PROVIDER_IDENTITY_CONFLICT));
+                .thenThrow(new BusinessException(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
 
         assertThatThrownBy(() -> useCase().execute(command))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.PROVIDER_IDENTITY_CONFLICT));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
         verify(nicknameGenerator).generate();
     }
 

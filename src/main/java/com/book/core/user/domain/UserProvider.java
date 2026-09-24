@@ -1,7 +1,7 @@
 package com.book.core.user.domain;
 
 import com.book.common.exception.BusinessException;
-import com.book.core.user.domain.exception.UserErrorCode;
+import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -80,20 +80,20 @@ public class UserProvider {
             final String providerEmail,
             final LocalDateTime deletedAt) {
         if (id == null || id <= 0) {
-            throw new BusinessException(UserErrorCode.INVALID_USER_PROVIDER_ID);
+            throw new BusinessException(ErrorCode.INVALID_USER_PROVIDER_ID);
         }
         return new UserProvider(id, userId, providerType, providerUserId, providerEmail, deletedAt);
     }
 
     private static void validateUserId(final Long userId) {
         if (userId == null || userId <= 0) {
-            throw new BusinessException(UserErrorCode.INVALID_USER_ID);
+            throw new BusinessException(ErrorCode.INVALID_USER_ID);
         }
     }
 
     private static void validateProviderType(final ProviderType providerType) {
         if (providerType == null) {
-            throw new BusinessException(UserErrorCode.INVALID_PROVIDER_TYPE);
+            throw new BusinessException(ErrorCode.INVALID_PROVIDER_TYPE);
         }
     }
 
@@ -101,13 +101,13 @@ public class UserProvider {
         if (providerUserId == null
                 || providerUserId.isBlank()
                 || providerUserId.length() > MAX_PROVIDER_USER_ID_LENGTH) {
-            throw new BusinessException(UserErrorCode.INVALID_PROVIDER_USER_ID);
+            throw new BusinessException(ErrorCode.INVALID_PROVIDER_USER_ID);
         }
     }
 
     private static void validateProviderEmail(final String providerEmail) {
         if (providerEmail != null && providerEmail.length() > MAX_PROVIDER_EMAIL_LENGTH) {
-            throw new BusinessException(UserErrorCode.INVALID_PROVIDER_EMAIL);
+            throw new BusinessException(ErrorCode.INVALID_PROVIDER_EMAIL);
         }
     }
 

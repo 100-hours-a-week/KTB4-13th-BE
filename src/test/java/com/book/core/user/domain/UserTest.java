@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.BusinessException;
-import com.book.core.user.domain.exception.UserErrorCode;
+import com.book.common.exception.ErrorCode;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -35,7 +35,7 @@ class UserTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.INVALID_NICKNAME));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_NICKNAME));
     }
 
     @Test
@@ -44,7 +44,7 @@ class UserTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.INVALID_NICKNAME));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_NICKNAME));
     }
 
     @Test

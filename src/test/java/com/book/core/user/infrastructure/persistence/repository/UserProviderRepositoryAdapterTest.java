@@ -7,9 +7,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.book.common.exception.BusinessException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.UserProvider;
-import com.book.core.user.domain.exception.UserErrorCode;
 import java.sql.SQLException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ class UserProviderRepositoryAdapterTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.PROVIDER_IDENTITY_CONFLICT));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
     }
 
     @Test

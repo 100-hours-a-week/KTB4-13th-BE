@@ -1,6 +1,7 @@
 package com.book.core.user.application.usecase;
 
 import com.book.common.exception.BusinessException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.user.application.command.FindOrRegisterUserCommand;
 import com.book.core.user.application.command.UserRegistrationCommand;
 import com.book.core.user.application.port.NicknameGenerator;
@@ -9,7 +10,6 @@ import com.book.core.user.application.port.UserRepositoryPort;
 import com.book.core.user.application.result.FindOrRegisterUserResult;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
-import com.book.core.user.domain.exception.UserErrorCode;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,9 +37,9 @@ public class FindOrRegisterUserUseCase {
     private FindOrRegisterUserResult findExistingUser(final UserProvider userProvider) {
         final User user = userRepository
                 .findById(userProvider.userId())
-                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_PROVIDER_USER_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_PROVIDER_USER_NOT_FOUND));
         if (!user.isActive()) {
-            throw new BusinessException(UserErrorCode.USER_PROVIDER_USER_INACTIVE);
+            throw new BusinessException(ErrorCode.USER_PROVIDER_USER_INACTIVE);
         }
         return new FindOrRegisterUserResult(user.id());
     }
@@ -52,11 +52,11 @@ public class FindOrRegisterUserUseCase {
             try {
                 return new FindOrRegisterUserResult(userRegistrationUseCase.execute(registrationCommand));
             } catch (final BusinessException exception) {
-                if (exception.errorCode() != UserErrorCode.NICKNAME_CONFLICT) {
+                if (exception.errorCode() != ErrorCode.NICKNAME_CONFLICT) {
                     throw exception;
                 }
             }
         }
-        throw new BusinessException(UserErrorCode.NICKNAME_GENERATION_FAILED);
+        throw new BusinessException(ErrorCode.NICKNAME_GENERATION_FAILED);
     }
 }

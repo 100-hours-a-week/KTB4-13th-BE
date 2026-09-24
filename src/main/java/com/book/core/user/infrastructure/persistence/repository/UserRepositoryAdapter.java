@@ -1,9 +1,9 @@
 package com.book.core.user.infrastructure.persistence.repository;
 
 import com.book.common.exception.BusinessException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.user.application.port.UserRepositoryPort;
 import com.book.core.user.domain.User;
-import com.book.core.user.domain.exception.UserErrorCode;
 import jakarta.persistence.PersistenceException;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ class UserRepositoryAdapter implements UserRepositoryPort {
             return jpaRepository.saveAndFlush(user);
         } catch (final DataAccessException | PersistenceException exception) {
             if (ConstraintViolationDetector.hasConstraint(exception, NICKNAME_UNIQUE_CONSTRAINT)) {
-                throw new BusinessException(UserErrorCode.NICKNAME_CONFLICT, exception);
+                throw new BusinessException(ErrorCode.NICKNAME_CONFLICT, exception);
             }
             throw exception;
         }

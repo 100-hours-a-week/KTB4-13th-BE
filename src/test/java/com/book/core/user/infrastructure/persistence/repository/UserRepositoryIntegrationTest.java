@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.BusinessException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.user.application.command.UserRegistrationCommand;
 import com.book.core.user.application.port.UserProviderRepositoryPort;
 import com.book.core.user.application.port.UserRepositoryPort;
@@ -11,7 +12,6 @@ import com.book.core.user.application.usecase.UserRegistrationUseCase;
 import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
-import com.book.core.user.domain.exception.UserErrorCode;
 import java.sql.Timestamp;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,7 +76,7 @@ class UserRepositoryIntegrationTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.NICKNAME_CONFLICT));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.NICKNAME_CONFLICT));
 
         jdbc.update("UPDATE users SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", first.id());
         assertThat(jdbc.queryForObject("SELECT active_flag FROM users WHERE id = ?", Integer.class, first.id()))
@@ -97,7 +97,7 @@ class UserRepositoryIntegrationTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.PROVIDER_IDENTITY_CONFLICT));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
 
         jdbc.update("UPDATE user_providers SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", first.id());
         assertThat(userProviderRepository.findActiveByProviderTypeAndProviderUserId(
@@ -134,7 +134,7 @@ class UserRepositoryIntegrationTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.NICKNAME_CONFLICT));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.NICKNAME_CONFLICT));
         assertThat(jdbc.queryForObject(
                         "SELECT COUNT(*) FROM user_providers WHERE provider_user_id = ?",
                         Integer.class,
@@ -154,7 +154,7 @@ class UserRepositoryIntegrationTest {
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         (final var exception) ->
-                                assertThat(exception.errorCode()).isEqualTo(UserErrorCode.PROVIDER_IDENTITY_CONFLICT));
+                                assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE nickname = ?", Integer.class, "롤백대상회원"))
                 .isZero();
     }

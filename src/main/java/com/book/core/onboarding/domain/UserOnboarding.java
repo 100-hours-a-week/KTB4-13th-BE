@@ -28,7 +28,7 @@ public class UserOnboarding extends BaseEntity {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-    private UserOnboarding(final Long id, final Long userId, final OnboardingStatus onboardingStatus, final LocalDateTime completedAt) {
+    public UserOnboarding(final Long id, final Long userId, final OnboardingStatus onboardingStatus, final LocalDateTime completedAt) {
         super(id);
         this.userId = userId;
         this.onboardingStatus = onboardingStatus;

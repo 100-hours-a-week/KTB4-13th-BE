@@ -97,13 +97,43 @@ tasks.check {
     dependsOn(tasks.jacocoTestReport)
     dependsOn(tasks.jacocoTestCoverageVerification)
     dependsOn(integrationTest)
+    dependsOn("verifyJavaLineLength")
 }
 tasks.jar { enabled = false }
+
+val javaSourceFiles = fileTree("src") {
+    include("main/java/**/*.java", "test/java/**/*.java")
+}
+
+tasks.register("verifyJavaLineLength") {
+    group = "verification"
+    description = "Checks that Java source lines do not exceed 140 characters."
+    inputs.files(javaSourceFiles)
+
+    doLast {
+        val violations = javaSourceFiles.files.flatMap { sourceFile ->
+            sourceFile.readLines().mapIndexedNotNull { index, line ->
+                val length = line.codePointCount(0, line.length)
+                if (length > 140) {
+                    "${sourceFile.relativeTo(projectDir)}:${index + 1}: $length characters"
+                } else {
+                    null
+                }
+            }
+        }
+
+        if (violations.isNotEmpty()) {
+            throw GradleException(
+                "Java source lines must not exceed 140 characters:\n${violations.joinToString("\n")}",
+            )
+        }
+    }
+}
 
 spotless {
     ratchetFrom("origin/main")
     java {
-        palantirJavaFormat("2.98.0")
+        eclipse("4.41").configFile(".config/spotless/google-derived-java-style.xml")
         removeUnusedImports()
         forbidWildcardImports()
         trimTrailingWhitespace()

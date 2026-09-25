@@ -25,11 +25,15 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
@@ -70,6 +74,17 @@ class BookApplicationTest {
     @Autowired
     NicknameGenerator nicknameGenerator;
 
+    @Autowired
+    @Qualifier("kakaoJwtDecoder")
+    JwtDecoder kakaoJwtDecoder;
+
+    @Autowired
+    @Qualifier("serviceJwtDecoder")
+    JwtDecoder serviceJwtDecoder;
+
+    @Autowired
+    SecurityFilterChain securityFilterChain;
+
     @Test
     void 전체_Context에_각_UseCase와_Repository가_한_개씩_등록된다() {
         assertThat(context.getBeansOfType(RegisterAddressUseCase.class)).hasSize(1);
@@ -85,11 +100,15 @@ class BookApplicationTest {
         assertThat(AopUtils.getTargetClass(refreshSessionRepository).getSimpleName())
                 .isEqualTo("RefreshSessionRepositoryImpl");
         assertThat(nicknameGenerator).isInstanceOf(RandomNicknameGenerator.class);
+        assertThat(kakaoJwtDecoder).isNotSameAs(serviceJwtDecoder);
+        assertThat(securityFilterChain).isNotNull();
     }
 
     @Test
     void HTTP_주소지_등록을_실제_MySQL까지_연결한다() throws Exception {
+        final String authorization = "Bearer " + tokenIssuer.issue(1L).accessToken();
         mvc.perform(post("/api/v1/user-addresses")
+                        .header(HttpHeaders.AUTHORIZATION, authorization)
                         .param("userId", "42")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

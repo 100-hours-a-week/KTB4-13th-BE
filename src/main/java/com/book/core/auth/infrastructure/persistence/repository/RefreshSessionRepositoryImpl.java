@@ -45,4 +45,13 @@ class RefreshSessionRepositoryImpl implements RefreshSessionRepository {
             throw new BusinessException(CommonErrorCode.STORAGE_FAILURE, exception);
         }
     }
+
+    @Override
+    public Optional<RefreshSession> findActiveByTokenHashForUpdate(final String tokenHash) {
+        try {
+            return repository.findActiveByTokenHashForUpdate(tokenHash).map(RefreshSessionPersistenceMapper::toDomain);
+        } catch (final DataAccessException | PersistenceException exception) {
+            throw new BusinessException(CommonErrorCode.STORAGE_FAILURE, exception);
+        }
+    }
 }

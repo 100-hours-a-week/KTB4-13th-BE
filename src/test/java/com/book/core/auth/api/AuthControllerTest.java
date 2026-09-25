@@ -13,8 +13,11 @@ import com.book.core.auth.api.cookie.AuthCookieProperties;
 import com.book.core.auth.api.cookie.RefreshTokenCookieFactory;
 import com.book.core.auth.application.command.AuthLoginCommand;
 import com.book.core.auth.application.result.AuthLoginResult;
+import com.book.core.auth.application.result.AuthReissueResult;
 import com.book.core.auth.application.usecase.AuthLoginUseCase;
+import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.user.domain.ProviderType;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -25,6 +28,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,6 +44,9 @@ class AuthControllerTest {
 
     @MockitoBean
     AuthLoginUseCase authLoginUseCase;
+
+    @MockitoBean
+    AuthReissueUseCase authReissueUseCase;
 
     @Test
     void kakao_인가_코드로_로그인하고_Access_Token과_Refresh_Cookie를_응답한다() throws Exception {
@@ -129,5 +136,42 @@ class AuthControllerTest {
     private String loginRequest() {
         return "{\"authorizationCode\":\"authorization-code\","
                 + "\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}";
+    }
+
+    @Test
+    void Refresh_Cookie로_재발급하고_새_Access_Token과_Refresh_Cookie를_응답한다() throws Exception {
+        when(authReissueUseCase.execute("old-refresh-token"))
+                .thenReturn(new AuthReissueResult("new-access-token", "new-refresh-token"));
+
+        final MockHttpServletResponse response = mvc.perform(post("/api/v1/auth/reissue")
+                        .cookie(new Cookie(RefreshTokenCookieFactory.COOKIE_NAME, "old-refresh-token")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.accessToken").value("new-access-token"))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(jsonPath("$.error").value(nullValue()))
+                .andReturn()
+                .getResponse();
+
+        verify(authReissueUseCase).execute("old-refresh-token");
+
+        final String setCookie = response.getHeader(HttpHeaders.SET_COOKIE);
+
+        assertThat(setCookie)
+                .contains("refreshToken=new-refresh-token")
+                .contains("Path=/api/v1/auth")
+                .contains("Max-Age=604800")
+                .contains("HttpOnly")
+                .contains("SameSite=Lax")
+                .doesNotContain("Secure");
+    }
+
+    @Test
+    void Refresh_Cookie가_없으면_401을_응답한다() throws Exception {
+        mvc.perform(post("/api/v1/auth/reissue"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
+
+        verifyNoInteractions(authReissueUseCase);
     }
 }

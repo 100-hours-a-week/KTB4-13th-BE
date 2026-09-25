@@ -24,6 +24,7 @@ class JwtTokenConfiguration {
     static final String TOKEN_SECRET_KEY = "tokenSecretKey";
     static final String TOKEN_JWT_ENCODER = "tokenJwtEncoder";
     static final String SERVICE_JWT_DECODER = "serviceJwtDecoder";
+    static final String REFRESH_JWT_DECODER = "refreshJwtDecoder";
     static final String TOKEN_CLOCK = "tokenClock";
     private static final int HS512_MINIMUM_KEY_BYTES = 64;
     private static final String HMAC_SHA_512 = "HmacSHA512";
@@ -50,6 +51,23 @@ class JwtTokenConfiguration {
         timestampValidator.setAllowEmptyExpiryClaim(false);
         timestampValidator.setClock(clock);
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(timestampValidator, new AccessTokenValidator()));
+        return decoder;
+    }
+
+    @Bean(REFRESH_JWT_DECODER)
+    JwtDecoder refreshJwtDecoder(
+            @Qualifier(TOKEN_SECRET_KEY) final SecretKey secretKey, @Qualifier(TOKEN_CLOCK) final Clock clock) {
+
+        final NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(secretKey)
+                .macAlgorithm(MacAlgorithm.HS512)
+                .build();
+
+        final JwtTimestampValidator timestampValidator = new JwtTimestampValidator();
+        timestampValidator.setAllowEmptyExpiryClaim(false);
+        timestampValidator.setClock(clock);
+
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(timestampValidator, new RefreshTokenValidator()));
+
         return decoder;
     }
 

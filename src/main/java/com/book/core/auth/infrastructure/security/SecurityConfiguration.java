@@ -28,7 +28,7 @@ public class SecurityConfiguration {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/*/login")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/*/login", "/api/v1/auth/reissue")
                         .permitAll()
                         .anyRequest()
                         .authenticated())

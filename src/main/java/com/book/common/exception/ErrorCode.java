@@ -23,6 +23,7 @@ public enum ErrorCode {
             LogLevel.ERROR),
     OAUTH_TOKEN_EXCHANGE_FAILURE(
             HttpStatus.INTERNAL_SERVER_ERROR, "OAUTH_TOKEN_EXCHANGE_FAILURE", "외부 인증 토큰을 발급받을 수 없습니다.", LogLevel.ERROR),
+    TOKEN_ISSUE_FAILURE(HttpStatus.INTERNAL_SERVER_ERROR, "TOKEN_ISSUE_FAILURE", "인증 토큰을 발급할 수 없습니다.", LogLevel.ERROR),
     INVALID_USER_ID(HttpStatus.BAD_REQUEST, "INVALID_USER_ID", "회원 ID는 양수여야 합니다.", LogLevel.INFO),
     INVALID_NICKNAME(HttpStatus.BAD_REQUEST, "INVALID_NICKNAME", "닉네임은 앞뒤 공백을 제외하고 2자 이상 20자 이하여야 합니다.", LogLevel.INFO),
     INVALID_USER_PROVIDER_ID(HttpStatus.BAD_REQUEST, "INVALID_USER_PROVIDER_ID", "회원 연동 ID는 양수여야 합니다.", LogLevel.INFO),

@@ -17,7 +17,8 @@ public enum ErrorCode {
     CART_ITEM_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "E8000", "장바구니에 담을 수 있는 상품 수를 초과했습니다.", LogLevel.INFO),
     INVALID_CART_ITEM_QUANTITY(HttpStatus.BAD_REQUEST, "E400", "장바구니 상품 수량은 1 이상 500 이하여야 합니다.", LogLevel.INFO),
     CART_NOT_FOUND(HttpStatus.NOT_FOUND, "E401", "장바구니를 찾을 수 없습니다.", LogLevel.INFO),
-    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "상품을 찾을 수 없습니다.", LogLevel.INFO);
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "상품을 찾을 수 없습니다.", LogLevel.INFO),
+    PRODUCT_MISMATCH_IN_ORDER(HttpStatus.BAD_REQUEST, "E3000", "요청한 상품 정보와 일치하지 않습니다.", LogLevel.INFO);
 
     private final HttpStatus status;
     private final String code;

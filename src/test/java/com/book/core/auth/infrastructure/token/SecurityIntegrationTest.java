@@ -155,14 +155,21 @@ class SecurityIntegrationTest {
     void Token_없이_보호된_endpoint를_요청하면_401을_응답한다() throws Exception {
         mvc.perform(get("/test/protected"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_ACCESS_TOKEN"));
+                .andExpect(header().exists("X-Trace-Id"))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("E401"))
+                .andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다."))
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 
     private void assertUnauthorized(final String token) throws Exception {
         mvc.perform(get("/test/protected").header(HttpHeaders.AUTHORIZATION, bearer(token)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_ACCESS_TOKEN"))
-                .andExpect(jsonPath("$.message").value("Access Token이 유효하지 않습니다."));
+                .andExpect(header().exists("X-Trace-Id"))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("E401"))
+                .andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다."))
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 
     private String bearer(final String token) {

@@ -13,6 +13,7 @@ import com.book.core.onboarding.api.converter.OnboardingResultConverter;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
+import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
 import com.book.core.onboarding.application.result.OnboardingOptionResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
@@ -200,6 +201,49 @@ class OnboardingControllerTest {
                         .content("{\"optionIds\":[23]}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("E409"));
+    }
+
+    @Test
+    void 도서_선택을_저장하고_200을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+        final PutOnboardingBooksCommand command = new PutOnboardingBooksCommand(USER_ID, List.of(10L, 20L));
+
+        mvc.perform(put("/api/v1/onboarding/books")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bookIds\":[10,20]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(onboardingService).saveBooks(command);
+    }
+
+    @Test
+    void 존재하지_않는_도서가_포함되면_404를_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+        doThrow(new com.book.common.exception.CoreException(
+                        com.book.common.exception.ErrorCode.ONBOARDING_BOOK_NOT_FOUND))
+                .when(onboardingService)
+                .saveBooks(new PutOnboardingBooksCommand(USER_ID, List.of(999L)));
+
+        mvc.perform(put("/api/v1/onboarding/books")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bookIds\":[999]}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("E404"));
+    }
+
+    @Test
+    void 진행중인_온보딩이_없으면_도서_저장시_404를_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+        doThrow(new com.book.common.exception.CoreException(com.book.common.exception.ErrorCode.ONBOARDING_NOT_FOUND))
+                .when(onboardingService)
+                .saveBooks(new PutOnboardingBooksCommand(USER_ID, List.of()));
+
+        mvc.perform(put("/api/v1/onboarding/books")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bookIds\":[]}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("E404"));
     }
 
     private void authenticateAs(final Long userId) {

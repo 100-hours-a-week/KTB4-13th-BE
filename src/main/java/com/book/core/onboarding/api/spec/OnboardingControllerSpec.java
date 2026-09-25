@@ -2,6 +2,7 @@ package com.book.core.onboarding.api.spec;
 
 import com.book.common.response.ApiResponse;
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
+import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
 import com.book.core.onboarding.api.response.OnboardingProgressResponse;
 import com.book.core.onboarding.api.response.OnboardingQuestionResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -95,4 +96,33 @@ public interface OnboardingControllerSpec {
                             content = @Content(schema = @Schema(implementation = PutOnboardingAnswersRequest.class)))
                     @Valid
                     final PutOnboardingAnswersRequest request);
+
+    @Operation(
+            summary = "온보딩 도서 선택 저장 및 완료",
+            description = "선택한 도서 목록을 저장합니다. bookIds는 null일 수 없고 중복을 허용하지 않으며, 빈 배열은 허용합니다. "
+                    + "저장에 성공하면 온보딩 상태를 COMPLETED로 전환하고 completedAt을 최초 1회만 설정합니다. "
+                    + "이미 COMPLETED 상태에서 다시 저장해도 completedAt은 갱신되지 않습니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "온보딩 도서 선택 저장 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "도서 목록의 형식이 올바르지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "404",
+                description = "진행 중인 온보딩이 없거나 존재하지 않는 도서가 포함됨"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")
+    })
+    @Parameter(
+            in = ParameterIn.HEADER,
+            name = HttpHeaders.AUTHORIZATION,
+            required = true,
+            example = "Bearer {accessToken}")
+    ResponseEntity<ApiResponse<Void>> saveBooks(
+            @AuthenticationPrincipal final Jwt jwt,
+            @RequestBody(
+                            description = "선택한 도서 ID 목록",
+                            required = true,
+                            content = @Content(schema = @Schema(implementation = PutOnboardingBooksRequest.class)))
+                    @Valid
+                    final PutOnboardingBooksRequest request);
 }

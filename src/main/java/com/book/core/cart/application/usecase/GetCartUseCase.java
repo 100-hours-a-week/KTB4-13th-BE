@@ -18,7 +18,7 @@ public class GetCartUseCase {
     @Transactional(readOnly = true)
     public GetCartResult execute(final GetCartCommand command) {
         return cartRepository
-                .findByUserId(command.userId())
+                .findActiveByUserId(command.userId())
                 .map(cart -> GetCartResult.of(cartItemRepository.findActiveByCartId(cart.id()).stream()
                         .map(GetCartItemResult::from)
                         .toList()))

@@ -1,5 +1,6 @@
 package com.book.core.cart.infrastructure.persistence.repository;
 
+import com.book.common.domain.EntityStatus;
 import com.book.core.cart.domain.Cart;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
@@ -13,5 +14,5 @@ interface CartJpaRepository extends JpaRepository<Cart, Long> {
     @Query("select cart from Cart cart where cart.userId = :userId")
     Optional<Cart> findByUserIdWithLock(@Param("userId") final Long userId);
 
-    Optional<Cart> findByUserId(final Long userId);
+    Optional<Cart> findByUserIdAndStatus(final Long userId, final EntityStatus status);
 }

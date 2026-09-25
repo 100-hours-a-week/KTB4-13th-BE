@@ -9,6 +9,7 @@ import com.book.core.auth.api.spec.AuthControllerSpec;
 import com.book.core.auth.application.result.AuthLoginResult;
 import com.book.core.auth.application.result.AuthReissueResult;
 import com.book.core.auth.application.usecase.AuthLoginUseCase;
+import com.book.core.auth.application.usecase.AuthLogoutUseCase;
 import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.domain.exception.AuthErrorCode;
 import com.book.core.user.domain.ProviderType;
@@ -19,6 +20,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 class AuthController implements AuthControllerSpec {
     private final AuthLoginUseCase authLoginUseCase;
+    private final AuthLogoutUseCase authLogoutUseCase;
     private final AuthReissueUseCase authReissueUseCase;
     private final RefreshTokenCookieFactory refreshTokenCookieFactory;
 
@@ -58,6 +62,20 @@ class AuthController implements AuthControllerSpec {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie)
                 .body(SuccessResponse.of(AuthReissueResponse.from(result)));
+    }
+
+    @PostMapping("/logout")
+    @Override
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal final Jwt jwt) {
+        final Long userId = Long.valueOf(jwt.getSubject());
+
+        authLogoutUseCase.execute(userId);
+
+        final String expiredRefreshCookie = refreshTokenCookieFactory.expire().toString();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, expiredRefreshCookie)
+                .build();
     }
 
     private String extractRefreshToken(final HttpServletRequest request) {

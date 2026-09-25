@@ -15,27 +15,40 @@ import com.book.core.auth.application.command.AuthLoginCommand;
 import com.book.core.auth.application.result.AuthLoginResult;
 import com.book.core.auth.application.result.AuthReissueResult;
 import com.book.core.auth.application.usecase.AuthLoginUseCase;
+import com.book.core.auth.application.usecase.AuthLogoutUseCase;
 import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.user.domain.ProviderType;
 import jakarta.servlet.http.Cookie;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({ProviderTypePathConverter.class, RefreshTokenCookieFactory.class})
+@Import({
+    ProviderTypePathConverter.class,
+    RefreshTokenCookieFactory.class,
+    AuthControllerTest.AuthenticationPrincipalTestConfig.class
+})
 @EnableConfigurationProperties(AuthCookieProperties.class)
 @TestPropertySource(properties = "auth.cookie.secure=false")
 class AuthControllerTest {
@@ -44,6 +57,9 @@ class AuthControllerTest {
 
     @MockitoBean
     AuthLoginUseCase authLoginUseCase;
+
+    @MockitoBean
+    AuthLogoutUseCase authLogoutUseCase;
 
     @MockitoBean
     AuthReissueUseCase authReissueUseCase;
@@ -173,5 +189,47 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
 
         verifyNoInteractions(authReissueUseCase);
+    }
+
+    @Test
+    void Access_Token으로_로그아웃하고_Refresh_Cookie를_만료한다() throws Exception {
+        final Jwt jwt = Jwt.withTokenValue("access-token")
+                .header("alg", "HS512")
+                .subject("42")
+                .claim("tokenType", "ACCESS")
+                .build();
+
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+
+        try {
+            final MockHttpServletResponse response = mvc.perform(post("/api/v1/auth/logout"))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse();
+
+            verify(authLogoutUseCase).execute(42L);
+
+            assertThat(response.getContentAsString()).isEmpty();
+
+            final String setCookie = response.getHeader(HttpHeaders.SET_COOKIE);
+
+            assertThat(setCookie)
+                    .contains("refreshToken=")
+                    .contains("Path=/api/v1/auth")
+                    .contains("Max-Age=0")
+                    .contains("HttpOnly")
+                    .contains("SameSite=Lax")
+                    .doesNotContain("Secure");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @TestConfiguration
+    static class AuthenticationPrincipalTestConfig implements WebMvcConfigurer {
+        @Override
+        public void addArgumentResolvers(final List<HandlerMethodArgumentResolver> resolvers) {
+            resolvers.add(new AuthenticationPrincipalArgumentResolver());
+        }
     }
 }

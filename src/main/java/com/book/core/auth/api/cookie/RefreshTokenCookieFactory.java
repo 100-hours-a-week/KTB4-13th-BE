@@ -26,4 +26,14 @@ public class RefreshTokenCookieFactory {
                 .maxAge(MAX_AGE)
                 .build();
     }
+
+    public ResponseCookie expire() {
+        return ResponseCookie.from(COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(properties.secure())
+                .sameSite(SAME_SITE)
+                .path(COOKIE_PATH)
+                .maxAge(Duration.ZERO)
+                .build();
+    }
 }

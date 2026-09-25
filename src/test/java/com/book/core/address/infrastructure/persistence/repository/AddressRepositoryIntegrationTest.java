@@ -257,7 +257,7 @@ class AddressRepositoryIntegrationTest {
     }
 
     @Test
-    void 주소지_마이그레이션은_deleted_at과_order_addresses를_추가하지_않는다() {
+    void 주소지_마이그레이션은_deleted_at을_추가하지_않고_order_addresses를_생성한다() {
         assertThat(jdbc.queryForObject(
                         "SELECT COUNT(*) FROM information_schema.columns "
                                 + "WHERE table_schema = DATABASE() AND table_name = 'addresses' AND column_name = 'deleted_at'",
@@ -267,6 +267,6 @@ class AddressRepositoryIntegrationTest {
                         "SELECT COUNT(*) FROM information_schema.tables "
                                 + "WHERE table_schema = DATABASE() AND table_name = 'order_addresses'",
                         Integer.class))
-                .isZero();
+                .isEqualTo(1);
     }
 }

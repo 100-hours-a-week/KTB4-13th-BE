@@ -51,7 +51,7 @@ class GetCartUseCaseTest {
         }
 
         @Override
-        public Optional<Cart> findActiveByUserId(final Long userId) {
+        public Optional<Cart> findByUserId(final Long userId) {
             return Optional.ofNullable(cart);
         }
     }

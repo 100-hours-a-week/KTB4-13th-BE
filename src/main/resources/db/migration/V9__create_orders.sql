@@ -18,6 +18,7 @@ CREATE TABLE orders (
     address_id BIGINT NOT NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6),
     PRIMARY KEY (id),
     CONSTRAINT uk_orders_key UNIQUE (`key`),
     CONSTRAINT fk_orders_address FOREIGN KEY (address_id) REFERENCES order_addresses (id)
@@ -33,6 +34,7 @@ CREATE TABLE order_item (
     status VARCHAR(16) NOT NULL DEFAULT 'CREATED',
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6),
     PRIMARY KEY (id),
     CONSTRAINT fk_order_item_order FOREIGN KEY (order_id) REFERENCES orders (id),
     CONSTRAINT fk_order_item_product FOREIGN KEY (product_id) REFERENCES products (id)

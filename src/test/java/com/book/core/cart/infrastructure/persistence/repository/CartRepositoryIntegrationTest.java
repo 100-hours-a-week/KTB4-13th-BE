@@ -81,7 +81,10 @@ class CartRepositoryIntegrationTest {
         addUseCase.execute(new AddCartItemCommand(1003L, 2002L, 2));
         addUseCase.execute(new AddCartItemCommand(1003L, 2003L, 3));
         final Long cartId = jdbc.queryForObject("SELECT id FROM carts WHERE user_id = ?", Long.class, 1003L);
-        jdbc.update("UPDATE cart_item SET status = 'DELETED' WHERE cart_id = ? AND product_id = ?", cartId, 2001L);
+        jdbc.update(
+                "UPDATE cart_item SET deleted_at = CURRENT_TIMESTAMP(6) WHERE cart_id = ? AND product_id = ?",
+                cartId,
+                2001L);
 
         final var result = getCartUseCase.execute(new GetCartCommand(1003L));
 

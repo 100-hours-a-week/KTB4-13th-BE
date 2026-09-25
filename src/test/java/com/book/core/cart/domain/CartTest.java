@@ -35,4 +35,12 @@ class CartTest {
                         (final var exception) ->
                                 assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_CART_ITEM_QUANTITY));
     }
+
+    @Test
+    void 수량_0은_삭제_의미로_허용하지_않는다() {
+        assertThatThrownBy(() -> CartItem.from(1L, 20L, 0))
+                .isInstanceOfSatisfying(
+                        CoreException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_CART_ITEM_QUANTITY));
+    }
 }

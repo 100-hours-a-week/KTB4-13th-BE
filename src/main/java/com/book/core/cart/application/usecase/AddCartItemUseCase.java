@@ -8,6 +8,7 @@ import com.book.core.cart.application.port.CartItemRepositoryPort;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
+import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AddCartItemUseCase {
     private final CartRepositoryPort cartRepository;
     private final CartItemRepositoryPort cartItemRepository;
+    private final GetProductDetailUseCase productDetailUseCase;
 
     @Transactional
     public void execute(final AddCartItemCommand command) {
@@ -27,6 +29,8 @@ public class AddCartItemUseCase {
 
         // 장바구니에 이미 존재하는 상품이면 수량을 대체하고, 존재하지 않으면 새로 추가
         final Optional<CartItem> found = cartItemRepository.findByCartIdAndProductId(cart.id(), command.productId());
+        CartItem.validateQuantity(command.quantity());
+        productDetailUseCase.validateAvailableStock(command.productId(), command.quantity());
 
         // 이미 존재하는 상품인지 확인
         if (found.isPresent()) {

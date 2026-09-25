@@ -5,10 +5,10 @@
 ## 1. 범위와 생명주기
 
 - 주소지는 요청 회원의 소유로 저장합니다.
-- 등록 시 상태는 `EntityStatus.ACTIVE`입니다.
-- 활성 주소지는 `EntityStatus.ACTIVE`인 주소지입니다.
-- `deleted_at` 컬럼과 관련 마이그레이션은 추가하지 않습니다.
-- 주소지 삭제는 기존 행의 상태를 `EntityStatus.DELETED`로 바꾸는 소프트 삭제입니다.
+- 등록 시 `deleted_at`은 `NULL`입니다.
+- 활성 주소지는 `deleted_at IS NULL`인 주소지입니다.
+- V8 마이그레이션은 기존 삭제 상태 컬럼을 `deleted_at`으로 전환하고, 이전 삭제 행의 시각은 `updated_at`으로 채웁니다.
+- 주소지 삭제는 `Address.delete()`로 `deleted_at`을 기록하는 소프트 삭제입니다.
 - 삭제된 주소지는 활성 주소지 조회·수정·기본 배송지 지정 대상에서 제외합니다.
 - 삭제된 주소지의 복구 기능은 제공하지 않습니다.
 - 주소록 기능은 주문 스냅샷을 생성하거나 수정하지 않습니다. 주문 시 배송지 스냅샷은 [주문 도메인 규칙](ORDER_RULE.md)에 따라 주문 기능이 생성합니다.
@@ -40,7 +40,7 @@
 
 - 수정 API는 `PUT /api/v1/user-addresses/{addressId}`입니다.
 - 수정 대상은 요청 `userId`가 소유한 `addressId` 경로의 주소지입니다.
-- `EntityStatus.ACTIVE`인 주소지만 수정할 수 있습니다.
+- `deleted_at IS NULL`인 주소지만 수정할 수 있습니다.
 - 주소지 수정은 전체 교체입니다. 요청 Body에 `label`, `postalCode`, `address`, `detailAddress`를 모두 포함해야 합니다.
 - `detailAddress`는 `null`을 허용하며, 생략은 허용하지 않습니다.
 - `isDefaultAddress`는 일반 주소지 수정 요청에 포함하지 않습니다. 기본 배송지 변경은 별도 API를 사용합니다.
@@ -54,13 +54,13 @@
 
 - 삭제 API는 `DELETE /api/v1/user-addresses/{addressId}`입니다.
 - 현재 인증 Resolver가 없으므로 구현에서는 기존 Controller와 같이 `userId` Query Parameter를 받습니다.
-- 요청 `userId`가 소유한 `EntityStatus.ACTIVE` 주소지만 삭제할 수 있습니다.
+- 요청 `userId`가 소유한 `deleted_at IS NULL` 주소지만 삭제할 수 있습니다.
 - 대상이 없거나 비활성 상태이거나 요청 `userId`가 소유하지 않거나 이미 삭제된 주소지이면 `E403 FORBIDDEN`으로 처리합니다.
 - 기본 배송지를 삭제하면 같은 회원의 다른 활성 주소지 중 가장 최근 주소지를 기본 배송지로 지정합니다.
 - 최근 주소지는 `created_at DESC`, `id DESC` 순으로 선택합니다. `created_at`이 같으면 더 큰 `id`를 선택합니다.
 - 일반 주소지를 삭제하면 현재 기본 배송지를 유지합니다.
 - 마지막 활성 주소지를 삭제할 수 있으며, 이후 해당 회원에게 기본 배송지는 없습니다.
-- 삭제 대상 주소지는 `Address.delete()`를 사용해 `EntityStatus.DELETED`로 전이합니다. 물리 삭제와 `deleted_at` 컬럼은 사용하지 않습니다.
+- 삭제 대상 주소지는 `Address.delete()`를 사용해 `deleted_at`을 기록합니다. 물리 삭제는 하지 않습니다.
 
 ## 7. 기본 배송지 지정 규칙
 
@@ -75,9 +75,9 @@
 
 - 주소지 조회, 소유·활성 상태 확인, 중복 확인과 수정 저장은 하나의 쓰기 트랜잭션에서 처리합니다.
 - 기본 배송지 지정의 대상 조회, 기존 기본 배송지 해제와 대상 저장은 하나의 쓰기 트랜잭션에서 처리합니다.
-- 삭제 대상 조회, 기본 배송지 승격과 상태 전이는 하나의 쓰기 트랜잭션에서 처리합니다.
+- 삭제 대상 조회, 기본 배송지 승격과 삭제 시각 기록은 하나의 쓰기 트랜잭션에서 처리합니다.
 - `created_at`은 유지하고 `updated_at`만 갱신합니다.
-- 시간 필드는 `BaseEntity`·`BaseTimeEntity`의 기존 JPA 매핑을 사용하며 요청에서 직접 받지 않습니다.
+- 생성·수정 시각과 `deleted_at`은 `BaseEntity`·`BaseTimeEntity`의 JPA 매핑을 사용하며 요청에서 직접 받지 않습니다.
 
 ## 9. 인증 연계 전제
 
@@ -92,4 +92,4 @@
 - 주소지 삭제 성공은 명세에 따라 `200 OK`와 빈 응답 본문을 반환하며 `ApiResponse` envelope을 사용하지 않습니다.
 - 요청 형식·수정 정책 위반은 `E400`, 인증 실패는 명세상 `E401`(현재 인증 계층에 위임), 수정·지정 대상의 미존재·비활성·소유권 불일치는 `E403`, 예상하지 못한 오류는 `E500`으로 응답합니다.
 - 삭제 대상의 미존재·비활성·소유권 불일치도 `E403 FORBIDDEN`으로 응답합니다.
-- `deleted_at` 컬럼과 `order_addresses` 스냅샷은 추가하거나 수정하지 않습니다.
+- 주소록 API는 주문 배송지 스냅샷을 만들거나 수정하지 않습니다. 주문 기능이 `order_addresses`에 별도로 저장합니다.

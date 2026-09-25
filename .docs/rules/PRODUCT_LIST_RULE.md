@@ -16,7 +16,7 @@
 ## ERD·문서 비교와 확인 필요
 
 - ERD와 도메인 정의서의 연결 대상이 `items`/`products`, 식별자 컬럼이 `item_id`/`product_id`로 일치하지 않는다. 현재 프로젝트의 실제 테이블과 도메인에 맞춰 `products.id`를 사용했다.
-- ERD는 `deleted_at`과 `active_flag`를 제시하지만 프로젝트 Flyway와 `BaseEntity`는 `status`를 사용한다. 연결 테이블도 프로젝트 규칙에 맞춰 `status = ACTIVE`를 적용했다.
+- 공통 삭제 생명주기는 `deleted_at IS NULL`로 판별한다. V8 마이그레이션은 상품·도서·카테고리·연결 테이블의 삭제 전용 `status`를 없애고, `product_category`의 활성 연결 UNIQUE 제약은 `active_flag`로 유지한다.
 - API 명세서의 응답 예시는 `result`·`error` 외피를 사용하지만 프로젝트 공통 `ApiResponse`는 `success`·`data`를 사용한다. 기존 프로젝트 계약을 우선했다.
 - API 명세서의 `sort` 설명은 상품 식별자로 되어 있고 유효한 값·기본값은 정의되어 있지 않다. 현재는 입력을 받되 명세서의 고정 정렬만 적용한다.
 - API 명세서에 `limit` 기본값·최댓값과 cursor 형식이 정의되어 있지 않다. 현재 구현의 기본값 20과 ID 문자열 cursor는 확인 필요 항목이다.

@@ -51,18 +51,22 @@ class OrderRepositoryIntegrationTest {
                 .containsEntry("postal_code", "06236")
                 .containsEntry("address", "서울 주소")
                 .containsEntry("detail_address", "101호");
-        assertThat(jdbc.queryForMap("SELECT user_id, total_price, status FROM orders WHERE id = ?", savedOrder.id()))
+        assertThat(jdbc.queryForMap(
+                        "SELECT user_id, total_price, status, deleted_at FROM orders WHERE id = ?", savedOrder.id()))
                 .containsEntry("user_id", 42L)
                 .containsEntry("total_price", new BigDecimal("34.50"))
-                .containsEntry("status", "CREATED");
+                .containsEntry("status", "CREATED")
+                .containsEntry("deleted_at", null);
         assertThat(jdbc.queryForMap(
-                        "SELECT product_id, unit_price, total_price, quantity, status FROM order_item WHERE order_id = ?",
+                        "SELECT product_id, unit_price, total_price, quantity, status, deleted_at "
+                                + "FROM order_item WHERE order_id = ?",
                         savedOrder.id()))
                 .containsEntry("product_id", 9201L)
                 .containsEntry("unit_price", new BigDecimal("17.25"))
                 .containsEntry("total_price", new BigDecimal("34.50"))
                 .containsEntry("quantity", 2)
-                .containsEntry("status", "CREATED");
+                .containsEntry("status", "CREATED")
+                .containsEntry("deleted_at", null);
     }
 
     @Test
@@ -102,6 +106,8 @@ class OrderRepositoryIntegrationTest {
                           AND index_name = 'uk_orders_key'
                           AND non_unique = 0
                         """, Integer.class)).isEqualTo(1);
+        assertThat(countColumn("orders", "deleted_at")).isEqualTo(1);
+        assertThat(countColumn("order_item", "deleted_at")).isEqualTo(1);
     }
 
     private Order order(final String orderKey, final long productId, final String address) {
@@ -121,6 +127,16 @@ class OrderRepositoryIntegrationTest {
                           AND referenced_table_name = ?
                           AND referenced_column_name = ?
                         """, Integer.class, table, column, referencedTable, referencedColumn);
+    }
+
+    private int countColumn(final String table, final String column) {
+        return jdbc.queryForObject("""
+                        SELECT COUNT(*)
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = ?
+                          AND column_name = ?
+                        """, Integer.class, table, column);
     }
 
     private void insertBook(final long id) {

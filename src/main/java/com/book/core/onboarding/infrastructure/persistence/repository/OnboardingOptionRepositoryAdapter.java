@@ -17,13 +17,6 @@ class OnboardingOptionRepositoryAdapter implements OnboardingOptionRepositoryPor
     }
 
     @Override
-    public List<OnboardingOption> findByQuestionIdAndParentOptionIdIn(
-            final Long questionId, final List<Long> parentOptionIds) {
-        return jpaRepository.findByOnboardingQuestionIdAndParentOptionIdInOrderByDisplayOrderAsc(
-                questionId, parentOptionIds);
-    }
-
-    @Override
     public List<OnboardingOption> findAllByIdIn(final List<Long> ids) {
         return jpaRepository.findAllByIdIn(ids);
     }

@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
-import com.book.core.user.application.command.FindOrRegisterUserCommand;
+import com.book.core.user.application.command.IdentifyUserCommand;
 import com.book.core.user.application.command.UserRegistrationCommand;
 import com.book.core.user.application.port.NicknameGenerator;
 import com.book.core.user.application.port.UserProviderRepositoryPort;
@@ -26,7 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class FindOrRegisterUserUseCaseTest {
+class IdentifyUserUseCaseTest {
     @Mock
     UserRepositoryPort userRepository;
 
@@ -41,8 +41,7 @@ class FindOrRegisterUserUseCaseTest {
 
     @Test
     void 기존_활성_provider_연결의_내부_userId를_반환한다() {
-        final FindOrRegisterUserCommand command =
-                new FindOrRegisterUserCommand(ProviderType.KAKAO, "provider-123", null);
+        final IdentifyUserCommand command = new IdentifyUserCommand(ProviderType.KAKAO, "provider-123", null);
         when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "provider-123"))
                 .thenReturn(Optional.of(UserProvider.restore(7L, 42L, ProviderType.KAKAO, "provider-123", null, null)));
         when(userRepository.findById(42L)).thenReturn(Optional.of(User.restore(42L, "북적이", null)));
@@ -56,8 +55,7 @@ class FindOrRegisterUserUseCaseTest {
 
     @Test
     void 기존_provider가_가리키는_User가_없으면_internal_error를_발생시킨다() {
-        final FindOrRegisterUserCommand command =
-                new FindOrRegisterUserCommand(ProviderType.KAKAO, "missing-user", null);
+        final IdentifyUserCommand command = new IdentifyUserCommand(ProviderType.KAKAO, "missing-user", null);
         when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "missing-user"))
                 .thenReturn(Optional.of(UserProvider.restore(7L, 42L, ProviderType.KAKAO, "missing-user", null, null)));
         when(userRepository.findById(42L)).thenReturn(Optional.empty());
@@ -71,8 +69,7 @@ class FindOrRegisterUserUseCaseTest {
 
     @Test
     void 기존_provider가_가리키는_User가_soft_delete_상태면_internal_error를_발생시킨다() {
-        final FindOrRegisterUserCommand command =
-                new FindOrRegisterUserCommand(ProviderType.KAKAO, "inactive-user", null);
+        final IdentifyUserCommand command = new IdentifyUserCommand(ProviderType.KAKAO, "inactive-user", null);
         when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "inactive-user"))
                 .thenReturn(
                         Optional.of(UserProvider.restore(7L, 42L, ProviderType.KAKAO, "inactive-user", null, null)));
@@ -88,8 +85,7 @@ class FindOrRegisterUserUseCaseTest {
 
     @Test
     void 신규_identity는_nullable_email과_생성한_nickname으로_가입을_시도한다() {
-        final FindOrRegisterUserCommand command =
-                new FindOrRegisterUserCommand(ProviderType.KAKAO, "new-provider", null);
+        final IdentifyUserCommand command = new IdentifyUserCommand(ProviderType.KAKAO, "new-provider", null);
         final UserRegistrationCommand registrationCommand =
                 new UserRegistrationCommand(ProviderType.KAKAO, "new-provider", null, "행복한독자1234");
         when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "new-provider"))
@@ -105,7 +101,7 @@ class FindOrRegisterUserUseCaseTest {
 
     @Test
     void 한_번의_nickname_충돌_후_재시도로_성공한다() {
-        final FindOrRegisterUserCommand command = new FindOrRegisterUserCommand(ProviderType.KAKAO, "retry-once", null);
+        final IdentifyUserCommand command = new IdentifyUserCommand(ProviderType.KAKAO, "retry-once", null);
         when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "retry-once"))
                 .thenReturn(Optional.empty());
         when(nicknameGenerator.generate()).thenReturn("고요한독자1000", "고요한독자1001");
@@ -124,7 +120,7 @@ class FindOrRegisterUserUseCaseTest {
 
     @Test
     void 여러_번의_nickname_충돌_후_최대_시도_횟수_이내에_성공한다() {
-        final FindOrRegisterUserCommand command = new FindOrRegisterUserCommand(ProviderType.KAKAO, "retry-many", null);
+        final IdentifyUserCommand command = new IdentifyUserCommand(ProviderType.KAKAO, "retry-many", null);
         when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "retry-many"))
                 .thenReturn(Optional.empty());
         when(nicknameGenerator.generate()).thenReturn("고요한독자1000", "고요한독자1001", "고요한독자1002", "고요한독자1003", "고요한독자1004");
@@ -152,8 +148,7 @@ class FindOrRegisterUserUseCaseTest {
 
     @Test
     void 최대_시도_횟수를_초과하면_명시적인_서버_오류로_종료한다() {
-        final FindOrRegisterUserCommand command =
-                new FindOrRegisterUserCommand(ProviderType.KAKAO, "retry-exhausted", null);
+        final IdentifyUserCommand command = new IdentifyUserCommand(ProviderType.KAKAO, "retry-exhausted", null);
         when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "retry-exhausted"))
                 .thenReturn(Optional.empty());
         when(nicknameGenerator.generate()).thenReturn("고요한독자1000", "고요한독자1001", "고요한독자1002", "고요한독자1003", "고요한독자1004");
@@ -170,8 +165,7 @@ class FindOrRegisterUserUseCaseTest {
 
     @Test
     void nickname_충돌이_아닌_예외는_재시도하지_않고_즉시_전달한다() {
-        final FindOrRegisterUserCommand command =
-                new FindOrRegisterUserCommand(ProviderType.KAKAO, "conflict-provider", null);
+        final IdentifyUserCommand command = new IdentifyUserCommand(ProviderType.KAKAO, "conflict-provider", null);
         when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "conflict-provider"))
                 .thenReturn(Optional.empty());
         when(nicknameGenerator.generate()).thenReturn("행복한독자1234");
@@ -187,8 +181,8 @@ class FindOrRegisterUserUseCaseTest {
         verify(nicknameGenerator).generate();
     }
 
-    private FindOrRegisterUserUseCase useCase() {
-        return new FindOrRegisterUserUseCase(
+    private IdentifyUserUseCase useCase() {
+        return new IdentifyUserUseCase(
                 userRepository, userProviderRepository, nicknameGenerator, userRegistrationUseCase);
     }
 }

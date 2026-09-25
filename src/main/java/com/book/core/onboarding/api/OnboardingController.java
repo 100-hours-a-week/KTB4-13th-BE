@@ -3,6 +3,7 @@ package com.book.core.onboarding.api;
 import com.book.common.response.ApiResponse;
 import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
+import com.book.core.onboarding.api.response.OnboardingProgressResponse;
 import com.book.core.onboarding.api.response.OnboardingQuestionResponse;
 import com.book.core.onboarding.api.spec.OnboardingControllerSpec;
 import com.book.core.onboarding.application.service.OnboardingService;
@@ -33,6 +34,15 @@ class OnboardingController implements OnboardingControllerSpec {
         final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toGetOnboardingQuestionCommand(userId, questionId);
         final var response = resultConverter.toOnboardingQuestionResponse(onboardingService.getQuestion(command));
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Override
+    @GetMapping
+    public ResponseEntity<ApiResponse<OnboardingProgressResponse>> getProgress(@AuthenticationPrincipal final Jwt jwt) {
+        final Long userId = Long.parseLong(jwt.getSubject());
+        final var command = commandConverter.toGetOnboardingProgressCommand(userId);
+        final var response = resultConverter.toOnboardingProgressResponse(onboardingService.getProgress(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

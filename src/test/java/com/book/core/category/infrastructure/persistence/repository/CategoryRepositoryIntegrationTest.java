@@ -33,17 +33,16 @@ class CategoryRepositoryIntegrationTest {
     @Test
     void 삭제되지_않은_카테고리만_조회한다() {
         jdbc.update(
-                "INSERT INTO book_category (name, path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO book_category (name, path, created_at, updated_at) VALUES (?, ?, ?, ?)",
                 "소설",
                 "도서/소설",
-                "ACTIVE",
                 "2026-01-01 00:00:00",
                 "2026-01-01 00:00:00");
         jdbc.update(
-                "INSERT INTO book_category (name, path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO book_category (name, path, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
                 "삭제 카테고리",
                 "도서/삭제",
-                "DELETED",
+                "2026-01-02 00:00:00",
                 "2026-01-01 00:00:00",
                 "2026-01-02 00:00:00");
 

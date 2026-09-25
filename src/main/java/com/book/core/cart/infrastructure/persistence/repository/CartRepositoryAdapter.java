@@ -19,6 +19,6 @@ public class CartRepositoryAdapter implements CartRepositoryPort {
 
     @Override
     public Optional<Cart> findByUserId(final Long userId) {
-        return jpaRepository.findByUserId(userId);
+        return jpaRepository.findByUserIdAndDeletedAtIsNull(userId);
     }
 }

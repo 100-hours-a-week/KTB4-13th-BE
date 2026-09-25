@@ -6,14 +6,14 @@ import org.junit.jupiter.api.Test;
 
 class CategoryTest {
     @Test
-    void ACTIVE_상태면_활성_카테고리다() {
+    void 생성된_카테고리는_활성_카테고리다() {
         final var category = new Category(7L, "소설", "도서/소설");
 
         assertThat(category.isActive()).isTrue();
     }
 
     @Test
-    void DELETED_상태면_비활성_카테고리다() {
+    void 삭제한_카테고리는_비활성_카테고리다() {
         final var category = new Category(7L, "소설", "도서/소설");
         category.delete();
 

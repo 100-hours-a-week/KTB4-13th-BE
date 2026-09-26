@@ -28,7 +28,7 @@ public class UserOnboarding extends BaseEntity {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-    private UserOnboarding(
+    public UserOnboarding(
             final Long id,
             final Long userId,
             final OnboardingStatus onboardingStatus,

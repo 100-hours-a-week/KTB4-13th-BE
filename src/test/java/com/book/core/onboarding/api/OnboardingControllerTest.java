@@ -8,11 +8,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
+import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
+import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
 import com.book.core.onboarding.application.result.OnboardingOptionResult;
+import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.result.OnboardingQuestionResult;
 import com.book.core.onboarding.application.service.OnboardingService;
+import com.book.core.onboarding.domain.OnboardingStatus;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -111,6 +116,42 @@ class OnboardingControllerTest {
         mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 4L))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("E409"));
+    }
+
+    @Test
+    void 진행_정보를_조회하고_응답_계약을_반환한다() throws Exception {
+        authenticateAs(USER_ID);
+        final GetOnboardingProgressCommand command = new GetOnboardingProgressCommand(USER_ID);
+        when(onboardingService.getProgress(command))
+                .thenReturn(new OnboardingProgressResult(
+                        OnboardingStatus.COMPLETED,
+                        LocalDateTime.of(2026, 1, 1, 0, 0),
+                        List.of(new OnboardingAnswerGroupResult(1L, List.of(1L, 2L))),
+                        List.of(10L, 20L)));
+
+        mvc.perform(get("/api/v1/onboarding"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.answers[0].questionId").value(1))
+                .andExpect(jsonPath("$.data.answers[0].optionIds[0]").value(1))
+                .andExpect(jsonPath("$.data.answers[0].optionIds[1]").value(2))
+                .andExpect(jsonPath("$.data.bookIds[0]").value(10))
+                .andExpect(jsonPath("$.data.bookIds[1]").value(20));
+
+        verify(onboardingService).getProgress(command);
+    }
+
+    @Test
+    void 진행중인_온보딩이_없으면_404를_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+        when(onboardingService.getProgress(new GetOnboardingProgressCommand(USER_ID)))
+                .thenThrow(new com.book.common.exception.CoreException(
+                        com.book.common.exception.ErrorCode.ONBOARDING_NOT_FOUND));
+
+        mvc.perform(get("/api/v1/onboarding"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("E404"));
     }
 
     private void authenticateAs(final Long userId) {

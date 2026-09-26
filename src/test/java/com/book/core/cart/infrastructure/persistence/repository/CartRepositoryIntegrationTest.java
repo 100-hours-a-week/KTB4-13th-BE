@@ -85,6 +85,15 @@ class CartRepositoryIntegrationTest {
             .containsExactly(org.assertj.core.groups.Tuple.tuple(2003L, 3), org.assertj.core.groups.Tuple.tuple(2002L, 2));
     }
 
+    @Test
+    void 삭제된_장바구니는_주문_대상_조회에서_제외한다() {
+        createCart(1004L);
+        addUseCase.execute(new AddCartItemCommand(1004L, 2004L, 1));
+        jdbc.update("UPDATE carts SET deleted_at = CURRENT_TIMESTAMP(6) WHERE user_id = ?", 1004L);
+
+        assertThat(getCartUseCase.execute(1004L).items()).isEmpty();
+    }
+
     private void createCart(final long userId) {
         jdbc.update("INSERT INTO carts (user_id) VALUES (?)", userId);
     }

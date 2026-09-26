@@ -55,7 +55,19 @@ public enum ErrorCode {
     CART_ITEM_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "E8000", "장바구니에 담을 수 있는 상품 수를 초과했습니다.", LogLevel.INFO),
     INVALID_CART_ITEM_QUANTITY(HttpStatus.BAD_REQUEST, "E400", "장바구니 상품 수량은 1 이상 500 이하여야 합니다.", LogLevel.INFO),
     CART_NOT_FOUND(HttpStatus.NOT_FOUND, "E401", "장바구니를 찾을 수 없습니다.", LogLevel.INFO),
-    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "상품을 찾을 수 없습니다.", LogLevel.INFO);
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "상품을 찾을 수 없습니다.", LogLevel.INFO),
+    ONBOARDING_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "온보딩 질문을 찾을 수 없습니다.", LogLevel.INFO),
+    ONBOARDING_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "진행 중인 온보딩이 없습니다.", LogLevel.INFO),
+    ONBOARDING_OPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "온보딩 선택지를 찾을 수 없습니다.", LogLevel.INFO),
+    ONBOARDING_BOOK_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "존재하지 않는 도서가 포함되어 있습니다.", LogLevel.INFO),
+    INVALID_ONBOARDING_ANSWER_SELECTION(
+            HttpStatus.BAD_REQUEST, "E400", "온보딩 답변 선택 개수나 형식이 올바르지 않습니다.", LogLevel.INFO),
+    ONBOARDING_OPTION_QUESTION_MISMATCH(
+            HttpStatus.CONFLICT, "E409", "선택지가 해당 질문에 속하지 않습니다.", LogLevel.INFO),
+    ONBOARDING_PARENT_QUESTION_NOT_ANSWERED(
+            HttpStatus.CONFLICT, "E409", "선행 질문에 대한 답변이 필요합니다.", LogLevel.INFO),
+    INVALID_ONBOARDING_BOOK_SELECTION(
+            HttpStatus.BAD_REQUEST, "E400", "선택한 도서 목록의 형식이 올바르지 않습니다.", LogLevel.INFO);
 
     private final HttpStatus status;
     private final String code;

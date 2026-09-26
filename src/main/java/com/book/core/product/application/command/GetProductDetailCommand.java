@@ -3,6 +3,7 @@ package com.book.core.product.application.command;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 
+// @formatter:off
 public record GetProductDetailCommand(Long productId) {
     public static GetProductDetailCommand of(final Long productId) {
         return new GetProductDetailCommand(productId);
@@ -14,3 +15,4 @@ public record GetProductDetailCommand(Long productId) {
         }
     }
 }
+// @formatter:on

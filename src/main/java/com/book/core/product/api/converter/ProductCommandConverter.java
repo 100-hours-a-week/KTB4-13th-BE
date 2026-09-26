@@ -12,8 +12,7 @@ public class ProductCommandConverter {
         return GetProductDetailCommand.of(productId);
     }
 
-    public GetProductsCommand toGetProductsCommand(
-            final Long categoryId, final String sort, final String cursor, final Integer limit) {
+    public GetProductsCommand toGetProductsCommand(final Long categoryId, final String sort, final String cursor, final Integer limit) {
         return new GetProductsCommand(categoryId, sort, parseCursor(cursor), limit);
     }
 

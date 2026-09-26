@@ -29,8 +29,8 @@ class OrderController implements OrderControllerSpec {
 
     @Override
     @PostMapping("/checkout")
-    public ResponseEntity<ApiResponse<CreateOrderResponse>> createOrder(
-            @Positive @RequestParam("userId") final Long userId, @Valid @RequestBody final CreateOrderRequest request) {
+    public ResponseEntity<ApiResponse<CreateOrderResponse>> createOrder(@Positive @RequestParam("userId") final Long userId,
+        @Valid @RequestBody final CreateOrderRequest request) {
         final var command = commandConverter.toCreateOrderCommand(userId, request);
         final var result = orderService.createOrder(command);
         final var response = resultConverter.toCreateOrderResponse(result);

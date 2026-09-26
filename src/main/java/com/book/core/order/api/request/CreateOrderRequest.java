@@ -5,4 +5,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
 
-public record CreateOrderRequest(@Schema(description="장바구니에 담긴 상품과 주문 수량",requiredMode=Schema.RequiredMode.REQUIRED)@NotEmpty List<@Valid CreateOrderItemRequest>items){}
+// @formatter:off
+public record CreateOrderRequest(
+        @Schema(description = "장바구니에 담긴 상품과 주문 수량", requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotEmpty List<@Valid CreateOrderItemRequest> items) {}
+// @formatter:on

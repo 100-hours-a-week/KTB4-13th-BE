@@ -41,18 +41,12 @@ class AddressRepositoryIntegrationTest {
         addressRepository.save(Address.of(10001L, "  집 ", " 12345 ", " 서울시 강남구 ", "   ", true));
 
         final var row = jdbc.queryForMap(
-                "SELECT user_id, label, postal_code, address, detail_address, is_default, deleted_at "
-                        + "FROM addresses WHERE user_id = ?",
-                10001L);
+            "SELECT user_id, label, postal_code, address, detail_address, is_default, deleted_at " + "FROM addresses WHERE user_id = ?",
+            10001L);
 
-        assertThat(row)
-                .containsEntry("user_id", 10001L)
-                .containsEntry("label", "집")
-                .containsEntry("postal_code", "12345")
-                .containsEntry("address", "서울시 강남구")
-                .containsEntry("detail_address", null)
-                .containsEntry("is_default", true)
-                .containsEntry("deleted_at", null);
+        assertThat(row).containsEntry("user_id", 10001L).containsEntry("label", "집").containsEntry("postal_code", "12345")
+            .containsEntry("address", "서울시 강남구").containsEntry("detail_address", null).containsEntry("is_default", true)
+            .containsEntry("deleted_at", null);
     }
 
     @Test
@@ -70,56 +64,25 @@ class AddressRepositoryIntegrationTest {
     @Test
     void 활성_주소를_기본_배송지_우선_생성일_오름차순으로_조회한다() {
         jdbc.update(
-                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                10005L,
-                "오래된 주소",
-                "12345",
-                "서울시 중구",
-                false,
-                null,
-                "2026-01-01 00:00:00",
-                "2026-01-01 00:00:00");
+            "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            10005L, "오래된 주소", "12345", "서울시 중구", false, null, "2026-01-01 00:00:00", "2026-01-01 00:00:00");
         jdbc.update(
-                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                10005L,
-                "기본 주소",
-                "12346",
-                "서울시 강남구",
-                true,
-                null,
-                "2026-01-02 00:00:00",
-                "2026-01-02 00:00:00");
+            "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            10005L, "기본 주소", "12346", "서울시 강남구", true, null, "2026-01-02 00:00:00", "2026-01-02 00:00:00");
         jdbc.update(
-                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                10005L,
-                "삭제 주소",
-                "12347",
-                "서울시 서초구",
-                true,
-                "2025-12-31 00:00:00",
-                "2025-12-31 00:00:00",
-                "2025-12-31 00:00:00");
+            "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            10005L, "삭제 주소", "12347", "서울시 서초구", true, "2025-12-31 00:00:00", "2025-12-31 00:00:00", "2025-12-31 00:00:00");
         jdbc.update(
-                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                10005L,
-                "최근 주소",
-                "12348",
-                "서울시 송파구",
-                false,
-                null,
-                "2026-01-03 00:00:00",
-                "2026-01-03 00:00:00");
+            "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            10005L, "최근 주소", "12348", "서울시 송파구", false, null, "2026-01-03 00:00:00", "2026-01-03 00:00:00");
 
-        assertThat(addressRepository.findActiveByUserId(10005L))
-                .extracting(Address::label, Address::isDefaultAddress)
-                .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("기본 주소", true),
-                        org.assertj.core.groups.Tuple.tuple("오래된 주소", false),
-                        org.assertj.core.groups.Tuple.tuple("최근 주소", false));
+        assertThat(addressRepository.findActiveByUserId(10005L)).extracting(Address::label, Address::isDefaultAddress).containsExactly(
+            org.assertj.core.groups.Tuple.tuple("기본 주소", true), org.assertj.core.groups.Tuple.tuple("오래된 주소", false),
+            org.assertj.core.groups.Tuple.tuple("최근 주소", false));
     }
 
     @Test
@@ -129,150 +92,83 @@ class AddressRepositoryIntegrationTest {
         final var sameDetails = Address.of(10003L, "집", "54321", "서울시 강남구", "101호", false);
         final var differentLabel = Address.of(10003L, "회사", "12345", "서울시 강남구", "101호", false);
 
-        assertThat(addressRepository.existsActiveDuplicateAddress(10003L, sameDetails))
-                .isTrue();
-        assertThat(addressRepository.existsActiveDuplicateAddress(10003L, differentLabel))
-                .isFalse();
+        assertThat(addressRepository.existsActiveDuplicateAddress(10003L, sameDetails)).isTrue();
+        assertThat(addressRepository.existsActiveDuplicateAddress(10003L, differentLabel)).isFalse();
     }
 
     @Test
     void 수정_대상은_주소지_ID와_회원_ID가_일치하는_삭제되지_않은_주소만_조회한다() {
         final Address activeAddress = addressRepository.save(Address.of(10006L, "집", "12345", "서울시 강남구", null, false));
         jdbc.update(
-                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at) "
-                        + "VALUES (?, ?, ?, ?, false, ?)",
-                10007L,
-                "삭제 주소",
-                "12346",
-                "서울시 중구",
-                "2026-01-01 00:00:00");
-        final Long deletedAddressId =
-                jdbc.queryForObject("SELECT id FROM addresses WHERE user_id = ?", Long.class, 10007L);
+            "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at) " + "VALUES (?, ?, ?, ?, false, ?)",
+            10007L, "삭제 주소", "12346", "서울시 중구", "2026-01-01 00:00:00");
+        final Long deletedAddressId = jdbc.queryForObject("SELECT id FROM addresses WHERE user_id = ?", Long.class, 10007L);
 
-        assertThat(addressRepository.findActiveByIdAndUserId(activeAddress.id(), 10006L))
-                .hasValueSatisfying(address -> {
-                    assertThat(address.id()).isEqualTo(activeAddress.id());
-                    assertThat(address.userId()).isEqualTo(10006L);
-                });
-        assertThat(addressRepository.findActiveByIdAndUserId(activeAddress.id(), 99999L))
-                .isEmpty();
-        assertThat(addressRepository.findActiveByIdAndUserId(deletedAddressId, 10007L))
-                .isEmpty();
+        assertThat(addressRepository.findActiveByIdAndUserId(activeAddress.id(), 10006L)).hasValueSatisfying(address -> {
+            assertThat(address.id()).isEqualTo(activeAddress.id());
+            assertThat(address.userId()).isEqualTo(10006L);
+        });
+        assertThat(addressRepository.findActiveByIdAndUserId(activeAddress.id(), 99999L)).isEmpty();
+        assertThat(addressRepository.findActiveByIdAndUserId(deletedAddressId, 10007L)).isEmpty();
     }
 
     @Test
     void 삭제_대상을_제외하고_같은_회원의_최신_활성_주소를_조회하며_생성일이_같으면_ID가_큰_주소를_선택한다() {
         jdbc.update(
-                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                10009L,
-                "삭제 대상",
-                "12345",
-                "서울시 중구",
-                true,
-                null,
-                "2026-01-01 00:00:00",
-                "2026-01-01 00:00:00");
-        final Long targetId = jdbc.queryForObject(
-                "SELECT id FROM addresses WHERE user_id = ? AND label = ?", Long.class, 10009L, "삭제 대상");
+            "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            10009L, "삭제 대상", "12345", "서울시 중구", true, null, "2026-01-01 00:00:00", "2026-01-01 00:00:00");
+        final Long targetId = jdbc.queryForObject("SELECT id FROM addresses WHERE user_id = ? AND label = ?", Long.class, 10009L, "삭제 대상");
         jdbc.update(
-                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                10009L,
-                "최근 주소 A",
-                "12346",
-                "서울시 강남구",
-                false,
-                null,
-                "2026-01-02 00:00:00",
-                "2026-01-02 00:00:00");
+            "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            10009L, "최근 주소 A", "12346", "서울시 강남구", false, null, "2026-01-02 00:00:00", "2026-01-02 00:00:00");
         jdbc.update(
-                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                10009L,
-                "최근 주소 B",
-                "12347",
-                "서울시 서초구",
-                false,
-                null,
-                "2026-01-02 00:00:00",
-                "2026-01-02 00:00:00");
+            "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            10009L, "최근 주소 B", "12347", "서울시 서초구", false, null, "2026-01-02 00:00:00", "2026-01-02 00:00:00");
         jdbc.update(
-                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                10009L,
-                "삭제된 최신 주소",
-                "12348",
-                "서울시 송파구",
-                false,
-                "2026-01-03 00:00:00",
-                "2026-01-03 00:00:00",
-                "2026-01-03 00:00:00");
+            "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            10009L, "삭제된 최신 주소", "12348", "서울시 송파구", false, "2026-01-03 00:00:00", "2026-01-03 00:00:00", "2026-01-03 00:00:00");
         jdbc.update(
-                "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                10010L,
-                "다른 회원의 최신 주소",
-                "12349",
-                "서울시 마포구",
-                false,
-                null,
-                "2026-01-04 00:00:00",
-                "2026-01-04 00:00:00");
+            "INSERT INTO addresses (user_id, label, postal_code, address, is_default, deleted_at, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            10010L, "다른 회원의 최신 주소", "12349", "서울시 마포구", false, null, "2026-01-04 00:00:00", "2026-01-04 00:00:00");
 
         assertThat(addressRepository.findLatestActiveByUserIdExcludingId(10009L, targetId))
-                .hasValueSatisfying(address -> assertThat(address.label()).isEqualTo("최근 주소 B"));
+            .hasValueSatisfying(address -> assertThat(address.label()).isEqualTo("최근 주소 B"));
     }
 
     @Test
     void 수정_대상_자기_자신은_중복_주소지로_판정하지_않는다() {
         final Address address = addressRepository.save(Address.of(10008L, "집", "12345", "서울시 강남구", "101호", false));
-        final Address sameAddress = new Address(
-                address.id(),
-                address.userId(),
-                address.label(),
-                "54321",
-                address.address(),
-                address.detailAddress(),
-                address.isDefaultAddress());
+        final Address sameAddress = new Address(address.id(), address.userId(), address.label(), "54321", address.address(),
+            address.detailAddress(), address.isDefaultAddress());
 
-        assertThat(addressRepository.existsActiveDuplicateAddress(10008L, sameAddress))
-                .isFalse();
+        assertThat(addressRepository.existsActiveDuplicateAddress(10008L, sameAddress)).isFalse();
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"label", "postal_code", "address"})
     void 필수_주소지_컬럼의_공백은_DB_제약_예외를_전파한다(final String blankColumn) {
-        final Map<String, String> values =
-                new HashMap<>(Map.of("label", "집", "postal_code", "12345", "address", "서울시 강남구"));
+        final Map<String, String> values = new HashMap<>(Map.of("label", "집", "postal_code", "12345", "address", "서울시 강남구"));
         values.put(blankColumn, "   ");
 
-        assertThatThrownBy(() -> jdbc.update(
-                        "INSERT INTO addresses (user_id, label, postal_code, address, is_default) "
-                                + "VALUES (?, ?, ?, ?, false)",
-                        10004L,
-                        values.get("label"),
-                        values.get("postal_code"),
-                        values.get("address")))
-                .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(
+            () -> jdbc.update("INSERT INTO addresses (user_id, label, postal_code, address, is_default) " + "VALUES (?, ?, ?, ?, false)",
+                10004L, values.get("label"), values.get("postal_code"), values.get("address")))
+            .isInstanceOf(DataAccessException.class);
     }
 
     @Test
-    void 주소지_마이그레이션은_deleted_at을_추가하고_status를_제거한다() {
+    void 주소지_마이그레이션은_deleted_at을_추가하고_status를_제거하며_order_addresses를_생성한다() {
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns "
+            + "WHERE table_schema = DATABASE() AND table_name = 'addresses' AND column_name = 'deleted_at'", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns "
+            + "WHERE table_schema = DATABASE() AND table_name = 'addresses' AND column_name = 'status'", Integer.class)).isZero();
         assertThat(jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM information_schema.columns "
-                                + "WHERE table_schema = DATABASE() AND table_name = 'addresses' AND column_name = 'deleted_at'",
-                        Integer.class))
-                .isEqualTo(1);
-        assertThat(jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM information_schema.columns "
-                                + "WHERE table_schema = DATABASE() AND table_name = 'addresses' AND column_name = 'status'",
-                        Integer.class))
-                .isZero();
-        assertThat(jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM information_schema.tables "
-                                + "WHERE table_schema = DATABASE() AND table_name = 'order_addresses'",
-                        Integer.class))
-                .isZero();
+            "SELECT COUNT(*) FROM information_schema.tables " + "WHERE table_schema = DATABASE() AND table_name = 'order_addresses'",
+            Integer.class)).isEqualTo(1);
     }
 }

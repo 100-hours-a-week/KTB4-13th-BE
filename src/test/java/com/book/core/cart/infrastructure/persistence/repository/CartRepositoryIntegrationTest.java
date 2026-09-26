@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.cart.application.command.AddCartItemCommand;
-import com.book.core.cart.application.command.GetCartCommand;
 import com.book.core.cart.application.result.GetCartItemResult;
+import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import java.sql.SQLException;
@@ -45,8 +45,7 @@ class CartRepositoryIntegrationTest {
         addUseCase.execute(new AddCartItemCommand(1001L, 2001L, 2));
         addUseCase.execute(new AddCartItemCommand(1001L, 2001L, 4));
 
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM carts WHERE user_id = ?", Integer.class, 1001L))
-                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM carts WHERE user_id = ?", Integer.class, 1001L)).isEqualTo(1);
         assertThat(jdbc.queryForObject("""
                         SELECT COUNT(*)
                         FROM cart_item item
@@ -67,11 +66,8 @@ class CartRepositoryIntegrationTest {
         addUseCase.execute(new AddCartItemCommand(1002L, 2002L, 1));
         final Long cartId = jdbc.queryForObject("SELECT id FROM carts WHERE user_id = ?", Long.class, 1002L);
 
-        assertThatThrownBy(() -> jdbc.update(
-                        "INSERT INTO cart_item (cart_id, product_id, quantity) VALUES (?, ?, ?)", cartId, 2003L, 0))
-                .isInstanceOf(UncategorizedSQLException.class)
-                .rootCause()
-                .isInstanceOf(SQLException.class);
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO cart_item (cart_id, product_id, quantity) VALUES (?, ?, ?)", cartId, 2003L, 0))
+            .isInstanceOf(UncategorizedSQLException.class).rootCause().isInstanceOf(SQLException.class);
     }
 
     @Test
@@ -81,17 +77,21 @@ class CartRepositoryIntegrationTest {
         addUseCase.execute(new AddCartItemCommand(1003L, 2002L, 2));
         addUseCase.execute(new AddCartItemCommand(1003L, 2003L, 3));
         final Long cartId = jdbc.queryForObject("SELECT id FROM carts WHERE user_id = ?", Long.class, 1003L);
-        jdbc.update(
-                "UPDATE cart_item SET deleted_at = CURRENT_TIMESTAMP(6) WHERE cart_id = ? AND product_id = ?",
-                cartId,
-                2001L);
+        jdbc.update("UPDATE cart_item SET deleted_at = CURRENT_TIMESTAMP(6) WHERE cart_id = ? AND product_id = ?", cartId, 2001L);
 
-        final var result = getCartUseCase.execute(new GetCartCommand(1003L));
+        final GetCartResult result = getCartUseCase.execute(1003L);
 
-        assertThat(result.items())
-                .extracting(GetCartItemResult::productId, GetCartItemResult::quantity)
-                .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(2003L, 3), org.assertj.core.groups.Tuple.tuple(2002L, 2));
+        assertThat(result.items()).extracting(GetCartItemResult::productId, GetCartItemResult::quantity)
+            .containsExactly(org.assertj.core.groups.Tuple.tuple(2003L, 3), org.assertj.core.groups.Tuple.tuple(2002L, 2));
+    }
+
+    @Test
+    void 삭제된_장바구니는_주문_대상_조회에서_제외한다() {
+        createCart(1004L);
+        addUseCase.execute(new AddCartItemCommand(1004L, 2004L, 1));
+        jdbc.update("UPDATE carts SET deleted_at = CURRENT_TIMESTAMP(6) WHERE user_id = ?", 1004L);
+
+        assertThat(getCartUseCase.execute(1004L).items()).isEmpty();
     }
 
     private void createCart(final long userId) {

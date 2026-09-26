@@ -7,4 +7,11 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
-public record CreateReviewRequest(@NotNull @Positive Long userId,@NotNull @Positive Long targetId,@NotNull @DecimalMin("0.0")@DecimalMax("10.0")BigDecimal rate,@NotNull @Size(max=255)String content,@NotNull Boolean isSpoiler){}
+// @formatter:off
+public record CreateReviewRequest(
+        @NotNull @Positive Long userId,
+        @NotNull @Positive Long targetId,
+        @NotNull @DecimalMin("0.0") @DecimalMax("10.0") BigDecimal rate,
+        @NotNull @Size(max = 255) String content,
+        @NotNull Boolean isSpoiler) {}
+// @formatter:on

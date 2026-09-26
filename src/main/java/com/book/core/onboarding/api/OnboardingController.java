@@ -4,6 +4,7 @@ import com.book.common.response.ApiResponse;
 import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
+import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
 import com.book.core.onboarding.api.response.OnboardingProgressResponse;
 import com.book.core.onboarding.api.response.OnboardingQuestionResponse;
 import com.book.core.onboarding.api.spec.OnboardingControllerSpec;
@@ -59,6 +60,16 @@ class OnboardingController implements OnboardingControllerSpec {
         final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toPutOnboardingAnswersCommand(userId, questionId, request);
         onboardingService.saveAnswers(command);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @PutMapping("/books")
+    public ResponseEntity<ApiResponse<Void>> saveBooks(
+            @AuthenticationPrincipal final Jwt jwt, @Valid @RequestBody final PutOnboardingBooksRequest request) {
+        final Long userId = Long.parseLong(jwt.getSubject());
+        final var command = commandConverter.toPutOnboardingBooksCommand(userId, request);
+        onboardingService.saveBooks(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 }

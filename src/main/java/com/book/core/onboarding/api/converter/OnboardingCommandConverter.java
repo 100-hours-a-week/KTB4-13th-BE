@@ -1,9 +1,11 @@
 package com.book.core.onboarding.api.converter;
 
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
+import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
+import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -19,5 +21,10 @@ public class OnboardingCommandConverter {
     public PutOnboardingAnswersCommand toPutOnboardingAnswersCommand(
             final Long userId, final Long questionId, final PutOnboardingAnswersRequest request) {
         return new PutOnboardingAnswersCommand(userId, questionId, request.optionIds());
+    }
+
+    public PutOnboardingBooksCommand toPutOnboardingBooksCommand(
+            final Long userId, final PutOnboardingBooksRequest request) {
+        return new PutOnboardingBooksCommand(userId, request.bookIds());
     }
 }

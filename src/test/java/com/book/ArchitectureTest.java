@@ -20,68 +20,35 @@ import jakarta.persistence.Entity;
 import org.junit.jupiter.api.Test;
 
 class ArchitectureTest {
-    private static final JavaClasses CLASSES = new ClassFileImporter()
-            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-            .importPackages("com.book");
+    private static final JavaClasses CLASSES =
+        new ClassFileImporter().withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS).importPackages("com.book");
 
     @Test
     void 도메인_모델은_상위_계층과_웹_기술에_의존하지_않는다() {
-        noClasses()
-                .that()
-                .resideInAPackage("com.book.core..domain..")
-                .should()
-                .dependOnClassesThat()
-                .resideInAnyPackage(
-                        "..application..",
-                        "..api..",
-                        "..infrastructure..",
-                        "com.book.common.config..",
-                        "com.book.common.logging..",
-                        "com.book.common.response..",
-                        "org.springframework..",
-                        "com.fasterxml.jackson..")
-                .check(CLASSES);
+        noClasses().that().resideInAPackage("com.book.core..domain..").should().dependOnClassesThat()
+            .resideInAnyPackage("..application..", "..api..", "..infrastructure..", "com.book.common.config..", "com.book.common.logging..",
+                "com.book.common.response..", "org.springframework..", "com.fasterxml.jackson..")
+            .check(CLASSES);
     }
 
     @Test
     void 애플리케이션은_API와_인프라_구현에_의존하지_않는다() {
-        noClasses()
-                .that()
-                .resideInAPackage("..application..")
-                .should()
-                .dependOnClassesThat()
-                .resideInAnyPackage(
-                        "..api..",
-                        "..infrastructure..",
-                        "com.book.common.config..",
-                        "com.book.common.logging..",
-                        "com.book.common.response..",
-                        "jakarta.persistence..",
-                        "org.springframework.data..",
-                        "org.springframework.web..")
-                .check(CLASSES);
+        noClasses().that().resideInAPackage("..application..").should().dependOnClassesThat()
+            .resideInAnyPackage("..api..", "..infrastructure..", "com.book.common.config..", "com.book.common.logging..",
+                "com.book.common.response..", "jakarta.persistence..", "org.springframework.data..", "org.springframework.web..")
+            .check(CLASSES);
     }
 
     @Test
     void API_계층은_인프라를_직접_호출하지_않는다() {
-        noClasses()
-                .that()
-                .resideInAPackage("..api..")
-                .should()
-                .dependOnClassesThat()
-                .resideInAnyPackage("..infrastructure..")
-                .check(CLASSES);
+        noClasses().that().resideInAPackage("..api..").should().dependOnClassesThat().resideInAnyPackage("..infrastructure..")
+            .check(CLASSES);
     }
 
     @Test
     void 공통_코드는_기능에_의존하지_않는다() {
-        noClasses()
-                .that()
-                .resideInAPackage("com.book.common..")
-                .should()
-                .dependOnClassesThat()
-                .resideInAPackage("com.book.core..")
-                .check(CLASSES);
+        noClasses().that().resideInAPackage("com.book.common..").should().dependOnClassesThat().resideInAPackage("com.book.core..")
+            .check(CLASSES);
     }
 
     @Test

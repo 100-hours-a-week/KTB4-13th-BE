@@ -40,6 +40,18 @@ public class OrderItem extends BaseTimeEntity {
     @Column(name = "product_id", nullable = false)
     private Long productId;
 
+    @Column(name = "item_name", length = 255)
+    private String itemName;
+
+    @Column(name = "thumbnail_url", length = 255)
+    private String thumbnailUrl;
+
+    @Column(length = 255)
+    private String author;
+
+    @Column(name = "sale_price", precision = 19, scale = 2)
+    private BigDecimal salePrice;
+
     @Column(name = "unit_price", nullable = false, precision = 19, scale = 2)
     private BigDecimal unitPrice;
 
@@ -53,37 +65,31 @@ public class OrderItem extends BaseTimeEntity {
     @Column(nullable = false, length = 16)
     private OrderItemStatus status;
 
-    private OrderItem(
-            final Long id,
-            final Order order,
-            final Long productId,
-            final BigDecimal unitPrice,
-            final Integer quantity,
-            final OrderItemStatus status) {
-        if (order == null
-                || productId == null
-                || productId <= 0
-                || unitPrice == null
-                || unitPrice.signum() < 0
-                || quantity == null
-                || !isQuantityInRange(quantity)
-                || status == null) {
+    private OrderItem(final Order order, final Long productId, final String itemName, final String thumbnailUrl, final String author,
+        final BigDecimal salePrice, final BigDecimal unitPrice, final Integer quantity) {
+        if (order == null || productId == null || productId <= 0 || itemName == null || itemName.isBlank() || author == null
+            || author.isBlank() || salePrice == null || salePrice.signum() < 0 || unitPrice == null || unitPrice.signum() < 0
+            || quantity == null || !isQuantityInRange(quantity)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        this.id = id;
         this.order = order;
         this.productId = productId;
+        this.itemName = itemName;
+        this.thumbnailUrl = thumbnailUrl;
+        this.author = author;
+        this.salePrice = salePrice;
         this.unitPrice = unitPrice;
         this.quantity = quantity;
         this.totalPrice = unitPrice.multiply(BigDecimal.valueOf(quantity));
-        this.status = status;
+        this.status = OrderItemStatus.CREATED;
     }
 
     public static boolean isQuantityInRange(final int quantity) {
         return quantity >= MIN_QUANTITY && quantity <= MAX_QUANTITY;
     }
 
-    static OrderItem created(final Order order, final Long productId, final BigDecimal unitPrice, final int quantity) {
-        return new OrderItem(null, order, productId, unitPrice, quantity, OrderItemStatus.CREATED);
+    static OrderItem created(final Order order, final Long productId, final String itemName, final String thumbnailUrl, final String author,
+        final BigDecimal salePrice, final BigDecimal unitPrice, final Integer quantity) {
+        return new OrderItem(order, productId, itemName, thumbnailUrl, author, salePrice, unitPrice, quantity);
     }
 }

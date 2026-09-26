@@ -9,11 +9,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProductCommandConverter {
     public GetProductDetailCommand toGetProductDetailCommand(final Long productId) {
-        return new GetProductDetailCommand(productId);
+        return GetProductDetailCommand.of(productId);
     }
 
-    public GetProductsCommand toGetProductsCommand(
-            final Long categoryId, final String sort, final String cursor, final Integer limit) {
+    public GetProductsCommand toGetProductsCommand(final Long categoryId, final String sort, final String cursor, final Integer limit) {
         return new GetProductsCommand(categoryId, sort, parseCursor(cursor), limit);
     }
 

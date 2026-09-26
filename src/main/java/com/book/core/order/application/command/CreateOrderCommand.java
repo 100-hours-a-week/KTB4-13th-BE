@@ -4,9 +4,10 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import java.util.List;
 
-public record CreateOrderCommand(Long userId, Long addressId, List<CreateOrderItemCommand> items) {
+// @formatter:off
+public record CreateOrderCommand(Long userId, List<CreateOrderItemCommand> items) {
     public CreateOrderCommand {
-        if (userId == null || userId <= 0 || addressId == null || addressId <= 0 || items == null || items.isEmpty()) {
+        if (userId == null || userId <= 0 || items == null || items.isEmpty()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (items.stream().anyMatch(item -> item == null)) {
@@ -15,3 +16,4 @@ public record CreateOrderCommand(Long userId, Long addressId, List<CreateOrderIt
         items = List.copyOf(items);
     }
 }
+// @formatter:on

@@ -54,8 +54,8 @@ public class Order extends BaseTimeEntity {
     @Column(name = "canceled_at")
     private LocalDateTime canceledAt;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false, cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "address_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true, cascade = CascadeType.PERSIST)
+    @JoinColumn(name = "address_id", nullable = true)
     private OrderAddress address;
 
     @Getter(AccessLevel.NONE)
@@ -63,7 +63,7 @@ public class Order extends BaseTimeEntity {
     private List<OrderItem> items = new ArrayList<>();
 
     private Order(final Long userId, final String key, final OrderAddress address) {
-        if (userId == null || userId <= 0 || key == null || key.isBlank() || address == null) {
+        if (userId == null || userId <= 0 || key == null || key.isBlank()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         this.userId = userId;
@@ -77,8 +77,9 @@ public class Order extends BaseTimeEntity {
         return new Order(userId, key, address);
     }
 
-    public void addItem(final Long productId, final BigDecimal unitPrice, final int quantity) {
-        final OrderItem orderItem = OrderItem.created(this, productId, unitPrice, quantity);
+    public void addItem(final Long productId, final String itemName, final String thumbnailUrl, final String author,
+        final BigDecimal salePrice, final BigDecimal unitPrice, final Integer quantity) {
+        final OrderItem orderItem = OrderItem.created(this, productId, itemName, thumbnailUrl, author, salePrice, unitPrice, quantity);
         this.items.add(orderItem);
         this.totalPrice = this.totalPrice.add(orderItem.totalPrice());
     }

@@ -1,8 +1,10 @@
 package com.book.core.onboarding.api;
 
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -10,6 +12,7 @@ import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
+import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
 import com.book.core.onboarding.application.result.OnboardingOptionResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
@@ -25,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -152,6 +156,50 @@ class OnboardingControllerTest {
         mvc.perform(get("/api/v1/onboarding"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("E404"));
+    }
+
+    @Test
+    void 답변을_저장하고_200을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+        final PutOnboardingAnswersCommand command = new PutOnboardingAnswersCommand(USER_ID, 1L, List.of(1L, 2L));
+
+        mvc.perform(put("/api/v1/onboarding/questions/{questionId}/answers", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"optionIds\":[1,2]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(onboardingService).saveAnswers(command);
+    }
+
+    @Test
+    void 선택지_개수가_유효하지_않으면_400을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+        doThrow(new com.book.common.exception.CoreException(
+                        com.book.common.exception.ErrorCode.INVALID_ONBOARDING_ANSWER_SELECTION))
+                .when(onboardingService)
+                .saveAnswers(new PutOnboardingAnswersCommand(USER_ID, 1L, List.of()));
+
+        mvc.perform(put("/api/v1/onboarding/questions/{questionId}/answers", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"optionIds\":[]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("E400"));
+    }
+
+    @Test
+    void 선행_질문_응답이_없으면_답변_저장시_409를_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+        doThrow(new com.book.common.exception.CoreException(
+                        com.book.common.exception.ErrorCode.ONBOARDING_PARENT_QUESTION_NOT_ANSWERED))
+                .when(onboardingService)
+                .saveAnswers(new PutOnboardingAnswersCommand(USER_ID, 4L, List.of(23L)));
+
+        mvc.perform(put("/api/v1/onboarding/questions/{questionId}/answers", 4L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"optionIds\":[23]}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("E409"));
     }
 
     private void authenticateAs(final Long userId) {

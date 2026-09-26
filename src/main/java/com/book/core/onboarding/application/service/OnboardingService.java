@@ -2,10 +2,12 @@ package com.book.core.onboarding.application.service;
 
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
+import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.result.OnboardingQuestionResult;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingQuestionUseCase;
+import com.book.core.onboarding.application.usecase.SaveOnboardingAnswersUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 public class OnboardingService {
     private final GetOnboardingQuestionUseCase getOnboardingQuestionUseCase;
     private final GetOnboardingProgressUseCase getOnboardingProgressUseCase;
+    private final SaveOnboardingAnswersUseCase saveOnboardingAnswersUseCase;
 
     public OnboardingQuestionResult getQuestion(final GetOnboardingQuestionCommand command) {
         return getOnboardingQuestionUseCase.execute(command);
@@ -21,5 +24,9 @@ public class OnboardingService {
 
     public OnboardingProgressResult getProgress(final GetOnboardingProgressCommand command) {
         return getOnboardingProgressUseCase.execute(command);
+    }
+
+    public void saveAnswers(final PutOnboardingAnswersCommand command) {
+        saveOnboardingAnswersUseCase.execute(command);
     }
 }

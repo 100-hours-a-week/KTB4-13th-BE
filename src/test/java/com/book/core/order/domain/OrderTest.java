@@ -10,6 +10,14 @@ import org.junit.jupiter.api.Test;
 
 class OrderTest {
     @Test
+    void 배송지가_없어도_주문_객체를_생성한다() {
+        final Order order = Order.create(42L, "order_without_address", null);
+
+        assertThat(order.address()).isNull();
+        assertThat(order.status()).isEqualTo(OrderStatus.CREATED);
+    }
+
+    @Test
     void 주문상품_금액을_합산하고_주문과_품목을_CREATED로_생성한다() {
         final Order order = Order.create(42L, "order_test", OrderAddress.from("06236", "서울 주소", null));
 

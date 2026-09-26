@@ -39,34 +39,36 @@ class OrderRepositoryIntegrationTest {
         insertBook(9101L);
         insertProduct(9201L, 9101L);
         final Order order = Order.create(42L, "order_persistence_test", OrderAddress.from("06236", "서울 주소", "101호"));
-        order.addItem(9201L, new BigDecimal("17.25"), 2);
+        order.addItem(9201L, "주문 테스트 상품", null, "저자", new BigDecimal("20.00"), new BigDecimal("17.25"), 2);
 
         final Order savedOrder = orderRepository.save(order);
 
         assertThat(savedOrder.id()).isNotNull();
-        final Long addressId = jdbc.queryForObject(
-                "SELECT address_id FROM orders WHERE `key` = ?", Long.class, "order_persistence_test");
+        final Long addressId = jdbc.queryForObject("SELECT address_id FROM orders WHERE `key` = ?", Long.class, "order_persistence_test");
+        assertThat(jdbc.queryForMap("SELECT postal_code, address, detail_address FROM order_addresses WHERE id = ?", addressId))
+            .containsEntry("postal_code", "06236").containsEntry("address", "서울 주소").containsEntry("detail_address", "101호");
+        assertThat(jdbc.queryForMap("SELECT user_id, total_price, status, deleted_at FROM orders WHERE id = ?", savedOrder.id()))
+            .containsEntry("user_id", 42L).containsEntry("total_price", new BigDecimal("34.50")).containsEntry("status", "CREATED")
+            .containsEntry("deleted_at", null);
         assertThat(jdbc.queryForMap(
-                        "SELECT postal_code, address, detail_address FROM order_addresses WHERE id = ?", addressId))
-                .containsEntry("postal_code", "06236")
-                .containsEntry("address", "서울 주소")
-                .containsEntry("detail_address", "101호");
-        assertThat(jdbc.queryForMap(
-                        "SELECT user_id, total_price, status, deleted_at FROM orders WHERE id = ?", savedOrder.id()))
-                .containsEntry("user_id", 42L)
-                .containsEntry("total_price", new BigDecimal("34.50"))
-                .containsEntry("status", "CREATED")
-                .containsEntry("deleted_at", null);
-        assertThat(jdbc.queryForMap(
-                        "SELECT product_id, unit_price, total_price, quantity, status, deleted_at "
-                                + "FROM order_item WHERE order_id = ?",
-                        savedOrder.id()))
-                .containsEntry("product_id", 9201L)
-                .containsEntry("unit_price", new BigDecimal("17.25"))
-                .containsEntry("total_price", new BigDecimal("34.50"))
-                .containsEntry("quantity", 2)
-                .containsEntry("status", "CREATED")
-                .containsEntry("deleted_at", null);
+            "SELECT product_id, item_name, thumbnail_url, author, sale_price, unit_price, total_price, quantity, status, deleted_at "
+                + "FROM order_item WHERE order_id = ?",
+            savedOrder.id())).containsEntry("product_id", 9201L).containsEntry("item_name", "주문 테스트 상품")
+            .containsEntry("thumbnail_url", null).containsEntry("author", "저자").containsEntry("sale_price", new BigDecimal("20.00"))
+            .containsEntry("unit_price", new BigDecimal("17.25")).containsEntry("total_price", new BigDecimal("34.50"))
+            .containsEntry("quantity", 2).containsEntry("status", "CREATED").containsEntry("deleted_at", null);
+    }
+
+    @Test
+    void 배송지가_없는_주문은_NULL_address_id로_저장한다() {
+        insertBook(9103L);
+        insertProduct(9203L, 9103L);
+
+        final Order savedOrder = orderRepository.save(order("order_without_address", 9203L, null));
+
+        assertThat(savedOrder.id()).isNotNull();
+        assertThat(jdbc.queryForMap("SELECT address_id FROM orders WHERE `key` = ?", "order_without_address")).containsEntry("address_id",
+            null);
     }
 
     @Test
@@ -77,26 +79,19 @@ class OrderRepositoryIntegrationTest {
         orderRepository.save(firstOrder);
 
         assertThatThrownBy(() -> orderRepository.save(order("order_duplicate_test", 9202L, "중복 주소")))
-                .isInstanceOf(DataIntegrityViolationException.class);
+            .isInstanceOf(DataIntegrityViolationException.class);
 
-        assertThat(jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM orders WHERE `key` = ?", Integer.class, "order_duplicate_test"))
-                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE `key` = ?", Integer.class, "order_duplicate_test")).isEqualTo(1);
 
         assertThatThrownBy(() -> orderRepository.save(order("order_invalid_product", 999999L, "실패 주소")))
-                .isInstanceOf(DataIntegrityViolationException.class);
-        assertThat(jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM orders WHERE `key` = ?", Integer.class, "order_invalid_product"))
-                .isZero();
-        assertThat(jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM order_addresses WHERE address = ?", Integer.class, "실패 주소"))
-                .isZero();
+            .isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE `key` = ?", Integer.class, "order_invalid_product")).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM order_addresses WHERE address = ?", Integer.class, "실패 주소")).isZero();
     }
 
     @Test
     void 배송지와_상품_FK_및_주문키_UNIQUE_제약을_마이그레이션에_생성한다() {
-        assertThat(countKeyUsage("orders", "address_id", "order_addresses", "id"))
-                .isEqualTo(1);
+        assertThat(countKeyUsage("orders", "address_id", "order_addresses", "id")).isEqualTo(1);
         assertThat(countKeyUsage("order_item", "product_id", "products", "id")).isEqualTo(1);
         assertThat(jdbc.queryForObject("""
                         SELECT COUNT(*)
@@ -111,13 +106,13 @@ class OrderRepositoryIntegrationTest {
     }
 
     private Order order(final String orderKey, final long productId, final String address) {
-        final Order order = Order.create(42L, orderKey, OrderAddress.from("06236", address, null));
-        order.addItem(productId, new BigDecimal("5.00"), 1);
+        final OrderAddress orderAddress = address == null ? null : OrderAddress.from("06236", address, null);
+        final Order order = Order.create(42L, orderKey, orderAddress);
+        order.addItem(productId, "주문 테스트 상품", null, "저자", new BigDecimal("20.00"), new BigDecimal("5.00"), 1);
         return order;
     }
 
-    private int countKeyUsage(
-            final String table, final String column, final String referencedTable, final String referencedColumn) {
+    private int countKeyUsage(final String table, final String column, final String referencedTable, final String referencedColumn) {
         return jdbc.queryForObject("""
                         SELECT COUNT(*)
                         FROM information_schema.key_column_usage
@@ -147,17 +142,9 @@ class OrderRepositoryIntegrationTest {
     }
 
     private void insertProduct(final long id, final long bookId) {
-        jdbc.update(
-                """
+        jdbc.update("""
                 INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                id,
-                bookId,
-                "주문 테스트 상품",
-                new BigDecimal("20.00"),
-                new BigDecimal("17.25"),
-                new BigDecimal("10.00"),
-                10);
+                """, id, bookId, "주문 테스트 상품", new BigDecimal("20.00"), new BigDecimal("17.25"), new BigDecimal("10.00"), 10);
     }
 }

@@ -104,3 +104,21 @@ jobs:
         run: |
           docker compose -f compose.build.yml build backend
           docker compose -f compose.build.yml push backend
+
+  notify-failure:
+    name: Notify CI failure
+    if: ${{ always() && (needs.gradle-check.result == 'failure' || needs.publish-image.result == 'failure') }}
+    needs: [gradle-check, publish-image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord alert
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo 'DISCORD_WEBHOOK_URL secret is not configured; skipping external alert.'
+            exit 0
+          fi
+          payload=$(jq -n --arg content "🚨 Backend CI 실패\n저장소: $GITHUB_REPOSITORY\n커밋: $GITHUB_SHA\n로그: $RUN_URL" '{content: $content}')
+          curl --fail-with-body --silent --show-error -H 'Content-Type: application/json' --data "$payload" "$DISCORD_WEBHOOK_URL"

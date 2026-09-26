@@ -86,12 +86,12 @@ class CartRepositoryIntegrationTest {
     }
 
     @Test
-    void 비활성_장바구니는_주문_대상_조회에서_제외한다() {
+    void 삭제된_장바구니는_주문_대상_조회에서_제외한다() {
         createCart(1004L);
         addUseCase.execute(new AddCartItemCommand(1004L, 2004L, 1));
-        jdbc.update("UPDATE carts SET status = 'DELETED' WHERE user_id = ?", 1004L);
+        jdbc.update("UPDATE carts SET deleted_at = CURRENT_TIMESTAMP(6) WHERE user_id = ?", 1004L);
 
-        assertThat(getCartUseCase.execute(new GetCartCommand(1004L)).items()).isEmpty();
+        assertThat(getCartUseCase.execute(1004L).items()).isEmpty();
     }
 
     private void createCart(final long userId) {

@@ -21,8 +21,8 @@ class ReviewTest {
 
     @Test
     void accepts_rating_bounds_in_tenth_steps() {
-        assertThat(Review.create(42L, 701L, new BigDecimal("0.0"), "", false).rating()).isEqualByComparingTo("0.0");
-        assertThat(Review.create(42L, 702L, new BigDecimal("10.0"), "", false).rating()).isEqualByComparingTo("10.0");
+        assertThat(Review.create(42L, 701L, new BigDecimal("0.0"), "평점 0", false).rating()).isEqualByComparingTo("0.0");
+        assertThat(Review.create(42L, 702L, new BigDecimal("10.0"), "평점 10", false).rating()).isEqualByComparingTo("10.0");
     }
 
     @Test

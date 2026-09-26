@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProductCommandConverter {
     public GetProductDetailCommand toGetProductDetailCommand(final Long productId) {
-        return new GetProductDetailCommand(productId);
+        return GetProductDetailCommand.of(productId);
     }
 
     public GetProductsCommand toGetProductsCommand(

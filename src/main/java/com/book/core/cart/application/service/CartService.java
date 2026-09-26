@@ -19,6 +19,6 @@ public class CartService {
     }
 
     public GetCartResult getCart(final GetCartCommand command) {
-        return getCartUseCase.execute(command);
+        return getCartUseCase.execute(command.userId());
     }
 }

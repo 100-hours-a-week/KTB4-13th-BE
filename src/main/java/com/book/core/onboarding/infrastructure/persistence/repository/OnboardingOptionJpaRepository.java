@@ -7,8 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 interface OnboardingOptionJpaRepository extends JpaRepository<OnboardingOption, Long> {
     List<OnboardingOption> findByOnboardingQuestionIdOrderByDisplayOrderAsc(final Long onboardingQuestionId);
 
-    List<OnboardingOption> findByOnboardingQuestionIdAndParentOptionIdInOrderByDisplayOrderAsc(
-            final Long onboardingQuestionId, final List<Long> parentOptionIds);
-
     List<OnboardingOption> findAllByIdIn(final List<Long> ids);
 }

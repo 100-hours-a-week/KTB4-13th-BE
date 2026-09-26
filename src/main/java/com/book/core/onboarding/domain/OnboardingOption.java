@@ -46,4 +46,19 @@ public class OnboardingOption {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public OnboardingOption(
+            final Long id,
+            final Long onboardingQuestionId,
+            final Long parentOptionId,
+            final String code,
+            final String content,
+            final int displayOrder) {
+        this.id = id;
+        this.onboardingQuestionId = onboardingQuestionId;
+        this.parentOptionId = parentOptionId;
+        this.code = code;
+        this.content = content;
+        this.displayOrder = displayOrder;
+    }
 }

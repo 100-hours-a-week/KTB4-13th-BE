@@ -14,6 +14,8 @@ import com.book.core.order.domain.OrderItem;
 import com.book.core.product.domain.Product;
 import com.book.core.product.domain.ProductCategory;
 import com.book.core.review.domain.Review;
+import com.book.core.user.domain.User;
+import com.book.core.user.domain.UserProvider;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -65,5 +67,7 @@ class ArchitectureTest {
         assertThat(OrderItem.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(OrderAddress.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Review.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(User.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(UserProvider.class.isAnnotationPresent(Entity.class)).isTrue();
     }
 }

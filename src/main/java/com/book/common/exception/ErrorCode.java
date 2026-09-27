@@ -22,7 +22,34 @@ public enum ErrorCode {
                                                 LogLevel.INFO), REVIEW_HAS_NOT_ORDER(HttpStatus.BAD_REQUEST, "E7000", "리뷰 작성 가능한 주문이 없습니다.",
                                                     LogLevel.INFO), REVIEW_ALREADY_REVIEWED(HttpStatus.BAD_REQUEST, "E7001",
                                                         "이미 리뷰를 작성한 상품입니다.", LogLevel.INFO), REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "E404",
-                                                            "리뷰를 찾을 수 없습니다.", LogLevel.INFO);
+                                                            "리뷰를 찾을 수 없습니다.", LogLevel.INFO), STORAGE_FAILURE(
+                                                                HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_FAILURE", "저장소 작업을 완료할 수 없습니다.",
+                                                                LogLevel.ERROR), INVALID_USER_ID(HttpStatus.BAD_REQUEST, "INVALID_USER_ID",
+                                                                    "회원 ID는 양수여야 합니다.",
+                                                                    LogLevel.INFO), INVALID_NICKNAME(HttpStatus.BAD_REQUEST,
+                                                                        "INVALID_NICKNAME", "닉네임은 앞뒤 공백을 제외하고 2자 이상 20자 이하여야 합니다.",
+                                                                        LogLevel.INFO), INVALID_USER_PROVIDER_ID(HttpStatus.BAD_REQUEST,
+                                                                            "INVALID_USER_PROVIDER_ID", "회원 연동 ID는 양수여야 합니다.",
+                                                                            LogLevel.INFO), INVALID_PROVIDER_TYPE(HttpStatus.BAD_REQUEST,
+                                                                                "INVALID_PROVIDER_TYPE", "소셜 로그인 제공자 유형이 필요합니다.",
+                                                                                LogLevel.INFO), INVALID_PROVIDER_USER_ID(
+                                                                                    HttpStatus.BAD_REQUEST, "INVALID_PROVIDER_USER_ID",
+                                                                                    "소셜 로그인 사용자 ID는 1자 이상 255자 이하여야 합니다.",
+                                                                                    LogLevel.INFO), INVALID_PROVIDER_EMAIL(
+                                                                                        HttpStatus.BAD_REQUEST, "INVALID_PROVIDER_EMAIL",
+                                                                                        "소셜 로그인 이메일은 254자 이하여야 합니다.",
+                                                                                        LogLevel.INFO), NICKNAME_CONFLICT(
+                                                                                            HttpStatus.CONFLICT, "NICKNAME_CONFLICT",
+                                                                                            "동일한 활성 닉네임이 이미 존재합니다.",
+                                                                                            LogLevel.INFO), NICKNAME_GENERATION_FAILED(
+                                                                                                HttpStatus.INTERNAL_SERVER_ERROR,
+                                                                                                "NICKNAME_GENERATION_FAILED",
+                                                                                                "닉네임을 생성하지 못했습니다.",
+                                                                                                LogLevel.ERROR), PROVIDER_IDENTITY_CONFLICT(
+                                                                                                    HttpStatus.CONFLICT,
+                                                                                                    "PROVIDER_IDENTITY_CONFLICT",
+                                                                                                    "동일한 활성 소셜 로그인 계정이 이미 존재합니다.",
+                                                                                                    LogLevel.INFO);
 
     private final HttpStatus status;
     private final String code;

@@ -9,6 +9,8 @@ import com.book.core.address.application.port.AddressRepositoryPort;
 import com.book.core.address.application.usecase.GetAddressesUseCase;
 import com.book.core.address.application.usecase.RegisterAddressUseCase;
 import com.book.core.auth.application.port.OAuthTokenClient;
+import com.book.core.auth.application.port.RefreshSessionRepository;
+import com.book.core.auth.application.port.RefreshTokenHasher;
 import com.book.core.auth.infrastructure.client.kakao.KakaoOAuthTokenClientImpl;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
@@ -16,6 +18,7 @@ import com.book.core.user.application.port.NicknameGenerator;
 import com.book.core.user.infrastructure.nickname.RandomNicknameGenerator;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -48,6 +51,12 @@ class BookApplicationTest {
     OAuthTokenClient oAuthTokenClient;
 
     @Autowired
+    RefreshTokenHasher refreshTokenHasher;
+
+    @Autowired
+    RefreshSessionRepository refreshSessionRepository;
+
+    @Autowired
     NicknameGenerator nicknameGenerator;
 
     @Test
@@ -58,6 +67,8 @@ class BookApplicationTest {
         assertThat(context.getBeansOfType(AddCartItemUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(CartRepositoryPort.class)).hasSize(1);
         assertThat(oAuthTokenClient).isInstanceOf(KakaoOAuthTokenClientImpl.class);
+        assertThat(AopUtils.getTargetClass(refreshTokenHasher).getSimpleName()).isEqualTo("Sha256RefreshTokenHasher");
+        assertThat(AopUtils.getTargetClass(refreshSessionRepository).getSimpleName()).isEqualTo("RefreshSessionRepositoryAdapter");
         assertThat(nicknameGenerator).isInstanceOf(RandomNicknameGenerator.class);
     }
 

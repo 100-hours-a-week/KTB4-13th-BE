@@ -19,6 +19,11 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
     }
 
     @Override
+    public Optional<Order> findActiveOrderByKeyForUpdate(final String orderKey) {
+        return jpaRepository.findByKeyAndDeletedAtIsNull(orderKey);
+    }
+
+    @Override
     public Optional<OrderItem> findActiveOrderItem(final Long orderItemId) {
         return orderItemJpaRepository.findByIdAndDeletedAtIsNullAndOrder_DeletedAtIsNull(orderItemId);
     }

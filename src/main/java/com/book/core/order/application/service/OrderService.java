@@ -8,8 +8,10 @@ import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
+import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.result.CreateOrderResult;
 import com.book.core.order.application.usecase.CreateOrderUseCase;
+import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.product.application.command.GetProductDetailCommand;
@@ -29,6 +31,11 @@ public class OrderService {
     private final GetCartUseCase getCartUseCase;
     private final GetProductDetailUseCase getProductDetailUseCase;
     private final CreateOrderUseCase createOrderUseCase;
+    private final CancelOrderUseCase cancelOrderUseCase;
+
+    public void cancelOrder(final CancelOrderCommand command) {
+        cancelOrderUseCase.execute(command);
+    }
 
     public CreateOrderResult createOrder(final CreateOrderCommand command) {
         // 기본 주소가 없어도 주문을 생성하고, 주소 존재 여부는 결제 가능 여부로 반환

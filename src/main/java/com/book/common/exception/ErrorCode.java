@@ -18,7 +18,11 @@ public enum ErrorCode {
                                 "장바구니 상품 수량은 1 이상 500 이하여야 합니다.", LogLevel.INFO), CART_NOT_FOUND(HttpStatus.NOT_FOUND, "E401",
                                     "장바구니를 찾을 수 없습니다.", LogLevel.INFO), PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "상품을 찾을 수 없습니다.",
                                         LogLevel.INFO), PRODUCT_MISMATCH_IN_ORDER(HttpStatus.BAD_REQUEST, "E3000", "요청한 상품 정보와 일치하지 않습니다.",
-                                            LogLevel.INFO);
+                                            LogLevel.INFO), ORDER_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "주문 상품을 찾을 수 없습니다.",
+                                                LogLevel.INFO), REVIEW_HAS_NOT_ORDER(HttpStatus.BAD_REQUEST, "E7000", "리뷰 작성 가능한 주문이 없습니다.",
+                                                    LogLevel.INFO), REVIEW_ALREADY_REVIEWED(HttpStatus.BAD_REQUEST, "E7001",
+                                                        "이미 리뷰를 작성한 상품입니다.", LogLevel.INFO), REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "E404",
+                                                            "리뷰를 찾을 수 없습니다.", LogLevel.INFO);
 
     private final HttpStatus status;
     private final String code;

@@ -53,11 +53,11 @@ public class ProductPopularitySnapshotScheduler {
             statement.setString(1, LOCK_NAME);
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (!resultSet.next()) {
-                    throw new SQLException("GET_LOCK returned no result");
+                    throw new SQLException("GET_LOCK 결과가 없습니다");
                 }
                 final int acquired = resultSet.getInt(1);
                 if (resultSet.wasNull()) {
-                    throw new SQLException("GET_LOCK returned NULL");
+                    throw new SQLException("GET_LOCK이 NULL을 반환했습니다");
                 }
                 return acquired == 1;
             }

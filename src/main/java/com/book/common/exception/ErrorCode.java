@@ -65,7 +65,22 @@ public enum ErrorCode {
                                             HttpStatus.UNAUTHORIZED, "INVALID_ID_TOKEN", "ID Token이 유효하지 않습니다.",
                                             LogLevel.INFO), INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN",
                                                 "Refresh Token이 유효하지 않습니다.", LogLevel.INFO), AI_SERVICE_UNAUTHORIZED(HttpStatus.BAD_GATEWAY,
-                                                    "E502", "외부 AI 서비스 인증에 실패했습니다.", LogLevel.ERROR);
+                                                    "E502", "외부 AI 서비스 인증에 실패했습니다.",
+                                                    LogLevel.ERROR), ONBOARDING_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "E404",
+                                                        "온보딩 질문을 찾을 수 없습니다.", LogLevel.INFO), ONBOARDING_NOT_FOUND(HttpStatus.NOT_FOUND,
+                                                            "E404", "진행 중인 온보딩이 없습니다.", LogLevel.INFO), ONBOARDING_OPTION_NOT_FOUND(
+                                                                HttpStatus.NOT_FOUND, "E404", "온보딩 선택지를 찾을 수 없습니다.",
+                                                                LogLevel.INFO), ONBOARDING_BOOK_NOT_FOUND(HttpStatus.NOT_FOUND, "E404",
+                                                                    "존재하지 않는 도서가 포함되어 있습니다.",
+                                                                    LogLevel.INFO), INVALID_ONBOARDING_ANSWER_SELECTION(
+                                                                        HttpStatus.BAD_REQUEST, "E400", "온보딩 답변 선택 개수나 형식이 올바르지 않습니다.",
+                                                                        LogLevel.INFO), ONBOARDING_OPTION_QUESTION_MISMATCH(
+                                                                            HttpStatus.CONFLICT, "E409", "선택지가 해당 질문에 속하지 않습니다.",
+                                                                            LogLevel.INFO), ONBOARDING_PARENT_QUESTION_NOT_ANSWERED(
+                                                                                HttpStatus.CONFLICT, "E409", "선행 질문에 대한 답변이 필요합니다.",
+                                                                                LogLevel.INFO), INVALID_ONBOARDING_BOOK_SELECTION(
+                                                                                    HttpStatus.BAD_REQUEST, "E400",
+                                                                                    "선택한 도서 목록의 형식이 올바르지 않습니다.", LogLevel.INFO);
     // spotless:on
 
     private final HttpStatus status;

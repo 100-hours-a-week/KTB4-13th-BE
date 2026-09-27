@@ -6,9 +6,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.port.OrderRepositoryPort;
-import com.book.core.order.application.usecase.ValidateReviewableOrderItemUseCase;
+import com.book.core.order.application.usecase.GetOrderItemUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
+import com.book.core.order.domain.OrderItem;
+import com.book.core.order.domain.OrderItemStatus;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -38,7 +40,7 @@ class OrderRepositoryIntegrationTest {
     JdbcTemplate jdbc;
 
     @Autowired
-    ValidateReviewableOrderItemUseCase validateReviewableOrderItem;
+    GetOrderItemUseCase getOrderItem;
 
     @Test
     void 주문_배송지_상품과_상태를_실제_테이블에_저장한다() {
@@ -78,22 +80,18 @@ class OrderRepositoryIntegrationTest {
     }
 
     @Test
-    void 리뷰_자격_조회는_활성_주문상품의_소유자와_PAID_상태를_확인한다() {
+    void 주문상품_조회는_활성_주문상품을_상태와_무관하게_반환한다() {
         insertBook(9104L);
         insertProduct(9204L, 9104L);
-        final Order savedOrder = orderRepository.save(order("review_eligibility_test", 9204L, null));
+        final Order savedOrder = orderRepository.save(order("order_item_lookup_test", 9204L, null));
         final Long orderItemId = jdbc.queryForObject("SELECT id FROM order_item WHERE order_id = ?", Long.class, savedOrder.id());
 
-        assertThatThrownBy(() -> validateReviewableOrderItem.execute(42L, orderItemId)).isInstanceOf(CoreException.class)
-            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.REVIEW_HAS_NOT_ORDER);
-
-        jdbc.update("UPDATE order_item SET status = 'PAID' WHERE id = ?", orderItemId);
-        validateReviewableOrderItem.execute(42L, orderItemId);
-        assertThatThrownBy(() -> validateReviewableOrderItem.execute(43L, orderItemId)).isInstanceOf(CoreException.class)
-            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.REVIEW_HAS_NOT_ORDER);
+        final OrderItem orderItem = getOrderItem.execute(orderItemId);
+        assertThat(orderItem.id()).isEqualTo(orderItemId);
+        assertThat(orderItem.status()).isEqualTo(OrderItemStatus.CREATED);
 
         jdbc.update("UPDATE order_item SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", orderItemId);
-        assertThatThrownBy(() -> validateReviewableOrderItem.execute(42L, orderItemId)).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> getOrderItem.execute(orderItemId)).isInstanceOf(CoreException.class)
             .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.ORDER_ITEM_NOT_FOUND);
     }
 

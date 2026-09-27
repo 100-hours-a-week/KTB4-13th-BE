@@ -8,11 +8,13 @@ import com.book.core.order.domain.Order;
 import com.book.core.review.application.port.ReviewRepositoryPort;
 import com.book.core.review.domain.Review;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -25,6 +27,8 @@ import org.testcontainers.mysql.MySQLContainer;
 @Testcontainers
 @Tag("integration")
 class ReviewRepositoryIntegrationTest {
+    private static final int MYSQL_CHECK_CONSTRAINT_VIOLATED = 3819;
+
     @Container
     @ServiceConnection
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
@@ -59,7 +63,10 @@ class ReviewRepositoryIntegrationTest {
         assertThatThrownBy(
             () -> jdbc.update("INSERT INTO reviews (user_id, order_item_id, rating, content, is_spoiler) VALUES (?, ?, ?, ?, ?)", 43L,
                 orderItemId, new BigDecimal("10.1"), "범위 초과", false))
-            .isInstanceOf(DataIntegrityViolationException.class);
+            .isInstanceOf(DataAccessException.class).satisfies(exception -> {
+                assertThat(exception.getCause()).isInstanceOf(SQLException.class);
+                assertThat(((SQLException) exception.getCause()).getErrorCode()).isEqualTo(MYSQL_CHECK_CONSTRAINT_VIOLATED);
+            });
 
         review.delete();
         reviewRepository.save(review);

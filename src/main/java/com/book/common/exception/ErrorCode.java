@@ -49,7 +49,12 @@ public enum ErrorCode {
                                                                                                     HttpStatus.CONFLICT,
                                                                                                     "PROVIDER_IDENTITY_CONFLICT",
                                                                                                     "동일한 활성 소셜 로그인 계정이 이미 존재합니다.",
-                                                                                                    LogLevel.INFO);
+                                                                                                    LogLevel.INFO),
+    // spotless:off
+    USER_PROVIDER_USER_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_NOT_FOUND", "회원 연결의 내부 회원을 찾을 수 없습니다.",
+        LogLevel.ERROR), USER_PROVIDER_USER_INACTIVE(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_INACTIVE",
+            "회원 연결의 내부 회원이 비활성 상태입니다.", LogLevel.ERROR);
+    // spotless:on
 
     private final HttpStatus status;
     private final String code;

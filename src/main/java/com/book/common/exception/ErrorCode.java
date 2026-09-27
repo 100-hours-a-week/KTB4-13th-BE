@@ -61,8 +61,10 @@ public enum ErrorCode {
                                 "OAUTH_PROVIDER_CONFIGURATION_ERROR", "외부 인증 서비스 설정이 올바르지 않습니다.",
                                 LogLevel.ERROR), OAUTH_PROVIDER_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "OAUTH_PROVIDER_UNAVAILABLE",
                                     "외부 인증 서비스를 사용할 수 없습니다.", LogLevel.ERROR), TOKEN_ISSUE_FAILURE(HttpStatus.INTERNAL_SERVER_ERROR,
-                                        "TOKEN_ISSUE_FAILURE", "인증 토큰을 발급할 수 없습니다.", LogLevel.ERROR), INVALID_ID_TOKEN(
-                                            HttpStatus.UNAUTHORIZED, "INVALID_ID_TOKEN", "ID Token이 유효하지 않습니다.", LogLevel.INFO);
+                                        "TOKEN_ISSUE_FAILURE", "인증 토큰을 발급할 수 없습니다.",
+                                        LogLevel.ERROR), INVALID_ID_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_ID_TOKEN",
+                                            "ID Token이 유효하지 않습니다.", LogLevel.INFO), INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED,
+                                                "INVALID_ACCESS_TOKEN", "Access Token이 유효하지 않습니다.", LogLevel.INFO);
     // spotless:on
 
     private final HttpStatus status;

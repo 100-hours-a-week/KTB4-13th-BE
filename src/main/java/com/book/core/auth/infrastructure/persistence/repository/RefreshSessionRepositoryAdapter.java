@@ -26,4 +26,9 @@ class RefreshSessionRepositoryAdapter implements RefreshSessionRepository {
     public Optional<RefreshSession> findActiveByTokenHash(final String tokenHash) {
         return repository.findByTokenHashAndRevokedAtIsNull(tokenHash).map(RefreshSessionPersistenceMapper::toDomain);
     }
+
+    @Override
+    public Optional<RefreshSession> findActiveByTokenHashForUpdate(final String tokenHash) {
+        return repository.findActiveByTokenHashForUpdate(tokenHash).map(RefreshSessionPersistenceMapper::toDomain);
+    }
 }

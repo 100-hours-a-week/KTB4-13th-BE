@@ -2,6 +2,7 @@ package com.book.common.exception;
 
 import com.book.common.response.ErrorResponse;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -18,13 +19,15 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode, exception.data()));
     }
 
-    @ExceptionHandler({
-        MethodArgumentNotValidException.class,
-        HttpMessageNotReadableException.class,
-        MethodArgumentTypeMismatchException.class,
-        MissingServletRequestParameterException.class,
-        ConstraintViolationException.class
-    })
+    @ExceptionHandler(RetryAfterException.class)
+    ResponseEntity<ErrorResponse> handleRetryAfter(final RetryAfterException exception) {
+        final var errorCode = exception.errorCode();
+        return ResponseEntity.status(errorCode.status()).header(HttpHeaders.RETRY_AFTER, String.valueOf(exception.retryAfterSeconds()))
+            .body(ErrorResponse.of(errorCode));
+    }
+
+    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
+        MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class, ConstraintViolationException.class})
     ResponseEntity<ErrorResponse> handleInvalidRequest(final Exception exception) {
         final var errorCode = ErrorCode.INVALID_REQUEST;
         return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode));

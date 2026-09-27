@@ -141,5 +141,6 @@ spotless {
         forbidWildcardImports()
         trimTrailingWhitespace()
         endWithNewline()
+        toggleOffOn()
     }
 }

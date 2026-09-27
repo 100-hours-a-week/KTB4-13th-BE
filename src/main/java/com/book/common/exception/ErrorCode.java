@@ -53,7 +53,12 @@ public enum ErrorCode {
     // spotless:off
     USER_PROVIDER_USER_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_NOT_FOUND", "회원 연결의 내부 회원을 찾을 수 없습니다.",
         LogLevel.ERROR), USER_PROVIDER_USER_INACTIVE(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_INACTIVE",
-            "회원 연결의 내부 회원이 비활성 상태입니다.", LogLevel.ERROR);
+            "회원 연결의 내부 회원이 비활성 상태입니다.", LogLevel.ERROR), INVALID_AUTHORIZATION_CODE(HttpStatus.UNAUTHORIZED, "INVALID_AUTHORIZATION_CODE",
+                "인가 코드가 유효하지 않습니다.", LogLevel.INFO), OAUTH_TOKEN_EXCHANGE_FAILURE(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "OAUTH_TOKEN_EXCHANGE_FAILURE", "외부 인증 토큰을 발급받을 수 없습니다.", LogLevel.ERROR), OAUTH_PROVIDER_CONFIGURATION_ERROR(
+                        HttpStatus.INTERNAL_SERVER_ERROR, "OAUTH_PROVIDER_CONFIGURATION_ERROR", "외부 인증 서비스 설정이 올바르지 않습니다.",
+                        LogLevel.ERROR), OAUTH_PROVIDER_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "OAUTH_PROVIDER_UNAVAILABLE",
+                            "외부 인증 서비스를 사용할 수 없습니다.", LogLevel.ERROR);
     // spotless:on
 
     private final HttpStatus status;

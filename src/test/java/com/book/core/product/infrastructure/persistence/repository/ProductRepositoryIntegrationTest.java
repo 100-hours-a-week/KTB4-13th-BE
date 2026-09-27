@@ -3,12 +3,15 @@ package com.book.core.product.infrastructure.persistence.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.book.core.book.domain.Book;
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.ProductRepositoryPort;
 import com.book.core.product.application.service.ProductService;
+import com.book.core.product.domain.Product;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
@@ -39,12 +42,16 @@ class ProductRepositoryIntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    @Autowired
+    ProductJpaRepository productJpaRepository;
+
     @Test
     void 활성_상품과_활성_도서가_연결된_상세만_조회한다() {
         insertBook(1001L, "활성 도서", null);
         insertBook(1002L, "삭제 도서", Timestamp.valueOf("2026-01-01 00:00:00"));
+        insertBook(1008L, "삭제 상품용 도서", null);
         insertProduct(2001L, 1001L, "활성 상품", null);
-        insertProduct(2002L, 1001L, "삭제 상품", Timestamp.valueOf("2026-01-01 00:00:00"));
+        insertProduct(2002L, 1008L, "삭제 상품", Timestamp.valueOf("2026-01-01 00:00:00"));
         insertProduct(2003L, 1002L, "도서가 삭제된 상품", null);
 
         final var found = productRepository.findActiveById(2001L).orElseThrow();
@@ -53,6 +60,26 @@ class ProductRepositoryIntegrationTest {
         assertThat(found.book().title()).isEqualTo("활성 도서");
         assertThat(productRepository.findActiveById(2002L)).isEmpty();
         assertThat(productRepository.findActiveById(2003L)).isEmpty();
+    }
+
+    @Test
+    void 서로_다른_Book에는_각각_Product를_저장할_수_있다() {
+        insertBook(1401L, "북 A", null);
+        insertBook(1402L, "북 B", null);
+
+        final Product productA = productJpaRepository.saveAndFlush(newProduct(1401L, "상품 A"));
+        final Product productB = productJpaRepository.saveAndFlush(newProduct(1402L, "상품 B"));
+
+        assertThat(productA.id()).isNotNull();
+        assertThat(productB.id()).isNotNull();
+    }
+
+    @Test
+    void 동일_Book에_두번째_Product를_저장하면_UNIQUE_제약을_위반한다() {
+        insertBook(1403L, "북 C", null);
+        productJpaRepository.saveAndFlush(newProduct(1403L, "상품 C-1"));
+
+        assertThatThrownBy(() -> productJpaRepository.saveAndFlush(newProduct(1403L, "상품 C-2"))).isInstanceOf(DataAccessException.class);
     }
 
     @Test
@@ -88,16 +115,23 @@ class ProductRepositoryIntegrationTest {
     void 인기순은_결제수량_리뷰수_평균평점_ID_순으로_정렬하고_커서와_기존_필터를_적용한다() {
         insertCategory(3003L, "활성 카테고리", null);
         insertCategory(3004L, "다른 카테고리", null);
-        insertBook(1010L, "인기순 도서", null);
+        insertBook(1010L, "인기순 도서 1", null);
         insertBook(1011L, "삭제 도서", Timestamp.valueOf("2026-01-01 00:00:00"));
+        insertBook(1012L, "인기순 도서 2", null);
+        insertBook(1013L, "인기순 도서 3", null);
+        insertBook(1014L, "인기순 도서 4", null);
+        insertBook(1015L, "인기순 도서 5", null);
+        insertBook(1016L, "인기순 도서 6", null);
+        insertBook(1017L, "인기순 도서 7", null);
+        insertBook(1018L, "인기순 도서 8", null);
         insertProduct(2201L, 1010L, "인기 상품 1", null);
-        insertProduct(2202L, 1010L, "인기 상품 2", null);
-        insertProduct(2203L, 1010L, "판매량 우선 상품", null);
-        insertProduct(2204L, 1010L, "평점 우선 상품", null);
-        insertProduct(2205L, 1010L, "리뷰 수가 적은 상품", null);
-        insertProduct(2206L, 1010L, "인기 데이터 없음", null);
-        insertProduct(2209L, 1010L, "인기 데이터 없음 ID 동률", null);
-        insertProduct(2290L, 1010L, "삭제 상품", Timestamp.valueOf("2026-01-01 00:00:00"));
+        insertProduct(2202L, 1012L, "인기 상품 2", null);
+        insertProduct(2203L, 1013L, "판매량 우선 상품", null);
+        insertProduct(2204L, 1014L, "평점 우선 상품", null);
+        insertProduct(2205L, 1015L, "리뷰 수가 적은 상품", null);
+        insertProduct(2206L, 1016L, "인기 데이터 없음", null);
+        insertProduct(2209L, 1017L, "인기 데이터 없음 ID 동률", null);
+        insertProduct(2290L, 1018L, "삭제 상품", Timestamp.valueOf("2026-01-01 00:00:00"));
         insertProduct(2291L, 1011L, "삭제 도서 상품", null);
         for (final long productId : new long[] {2201L, 2202L, 2203L, 2204L, 2205L, 2206L, 2209L, 2290L, 2291L}) {
             insertProductCategory(3200L + productId, 3003L, productId, null);
@@ -216,6 +250,11 @@ class ProductRepositoryIntegrationTest {
                 INSERT INTO order_addresses (id, postal_code, address, detail_address)
                 VALUES (?, '00000', 'address', NULL)
                 """, id);
+    }
+
+    private Product newProduct(final long bookId, final String name) {
+        final Book book = new Book(bookId, null, null, "제목", "작가", null, "출판사", "소설", LocalDate.of(2026, 1, 1), null);
+        return new Product(null, book, name, null, new BigDecimal("20000.00"), new BigDecimal("18000.00"), new BigDecimal("12000.00"), 10);
     }
 
     private void insertBook(final long id, final String title, final Timestamp deletedAt) {

@@ -58,7 +58,8 @@ public enum ErrorCode {
                     "OAUTH_TOKEN_EXCHANGE_FAILURE", "외부 인증 토큰을 발급받을 수 없습니다.", LogLevel.ERROR), OAUTH_PROVIDER_CONFIGURATION_ERROR(
                         HttpStatus.INTERNAL_SERVER_ERROR, "OAUTH_PROVIDER_CONFIGURATION_ERROR", "외부 인증 서비스 설정이 올바르지 않습니다.",
                         LogLevel.ERROR), OAUTH_PROVIDER_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "OAUTH_PROVIDER_UNAVAILABLE",
-                            "외부 인증 서비스를 사용할 수 없습니다.", LogLevel.ERROR);
+                            "외부 인증 서비스를 사용할 수 없습니다.", LogLevel.ERROR), TOKEN_ISSUE_FAILURE(HttpStatus.INTERNAL_SERVER_ERROR,
+                                "TOKEN_ISSUE_FAILURE", "인증 토큰을 발급할 수 없습니다.", LogLevel.ERROR);
     // spotless:on
 
     private final HttpStatus status;

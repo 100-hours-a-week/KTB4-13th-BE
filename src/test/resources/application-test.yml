@@ -4,7 +4,13 @@ spring:
       ddl-auto: validate
 
 auth:
+  cookie:
+    secure: false
   kakao:
     rest-api-key: test-kakao-rest-api-key
     client-secret: test-kakao-client-secret
     redirect-uri: http://localhost:3000/oauth/kakao/callback
+  token:
+    secret: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZg==
+    access-token-expiration: 1h
+    refresh-token-expiration: 7d

@@ -10,6 +10,8 @@ import com.book.core.address.application.usecase.GetAddressesUseCase;
 import com.book.core.address.application.usecase.RegisterAddressUseCase;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
+import com.book.core.user.application.port.NicknameGenerator;
+import com.book.core.user.infrastructure.nickname.RandomNicknameGenerator;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,9 @@ class BookApplicationTest {
     @Autowired
     ApplicationContext context;
 
+    @Autowired
+    NicknameGenerator nicknameGenerator;
+
     @Test
     void 전체_Context에_각_UseCase와_Repository가_한_개씩_등록된다() {
         assertThat(context.getBeansOfType(RegisterAddressUseCase.class)).hasSize(1);
@@ -47,14 +52,12 @@ class BookApplicationTest {
         assertThat(context.getBeansOfType(AddressRepositoryPort.class)).hasSize(1);
         assertThat(context.getBeansOfType(AddCartItemUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(CartRepositoryPort.class)).hasSize(1);
+        assertThat(nicknameGenerator).isInstanceOf(RandomNicknameGenerator.class);
     }
 
     @Test
     void HTTP_주소지_등록을_실제_MySQL까지_연결한다() throws Exception {
-        mvc.perform(post("/api/v1/user-addresses")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+        mvc.perform(post("/api/v1/user-addresses").param("userId", "42").contentType(MediaType.APPLICATION_JSON).content("""
                                 {
                                   "label": "집",
                                   "postalCode": "12345",
@@ -62,9 +65,7 @@ class BookApplicationTest {
                                   "detailAddress": "101호",
                                   "isDefault": true
                                 }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").doesNotExist());
+                                """)).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data").doesNotExist());
     }
 }

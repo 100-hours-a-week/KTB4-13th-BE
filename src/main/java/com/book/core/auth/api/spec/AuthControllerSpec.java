@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 @Tag(name = "Auth", description = "인증 API")
 public interface AuthControllerSpec {
@@ -35,4 +36,9 @@ public interface AuthControllerSpec {
             content = @Content(schema = @Schema(implementation = AuthReissueResponse.class))),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "유효하지 않거나 만료된 Refresh Token")})
     ResponseEntity<ApiResponse<AuthReissueResponse>> reissue(final HttpServletRequest request);
+
+    @Operation(summary = "로그아웃", description = "현재 사용자의 Refresh Session을 폐기하고 Refresh Token Cookie를 만료합니다.")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그아웃 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "유효하지 않은 Access Token")})
+    ResponseEntity<Void> logout(final Jwt jwt);
 }

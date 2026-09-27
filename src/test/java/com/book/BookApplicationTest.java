@@ -15,6 +15,7 @@ import com.book.core.auth.application.port.RefreshTokenHasher;
 import com.book.core.auth.application.port.RefreshTokenVerifier;
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.application.usecase.AuthLoginUseCase;
+import com.book.core.auth.application.usecase.AuthLogoutUseCase;
 import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.infrastructure.client.kakao.KakaoOAuthProviderClientImpl;
 import com.book.core.auth.infrastructure.client.kakao.KakaoOAuthTokenClientImpl;
@@ -98,6 +99,7 @@ class BookApplicationTest {
         assertThat(context.getBeansOfType(AddressRepositoryPort.class)).hasSize(1);
         assertThat(context.getBeansOfType(AuthLoginUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(AuthReissueUseCase.class)).hasSize(1);
+        assertThat(context.getBeansOfType(AuthLogoutUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(AddCartItemUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(CartRepositoryPort.class)).hasSize(1);
         assertThat(oAuthProviderClient).isInstanceOf(KakaoOAuthProviderClientImpl.class);

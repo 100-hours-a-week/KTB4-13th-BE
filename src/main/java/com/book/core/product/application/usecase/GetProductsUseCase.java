@@ -4,6 +4,8 @@ import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.product.application.command.GetProductsCommand;
+import com.book.core.product.application.command.ProductListCursor;
+import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.ProductRepositoryPort;
 import com.book.core.product.application.result.GetProductItemResult;
 import com.book.core.product.application.result.GetProductsResult;
@@ -25,13 +27,23 @@ public class GetProductsUseCase {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
-        final var products = productRepository.findActiveProducts(command.categoryId(), command.cursor(), fetchSize);
+        final var products = productRepository.findActiveProducts(command.categoryId(), command.sort(), command.cursor(), fetchSize);
         final boolean hasNext = products.size() > pageSize;
-        final var items = products.stream()
-                .limit(pageSize)
-                .map(GetProductItemResult::from)
-                .toList();
-        final String nextCursor = hasNext ? String.valueOf(items.getLast().itemId()) : null;
+        final var page = products.stream().limit(pageSize).toList();
+        final var items = page.stream().map(item -> GetProductItemResult.from(item.product())).toList();
+        final String nextCursor;
+        if (!hasNext) {
+            nextCursor = null;
+        } else {
+            final var lastItem = page.getLast();
+            if (command.sort() == ProductListSort.POPULARITY) {
+                nextCursor =
+                    new ProductListCursor(lastItem.product().id(), lastItem.salesQuantity(), lastItem.reviewCount(), lastItem.reviewRate())
+                        .toPopularityToken();
+            } else {
+                nextCursor = String.valueOf(lastItem.product().id());
+            }
+        }
         return GetProductsResult.of(items, nextCursor);
     }
 }

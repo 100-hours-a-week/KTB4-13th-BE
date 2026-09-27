@@ -12,10 +12,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.book.core.product.api.converter.ProductCommandConverter;
 import com.book.core.product.api.converter.ProductResultConverter;
 import com.book.core.product.application.command.GetProductsCommand;
+import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.result.GetProductItemResult;
 import com.book.core.product.application.result.GetProductsResult;
 import com.book.core.product.application.service.ProductService;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -38,55 +41,54 @@ class ProductListControllerTest {
 
     @Test
     void 상품_목록을_명세_필드로_응답한다() throws Exception {
-        when(productService.getProducts(any()))
-                .thenReturn(GetProductsResult.of(
-                        List.of(new GetProductItemResult(
-                                101L,
-                                "상품명",
-                                "thumbnail.jpg",
-                                "작가",
-                                new BigDecimal("20000.00"),
-                                new BigDecimal("18000.00"),
-                                0L,
-                                0L,
-                                BigDecimal.ZERO)),
-                        "101"));
+        when(productService.getProducts(any())).thenReturn(GetProductsResult.of(List.of(new GetProductItemResult(101L, "상품명",
+            "thumbnail.jpg", "작가", new BigDecimal("20000.00"), new BigDecimal("18000.00"), 0L, 0L, BigDecimal.ZERO)), "101"));
 
-        mvc.perform(get("/api/v1/items")
-                        .queryParam("categoryId", "7")
-                        .queryParam("sort", "createdAt")
-                        .queryParam("cursor", "102")
-                        .queryParam("limit", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.items[0].itemId").value(101))
-                .andExpect(jsonPath("$.data.items[0].itemName").value("상품명"))
-                .andExpect(jsonPath("$.data.items[0].thumbnailUrl").value("thumbnail.jpg"))
-                .andExpect(jsonPath("$.data.items[0].author").value("작가"))
-                .andExpect(jsonPath("$.data.items[0].salePrice").value(20000.00))
-                .andExpect(jsonPath("$.data.items[0].discountedPrice").value(18000.00))
-                .andExpect(jsonPath("$.data.items[0].orderCount").value(0))
-                .andExpect(jsonPath("$.data.items[0].reviewCount").value(0))
-                .andExpect(jsonPath("$.data.items[0].reviewRate").value(0))
-                .andExpect(jsonPath("$.data.nextCursor").value("101"));
+        mvc.perform(get("/api/v1/items").queryParam("categoryId", "7").queryParam("sort", "createdAt").queryParam("cursor", "102")
+            .queryParam("limit", "1")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.items[0].itemId").value(101)).andExpect(jsonPath("$.data.items[0].itemName").value("상품명"))
+            .andExpect(jsonPath("$.data.items[0].thumbnailUrl").value("thumbnail.jpg"))
+            .andExpect(jsonPath("$.data.items[0].author").value("작가")).andExpect(jsonPath("$.data.items[0].salePrice").value(20000.00))
+            .andExpect(jsonPath("$.data.items[0].discountedPrice").value(18000.00))
+            .andExpect(jsonPath("$.data.items[0].orderCount").value(0)).andExpect(jsonPath("$.data.items[0].reviewCount").value(0))
+            .andExpect(jsonPath("$.data.items[0].reviewRate").value(0)).andExpect(jsonPath("$.data.nextCursor").value("101"));
 
         final var commandCaptor = ArgumentCaptor.forClass(GetProductsCommand.class);
         verify(productService).getProducts(commandCaptor.capture());
         assertThat(commandCaptor.getValue().categoryId()).isEqualTo(7L);
-        assertThat(commandCaptor.getValue().sort()).isEqualTo("createdAt");
-        assertThat(commandCaptor.getValue().cursor()).isEqualTo(102L);
+        assertThat(commandCaptor.getValue().sort()).isEqualTo(ProductListSort.CREATED_AT);
+        assertThat(commandCaptor.getValue().cursor().productId()).isEqualTo(102L);
         assertThat(commandCaptor.getValue().limit()).isEqualTo(1);
+    }
+
+    @Test
+    void 인기순_정렬과_복합_커서를_서비스에_전달한다() throws Exception {
+        final String cursor = Base64.getUrlEncoder().withoutPadding().encodeToString("12:3:8.5:102".getBytes(StandardCharsets.UTF_8));
+        when(productService.getProducts(any())).thenReturn(GetProductsResult.of(List.of(), null));
+
+        mvc.perform(get("/api/v1/items").queryParam("sort", "POPULARITY").queryParam("cursor", cursor)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true));
+
+        final var commandCaptor = ArgumentCaptor.forClass(GetProductsCommand.class);
+        verify(productService).getProducts(commandCaptor.capture());
+        assertThat(commandCaptor.getValue().sort()).isEqualTo(ProductListSort.POPULARITY);
+        assertThat(commandCaptor.getValue().cursor().salesQuantity()).isEqualTo(12L);
+        assertThat(commandCaptor.getValue().cursor().reviewCount()).isEqualTo(3L);
+        assertThat(commandCaptor.getValue().cursor().reviewRate()).isEqualByComparingTo("8.5");
+        assertThat(commandCaptor.getValue().cursor().productId()).isEqualTo(102L);
     }
 
     @Test
     void 상품이_없으면_빈_목록을_응답한다() throws Exception {
         when(productService.getProducts(any())).thenReturn(GetProductsResult.of(List.of(), null));
 
-        mvc.perform(get("/api/v1/items"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.items").isArray())
-                .andExpect(jsonPath("$.data.items").isEmpty());
+        mvc.perform(get("/api/v1/items")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.items").isArray()).andExpect(jsonPath("$.data.items").isEmpty());
+
+        final var commandCaptor = ArgumentCaptor.forClass(GetProductsCommand.class);
+        verify(productService).getProducts(commandCaptor.capture());
+        assertThat(commandCaptor.getValue().sort()).isEqualTo(ProductListSort.CREATED_AT);
+        assertThat(commandCaptor.getValue().cursor()).isNull();
     }
 
     @Test
@@ -99,9 +101,18 @@ class ProductListControllerTest {
 
     @Test
     void 숫자가_아닌_커서는_E400이다() throws Exception {
-        mvc.perform(get("/api/v1/items").queryParam("cursor", "not-a-number"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("E400"));
+        mvc.perform(get("/api/v1/items").queryParam("cursor", "not-a-number")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void 지원하지_않는_정렬과_인기순_커서는_E400이다() throws Exception {
+        mvc.perform(get("/api/v1/items").queryParam("sort", "unknown")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
+        mvc.perform(get("/api/v1/items").queryParam("sort", "POPULARITY").queryParam("cursor", "101")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(productService);
     }
@@ -110,9 +121,7 @@ class ProductListControllerTest {
     void 저장소_오류는_E500으로_응답한다() throws Exception {
         when(productService.getProducts(any())).thenThrow(new IllegalStateException("database list"));
 
-        mvc.perform(get("/api/v1/items"))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.code").value("E500"))
-                .andExpect(jsonPath("$.message").value("알 수 없는 오류가 발생했습니다."));
+        mvc.perform(get("/api/v1/items")).andExpect(status().isInternalServerError()).andExpect(jsonPath("$.code").value("E500"))
+            .andExpect(jsonPath("$.message").value("알 수 없는 오류가 발생했습니다."));
     }
 }

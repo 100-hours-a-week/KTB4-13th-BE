@@ -36,7 +36,6 @@ class CancelOrderUseCaseTest {
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
         assertThat(order.canceledAt()).isNotNull();
         assertThat(order.items()).extracting(OrderItem::status).containsExactly(OrderItemStatus.CANCELED);
-        verify(orderRepository).save(order);
     }
 
     @Test

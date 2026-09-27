@@ -22,6 +22,5 @@ public class CancelOrderUseCase {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         order.cancel();
-        orderRepository.save(order);
     }
 }

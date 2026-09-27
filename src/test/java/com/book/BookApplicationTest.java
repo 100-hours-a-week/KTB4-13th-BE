@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.book.core.address.application.port.AddressRepositoryPort;
 import com.book.core.address.application.usecase.GetAddressesUseCase;
 import com.book.core.address.application.usecase.RegisterAddressUseCase;
+import com.book.core.auth.application.port.OAuthTokenClient;
+import com.book.core.auth.infrastructure.client.kakao.KakaoOAuthTokenClientImpl;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
 import com.book.core.user.application.port.NicknameGenerator;
@@ -43,6 +45,9 @@ class BookApplicationTest {
     ApplicationContext context;
 
     @Autowired
+    OAuthTokenClient oAuthTokenClient;
+
+    @Autowired
     NicknameGenerator nicknameGenerator;
 
     @Test
@@ -52,6 +57,7 @@ class BookApplicationTest {
         assertThat(context.getBeansOfType(AddressRepositoryPort.class)).hasSize(1);
         assertThat(context.getBeansOfType(AddCartItemUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(CartRepositoryPort.class)).hasSize(1);
+        assertThat(oAuthTokenClient).isInstanceOf(KakaoOAuthTokenClientImpl.class);
         assertThat(nicknameGenerator).isInstanceOf(RandomNicknameGenerator.class);
     }
 

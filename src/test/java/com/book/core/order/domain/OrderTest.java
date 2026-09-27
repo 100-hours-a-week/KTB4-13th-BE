@@ -51,6 +51,29 @@ class OrderTest {
         assertThat(order.totalPrice()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
+    @Test
+    void 주문_전체_취소는_주문과_주문상품을_취소하고_취소시각을_기록한다() {
+        final Order order = Order.create(42L, "order_test", OrderAddress.from("06236", "서울 주소", null));
+        order.addItem(101L, "상품 101", null, "저자", new BigDecimal("10.00"), new BigDecimal("10.00"), 1);
+        order.addItem(102L, "상품 102", null, "저자", new BigDecimal("5.00"), new BigDecimal("5.00"), 2);
+
+        order.cancel();
+
+        assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
+        assertThat(order.canceledAt()).isNotNull();
+        assertThat(order.totalPrice()).isEqualByComparingTo("20.00");
+        assertThat(order.items()).extracting(OrderItem::status).containsExactly(OrderItemStatus.CANCELED, OrderItemStatus.CANCELED);
+    }
+
+    @Test
+    void 이미_취소된_주문은_다시_취소할_수_없다() {
+        final Order order = Order.create(42L, "order_test", null);
+        order.cancel();
+
+        assertThatThrownBy(order::cancel).isInstanceOf(CoreException.class).extracting(exception -> ((CoreException) exception).errorCode())
+            .isEqualTo(ErrorCode.ORDER_CANNOT_BE_CANCELED);
+    }
+
     private static void addOrderItem(final Order order, final Long productId, final Integer quantity, final BigDecimal unitPrice) {
         order.addItem(productId, "상품 " + productId, null, "저자", unitPrice, unitPrice, quantity);
     }

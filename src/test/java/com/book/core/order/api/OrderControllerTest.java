@@ -1,15 +1,20 @@
 package com.book.core.order.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.core.order.api.converter.OrderCommandConverter;
 import com.book.core.order.api.converter.OrderResultConverter;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
+import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
 import com.book.core.order.application.result.CreateOrderItemResult;
@@ -97,6 +102,64 @@ class OrderControllerTest {
                                   "items": [{"itemId": 701, "quantity": 1}]
                                 }
                                 """)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+    }
+
+    @Test
+    void 주문키와_임시_userId를_취소_Command로_변환하고_성공_외피를_반환한다() throws Exception {
+        mvc.perform(delete("/api/v1/orders/order_test/cancel").param("userId", "42")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(orderService).cancelOrder(new CancelOrderCommand(42L, "order_test"));
+    }
+
+    @Test
+    void 취소_요청에서_userId가_없으면_서비스를_호출하지_않고_E400을_응답한다() throws Exception {
+        mvc.perform(delete("/api/v1/orders/order_test/cancel")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
+
+        verify(orderService, never()).cancelOrder(any());
+    }
+
+    @Test
+    void 취소_요청의_userId가_양수가_아니면_서비스를_호출하지_않는다() throws Exception {
+        mvc.perform(delete("/api/v1/orders/order_test/cancel").param("userId", "0")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
+
+        verify(orderService, never()).cancelOrder(any());
+    }
+
+    @Test
+    void 주문키가_저장_길이를_초과하면_서비스를_호출하지_않는다() throws Exception {
+        final String orderKey = "a".repeat(256);
+
+        mvc.perform(delete("/api/v1/orders/" + orderKey + "/cancel").param("userId", "42")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
+
+        verify(orderService, never()).cancelOrder(any());
+    }
+
+    @Test
+    void 주문이_없으면_ORDER_NOT_FOUND와_404를_응답한다() throws Exception {
+        doThrow(new CoreException(ErrorCode.ORDER_NOT_FOUND)).when(orderService).cancelOrder(any());
+
+        mvc.perform(delete("/api/v1/orders/missing_order/cancel").param("userId", "42")).andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"));
+    }
+
+    @Test
+    void 소유권이_없으면_E403을_응답한다() throws Exception {
+        doThrow(new CoreException(ErrorCode.FORBIDDEN)).when(orderService).cancelOrder(any());
+
+        mvc.perform(delete("/api/v1/orders/another_users_order/cancel").param("userId", "42")).andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("E403"));
+    }
+
+    @Test
+    void 취소할_수_없는_상태면_ORDER_CANNOT_BE_CANCELED와_409를_응답한다() throws Exception {
+        doThrow(new CoreException(ErrorCode.ORDER_CANNOT_BE_CANCELED)).when(orderService).cancelOrder(any());
+
+        mvc.perform(delete("/api/v1/orders/paid_order/cancel").param("userId", "42")).andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("ORDER_CANNOT_BE_CANCELED"));
     }
 
     private static CreateOrderResult result(final boolean canProceedToPayment) {

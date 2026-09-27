@@ -52,11 +52,10 @@ public enum ErrorCode {
                                                                                                     LogLevel.INFO),
     // spotless:off
     USER_PROVIDER_USER_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_NOT_FOUND", "회원 연결의 내부 회원을 찾을 수 없습니다.",
-        LogLevel.ERROR),
-    USER_PROVIDER_USER_INACTIVE(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_INACTIVE", "회원 연결의 내부 회원이 비활성 상태입니다.",
-        LogLevel.ERROR),
-    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "주문을 찾을 수 없습니다.", LogLevel.INFO),
-    ORDER_CANNOT_BE_CANCELED(HttpStatus.CONFLICT, "ORDER_CANNOT_BE_CANCELED", "현재 상태의 주문은 취소할 수 없습니다.", LogLevel.INFO);
+        LogLevel.ERROR), USER_PROVIDER_USER_INACTIVE(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_INACTIVE",
+            "회원 연결의 내부 회원이 비활성 상태입니다.", LogLevel.ERROR), ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "주문을 찾을 수 없습니다.",
+                LogLevel.INFO), ORDER_CANNOT_BE_CANCELED(HttpStatus.CONFLICT, "ORDER_CANNOT_BE_CANCELED", "현재 상태의 주문은 취소할 수 없습니다.",
+                    LogLevel.INFO);
     // spotless:on
 
     private final HttpStatus status;

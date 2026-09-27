@@ -3,6 +3,7 @@ package com.book.core.auth.api.spec;
 import com.book.common.response.ApiResponse;
 import com.book.core.auth.api.request.AuthLoginRequest;
 import com.book.core.auth.api.response.AuthLoginResponse;
+import com.book.core.auth.api.response.AuthReissueResponse;
 import com.book.core.user.domain.ProviderType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Auth", description = "인증 API")
@@ -26,4 +28,11 @@ public interface AuthControllerSpec {
         @Parameter(description = "소셜 로그인 provider", required = true, example = "kakao") final ProviderType providerType,
         @RequestBody(description = "소셜 로그인 인가 코드, PKCE verifier, nonce", required = true,
             content = @Content(schema = @Schema(implementation = AuthLoginRequest.class))) final AuthLoginRequest request);
+
+    @Operation(summary = "토큰 재발급", description = "HttpOnly Cookie의 Refresh Token을 검증하고 새로운 Access/Refresh Token을 발급합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "재발급 성공",
+            content = @Content(schema = @Schema(implementation = AuthReissueResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "유효하지 않거나 만료된 Refresh Token")})
+    ResponseEntity<ApiResponse<AuthReissueResponse>> reissue(final HttpServletRequest request);
 }

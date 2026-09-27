@@ -12,10 +12,13 @@ import com.book.core.auth.application.port.OAuthProviderClient;
 import com.book.core.auth.application.port.OAuthTokenClient;
 import com.book.core.auth.application.port.RefreshSessionRepository;
 import com.book.core.auth.application.port.RefreshTokenHasher;
+import com.book.core.auth.application.port.RefreshTokenVerifier;
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.application.usecase.AuthLoginUseCase;
+import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.infrastructure.client.kakao.KakaoOAuthProviderClientImpl;
 import com.book.core.auth.infrastructure.client.kakao.KakaoOAuthTokenClientImpl;
+import com.book.core.auth.infrastructure.token.JwtRefreshTokenVerifier;
 import com.book.core.auth.infrastructure.token.JwtTokenIssuer;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
@@ -69,6 +72,9 @@ class BookApplicationTest {
     RefreshTokenHasher refreshTokenHasher;
 
     @Autowired
+    RefreshTokenVerifier refreshTokenVerifier;
+
+    @Autowired
     RefreshSessionRepository refreshSessionRepository;
 
     @Autowired
@@ -91,11 +97,13 @@ class BookApplicationTest {
         assertThat(context.getBeansOfType(GetAddressesUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(AddressRepositoryPort.class)).hasSize(1);
         assertThat(context.getBeansOfType(AuthLoginUseCase.class)).hasSize(1);
+        assertThat(context.getBeansOfType(AuthReissueUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(AddCartItemUseCase.class)).hasSize(1);
         assertThat(context.getBeansOfType(CartRepositoryPort.class)).hasSize(1);
         assertThat(oAuthProviderClient).isInstanceOf(KakaoOAuthProviderClientImpl.class);
         assertThat(oAuthTokenClient).isInstanceOf(KakaoOAuthTokenClientImpl.class);
         assertThat(tokenIssuer).isInstanceOf(JwtTokenIssuer.class);
+        assertThat(refreshTokenVerifier).isInstanceOf(JwtRefreshTokenVerifier.class);
         assertThat(AopUtils.getTargetClass(refreshTokenHasher).getSimpleName()).isEqualTo("Sha256RefreshTokenHasher");
         assertThat(AopUtils.getTargetClass(refreshSessionRepository).getSimpleName()).isEqualTo("RefreshSessionRepositoryAdapter");
         assertThat(nicknameGenerator).isInstanceOf(RandomNicknameGenerator.class);

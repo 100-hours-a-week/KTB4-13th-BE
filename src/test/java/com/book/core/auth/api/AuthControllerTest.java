@@ -12,9 +12,12 @@ import com.book.core.auth.api.converter.AuthCommandConverter;
 import com.book.core.auth.api.cookie.AuthCookieProperties;
 import com.book.core.auth.api.cookie.RefreshTokenCookieFactory;
 import com.book.core.auth.application.command.AuthLoginCommand;
+import com.book.core.auth.application.command.AuthReissueCommand;
 import com.book.core.auth.application.result.AuthLoginResult;
+import com.book.core.auth.application.result.AuthReissueResult;
 import com.book.core.auth.application.service.AuthService;
 import com.book.core.user.domain.ProviderType;
+import jakarta.servlet.http.Cookie;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -102,5 +105,30 @@ class AuthControllerTest {
 
     private String loginRequest() {
         return "{\"authorizationCode\":\"authorization-code\"," + "\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}";
+    }
+
+    @Test
+    void Refresh_Cookie로_재발급하고_새_Access_Token과_Refresh_Cookie를_응답한다() throws Exception {
+        final AuthReissueCommand command = new AuthReissueCommand("old-refresh-token");
+        final Instant refreshExpiresAt = Instant.now().plusSeconds(604800);
+        when(authService.reissue(command)).thenReturn(new AuthReissueResult("new-access-token", "new-refresh-token", refreshExpiresAt));
+
+        final var response =
+            mvc.perform(post("/api/v1/auth/reissue").cookie(new Cookie(RefreshTokenCookieFactory.COOKIE_NAME, "old-refresh-token")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("new-access-token")).andReturn().getResponse();
+
+        verify(authService).reissue(command);
+        final String setCookie = response.getHeader(HttpHeaders.SET_COOKIE);
+        assertThat(setCookie).contains("refreshToken=new-refresh-token").contains("Path=/api/v1/auth").contains("HttpOnly")
+            .contains("SameSite=Lax").doesNotContain("Secure");
+    }
+
+    @Test
+    void Refresh_Cookie가_없으면_401을_응답한다() throws Exception {
+        mvc.perform(post("/api/v1/auth/reissue")).andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
+
+        verifyNoInteractions(authService);
     }
 }

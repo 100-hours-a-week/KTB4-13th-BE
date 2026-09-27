@@ -20,6 +20,8 @@ import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -55,5 +57,13 @@ class AuthController implements AuthControllerSpec {
         final String refreshCookie = refreshTokenCookieFactory.create(result.refreshToken(), refreshMaxAge).toString();
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, refreshCookie)
             .body(ApiResponse.ok(new AuthReissueResponse(result.accessToken())));
+    }
+
+    @PostMapping("/logout")
+    @Override
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal final Jwt jwt) {
+        authService.logout(commandConverter.toUserId(jwt));
+        final String expiredRefreshCookie = refreshTokenCookieFactory.expire().toString();
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, expiredRefreshCookie).build();
     }
 }

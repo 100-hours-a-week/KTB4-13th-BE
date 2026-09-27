@@ -20,4 +20,8 @@ public class RefreshTokenCookieFactory {
         return ResponseCookie.from(COOKIE_NAME, refreshToken).httpOnly(true).secure(properties.secure()).sameSite(SAME_SITE)
             .path(COOKIE_PATH).maxAge(maxAge).build();
     }
+
+    public ResponseCookie expire() {
+        return create("", Duration.ZERO);
+    }
 }

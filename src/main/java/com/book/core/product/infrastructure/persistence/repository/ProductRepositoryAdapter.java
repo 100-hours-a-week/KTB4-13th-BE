@@ -22,6 +22,11 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort {
     }
 
     @Override
+    public Optional<Product> findActiveByBookId(final Long bookId) {
+        return jpaRepository.findActiveByBookId(bookId);
+    }
+
+    @Override
     public List<ProductListItem> findActiveProducts(final Long categoryId, final ProductListSort sort, final ProductListCursor cursor,
         final int limit) {
         return queryRepository.findActiveProducts(categoryId, sort, cursor, limit);

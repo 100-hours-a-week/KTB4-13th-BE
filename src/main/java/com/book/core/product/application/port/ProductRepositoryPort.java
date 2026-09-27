@@ -10,6 +10,8 @@ import java.util.Optional;
 public interface ProductRepositoryPort {
     Optional<Product> findActiveById(final Long productId);
 
+    Optional<Product> findActiveByBookId(final Long bookId);
+
     List<ProductListItem> findActiveProducts(final Long categoryId, final ProductListSort sort, final ProductListCursor cursor,
         final int limit);
 }

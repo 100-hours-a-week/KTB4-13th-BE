@@ -102,6 +102,11 @@ class GetProductsUseCaseTest {
         }
 
         @Override
+        public Optional<Product> findActiveByBookId(final Long bookId) {
+            return Optional.empty();
+        }
+
+        @Override
         public List<ProductListItem> findActiveProducts(final Long categoryId, final ProductListSort sort, final ProductListCursor cursor,
             final int limit) {
             this.categoryId = categoryId;

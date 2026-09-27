@@ -24,7 +24,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
     public void commence(final HttpServletRequest request, final HttpServletResponse response, final AuthenticationException exception)
         throws IOException, ServletException {
-        final ErrorCode errorCode = ErrorCode.INVALID_ACCESS_TOKEN;
+        final ErrorCode errorCode = ErrorCode.UNAUTHORIZED;
         response.setStatus(errorCode.status().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

@@ -15,10 +15,12 @@ import com.book.core.address.application.usecase.GetAddressUseCase;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
+import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
 import com.book.core.order.application.result.CreateOrderResult;
 import com.book.core.order.application.usecase.CreateOrderUseCase;
+import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
@@ -36,7 +38,9 @@ class OrderServiceTest {
     private final GetCartUseCase getCartUseCase = mock(GetCartUseCase.class);
     private final GetProductDetailUseCase getProductDetailUseCase = mock(GetProductDetailUseCase.class);
     private final CreateOrderUseCase createOrderUseCase = mock(CreateOrderUseCase.class);
-    private final OrderService service = new OrderService(getAddressUseCase, getCartUseCase, getProductDetailUseCase, createOrderUseCase);
+    private final CancelOrderUseCase cancelOrderUseCase = mock(CancelOrderUseCase.class);
+    private final OrderService service =
+        new OrderService(getAddressUseCase, getCartUseCase, getProductDetailUseCase, createOrderUseCase, cancelOrderUseCase);
 
     @BeforeEach
     void setUp() {
@@ -119,6 +123,15 @@ class OrderServiceTest {
         assertThatThrownBy(() -> service.createOrder(command(new CreateOrderItemCommand(701L, 1)))).isInstanceOf(CoreException.class)
             .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
         verifyNoInteractions(createOrderUseCase);
+    }
+
+    @Test
+    void 주문_취소_요청을_취소_UseCase로_전달한다() {
+        final CancelOrderCommand command = new CancelOrderCommand(42L, "order_test");
+
+        service.cancelOrder(command);
+
+        verify(cancelOrderUseCase).execute(command);
     }
 
     private Order savedOrder() {

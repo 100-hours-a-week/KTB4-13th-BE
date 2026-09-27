@@ -7,5 +7,7 @@ import java.util.Optional;
 public interface OrderRepositoryPort {
     Order save(final Order order);
 
+    Optional<Order> findActiveOrderByKeyForUpdate(final String orderKey);
+
     Optional<OrderItem> findActiveOrderItem(final Long orderItemId);
 }

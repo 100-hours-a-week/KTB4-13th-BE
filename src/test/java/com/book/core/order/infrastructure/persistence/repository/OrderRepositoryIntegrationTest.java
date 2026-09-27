@@ -6,12 +6,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.port.OrderRepositoryPort;
+import com.book.core.order.application.command.CancelOrderCommand;
+import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.application.usecase.GetOrderItemUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderItemStatus;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +47,9 @@ class OrderRepositoryIntegrationTest {
 
     @Autowired
     GetOrderItemUseCase getOrderItem;
+
+    @Autowired
+    CancelOrderUseCase cancelOrder;
 
     @Test
     void 주문_배송지_상품과_상태를_실제_테이블에_저장한다() {
@@ -114,6 +123,82 @@ class OrderRepositoryIntegrationTest {
     }
 
     @Test
+    void 주문_전체_취소는_주문과_모든_주문상품을_같은_트랜잭션에서_저장한다() {
+        insertBook(9111L);
+        insertProduct(9211L, 9111L);
+        final Order order = order("order_cancel_persistence_test", 9211L, null);
+        order.addItem(9211L, "주문 테스트 상품 2", null, "저자", new BigDecimal("20.00"), new BigDecimal("7.00"), 2);
+        final Order savedOrder = orderRepository.save(order);
+
+        cancelOrder.execute(new CancelOrderCommand(42L, "order_cancel_persistence_test"));
+
+        assertThat(jdbc.queryForObject("SELECT status FROM orders WHERE id = ?", String.class, savedOrder.id())).isEqualTo("CANCELED");
+        assertThat(jdbc.queryForObject("SELECT canceled_at IS NOT NULL FROM orders WHERE id = ?", Boolean.class, savedOrder.id())).isTrue();
+        assertThat(jdbc.queryForList("SELECT status FROM order_item WHERE order_id = ? ORDER BY id", String.class, savedOrder.id()))
+            .containsExactly("CANCELED", "CANCELED");
+    }
+
+    @Test
+    void 결제된_주문은_취소하지_않고_상태와_취소시각을_유지한다() {
+        insertBook(9112L);
+        insertProduct(9212L, 9112L);
+        final Order savedOrder = orderRepository.save(order("order_paid_cancel_rejected", 9212L, null));
+        jdbc.update("UPDATE orders SET status = 'PAID' WHERE id = ?", savedOrder.id());
+
+        assertThatThrownBy(() -> cancelOrder.execute(new CancelOrderCommand(42L, "order_paid_cancel_rejected")))
+            .isInstanceOf(CoreException.class).extracting(exception -> ((CoreException) exception).errorCode())
+            .isEqualTo(ErrorCode.ORDER_CANNOT_BE_CANCELED);
+
+        assertThat(jdbc.queryForObject("SELECT status FROM orders WHERE id = ?", String.class, savedOrder.id())).isEqualTo("PAID");
+        assertThat(jdbc.queryForObject("SELECT canceled_at IS NULL FROM orders WHERE id = ?", Boolean.class, savedOrder.id())).isTrue();
+        assertThat(jdbc.queryForObject("SELECT status FROM order_item WHERE order_id = ?", String.class, savedOrder.id()))
+            .isEqualTo("CREATED");
+    }
+
+    @Test
+    void 생성_상태가_아닌_주문상품이_있으면_주문_전체를_변경하지_않는다() {
+        insertBook(9114L);
+        insertProduct(9214L, 9114L);
+        final Order order = order("order_paid_item_cancel_rejected", 9214L, null);
+        order.addItem(9214L, "주문 테스트 상품 2", null, "저자", new BigDecimal("20.00"), new BigDecimal("7.00"), 2);
+        final Order savedOrder = orderRepository.save(order);
+        final Long firstItemId =
+            jdbc.queryForObject("SELECT id FROM order_item WHERE order_id = ? ORDER BY id LIMIT 1", Long.class, savedOrder.id());
+        jdbc.update("UPDATE order_item SET status = 'PAID' WHERE id = ?", firstItemId);
+
+        assertThatThrownBy(() -> cancelOrder.execute(new CancelOrderCommand(42L, "order_paid_item_cancel_rejected")))
+            .isInstanceOf(CoreException.class).extracting(exception -> ((CoreException) exception).errorCode())
+            .isEqualTo(ErrorCode.ORDER_CANNOT_BE_CANCELED);
+
+        assertThat(jdbc.queryForObject("SELECT status FROM orders WHERE id = ?", String.class, savedOrder.id())).isEqualTo("CREATED");
+        assertThat(jdbc.queryForObject("SELECT canceled_at IS NULL FROM orders WHERE id = ?", Boolean.class, savedOrder.id())).isTrue();
+        assertThat(jdbc.queryForList("SELECT status FROM order_item WHERE order_id = ? ORDER BY id", String.class, savedOrder.id()))
+            .containsExactly("PAID", "CREATED");
+    }
+
+    @Test
+    void 동시에_취소하면_한_요청만_성공하고_다른_요청은_상태_충돌로_실패한다() throws Exception {
+        insertBook(9113L);
+        insertProduct(9213L, 9113L);
+        orderRepository.save(order("order_concurrent_cancel", 9213L, null));
+        final CancelOrderCommand command = new CancelOrderCommand(42L, "order_concurrent_cancel");
+        final var ready = new CountDownLatch(2);
+        final var start = new CountDownLatch(1);
+        final var executor = Executors.newFixedThreadPool(2);
+
+        try {
+            final var first = executor.submit(() -> cancelAfterStart(command, ready, start));
+            final var second = executor.submit(() -> cancelAfterStart(command, ready, start));
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            assertThat(List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS))).containsExactlyInAnyOrder(true, false);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
     void 배송지와_상품_FK_및_주문키_UNIQUE_제약을_마이그레이션에_생성한다() {
         assertThat(countKeyUsage("orders", "address_id", "order_addresses", "id")).isEqualTo(1);
         assertThat(countKeyUsage("order_item", "product_id", "products", "id")).isEqualTo(1);
@@ -156,6 +241,21 @@ class OrderRepositoryIntegrationTest {
                           AND table_name = ?
                           AND column_name = ?
                         """, Integer.class, table, column);
+    }
+
+    private boolean cancelAfterStart(final CancelOrderCommand command, final CountDownLatch ready, final CountDownLatch start)
+        throws InterruptedException {
+        ready.countDown();
+        start.await();
+        try {
+            cancelOrder.execute(command);
+            return true;
+        } catch (final CoreException exception) {
+            if (exception.errorCode() == ErrorCode.ORDER_CANNOT_BE_CANCELED) {
+                return false;
+            }
+            throw exception;
+        }
     }
 
     private void insertBook(final long id) {

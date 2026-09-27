@@ -5,29 +5,68 @@ import static com.book.core.category.domain.QCategory.category;
 import static com.book.core.product.domain.QProduct.product;
 import static com.book.core.product.domain.QProductCategory.productCategory;
 
-import com.book.core.order.domain.OrderItemStatus;
-import com.book.core.order.domain.QOrder;
-import com.book.core.order.domain.QOrderItem;
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.result.ProductListItem;
 import com.book.core.product.domain.QProduct;
-import com.book.core.review.domain.QReview;
+import com.book.core.product.infrastructure.persistence.entity.QProductPopularitySnapshot;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.NumberExpression;
-import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.math.BigDecimal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
 class ProductQueryRepository {
+    private static final String INSERT_POPULARITY_SNAPSHOTS_SQL = """
+        INSERT INTO product_popularity_snapshots (
+            product_id,
+            sales_quantity,
+            review_count,
+            review_rate,
+            refreshed_at
+        )
+        SELECT
+            product.id,
+            COALESCE(sales.sales_quantity, 0),
+            COALESCE(reviews.review_count, 0),
+            COALESCE(reviews.review_rate, 0),
+            CURRENT_TIMESTAMP(6)
+        FROM products product
+        LEFT JOIN (
+            SELECT order_item.product_id, SUM(order_item.quantity) AS sales_quantity
+            FROM order_item
+            JOIN orders ON orders.id = order_item.order_id
+            WHERE order_item.status = 'PAID'
+              AND order_item.deleted_at IS NULL
+              AND orders.deleted_at IS NULL
+            GROUP BY order_item.product_id
+        ) sales ON sales.product_id = product.id
+        LEFT JOIN (
+            SELECT order_item.product_id, COUNT(review.id) AS review_count, AVG(review.rating) AS review_rate
+            FROM reviews review
+            JOIN order_item ON order_item.id = review.order_item_id
+            JOIN orders ON orders.id = order_item.order_id
+            WHERE review.deleted_at IS NULL
+              AND order_item.deleted_at IS NULL
+              AND orders.deleted_at IS NULL
+            GROUP BY order_item.product_id
+        ) reviews ON reviews.product_id = product.id
+        """;
+
     private final JPAQueryFactory queryFactory;
+    private final JdbcTemplate jdbcTemplate;
+
+    void refreshPopularitySnapshots() {
+        jdbcTemplate.update("DELETE FROM product_popularity_snapshots");
+        jdbcTemplate.update(INSERT_POPULARITY_SNAPSHOTS_SQL);
+    }
 
     List<ProductListItem> findActiveProducts(final Long categoryId, final ProductListSort sort, final ProductListCursor cursor,
         final int limit) {
@@ -47,7 +86,7 @@ class ProductQueryRepository {
     private List<ProductListItem> findByPopularity(final Long categoryId, final ProductListCursor cursor, final int limit) {
         final var popularity = popularityExpressions();
         return queryFactory.select(product, popularity.salesQuantity(), popularity.reviewCount(), popularity.reviewRate()).from(product)
-            .join(product.book, book).fetchJoin()
+            .leftJoin(popularity.snapshot()).on(popularity.snapshot().productId.eq(product.id)).join(product.book, book).fetchJoin()
             .where(product.deletedAt.isNull(), book.deletedAt.isNull(), popularityCursorPredicate(cursor, popularity),
                 categoryPredicate(categoryId))
             .orderBy(popularity.salesQuantity().desc(), popularity.reviewCount().desc(), popularity.reviewRate().desc(), product.id.desc())
@@ -82,27 +121,9 @@ class ProductQueryRepository {
     }
 
     private PopularityExpressions popularityExpressions() {
-        final var paidOrderItem = new QOrderItem("paidOrderItem");
-        final var paidOrder = new QOrder("paidOrder");
-        final NumberExpression<Long> salesQuantity = Expressions.numberTemplate(Long.class, "({0})",
-            JPAExpressions.select(Expressions.numberTemplate(Long.class, "coalesce(sum({0}), 0)", paidOrderItem.quantity))
-                .from(paidOrderItem).join(paidOrderItem.order, paidOrder).where(paidOrderItem.productId.eq(product.id),
-                    paidOrderItem.status.eq(OrderItemStatus.PAID), paidOrderItem.deletedAt.isNull(), paidOrder.deletedAt.isNull()));
-
-        final var review = new QReview("activeReview");
-        final var reviewOrderItem = new QOrderItem("reviewOrderItem");
-        final var reviewOrder = new QOrder("reviewOrder");
-        final BooleanExpression activeReview =
-            review.deletedAt.isNull().and(reviewOrderItem.deletedAt.isNull()).and(reviewOrder.deletedAt.isNull());
-        final NumberExpression<Long> reviewCount = Expressions.numberTemplate(Long.class, "({0})",
-            JPAExpressions.select(Expressions.numberTemplate(Long.class, "count({0})", review.id)).from(review).join(reviewOrderItem)
-                .on(review.orderItemId.eq(reviewOrderItem.id)).join(reviewOrderItem.order, reviewOrder)
-                .where(reviewOrderItem.productId.eq(product.id), activeReview));
-        final NumberExpression<BigDecimal> reviewRate = Expressions.numberTemplate(BigDecimal.class, "({0})",
-            JPAExpressions.select(Expressions.numberTemplate(BigDecimal.class, "coalesce(avg({0}), 0)", review.rating)).from(review)
-                .join(reviewOrderItem).on(review.orderItemId.eq(reviewOrderItem.id)).join(reviewOrderItem.order, reviewOrder)
-                .where(reviewOrderItem.productId.eq(product.id), activeReview));
-        return new PopularityExpressions(salesQuantity, reviewCount, reviewRate);
+        final var snapshot = new QProductPopularitySnapshot("productPopularitySnapshot");
+        return new PopularityExpressions(snapshot, snapshot.salesQuantity.coalesce(0L), snapshot.reviewCount.coalesce(0L),
+            snapshot.reviewRate.coalesce(BigDecimal.ZERO));
     }
 
     private BooleanExpression categoryPredicate(final Long categoryId) {
@@ -115,6 +136,6 @@ class ProductQueryRepository {
             .exists();
     }
 
-    private record PopularityExpressions(NumberExpression<Long> salesQuantity, NumberExpression<Long> reviewCount,
-        NumberExpression<BigDecimal> reviewRate) {}
+    private record PopularityExpressions(QProductPopularitySnapshot snapshot, NumberExpression<Long> salesQuantity,
+        NumberExpression<Long> reviewCount, NumberExpression<BigDecimal> reviewRate) {}
 }

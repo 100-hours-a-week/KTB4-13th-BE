@@ -13,13 +13,16 @@ import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.result.GetProductsResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.application.usecase.GetProductsUseCase;
+import com.book.core.product.application.usecase.RefreshProductPopularitySnapshotUseCase;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ProductServiceTest {
     private final GetProductDetailUseCase useCase = mock(GetProductDetailUseCase.class);
     private final GetProductsUseCase getProductsUseCase = mock(GetProductsUseCase.class);
-    private final ProductService productService = new ProductService(useCase, getProductsUseCase);
+    private final RefreshProductPopularitySnapshotUseCase refreshProductPopularitySnapshotUseCase =
+        mock(RefreshProductPopularitySnapshotUseCase.class);
+    private final ProductService productService = new ProductService(useCase, getProductsUseCase, refreshProductPopularitySnapshotUseCase);
 
     @Test
     void 상품_상세_조회를_UseCase에_위임한다() {
@@ -43,5 +46,12 @@ class ProductServiceTest {
         assertThat(productService.getProducts(command)).isSameAs(result);
 
         verify(getProductsUseCase).execute(command);
+    }
+
+    @Test
+    void 인기_스냅샷_갱신을_UseCase에_위임한다() {
+        productService.refreshProductPopularitySnapshot();
+
+        verify(refreshProductPopularitySnapshotUseCase).execute();
     }
 }

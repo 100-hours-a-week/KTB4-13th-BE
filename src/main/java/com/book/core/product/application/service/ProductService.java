@@ -6,6 +6,7 @@ import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.result.GetProductsResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.application.usecase.GetProductsUseCase;
+import com.book.core.product.application.usecase.RefreshProductPopularitySnapshotUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 public class ProductService {
     private final GetProductDetailUseCase getProductDetailUseCase;
     private final GetProductsUseCase getProductsUseCase;
+    private final RefreshProductPopularitySnapshotUseCase refreshProductPopularitySnapshotUseCase;
 
     public GetProductDetailResult getProductDetail(final GetProductDetailCommand command) {
         return getProductDetailUseCase.execute(command);
@@ -21,5 +23,9 @@ public class ProductService {
 
     public GetProductsResult getProducts(final GetProductsCommand command) {
         return getProductsUseCase.execute(command);
+    }
+
+    public void refreshProductPopularitySnapshot() {
+        refreshProductPopularitySnapshotUseCase.execute();
     }
 }

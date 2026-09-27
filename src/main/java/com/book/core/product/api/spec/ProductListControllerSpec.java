@@ -16,7 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface ProductListControllerSpec {
     @Operation(summary = "상품 목록 조회",
         description = "활성 상품을 cursor 방식으로 조회합니다. sort=POPULARITY는 전체 기간 결제된 주문 상품 수량 합계 DESC, "
-            + "활성 리뷰 수 DESC, 평균 평점 DESC, 상품 ID DESC 순으로 정렬합니다. 인기 지표가 없으면 0이며 재고는 반영하지 않습니다.")
+            + "활성 리뷰 수 DESC, 평균 평점 DESC, 상품 ID DESC 순으로 정렬합니다. 인기 지표가 없으면 0이며 재고는 반영하지 않습니다. "
+            + "인기 집계는 애플리케이션 시작 시와 이후 매시간 갱신되며, 갱신 실패 시 마지막 성공 집계를 사용합니다.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "상품 목록 조회 성공"),
         @ApiResponse(responseCode = "400", description = "요청이 올바르지 않음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     ResponseEntity<com.book.common.response.ApiResponse<ProductListResponse>> getProducts(

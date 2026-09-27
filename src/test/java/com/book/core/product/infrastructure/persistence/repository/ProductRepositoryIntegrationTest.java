@@ -1,14 +1,17 @@
 package com.book.core.product.infrastructure.persistence.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.ProductRepositoryPort;
+import com.book.core.product.application.service.ProductService;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -29,6 +32,9 @@ class ProductRepositoryIntegrationTest {
 
     @Autowired
     ProductRepositoryPort productRepository;
+
+    @Autowired
+    ProductService productService;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -120,6 +126,8 @@ class ProductRepositoryIntegrationTest {
         insertPaidItem(4210L, 2290L, 1000, null, null);
         insertPaidItem(4211L, 2291L, 1000, null, null);
 
+        productService.refreshProductPopularitySnapshot();
+
         final var firstPage = productRepository.findActiveProducts(3003L, ProductListSort.POPULARITY, null, 3);
         final var last = firstPage.getLast();
         final var cursor = new ProductListCursor(last.product().id(), last.salesQuantity(), last.reviewCount(), last.reviewRate());
@@ -133,6 +141,39 @@ class ProductRepositoryIntegrationTest {
         assertThat(secondPage.getLast().salesQuantity()).isZero();
         assertThat(secondPage.getLast().reviewCount()).isZero();
         assertThat(secondPage.getLast().reviewRate()).isEqualByComparingTo(BigDecimal.ZERO);
+
+        jdbc.update("UPDATE order_item SET quantity = 9 WHERE id = 4203");
+        productService.refreshProductPopularitySnapshot();
+        productService.refreshProductPopularitySnapshot();
+
+        final var refreshed = productRepository.findActiveProducts(3003L, ProductListSort.POPULARITY, null, 10).stream()
+            .filter(item -> item.product().id() == 2203L).findFirst().orElseThrow();
+        assertThat(refreshed.salesQuantity()).isEqualTo(9L);
+    }
+
+    @Test
+    void 갱신_중_오류가_발생하면_마지막_성공_스냅샷을_유지한다() {
+        insertBook(1020L, "갱신 실패 검증 도서", null);
+        insertProduct(5201L, 1020L, "갱신 실패 검증 상품", null);
+        insertOrderAddress(5200L);
+        insertPaidItem(5202L, 5201L, 2, null, null, null, 5200L);
+        productService.refreshProductPopularitySnapshot();
+        jdbc.update("UPDATE order_item SET quantity = 9 WHERE id = 5202");
+        jdbc.execute("""
+            ALTER TABLE product_popularity_snapshots
+            ADD CONSTRAINT chk_fail_popularity_snapshot_refresh
+            CHECK (product_id <> 5201 OR sales_quantity <> 9)
+            """);
+
+        try {
+            assertThatThrownBy(() -> productService.refreshProductPopularitySnapshot()).isInstanceOf(DataAccessException.class);
+        } finally {
+            jdbc.execute("ALTER TABLE product_popularity_snapshots DROP CHECK chk_fail_popularity_snapshot_refresh");
+        }
+
+        final Long salesQuantity =
+            jdbc.queryForObject("SELECT sales_quantity FROM product_popularity_snapshots WHERE product_id = ?", Long.class, 5201L);
+        assertThat(salesQuantity).isEqualTo(2L);
     }
 
     private void insertPaidItem(final long id, final long productId, final int quantity, final String status, final Timestamp deletedAt) {
@@ -141,6 +182,11 @@ class ProductRepositoryIntegrationTest {
 
     private void insertPaidItem(final long id, final long productId, final int quantity, final String status, final Timestamp deletedItemAt,
         final Timestamp deletedOrderAt) {
+        insertPaidItem(id, productId, quantity, status, deletedItemAt, deletedOrderAt, 4100L);
+    }
+
+    private void insertPaidItem(final long id, final long productId, final int quantity, final String status, final Timestamp deletedItemAt,
+        final Timestamp deletedOrderAt, final long addressId) {
         final String itemStatus;
         if (status == null) {
             itemStatus = "PAID";
@@ -150,7 +196,7 @@ class ProductRepositoryIntegrationTest {
         jdbc.update("""
                 INSERT INTO orders (id, user_id, `key`, total_price, status, address_id, deleted_at)
                 VALUES (?, ?, ?, ?, 'PAID', ?, ?)
-                """, id, id, "popularity-order-" + id, BigDecimal.valueOf(quantity * 100L), 4100L, deletedOrderAt);
+                """, id, id, "popularity-order-" + id, BigDecimal.valueOf(quantity * 100L), addressId, deletedOrderAt);
         jdbc.update("""
                 INSERT INTO order_item (
                     id, order_id, product_id, unit_price, total_price, quantity, status, deleted_at

@@ -8,9 +8,10 @@
 - 조회 대상은 활성 상품과 활성 도서이며, 카테고리 필터를 사용할 때 활성 카테고리와 활성 연결만 포함한다.
 - `sort`는 `createdAt`과 `POPULARITY`를 지원한다. 생략하면 `createdAt`이며, `createdAt`은 `(createdAt DESC, id DESC)` 순으로 정렬한다.
 - `POPULARITY`는 전체 기간의 결제된 주문 상품 수량 합계 DESC, 활성 리뷰 수 DESC, 활성 리뷰 평균 평점 DESC, 상품 ID DESC 순으로 정렬한다. `order_item.status = PAID`인 활성 주문 상품만 판매 수량에 포함하고, 삭제된 주문·주문 상품·리뷰는 집계에서 제외한다. 인기 데이터가 없는 상품은 판매 수량·리뷰 수·평점을 0으로 취급한다.
+- 인기 지표는 `product_popularity_snapshots`에서 읽는다. 애플리케이션 시작 시 한 번 집계하고 이후 UTC 기준 매시간 다시 집계한다. 갱신은 하나의 트랜잭션으로 게시하므로 실패하면 마지막 성공 스냅샷을 유지하며, 실패나 긴 실행으로 값의 지연이 한 시간을 넘을 수 있다.
 - 정렬 입력은 대소문자를 구분하며 허용 값 외에는 `E400`을 반환한다. 재고는 정렬 점수에 반영하지 않는다.
 - `createdAt` cursor는 마지막 상품 ID인 양의 정수 문자열이며, 해당 상품의 `createdAt`을 사용해 복합 커서 조건을 적용한다. `POPULARITY` cursor는 불투명한 Base64 URL-safe 값이며 판매 수량·리뷰 수·평균 평점·상품 ID를 포함한다. 두 정렬 간 cursor 형식은 호환되지 않는다.
-- `limit`이 없으면 20개를 사용한다. 다음 페이지가 있으면 응답의 `nextCursor`에 마지막 상품의 cursor를 반환한다. 집계 값이 페이지 조회 사이에 변하면 인기순 페이지 경계는 최선 노력으로 유지된다.
+- `limit`이 없으면 20개를 사용한다. 다음 페이지가 있으면 응답의 `nextCursor`에 마지막 상품의 cursor를 반환한다. 집계 스냅샷이 갱신되면 인기순 페이지 경계는 최선 노력으로 유지된다.
 - HTTP 응답 외피는 프로젝트의 `ApiResponse` 계약(`success`, `data`)을 따른다.
 - 목록 응답의 기존 `orderCount`, `reviewCount`, `reviewRate` 필드는 이번 정렬 기능에서 변경하지 않고 0을 반환한다. 인기 정렬에 사용하는 집계는 정렬과 cursor 계산에만 사용한다.
 - 상품 API의 외부 응답 필드인 `itemId`, `itemName`은 현재 도메인 `Product`의 식별자와 이름에 매핑한다.

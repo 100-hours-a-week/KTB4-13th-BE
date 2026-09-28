@@ -92,6 +92,9 @@ class BookApplicationTest {
     @Autowired
     SecurityFilterChain securityFilterChain;
 
+    @Autowired
+    AddressRepositoryPort addressRepository;
+
     @Test
     void 전체_Context에_각_UseCase와_Repository가_한_개씩_등록된다() {
         assertThat(context.getBeansOfType(RegisterAddressUseCase.class)).hasSize(1);
@@ -115,9 +118,10 @@ class BookApplicationTest {
 
     @Test
     void HTTP_주소지_등록을_실제_MySQL까지_연결한다() throws Exception {
-        final String authorization = "Bearer " + tokenIssuer.issue(1L).accessToken();
-        mvc.perform(post("/api/v1/user-addresses").header(HttpHeaders.AUTHORIZATION, authorization).param("userId", "42")
-            .contentType(MediaType.APPLICATION_JSON).content("""
+        final String authorization = "Bearer " + tokenIssuer.issue(42L).accessToken();
+        final var request =
+            post("/api/v1/user-addresses").header(HttpHeaders.AUTHORIZATION, authorization).contentType(MediaType.APPLICATION_JSON);
+        mvc.perform(request.content("""
                                 {
                                   "label": "집",
                                   "postalCode": "12345",
@@ -127,5 +131,7 @@ class BookApplicationTest {
                                 }
                                 """)).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data").doesNotExist());
+
+        assertThat(addressRepository.countActiveByUserId(42L)).isEqualTo(1);
     }
 }

@@ -1,5 +1,6 @@
 package com.book.core.onboarding.api;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,7 @@ import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
+import com.book.core.onboarding.application.command.GetPersonalizedRecommendationConsentCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.command.UpdatePersonalizedRecommendationConsentCommand;
@@ -188,6 +190,31 @@ class OnboardingControllerTest {
 
         mvc.perform(put("/api/v1/onboarding/books").contentType(MediaType.APPLICATION_JSON).content("{\"bookIds\":[]}"))
             .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("E404"));
+    }
+
+    @Test
+    void 동의_상태를_JWT_사용자_기준으로_조회한다() throws Exception {
+        authenticateAs(USER_ID);
+        final GetPersonalizedRecommendationConsentCommand command = new GetPersonalizedRecommendationConsentCommand(USER_ID);
+        when(onboardingService.getConsent(command))
+            .thenReturn(new PersonalizedRecommendationConsentResult(true, LocalDateTime.of(2026, 1, 1, 0, 0)));
+
+        mvc.perform(get("/api/v1/onboarding/consent")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.consented").value(true)).andExpect(jsonPath("$.data.agreedAt").value("2026-01-01T00:00:00"));
+
+        verify(onboardingService).getConsent(command);
+    }
+
+    @Test
+    void 활성_동의가_없으면_false와_null을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+        final GetPersonalizedRecommendationConsentCommand command = new GetPersonalizedRecommendationConsentCommand(USER_ID);
+        when(onboardingService.getConsent(command)).thenReturn(new PersonalizedRecommendationConsentResult(false, null));
+
+        mvc.perform(get("/api/v1/onboarding/consent")).andExpect(status().isOk()).andExpect(jsonPath("$.data.consented").value(false))
+            .andExpect(jsonPath("$.data.agreedAt").value(nullValue()));
+
+        verify(onboardingService).getConsent(command);
     }
 
     @Test

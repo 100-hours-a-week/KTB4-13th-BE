@@ -82,4 +82,13 @@ class OnboardingController implements OnboardingControllerSpec {
         final var response = resultConverter.toPersonalizedRecommendationConsentResponse(onboardingService.updateConsent(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
+
+    @Override
+    @GetMapping("/consent")
+    public ResponseEntity<ApiResponse<PersonalizedRecommendationConsentResponse>> getConsent(@AuthenticationPrincipal final Jwt jwt) {
+        final Long userId = Long.parseLong(jwt.getSubject());
+        final var command = commandConverter.toGetPersonalizedRecommendationConsentCommand(userId);
+        final var response = resultConverter.toPersonalizedRecommendationConsentResponse(onboardingService.getConsent(command));
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
 }

@@ -94,4 +94,12 @@ public interface OnboardingControllerSpec {
         @RequestBody(description = "동의 여부", required = true,
             content = @Content(schema = @Schema(implementation = PersonalizedRecommendationConsentRequest.class)))
         @Valid final PersonalizedRecommendationConsentRequest request);
+
+    @Operation(summary = "개인화 추천 동의 상태 조회", description = "요청 회원의 현재 개인화 추천 동의 상태를 조회합니다. 아직 동의한 적이 없으면 consented=false를 반환합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "동의 상태 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<ApiResponse<PersonalizedRecommendationConsentResponse>> getConsent(@AuthenticationPrincipal final Jwt jwt);
 }

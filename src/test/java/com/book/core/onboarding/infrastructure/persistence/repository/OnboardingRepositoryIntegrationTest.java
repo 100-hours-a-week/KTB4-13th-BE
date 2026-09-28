@@ -214,6 +214,17 @@ class OnboardingRepositoryIntegrationTest {
         assertThat(rows.get(1).get("withdrawn_at")).isNull();
     }
 
+    @Test
+    void 다른_사용자의_동의는_서로_섞이지_않는다() {
+        final Long userId1 = insertUser("동의회원3");
+        final Long userId2 = insertUser("동의회원4");
+        userConsentRepository
+            .save(UserConsent.create(userId1, ConsentType.PERSONALIZED_RECOMMENDATION, "v1", LocalDateTime.of(2026, 1, 1, 0, 0)));
+
+        assertThat(userConsentRepository.findActiveByUserIdAndConsentType(userId1, ConsentType.PERSONALIZED_RECOMMENDATION)).isPresent();
+        assertThat(userConsentRepository.findActiveByUserIdAndConsentType(userId2, ConsentType.PERSONALIZED_RECOMMENDATION)).isEmpty();
+    }
+
     private Long insertUser(final String nickname) {
         jdbc.update("INSERT INTO users (nickname) VALUES (?)", nickname);
         return jdbc.queryForObject("SELECT id FROM users WHERE nickname = ?", Long.class, nickname);

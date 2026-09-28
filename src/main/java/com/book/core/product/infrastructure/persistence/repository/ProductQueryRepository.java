@@ -89,8 +89,8 @@ class ProductQueryRepository {
             .leftJoin(popularity.snapshot()).on(popularity.snapshot().productId.eq(product.id)).join(product.book, book).fetchJoin()
             .where(product.deletedAt.isNull(), book.deletedAt.isNull(), popularityCursorPredicate(cursor, popularity),
                 categoryPredicate(categoryId))
-            .orderBy(popularity.salesQuantity().desc(), popularity.reviewCount().desc(), popularity.reviewRate().desc(), product.id.desc())
-            .limit(limit).fetch().stream().map(tuple -> toProductListItem(tuple, popularity)).toList();
+            .orderBy(popularity.salesQuantity().desc(), product.id.desc()).limit(limit).fetch().stream()
+            .map(tuple -> toProductListItem(tuple, popularity)).toList();
     }
 
     private ProductListItem toProductListItem(final Tuple tuple, final PopularityExpressions popularity) {
@@ -113,11 +113,7 @@ class ProductQueryRepository {
             return null;
         }
         return popularity.salesQuantity().lt(cursor.salesQuantity())
-            .or(popularity.salesQuantity().eq(cursor.salesQuantity()).and(popularity.reviewCount().lt(cursor.reviewCount())))
-            .or(popularity.salesQuantity().eq(cursor.salesQuantity()).and(popularity.reviewCount().eq(cursor.reviewCount()))
-                .and(popularity.reviewRate().lt(cursor.reviewRate())))
-            .or(popularity.salesQuantity().eq(cursor.salesQuantity()).and(popularity.reviewCount().eq(cursor.reviewCount()))
-                .and(popularity.reviewRate().eq(cursor.reviewRate())).and(product.id.lt(cursor.productId())));
+            .or(popularity.salesQuantity().eq(cursor.salesQuantity()).and(product.id.lt(cursor.productId())));
     }
 
     private PopularityExpressions popularityExpressions() {

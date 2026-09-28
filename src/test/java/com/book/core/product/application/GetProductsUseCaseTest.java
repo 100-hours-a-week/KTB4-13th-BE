@@ -25,7 +25,7 @@ class GetProductsUseCaseTest {
 
     @Test
     void 상품_목록을_페이지_크기만큼_변환하고_다음_커서를_반환한다() {
-        final var cursor = new ProductListCursor(104L, null, null, null);
+        final var cursor = new ProductListCursor(104L, null);
         productRepository.products = List.of(item(103L, 0L, 0L), item(102L, 0L, 0L), item(101L, 0L, 0L));
 
         final var result = useCase.execute(new GetProductsCommand(7L, ProductListSort.CREATED_AT, cursor, 2));
@@ -51,7 +51,7 @@ class GetProductsUseCaseTest {
         final var result = useCase.execute(new GetProductsCommand(null, ProductListSort.POPULARITY, null, 2));
 
         assertThat(result.items()).extracting(item -> item.itemId()).containsExactly(103L, 102L);
-        assertThat(result.nextCursor()).isEqualTo(new ProductListCursor(102L, 10L, 2L, new BigDecimal("9.0")).toPopularityToken());
+        assertThat(result.nextCursor()).isEqualTo(new ProductListCursor(102L, 10L).toPopularityToken());
         assertThat(productRepository.sort).isEqualTo(ProductListSort.POPULARITY);
     }
 
@@ -69,8 +69,7 @@ class GetProductsUseCaseTest {
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
         assertThatThrownBy(() -> new GetProductsCommand(null, null, null, 0)).isInstanceOfSatisfying(CoreException.class,
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
-        assertThatThrownBy(
-            () -> new GetProductsCommand(null, ProductListSort.POPULARITY, new ProductListCursor(1L, -1L, 0L, BigDecimal.ZERO), 20))
+        assertThatThrownBy(() -> new GetProductsCommand(null, ProductListSort.POPULARITY, new ProductListCursor(1L, -1L), 20))
             .isInstanceOfSatisfying(CoreException.class,
                 exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
     }

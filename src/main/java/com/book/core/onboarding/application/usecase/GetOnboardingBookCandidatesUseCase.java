@@ -27,10 +27,10 @@ public class GetOnboardingBookCandidatesUseCase {
             findBooksByIdsUseCase.execute(bookIds).stream().collect(Collectors.toMap(Book::id, Function.identity()));
 
         return candidates.stream().filter(candidate -> booksById.containsKey(candidate.bookId()))
-            .map(candidate -> toResult(candidate, booksById.get(candidate.bookId()))).toList();
+            .map(candidate -> toResult(booksById.get(candidate.bookId()))).toList();
     }
 
-    private OnboardingBookCandidateResult toResult(final OnboardingBookCandidate candidate, final Book book) {
-        return new OnboardingBookCandidateResult(book.id(), book.title(), book.author(), book.coverImageUrl(), candidate.displayOrder());
+    private OnboardingBookCandidateResult toResult(final Book book) {
+        return new OnboardingBookCandidateResult(book.id(), book.title(), book.author(), book.coverImageUrl());
     }
 }

@@ -193,8 +193,8 @@ class OnboardingControllerTest {
     void 도서_후보를_조회하고_응답_계약을_반환한다() throws Exception {
         authenticateAs(USER_ID);
         when(onboardingService.getBookCandidates())
-            .thenReturn(List.of(new OnboardingBookCandidateResult(10L, "제목1", "작가1", "https://example.com/1.jpg", 1),
-                new OnboardingBookCandidateResult(20L, "제목2", "작가2", "https://example.com/2.jpg", 2)));
+            .thenReturn(List.of(new OnboardingBookCandidateResult(10L, "제목1", "작가1", "https://example.com/1.jpg"),
+                new OnboardingBookCandidateResult(20L, "제목2", "작가2", "https://example.com/2.jpg")));
 
         mvc.perform(get("/api/v1/onboarding/books")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.candidates[0].bookId").value(10)).andExpect(jsonPath("$.data.candidates[0].title").value("제목1"))

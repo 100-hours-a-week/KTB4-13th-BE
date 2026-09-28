@@ -33,6 +33,19 @@ class OrderTest {
     }
 
     @Test
+    void 주문명은_첫_상품명과_나머지_상품_건수로_계산한다() {
+        final Order order = Order.create(42L, "order_name", OrderAddress.from("06236", "서울 주소", null));
+        addOrderItem(order, 101L, 1, BigDecimal.TEN);
+
+        assertThat(order.name()).isEqualTo("상품 101");
+
+        addOrderItem(order, 102L, 1, BigDecimal.TEN);
+        addOrderItem(order, 103L, 1, BigDecimal.TEN);
+
+        assertThat(order.name()).isEqualTo("상품 101 외 2건");
+    }
+
+    @Test
     void 주문상품_수량이_범위를_벗어나면_주문에_추가하지_않는다() {
         final Order order = Order.create(42L, "order_test", OrderAddress.from("06236", "서울 주소", null));
 

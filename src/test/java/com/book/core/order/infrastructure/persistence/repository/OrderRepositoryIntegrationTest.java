@@ -7,13 +7,17 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.application.command.CancelOrderCommand;
+import com.book.core.order.application.command.OrderListCursor;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.application.usecase.GetOrderItemUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderItemStatus;
+import com.book.core.order.domain.OrderStatus;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -177,6 +181,76 @@ class OrderRepositoryIntegrationTest {
     }
 
     @Test
+    void 회원의_활성_주문만_최신순으로_조회한다() {
+        insertBook(9121L);
+        insertBook(9122L);
+        insertBook(9123L);
+        insertBook(9124L);
+        insertProduct(9221L, 9121L);
+        insertProduct(9222L, 9122L);
+        insertProduct(9223L, 9123L);
+        insertProduct(9224L, 9124L);
+        orderRepository.save(order(4242L, "order_old", 9221L));
+        orderRepository.save(order(4242L, "order_new", 9222L));
+        orderRepository.save(order(4343L, "another_users_order", 9223L));
+        final Order deletedOrder = orderRepository.save(order(4242L, "deleted_order", 9224L));
+        deletedOrder.delete();
+        orderRepository.save(deletedOrder);
+
+        final LocalDate today = LocalDate.now();
+        final List<Order> orders =
+            orderRepository.findActiveOrders(4242L, null, today.minusYears(1).atStartOfDay(), today.plusDays(1).atStartOfDay(), null, 20);
+
+        assertThat(orders).extracting(Order::key).containsExactly("order_new", "order_old");
+    }
+
+    @Test
+    void 목록_필터와_createdAt_ID_커서로_다음_페이지를_중복없이_조회한다() {
+        insertBook(9131L);
+        insertBook(9132L);
+        insertBook(9133L);
+        insertProduct(9231L, 9131L);
+        insertProduct(9232L, 9132L);
+        insertProduct(9233L, 9133L);
+        final Order oldest = orderRepository.save(order(4444L, "cursor_old", 9231L));
+        final Order sameTimeLowId = orderRepository.save(order(4444L, "cursor_same_low", 9232L));
+        final Order sameTimeHighId = orderRepository.save(order(4444L, "cursor_same_high", 9233L));
+        final LocalDateTime sameCreatedAt = LocalDateTime.of(2026, 9, 28, 10, 0);
+        jdbc.update("UPDATE orders SET created_at = ?, updated_at = ?, status = 'PAID' WHERE id = ?", sameCreatedAt, sameCreatedAt,
+            sameTimeLowId.id());
+        jdbc.update("UPDATE orders SET created_at = ?, updated_at = ?, status = 'PAID' WHERE id = ?", sameCreatedAt, sameCreatedAt,
+            sameTimeHighId.id());
+        jdbc.update("UPDATE orders SET created_at = ?, updated_at = ? WHERE id = ?", sameCreatedAt.minusDays(1), sameCreatedAt.minusDays(1),
+            oldest.id());
+        final LocalDateTime from = LocalDate.of(2026, 9, 27).atStartOfDay();
+        final LocalDateTime to = LocalDate.of(2026, 9, 28).atTime(23, 59, 59, 999_999_999);
+
+        final List<Order> firstPage = orderRepository.findActiveOrders(4444L, null, from, to, null, 2);
+        final OrderListCursor cursor = new OrderListCursor(firstPage.getLast().createdAt(), firstPage.getLast().id());
+        final List<Order> secondPage = orderRepository.findActiveOrders(4444L, null, from, to, cursor, 2);
+        final List<Order> paidOrders = orderRepository.findActiveOrders(4444L, OrderStatus.PAID, sameCreatedAt.toLocalDate().atStartOfDay(),
+            sameCreatedAt.toLocalDate().plusDays(1).atStartOfDay(), null, 10);
+
+        assertThat(firstPage).extracting(Order::key).containsExactly("cursor_same_high", "cursor_same_low");
+        assertThat(secondPage).extracting(Order::key).containsExactly("cursor_old");
+        assertThat(paidOrders).extracting(Order::key).containsExactly("cursor_same_high", "cursor_same_low");
+    }
+
+    @Test
+    void 활성_주문을_주문상품과_함께_조회한다() {
+        insertBook(9125L);
+        insertProduct(9225L, 9125L);
+        final Order order = order(42L, "order_detail", 9225L);
+        order.addItem(9225L, "주문 테스트 상품 2", null, "저자", new BigDecimal("20.00"), new BigDecimal("7.00"), 2);
+        orderRepository.save(order);
+
+        final Order found = orderRepository.findActiveOrderByKey("order_detail").orElseThrow();
+
+        assertThat(found.userId()).isEqualTo(42L);
+        assertThat(found.items()).extracting(OrderItem::itemName).containsExactly("주문 테스트 상품", "주문 테스트 상품 2");
+    }
+
+    @Test
     void 동시에_취소하면_한_요청만_성공하고_다른_요청은_상태_충돌로_실패한다() throws Exception {
         insertBook(9113L);
         insertProduct(9213L, 9113L);
@@ -217,6 +291,12 @@ class OrderRepositoryIntegrationTest {
     private Order order(final String orderKey, final long productId, final String address) {
         final OrderAddress orderAddress = address == null ? null : OrderAddress.from("06236", address, null);
         final Order order = Order.create(42L, orderKey, orderAddress);
+        order.addItem(productId, "주문 테스트 상품", null, "저자", new BigDecimal("20.00"), new BigDecimal("5.00"), 1);
+        return order;
+    }
+
+    private Order order(final Long userId, final String orderKey, final long productId) {
+        final Order order = Order.create(userId, orderKey, null);
         order.addItem(productId, "주문 테스트 상품", null, "저자", new BigDecimal("20.00"), new BigDecimal("5.00"), 1);
         return order;
     }

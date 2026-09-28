@@ -15,6 +15,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -60,6 +61,7 @@ public class Order extends BaseTimeEntity {
 
     @Getter(AccessLevel.NONE)
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
     private List<OrderItem> items = new ArrayList<>();
 
     private Order(final Long userId, final String key, final OrderAddress address) {
@@ -95,5 +97,14 @@ public class Order extends BaseTimeEntity {
 
     public List<OrderItem> items() {
         return List.copyOf(items);
+    }
+
+    public String name() {
+        final List<OrderItem> activeItems = items.stream().filter(OrderItem::isActive).toList();
+        if (activeItems.isEmpty()) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        final String firstName = activeItems.getFirst().itemName();
+        return activeItems.size() == 1 ? firstName : firstName + " 외 " + (activeItems.size() - 1) + "건";
     }
 }

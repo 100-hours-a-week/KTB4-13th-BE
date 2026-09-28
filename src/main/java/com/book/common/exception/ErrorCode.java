@@ -86,7 +86,12 @@ public enum ErrorCode {
     AI_RECOMMENDATION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "E503", "AI 추천 서비스를 일시적으로 사용할 수 없습니다.", LogLevel.ERROR),
     AI_RECOMMENDATION_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "E504", "AI 추천 서비스 응답이 시간 내에 도착하지 않았습니다.", LogLevel.INFO),
     AI_RECOMMENDATION_SPEC_VIOLATION(HttpStatus.BAD_GATEWAY, "E502", "AI 추천 서비스가 유효하지 않은 추천 조건을 반환했습니다.", LogLevel.INFO),
-    AI_RECOMMENDATION_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "AI 추천 서비스 호출에 실패했습니다.", LogLevel.INFO);
+    AI_RECOMMENDATION_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "AI 추천 서비스 호출에 실패했습니다.", LogLevel.INFO),
+    AI_PROFILE_INVALID_REQUEST(HttpStatus.BAD_GATEWAY, "E502", "AI 취향 프로필 서비스가 요청을 거부했습니다.", LogLevel.ERROR),
+    AI_PROFILE_IDEMPOTENCY_CONFLICT(HttpStatus.BAD_GATEWAY, "E502", "AI 취향 프로필 요청의 멱등 키가 이전 요청과 충돌했습니다.", LogLevel.ERROR),
+    AI_PROFILE_PAYLOAD_TOO_LARGE(HttpStatus.BAD_GATEWAY, "E502", "AI 취향 프로필 요청 본문이 너무 큽니다.", LogLevel.ERROR),
+    AI_PROFILE_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "E504", "AI 취향 프로필 서비스 응답이 시간 내에 도착하지 않았습니다.", LogLevel.INFO),
+    AI_PROFILE_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "AI 취향 프로필 생성에 실패했습니다.", LogLevel.INFO);
     // spotless:on
 
     private final HttpStatus status;

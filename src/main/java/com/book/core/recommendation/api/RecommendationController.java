@@ -12,13 +12,14 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -32,8 +33,9 @@ class RecommendationController implements RecommendationControllerSpec {
 
     @Override
     @PostMapping("/chat")
-    public ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@Positive @RequestParam("userId") final Long userId,
+    public ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@AuthenticationPrincipal final Jwt jwt,
         @Valid @RequestBody final ChatRecommendationRequest request) {
+        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toChatRecommendationCommand(userId, request);
         final var result = recommendationService.chat(command);
         final var response = resultConverter.toChatRecommendationResponse(result);
@@ -42,8 +44,9 @@ class RecommendationController implements RecommendationControllerSpec {
 
     @Override
     @GetMapping("/cards/{recommendationCardId}")
-    public ResponseEntity<ApiResponse<RecommendationCardDetailResponse>> getCard(@Positive @RequestParam("userId") final Long userId,
+    public ResponseEntity<ApiResponse<RecommendationCardDetailResponse>> getCard(@AuthenticationPrincipal final Jwt jwt,
         @Positive @PathVariable("recommendationCardId") final Long recommendationCardId) {
+        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toGetRecommendationCardCommand(userId, recommendationCardId);
         final var result = recommendationService.getCard(command);
         final var response = resultConverter.toRecommendationCardDetailResponse(result);

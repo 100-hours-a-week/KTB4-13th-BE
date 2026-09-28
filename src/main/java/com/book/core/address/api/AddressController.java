@@ -14,6 +14,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,7 +24,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -36,9 +37,9 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<Void>> registerAddress(
-            @Positive @RequestParam("userId") final Long userId,
-            @Valid @RequestBody final RegisterAddressRequest request) {
+    public ResponseEntity<ApiResponse<Void>> registerAddress(@AuthenticationPrincipal final Jwt jwt,
+        @Valid @RequestBody final RegisterAddressRequest request) {
+        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toRegisterAddressCommand(userId, request);
         addressService.registerAddress(command);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -46,8 +47,8 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<AddressListResponse>> getAddresses(
-            @Positive @RequestParam("userId") final Long userId) {
+    public ResponseEntity<ApiResponse<AddressListResponse>> getAddresses(@AuthenticationPrincipal final Jwt jwt) {
+        final Long userId = Long.parseLong(jwt.getSubject());
         final GetAddressesCommand command = commandConverter.toGetAddressesCommand(userId);
         final var response = resultConverter.toGetAddressesResponse(addressService.getAddresses(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -55,10 +56,9 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PutMapping("/{addressId}")
-    public ResponseEntity<ApiResponse<UpdateAddressResponse>> updateAddress(
-            @Positive @RequestParam("userId") final Long userId,
-            @Positive @PathVariable("addressId") final Long addressId,
-            @Valid @RequestBody final UpdateAddressRequest request) {
+    public ResponseEntity<ApiResponse<UpdateAddressResponse>> updateAddress(@AuthenticationPrincipal final Jwt jwt,
+        @Positive @PathVariable("addressId") final Long addressId, @Valid @RequestBody final UpdateAddressRequest request) {
+        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toUpdateAddressCommand(userId, addressId, request);
         final var result = addressService.updateAddress(command);
         final var response = resultConverter.toUpdateAddressResponse(result);
@@ -67,9 +67,9 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PutMapping("/{addressId}/default")
-    public ResponseEntity<ApiResponse<UpdateAddressResponse>> setDefaultAddress(
-            @Positive @RequestParam("userId") final Long userId,
-            @Positive @PathVariable("addressId") final Long addressId) {
+    public ResponseEntity<ApiResponse<UpdateAddressResponse>> setDefaultAddress(@AuthenticationPrincipal final Jwt jwt,
+        @Positive @PathVariable("addressId") final Long addressId) {
+        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toSetDefaultAddressCommand(userId, addressId);
         final var result = addressService.setDefaultAddress(command);
         final var response = resultConverter.toSetDefaultAddressResponse(result);
@@ -78,9 +78,9 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @DeleteMapping("/{addressId}")
-    public ResponseEntity<Void> deleteAddress(
-            @Positive @RequestParam("userId") final Long userId,
-            @Positive @PathVariable("addressId") final Long addressId) {
+    public ResponseEntity<Void> deleteAddress(@AuthenticationPrincipal final Jwt jwt,
+        @Positive @PathVariable("addressId") final Long addressId) {
+        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toDeleteAddressCommand(userId, addressId);
         addressService.deleteAddress(command);
         return ResponseEntity.ok().build();

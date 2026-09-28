@@ -10,17 +10,27 @@ import com.book.core.address.api.converter.AddressCommandConverter;
 import com.book.core.address.api.converter.AddressResultConverter;
 import com.book.core.address.application.command.RegisterAddressCommand;
 import com.book.core.address.application.service.AddressService;
+import java.time.Instant;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @WebMvcTest(AddressController.class)
-@Import({AddressCommandConverter.class, AddressResultConverter.class})
+@Import({AddressCommandConverter.class, AddressResultConverter.class, AddressControllerTest.AuthenticationPrincipalTestConfig.class})
 @ActiveProfiles("test")
 class AddressControllerTest {
     @Autowired
@@ -29,12 +39,16 @@ class AddressControllerTest {
     @MockitoBean
     AddressService addressService;
 
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void 주소지를_등록하면_성공_응답을_반환한다() throws Exception {
-        mvc.perform(post("/api/v1/user-addresses")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+        authenticateAs(42L);
+
+        mvc.perform(post("/api/v1/user-addresses").contentType(MediaType.APPLICATION_JSON).content("""
                                 {
                                   "label": "집",
                                   "postalCode": "12345",
@@ -42,85 +56,70 @@ class AddressControllerTest {
                                   "detailAddress": "101호",
                                   "isDefault": false
                                 }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").doesNotExist());
+                                """)).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data").doesNotExist());
 
         verify(addressService).registerAddress(new RegisterAddressCommand(42L, "집", "12345", "서울시 강남구", "101호", false));
     }
 
     @Test
     void isDefault가_누락되면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
-        mvc.perform(post("/api/v1/user-addresses")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+        authenticateAs(42L);
+
+        mvc.perform(post("/api/v1/user-addresses").contentType(MediaType.APPLICATION_JSON).content("""
                                 {
                                   "label": "집",
                                   "postalCode": "12345",
                                   "address": "서울시 강남구"
                                 }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("E400"));
+                                """)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(addressService);
     }
 
     @Test
     void isDefault가_false면_false로_Command를_전달한다() throws Exception {
-        mvc.perform(post("/api/v1/user-addresses")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+        authenticateAs(42L);
+
+        mvc.perform(post("/api/v1/user-addresses").contentType(MediaType.APPLICATION_JSON).content("""
                                 {
                                   "label": "집",
                                   "postalCode": "12345",
                                   "address": "서울시 강남구",
                                   "isDefault": false
                                 }
-                                """))
-                .andExpect(status().isOk());
+                                """)).andExpect(status().isOk());
 
         verify(addressService).registerAddress(new RegisterAddressCommand(42L, "집", "12345", "서울시 강남구", null, false));
     }
 
     @Test
     void 필수_주소지_값이_공백이면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
-        mvc.perform(post("/api/v1/user-addresses")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+        authenticateAs(42L);
+
+        mvc.perform(post("/api/v1/user-addresses").contentType(MediaType.APPLICATION_JSON).content("""
                                 {
                                   "label": "   ",
                                   "postalCode": "12345",
                                   "address": "서울시 강남구",
                                   "isDefault": false
                                 }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("E400"));
+                                """)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(addressService);
     }
 
-    @Test
-    void userId가_양수가_아니면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
-        mvc.perform(post("/api/v1/user-addresses")
-                        .param("userId", "0")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "label": "집",
-                                  "postalCode": "12345",
-                                  "address": "서울시 강남구",
-                                  "isDefault": false
-                                }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("E400"));
+    private void authenticateAs(final Long userId) {
+        final Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "none").claim("sub", userId.toString()).issuedAt(Instant.now())
+            .expiresAt(Instant.now().plusSeconds(3600)).build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+    }
 
-        verifyNoInteractions(addressService);
+    @TestConfiguration
+    static class AuthenticationPrincipalTestConfig implements WebMvcConfigurer {
+        @Override
+        public void addArgumentResolvers(final List<HandlerMethodArgumentResolver> resolvers) {
+            resolvers.add(new AuthenticationPrincipalArgumentResolver());
+        }
     }
 }

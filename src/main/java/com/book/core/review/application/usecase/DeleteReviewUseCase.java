@@ -18,6 +18,9 @@ public class DeleteReviewUseCase {
     public void execute(final DeleteReviewCommand command) {
         final Review review =
             reviewRepository.findActiveById(command.reviewId()).orElseThrow(() -> new CoreException(ErrorCode.REVIEW_NOT_FOUND));
+        if (!review.userId().equals(command.userId())) {
+            throw new CoreException(ErrorCode.FORBIDDEN);
+        }
         review.delete();
         reviewRepository.save(review);
     }

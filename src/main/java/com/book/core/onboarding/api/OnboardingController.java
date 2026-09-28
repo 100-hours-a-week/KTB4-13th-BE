@@ -3,11 +3,13 @@ package com.book.core.onboarding.api;
 import com.book.common.response.ApiResponse;
 import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
+import com.book.core.onboarding.api.request.PersonalizedRecommendationConsentRequest;
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
 import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
 import com.book.core.onboarding.api.response.OnboardingBookCandidatesResponse;
 import com.book.core.onboarding.api.response.OnboardingProgressResponse;
 import com.book.core.onboarding.api.response.OnboardingQuestionResponse;
+import com.book.core.onboarding.api.response.PersonalizedRecommendationConsentResponse;
 import com.book.core.onboarding.api.spec.OnboardingControllerSpec;
 import com.book.core.onboarding.application.service.OnboardingService;
 import jakarta.validation.Valid;
@@ -77,5 +79,24 @@ class OnboardingController implements OnboardingControllerSpec {
         final var command = commandConverter.toPutOnboardingBooksCommand(userId, request);
         onboardingService.saveBooks(command);
         return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @GetMapping("/consent")
+    public ResponseEntity<ApiResponse<PersonalizedRecommendationConsentResponse>> getConsent(@AuthenticationPrincipal final Jwt jwt) {
+        final Long userId = Long.parseLong(jwt.getSubject());
+        final var command = commandConverter.toGetPersonalizedRecommendationConsentCommand(userId);
+        final var response = resultConverter.toPersonalizedRecommendationConsentResponse(onboardingService.getConsent(command));
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Override
+    @PutMapping("/consent")
+    public ResponseEntity<ApiResponse<PersonalizedRecommendationConsentResponse>> updateConsent(@AuthenticationPrincipal final Jwt jwt,
+        @Valid @RequestBody final PersonalizedRecommendationConsentRequest request) {
+        final Long userId = Long.parseLong(jwt.getSubject());
+        final var command = commandConverter.toUpdatePersonalizedRecommendationConsentCommand(userId, request);
+        final var response = resultConverter.toPersonalizedRecommendationConsentResponse(onboardingService.updateConsent(command));
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

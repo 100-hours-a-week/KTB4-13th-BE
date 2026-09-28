@@ -13,13 +13,16 @@ import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
+import com.book.core.onboarding.application.command.GetPersonalizedRecommendationConsentCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
+import com.book.core.onboarding.application.command.UpdatePersonalizedRecommendationConsentCommand;
 import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
 import com.book.core.onboarding.application.result.OnboardingBookCandidateResult;
 import com.book.core.onboarding.application.result.OnboardingOptionResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.result.OnboardingQuestionResult;
+import com.book.core.onboarding.application.result.PersonalizedRecommendationConsentResult;
 import com.book.core.onboarding.application.service.OnboardingService;
 import com.book.core.onboarding.domain.OnboardingStatus;
 import java.time.Instant;
@@ -226,6 +229,62 @@ class OnboardingControllerTest {
 
         mvc.perform(get("/api/v1/onboarding/books")).andExpect(status().isOk()).andExpect(jsonPath("$.data.candidates").isArray())
             .andExpect(jsonPath("$.data.candidates").isEmpty());
+    }
+
+    @Test
+    void 동의_상태를_조회하고_응답_계약을_반환한다() throws Exception {
+        authenticateAs(USER_ID);
+        final GetPersonalizedRecommendationConsentCommand command = new GetPersonalizedRecommendationConsentCommand(USER_ID);
+        when(onboardingService.getConsent(command))
+            .thenReturn(new PersonalizedRecommendationConsentResult(true, LocalDateTime.of(2026, 1, 1, 0, 0)));
+
+        mvc.perform(get("/api/v1/onboarding/consent")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.consented").value(true));
+
+        verify(onboardingService).getConsent(command);
+    }
+
+    @Test
+    void 아직_동의하지_않았으면_consented_false를_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+        when(onboardingService.getConsent(new GetPersonalizedRecommendationConsentCommand(USER_ID)))
+            .thenReturn(new PersonalizedRecommendationConsentResult(false, null));
+
+        mvc.perform(get("/api/v1/onboarding/consent")).andExpect(status().isOk()).andExpect(jsonPath("$.data.consented").value(false))
+            .andExpect(jsonPath("$.data.agreedAt").value(nullValue()));
+    }
+
+    @Test
+    void 동의를_저장하고_응답_계약을_반환한다() throws Exception {
+        authenticateAs(USER_ID);
+        final UpdatePersonalizedRecommendationConsentCommand command = new UpdatePersonalizedRecommendationConsentCommand(USER_ID, true);
+        when(onboardingService.updateConsent(command))
+            .thenReturn(new PersonalizedRecommendationConsentResult(true, LocalDateTime.of(2026, 1, 1, 0, 0)));
+
+        mvc.perform(put("/api/v1/onboarding/consent").contentType(MediaType.APPLICATION_JSON).content("{\"consented\":true}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.consented").value(true));
+
+        verify(onboardingService).updateConsent(command);
+    }
+
+    @Test
+    void 동의를_철회한다() throws Exception {
+        authenticateAs(USER_ID);
+        final UpdatePersonalizedRecommendationConsentCommand command = new UpdatePersonalizedRecommendationConsentCommand(USER_ID, false);
+        when(onboardingService.updateConsent(command)).thenReturn(new PersonalizedRecommendationConsentResult(false, null));
+
+        mvc.perform(put("/api/v1/onboarding/consent").contentType(MediaType.APPLICATION_JSON).content("{\"consented\":false}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.consented").value(false));
+
+        verify(onboardingService).updateConsent(command);
+    }
+
+    @Test
+    void 동의_요청_본문에_consented가_없으면_400을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+
+        mvc.perform(put("/api/v1/onboarding/consent").contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
     }
 
     private void authenticateAs(final Long userId) {

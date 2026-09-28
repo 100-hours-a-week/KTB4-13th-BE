@@ -1,11 +1,13 @@
 package com.book.core.onboarding.api.spec;
 
 import com.book.common.response.ApiResponse;
+import com.book.core.onboarding.api.request.PersonalizedRecommendationConsentRequest;
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
 import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
 import com.book.core.onboarding.api.response.OnboardingBookCandidatesResponse;
 import com.book.core.onboarding.api.response.OnboardingProgressResponse;
 import com.book.core.onboarding.api.response.OnboardingQuestionResponse;
+import com.book.core.onboarding.api.response.PersonalizedRecommendationConsentResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -88,4 +90,25 @@ public interface OnboardingControllerSpec {
         @RequestBody(description = "선택한 도서 ID 목록", required = true,
             content = @Content(schema = @Schema(implementation = PutOnboardingBooksRequest.class)))
         @Valid final PutOnboardingBooksRequest request);
+
+    @Operation(summary = "개인화 추천 동의 상태 조회", description = "요청 회원의 현재 개인화 추천 동의 상태를 조회합니다. 아직 동의한 적이 없으면 consented=false를 반환합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "동의 상태 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<ApiResponse<PersonalizedRecommendationConsentResponse>> getConsent(@AuthenticationPrincipal final Jwt jwt);
+
+    @Operation(summary = "개인화 추천 동의/철회",
+        description = "요청 회원의 개인화 추천 동의 상태를 변경합니다. consented=true면 동의를, false면 철회를 기록합니다. " + "이미 동일한 상태이면 추가 변경 없이 현재 상태를 그대로 반환합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "동의 상태 변경 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<ApiResponse<PersonalizedRecommendationConsentResponse>> updateConsent(@AuthenticationPrincipal final Jwt jwt,
+        @RequestBody(description = "동의 여부", required = true,
+            content = @Content(schema = @Schema(implementation = PersonalizedRecommendationConsentRequest.class)))
+        @Valid final PersonalizedRecommendationConsentRequest request);
 }

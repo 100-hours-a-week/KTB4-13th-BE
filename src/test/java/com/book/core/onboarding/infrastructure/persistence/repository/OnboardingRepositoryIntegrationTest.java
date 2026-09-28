@@ -6,16 +6,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.core.onboarding.application.port.OnboardingBookCandidateRepositoryPort;
 import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.OnboardingQuestionRepositoryPort;
+import com.book.core.onboarding.application.port.UserConsentRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingRepositoryPort;
+import com.book.core.onboarding.domain.ConsentType;
 import com.book.core.onboarding.domain.OnboardingBookCandidate;
 import com.book.core.onboarding.domain.OnboardingOption;
 import com.book.core.onboarding.domain.OnboardingQuestion;
+import com.book.core.onboarding.domain.UserConsent;
 import com.book.core.onboarding.domain.UserOnboarding;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -59,6 +63,9 @@ class OnboardingRepositoryIntegrationTest {
 
     @Autowired
     OnboardingBookCandidateJpaRepository candidateJpaRepository;
+
+    @Autowired
+    UserConsentRepositoryPort userConsentRepository;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -221,6 +228,47 @@ class OnboardingRepositoryIntegrationTest {
 
         assertThatThrownBy(() -> candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId, 2)))
             .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void 동의를_저장하고_활성_동의를_조회한다() {
+        final Long userId = insertUser("동의회원1");
+        final LocalDateTime agreedAt = LocalDateTime.of(2026, 1, 1, 0, 0);
+
+        userConsentRepository.save(UserConsent.create(userId, ConsentType.PERSONALIZED_RECOMMENDATION, "v1", agreedAt));
+
+        assertThat(userConsentRepository.findActiveByUserIdAndConsentType(userId, ConsentType.PERSONALIZED_RECOMMENDATION))
+            .hasValueSatisfying(consent -> assertThat(consent.agreedAt()).isEqualTo(agreedAt));
+    }
+
+    @Test
+    void 철회_후_재동의하면_새_행이_생성되고_기존_행은_철회_상태로_DB에_남는다() {
+        final Long userId = insertUser("동의회원2");
+        final LocalDateTime firstAgreedAt = LocalDateTime.of(2026, 1, 1, 0, 0);
+        final UserConsent first =
+            userConsentRepository.save(UserConsent.create(userId, ConsentType.PERSONALIZED_RECOMMENDATION, "v1", firstAgreedAt));
+        first.withdraw(LocalDateTime.of(2026, 1, 2, 0, 0));
+        userConsentRepository.save(first);
+
+        final LocalDateTime secondAgreedAt = LocalDateTime.of(2026, 1, 3, 0, 0);
+        userConsentRepository.save(UserConsent.create(userId, ConsentType.PERSONALIZED_RECOMMENDATION, "v1", secondAgreedAt));
+
+        final List<java.util.Map<String, Object>> rows =
+            jdbc.queryForList("SELECT agreed_at, withdrawn_at FROM user_consents WHERE user_id = ? ORDER BY id", userId);
+        assertThat(rows).hasSize(2);
+        assertThat(rows.get(0).get("withdrawn_at")).isNotNull();
+        assertThat(rows.get(1).get("withdrawn_at")).isNull();
+    }
+
+    @Test
+    void 다른_사용자의_동의는_서로_섞이지_않는다() {
+        final Long userId1 = insertUser("동의회원3");
+        final Long userId2 = insertUser("동의회원4");
+        userConsentRepository
+            .save(UserConsent.create(userId1, ConsentType.PERSONALIZED_RECOMMENDATION, "v1", LocalDateTime.of(2026, 1, 1, 0, 0)));
+
+        assertThat(userConsentRepository.findActiveByUserIdAndConsentType(userId1, ConsentType.PERSONALIZED_RECOMMENDATION)).isPresent();
+        assertThat(userConsentRepository.findActiveByUserIdAndConsentType(userId2, ConsentType.PERSONALIZED_RECOMMENDATION)).isEmpty();
     }
 
     private Long insertUser(final String nickname) {

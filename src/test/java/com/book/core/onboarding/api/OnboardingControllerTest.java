@@ -16,6 +16,7 @@ import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
+import com.book.core.onboarding.application.result.OnboardingBookCandidateResult;
 import com.book.core.onboarding.application.result.OnboardingOptionResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.result.OnboardingQuestionResult;
@@ -202,6 +203,29 @@ class OnboardingControllerTest {
 
         mvc.perform(put("/api/v1/onboarding/books").contentType(MediaType.APPLICATION_JSON).content("{\"bookIds\":[]}"))
             .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("E404"));
+    }
+
+    @Test
+    void 도서_후보를_조회하고_응답_계약을_반환한다() throws Exception {
+        authenticateAs(USER_ID);
+        when(onboardingService.getBookCandidates())
+            .thenReturn(List.of(new OnboardingBookCandidateResult(10L, "제목1", "작가1", "https://example.com/1.jpg", 1),
+                new OnboardingBookCandidateResult(20L, "제목2", "작가2", "https://example.com/2.jpg", 2)));
+
+        mvc.perform(get("/api/v1/onboarding/books")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.candidates[0].bookId").value(10)).andExpect(jsonPath("$.data.candidates[0].title").value("제목1"))
+            .andExpect(jsonPath("$.data.candidates[1].bookId").value(20));
+
+        verify(onboardingService).getBookCandidates();
+    }
+
+    @Test
+    void 도서_후보가_없으면_빈_배열을_반환한다() throws Exception {
+        authenticateAs(USER_ID);
+        when(onboardingService.getBookCandidates()).thenReturn(List.of());
+
+        mvc.perform(get("/api/v1/onboarding/books")).andExpect(status().isOk()).andExpect(jsonPath("$.data.candidates").isArray())
+            .andExpect(jsonPath("$.data.candidates").isEmpty());
     }
 
     private void authenticateAs(final Long userId) {

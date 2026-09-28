@@ -121,6 +121,20 @@ class AiRecommendationClientImplTest {
     }
 
     @Test
+    void 상태코드_401은_AI_service_token_오류로_변환한다() {
+        final RestClient.Builder builder = restClientBuilder();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        final AiRecommendationClientImpl client = new AiRecommendationClientImpl(builder.build());
+
+        server.expect(requestTo(BASE_URL + "/recommendations/chat")).andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+
+        assertThatThrownBy(() -> client.chat(chatRequest())).isInstanceOf(CoreException.class)
+            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_UNAUTHORIZED));
+
+        server.verify();
+    }
+
+    @Test
     void 상태코드_429는_재시도하지_않고_Retry_After를_전달한다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
@@ -196,12 +210,15 @@ class AiRecommendationClientImplTest {
     private String successBody() {
         return """
             {
-              "spec": {"intent": "semantic"},
-              "reply": "이 책들을 추천합니다",
-              "cards": [{"book_id": 1, "reason_long": "긴 추천 이유"}],
-              "followup": "더 알고 싶은 게 있나요?",
-              "buttons": ["다시 추천"],
-              "degraded": false
+              "message": "recommend_success",
+              "data": {
+                "spec": {"intent": "semantic"},
+                "reply": "이 책들을 추천합니다",
+                "cards": [{"book_id": 1, "reason_long": "긴 추천 이유"}],
+                "followup": "더 알고 싶은 게 있나요?",
+                "buttons": ["다시 추천"],
+                "degraded": false
+              }
             }
             """;
     }

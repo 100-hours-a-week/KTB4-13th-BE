@@ -1,4 +1,4 @@
-package com.book.common.config.persistence;
+package com.book.common.infrastructure.persistence.config;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;

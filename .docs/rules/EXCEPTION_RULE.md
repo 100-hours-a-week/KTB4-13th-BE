@@ -19,7 +19,7 @@ Bean Validation으로 요청 형식·필수값·범위를 검증합니다. `Glob
 ### Application·Domain
 
 업무 전제조건과 Domain 불변식을 위반하면 적절한 `ErrorCode`를 가진 `CoreException`을 발생시킵니다.
-예를 들어 장바구니 상품 수가 한도를 초과하면 `CART_ITEM_LIMIT_EXCEEDED`를 사용합니다.
+예를 들어 장바구니 상품 수가 한도를 초과하면 `CART_ITEM_LIMIT_EXCEEDED`, 상품 재고가 요청 수량보다 부족하면 `INSUFFICIENT_PRODUCT_STOCK`을 사용합니다.
 
 ### Repository·Infrastructure
 

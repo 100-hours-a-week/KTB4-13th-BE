@@ -1,6 +1,7 @@
 package com.book;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -133,5 +134,11 @@ class BookApplicationTest {
             .andExpect(jsonPath("$.data").doesNotExist());
 
         assertThat(addressRepository.countActiveByUserId(42L)).isEqualTo(1);
+    }
+
+    @Test
+    void 인증_없이_온보딩_도서_후보를_조회하면_401을_응답한다() throws Exception {
+        mvc.perform(get("/api/v1/onboarding/books")).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.code").value("E401"));
     }
 }

@@ -4,6 +4,7 @@ import com.book.common.response.ApiResponse;
 import com.book.core.recommendation.api.request.ChatRecommendationRequest;
 import com.book.core.recommendation.api.response.ChatRecommendationResponse;
 import com.book.core.recommendation.api.response.RecommendationCardDetailResponse;
+import com.book.core.recommendation.api.response.RecommendationFeedResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -14,6 +15,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -44,4 +47,17 @@ public interface RecommendationControllerSpec {
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
     ResponseEntity<ApiResponse<RecommendationCardDetailResponse>> getCard(@AuthenticationPrincipal final Jwt jwt,
         @Parameter(required = true, example = "1") @Positive final Long recommendationCardId);
+
+    @Operation(summary = "홈 추천 피드 조회",
+        description = "인증된 회원의 취향 프로필을 기반으로 홈 화면 추천 목록을 조회합니다. V1은 surface=home만 지원하며 "
+            + "sort/category 등 필터는 받지 않습니다. Cache-Control: private, no-store가 항상 응답에 포함되고, " + "AI가 축소 응답을 반환하면 X-Degraded 헤더가 함께 옵니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않거나 surface가 home이 아님"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "410", description = "cursor가 만료되어 처음부터 다시 조회해야 함")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<ApiResponse<RecommendationFeedResponse>> getFeed(@AuthenticationPrincipal final Jwt jwt,
+        @Parameter(example = "home") @Pattern(regexp = "home") final String surface,
+        @Parameter(example = "15") @Positive @Max(50) final int size, @Parameter(required = false) final String cursor);
 }

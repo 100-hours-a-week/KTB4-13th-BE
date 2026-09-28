@@ -3,6 +3,7 @@ package com.book.core.recommendation.api.converter;
 import com.book.core.recommendation.api.request.ChatRecommendationRequest;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
 import com.book.core.recommendation.application.command.GetRecommendationCardCommand;
+import com.book.core.recommendation.application.command.GetRecommendationFeedCommand;
 import com.book.core.recommendation.application.command.RecommendationTurn;
 import org.springframework.stereotype.Component;
 
@@ -16,5 +17,9 @@ public class RecommendationCommandConverter {
 
     public GetRecommendationCardCommand toGetRecommendationCardCommand(final Long userId, final Long recommendationCardId) {
         return new GetRecommendationCardCommand(userId, recommendationCardId);
+    }
+
+    public GetRecommendationFeedCommand toGetRecommendationFeedCommand(final Long userId, final int size, final String cursor) {
+        return new GetRecommendationFeedCommand(userId, size, cursor);
     }
 }

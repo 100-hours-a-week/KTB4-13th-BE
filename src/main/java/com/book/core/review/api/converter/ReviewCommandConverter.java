@@ -9,15 +9,15 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ReviewCommandConverter {
-    public CreateReviewCommand toCreateReviewCommand(final CreateReviewRequest request) {
-        return new CreateReviewCommand(request.userId(), request.targetId(), request.rate(), request.content(), request.isSpoiler());
+    public CreateReviewCommand toCreateReviewCommand(final Long userId, final CreateReviewRequest request) {
+        return new CreateReviewCommand(userId, request.targetId(), request.rate(), request.content(), request.isSpoiler());
     }
 
-    public UpdateReviewCommand toUpdateReviewCommand(final Long reviewId, final UpdateReviewRequest request) {
-        return new UpdateReviewCommand(reviewId, request.rating(), request.content(), request.isSpoiler());
+    public UpdateReviewCommand toUpdateReviewCommand(final Long userId, final Long reviewId, final UpdateReviewRequest request) {
+        return new UpdateReviewCommand(userId, reviewId, request.rating(), request.content(), request.isSpoiler());
     }
 
-    public DeleteReviewCommand toDeleteReviewCommand(final Long reviewId) {
-        return new DeleteReviewCommand(reviewId);
+    public DeleteReviewCommand toDeleteReviewCommand(final Long userId, final Long reviewId) {
+        return new DeleteReviewCommand(userId, reviewId);
     }
 }

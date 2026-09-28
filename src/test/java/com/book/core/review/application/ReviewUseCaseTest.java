@@ -90,7 +90,7 @@ class ReviewUseCaseTest {
         final Review review = Review.create(42L, 701L, new BigDecimal("4.5"), "기존", false);
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
-        updateReview.execute(new UpdateReviewCommand(801L, null, "수정", true));
+        updateReview.execute(new UpdateReviewCommand(42L, 801L, null, "수정", true));
 
         assertThat(review.content()).isEqualTo("수정");
         assertThat(review.rating()).isEqualByComparingTo("4.5");
@@ -99,23 +99,47 @@ class ReviewUseCaseTest {
     }
 
     @Test
+    void 소유자가_아닌_사용자의_리뷰_수정은_FORBIDDEN으로_거부한다() {
+        final Review review = Review.create(42L, 701L, new BigDecimal("4.5"), "기존", false);
+        when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
+
+        assertThatThrownBy(() -> updateReview.execute(new UpdateReviewCommand(999L, 801L, null, "수정", true)))
+            .isInstanceOfSatisfying(CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(review.content()).isEqualTo("기존");
+        verify(reviewRepository, never()).save(review);
+    }
+
+    @Test
     void 삭제는_활성_리뷰를_소프트_삭제한다() {
         final Review review = Review.create(42L, 701L, new BigDecimal("4.5"), "본문", false);
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
-        deleteReview.execute(new DeleteReviewCommand(801L));
+        deleteReview.execute(new DeleteReviewCommand(42L, 801L));
 
         assertThat(review.isDeleted()).isTrue();
         verify(reviewRepository).save(review);
     }
 
     @Test
+    void 소유자가_아닌_사용자의_리뷰_삭제는_FORBIDDEN으로_거부한다() {
+        final Review review = Review.create(42L, 701L, new BigDecimal("4.5"), "본문", false);
+        when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
+
+        assertThatThrownBy(() -> deleteReview.execute(new DeleteReviewCommand(999L, 801L))).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(review.isDeleted()).isFalse();
+        verify(reviewRepository, never()).save(review);
+    }
+
+    @Test
     void 존재하지_않거나_삭제된_리뷰를_수정하거나_삭제할_수_없다() {
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> updateReview.execute(new UpdateReviewCommand(801L, null, "수정", null))).isInstanceOfSatisfying(
+        assertThatThrownBy(() -> updateReview.execute(new UpdateReviewCommand(42L, 801L, null, "수정", null))).isInstanceOfSatisfying(
             CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_NOT_FOUND));
-        assertThatThrownBy(() -> deleteReview.execute(new DeleteReviewCommand(801L))).isInstanceOfSatisfying(CoreException.class,
+        assertThatThrownBy(() -> deleteReview.execute(new DeleteReviewCommand(42L, 801L))).isInstanceOfSatisfying(CoreException.class,
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_NOT_FOUND));
     }
 

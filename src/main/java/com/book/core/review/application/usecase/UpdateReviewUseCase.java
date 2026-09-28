@@ -18,6 +18,9 @@ public class UpdateReviewUseCase {
     public void execute(final UpdateReviewCommand command) {
         final Review review =
             reviewRepository.findActiveById(command.reviewId()).orElseThrow(() -> new CoreException(ErrorCode.REVIEW_NOT_FOUND));
+        if (!review.userId().equals(command.userId())) {
+            throw new CoreException(ErrorCode.FORBIDDEN);
+        }
         review.update(command.rating(), command.content(), command.isSpoiler());
         reviewRepository.save(review);
     }

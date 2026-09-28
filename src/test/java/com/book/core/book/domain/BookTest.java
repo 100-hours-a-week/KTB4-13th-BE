@@ -25,5 +25,11 @@ class BookTest {
         book.delete();
 
         assertThat(book.isActive()).isFalse();
+        assertThat(book.deletedAt()).isNotNull();
+
+        book.active();
+
+        assertThat(book.isActive()).isTrue();
+        assertThat(book.deletedAt()).isNull();
     }
 }

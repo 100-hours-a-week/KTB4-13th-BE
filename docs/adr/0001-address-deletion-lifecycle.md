@@ -1,5 +1,7 @@
 # ADR-0001: 주소지 삭제 생명주기
 
+> 이 결정은 [ADR-0003](./0003-common-entity-deletion-lifecycle.md)으로 대체되었습니다.
+
 ## 결정
 
 주소지 삭제는 기존 행을 보존하고 `EntityStatus.DELETED`로 전이하는 소프트 삭제로 처리한다. 삭제 대상이 기본 배송지이면 같은 트랜잭션에서 `created_at DESC`, `id DESC` 순으로 선택한 활성 주소지를 기본 배송지로 승격한다.

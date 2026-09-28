@@ -10,8 +10,11 @@ import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.port.CartItemRepositoryPort;
 import com.book.core.cart.application.usecase.ModifyCartItemUseCase;
 import com.book.core.cart.domain.CartItem;
+import com.book.core.product.application.command.ProductListCursor;
+import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.ProductRepositoryPort;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
+import com.book.core.product.application.result.ProductListItem;
 import com.book.core.product.domain.Product;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,7 +26,7 @@ class CartModifyUseCaseTest {
     private final FakeCartItemRepository cartItemRepository = new FakeCartItemRepository();
     private final FakeProductRepository productRepository = new FakeProductRepository();
     private final ModifyCartItemUseCase useCase =
-            new ModifyCartItemUseCase(cartItemRepository, new GetProductDetailUseCase(productRepository));
+        new ModifyCartItemUseCase(cartItemRepository, new GetProductDetailUseCase(productRepository));
 
     @Test
     void 요청한_회원의_활성_장바구니_상품_수량을_변경한다() {
@@ -38,10 +41,8 @@ class CartModifyUseCaseTest {
 
     @Test
     void 존재하지_않는_장바구니_상품은_변경하지_않는다() {
-        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4)))
-                .isInstanceOfSatisfying(
-                        CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4))).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
     }
 
     @Test
@@ -51,10 +52,8 @@ class CartModifyUseCaseTest {
         cartItemRepository.item = item;
         cartItemRepository.ownerUserId = 42L;
 
-        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4)))
-                .isInstanceOfSatisfying(
-                        CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4))).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
 
         assertThat(item.quantity()).isEqualTo(2);
     }
@@ -65,10 +64,8 @@ class CartModifyUseCaseTest {
         cartItemRepository.item = item;
         cartItemRepository.ownerUserId = 7L;
 
-        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4)))
-                .isInstanceOfSatisfying(
-                        CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4))).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
 
         assertThat(item.quantity()).isEqualTo(2);
     }
@@ -80,10 +77,8 @@ class CartModifyUseCaseTest {
         cartItemRepository.ownerUserId = 42L;
         productRepository.product = product(3);
 
-        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4)))
-                .isInstanceOfSatisfying(
-                        CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INSUFFICIENT_PRODUCT_STOCK));
+        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4))).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INSUFFICIENT_PRODUCT_STOCK));
 
         assertThat(item.quantity()).isEqualTo(2);
     }
@@ -95,10 +90,8 @@ class CartModifyUseCaseTest {
         cartItemRepository.ownerUserId = 42L;
         productRepository.product = null;
 
-        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4)))
-                .isInstanceOfSatisfying(
-                        CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PRODUCT_NOT_FOUND));
+        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4))).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PRODUCT_NOT_FOUND));
 
         assertThat(item.quantity()).isEqualTo(2);
     }
@@ -110,10 +103,8 @@ class CartModifyUseCaseTest {
         cartItemRepository.ownerUserId = 42L;
         productRepository.product.delete();
 
-        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4)))
-                .isInstanceOfSatisfying(
-                        CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PRODUCT_NOT_FOUND));
+        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 4))).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PRODUCT_NOT_FOUND));
 
         assertThat(item.quantity()).isEqualTo(2);
     }
@@ -125,10 +116,8 @@ class CartModifyUseCaseTest {
         cartItemRepository.ownerUserId = 42L;
         productRepository.product = product(0);
 
-        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 0)))
-                .isInstanceOfSatisfying(
-                        CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_CART_ITEM_QUANTITY));
+        assertThatThrownBy(() -> useCase.execute(new ModifyCartItemCommand(42L, 11L, 0))).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_CART_ITEM_QUANTITY));
 
         assertThat(item.quantity()).isEqualTo(2);
     }
@@ -139,15 +128,8 @@ class CartModifyUseCaseTest {
 
     private static Product product(final int stockQuantity) {
         final var book = new Book(10L, null, null, "도서명", "작가", null, "출판사", "소설", LocalDate.of(2026, 1, 1), null);
-        return new Product(
-                20L,
-                book,
-                "상품명",
-                null,
-                new BigDecimal("20000.00"),
-                new BigDecimal("18000.00"),
-                new BigDecimal("12000.00"),
-                stockQuantity);
+        return new Product(20L, book, "상품명", null, new BigDecimal("20000.00"), new BigDecimal("18000.00"), new BigDecimal("12000.00"),
+            stockQuantity);
     }
 
     private static final class FakeProductRepository implements ProductRepositoryPort {
@@ -159,7 +141,13 @@ class CartModifyUseCaseTest {
         }
 
         @Override
-        public List<Product> findActiveProducts(final Long categoryId, final Long cursor, final int limit) {
+        public Optional<Product> findActiveByBookId(final Long bookId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<ProductListItem> findActiveProducts(final Long categoryId, final ProductListSort sort, final ProductListCursor cursor,
+            final int limit) {
             return List.of();
         }
     }

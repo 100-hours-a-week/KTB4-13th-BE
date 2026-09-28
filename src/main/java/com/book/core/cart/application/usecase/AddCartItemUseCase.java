@@ -23,9 +23,8 @@ public class AddCartItemUseCase {
     @Transactional
     public void execute(final AddCartItemCommand command) {
         // 장바구니가 존재하지 않으면 예외 발생
-        final Cart cart = cartRepository
-                .findByUserIdWithLock(command.userId())
-                .orElseThrow(() -> new CoreException(ErrorCode.CART_NOT_FOUND));
+        final Cart cart =
+            cartRepository.findByUserIdWithLock(command.userId()).orElseThrow(() -> new CoreException(ErrorCode.CART_NOT_FOUND));
 
         // 장바구니에 이미 존재하는 상품이면 수량을 대체하고, 존재하지 않으면 새로 추가
         final Optional<CartItem> found = cartItemRepository.findByCartIdAndProductId(cart.id(), command.productId());

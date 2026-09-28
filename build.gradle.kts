@@ -15,9 +15,12 @@ java {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
+    implementation("org.springframework.security:spring-security-oauth2-jose")
+    implementation("org.springframework.security:spring-security-oauth2-resource-server")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
     implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
     runtimeOnly("org.flywaydb:flyway-mysql")
@@ -97,16 +100,47 @@ tasks.check {
     dependsOn(tasks.jacocoTestReport)
     dependsOn(tasks.jacocoTestCoverageVerification)
     dependsOn(integrationTest)
+    dependsOn("verifyJavaLineLength")
 }
 tasks.jar { enabled = false }
+
+val javaSourceFiles = fileTree("src") {
+    include("main/java/**/*.java", "test/java/**/*.java")
+}
+
+tasks.register("verifyJavaLineLength") {
+    group = "verification"
+    description = "Checks that Java source lines do not exceed 140 characters."
+    inputs.files(javaSourceFiles)
+
+    doLast {
+        val violations = javaSourceFiles.files.flatMap { sourceFile ->
+            sourceFile.readLines().mapIndexedNotNull { index, line ->
+                val length = line.codePointCount(0, line.length)
+                if (length > 140) {
+                    "${sourceFile.relativeTo(projectDir)}:${index + 1}: $length characters"
+                } else {
+                    null
+                }
+            }
+        }
+
+        if (violations.isNotEmpty()) {
+            throw GradleException(
+                "Java source lines must not exceed 140 characters:\n${violations.joinToString("\n")}",
+            )
+        }
+    }
+}
 
 spotless {
     ratchetFrom("origin/main")
     java {
-        palantirJavaFormat("2.98.0")
+        eclipse("4.41").configFile(".config/spotless/google-derived-java-style.xml")
         removeUnusedImports()
         forbidWildcardImports()
         trimTrailingWhitespace()
         endWithNewline()
+        toggleOffOn()
     }
 }

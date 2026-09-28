@@ -10,8 +10,8 @@ import org.springframework.data.repository.query.Param;
 
 interface CartJpaRepository extends JpaRepository<Cart, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select cart from Cart cart where cart.userId = :userId")
+    @Query("select cart from Cart cart where cart.userId = :userId and cart.deletedAt is null")
     Optional<Cart> findByUserIdWithLock(@Param("userId") final Long userId);
 
-    Optional<Cart> findByUserId(final Long userId);
+    Optional<Cart> findByUserIdAndDeletedAtIsNull(final Long userId);
 }

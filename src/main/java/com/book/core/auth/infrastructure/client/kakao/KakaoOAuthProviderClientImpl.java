@@ -1,0 +1,65 @@
+package com.book.core.auth.infrastructure.client.kakao;
+
+import com.book.common.exception.BusinessException;
+import com.book.common.exception.ErrorCode;
+import com.book.core.auth.application.port.OAuthIdentity;
+import com.book.core.auth.application.port.OAuthProviderClient;
+import com.nimbusds.jose.RemoteKeySourceException;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+@Component
+public class KakaoOAuthProviderClientImpl implements OAuthProviderClient {
+    private static final String EMAIL_CLAIM = "email";
+    private static final String NONCE_CLAIM = "nonce";
+
+    private final JwtDecoder jwtDecoder;
+
+    public KakaoOAuthProviderClientImpl(@Qualifier(KakaoJwtDecoderConfiguration.KAKAO_JWT_DECODER) final JwtDecoder jwtDecoder) {
+        this.jwtDecoder = jwtDecoder;
+    }
+
+    @Override
+    public OAuthIdentity verify(final String idToken, final String expectedNonce) {
+        if (!StringUtils.hasText(idToken) || !StringUtils.hasText(expectedNonce)) {
+            throw new BusinessException(ErrorCode.INVALID_ID_TOKEN);
+        }
+
+        try {
+            final Jwt jwt = jwtDecoder.decode(idToken);
+            return toIdentity(jwt, expectedNonce);
+        } catch (final JwtException exception) {
+            if (hasRemoteKeySourceCause(exception)) {
+                throw new BusinessException(ErrorCode.OAUTH_PROVIDER_UNAVAILABLE, exception);
+            }
+            throw new BusinessException(ErrorCode.INVALID_ID_TOKEN, exception);
+        } catch (final IllegalArgumentException exception) {
+            throw new BusinessException(ErrorCode.INVALID_ID_TOKEN, exception);
+        }
+    }
+
+    private OAuthIdentity toIdentity(final Jwt jwt, final String expectedNonce) {
+        final String providerUserId = jwt.getSubject();
+        final String nonce = jwt.getClaimAsString(NONCE_CLAIM);
+        if (!StringUtils.hasText(providerUserId) || jwt.getExpiresAt() == null || !StringUtils.hasText(nonce)
+            || !expectedNonce.equals(nonce)) {
+            throw new BusinessException(ErrorCode.INVALID_ID_TOKEN);
+        }
+        return new OAuthIdentity(providerUserId, jwt.getClaimAsString(EMAIL_CLAIM));
+    }
+
+    private boolean hasRemoteKeySourceCause(final Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof RemoteKeySourceException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+}

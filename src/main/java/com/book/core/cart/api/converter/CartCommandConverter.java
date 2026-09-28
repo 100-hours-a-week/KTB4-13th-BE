@@ -17,8 +17,7 @@ public class CartCommandConverter {
         return new GetCartCommand(userId);
     }
 
-    public ModifyCartItemCommand toModifyCartItemCommand(
-            final Long userId, final Long cartItemId, final ModifyCartItemRequest request) {
+    public ModifyCartItemCommand toModifyCartItemCommand(final Long userId, final Long cartItemId, final ModifyCartItemRequest request) {
         return new ModifyCartItemCommand(userId, cartItemId, request.quantity());
     }
 }

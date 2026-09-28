@@ -1,0 +1,3 @@
+ai:
+  base-url: ${AI_BASE_URL:}
+  service-token: ${AI_SERVICE_TOKEN:}

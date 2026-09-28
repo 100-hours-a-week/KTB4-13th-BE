@@ -4,4 +4,20 @@ spring:
   profiles:
     default: local
   config:
-    import: classpath:persistence.yml
+    import: classpath:persistence.yml,classpath:ai.yml
+
+app:
+  cors:
+    allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+
+auth:
+  cookie:
+    secure: ${AUTH_COOKIE_SECURE:false}
+  kakao:
+    rest-api-key: ${KAKAO_REST_API_KEY}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    redirect-uri: ${KAKAO_REDIRECT_URI}
+  token:
+    secret: ${JWT_SECRET}
+    access-token-expiration: 1h
+    refresh-token-expiration: 7d

@@ -1,6 +1,5 @@
 package com.book.core.cart.infrastructure.persistence.repository;
 
-import com.book.common.domain.EntityStatus;
 import com.book.core.cart.domain.CartItem;
 import java.util.List;
 import java.util.Optional;
@@ -13,20 +12,17 @@ interface CartItemJpaRepository extends JpaRepository<CartItem, Long> {
             select item
             from CartItem item
             where item.id = :cartItemId
+              and item.deletedAt is null
               and item.cartId in (
                   select cart.id from Cart cart
-                  where cart.userId = :userId and cart.status = :status
+                  where cart.userId = :userId and cart.deletedAt is null
               )
-              and item.status = :status
             """)
-    Optional<CartItem> findByUserIdAndIdAndStatus(
-            @Param("userId") final Long userId,
-            @Param("cartItemId") final Long cartItemId,
-            @Param("status") final EntityStatus status);
+    Optional<CartItem> findActiveByUserIdAndId(@Param("userId") final Long userId, @Param("cartItemId") final Long cartItemId);
 
     Optional<CartItem> findByCartIdAndProductId(final Long cartId, final Long productId);
 
-    int countByCartIdAndStatus(final Long cartId, final EntityStatus status);
+    int countByCartIdAndDeletedAtIsNull(final Long cartId);
 
-    List<CartItem> findByCartIdAndStatusOrderByCreatedAtDescIdDesc(final Long cartId, final EntityStatus status);
+    List<CartItem> findByCartIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(final Long cartId);
 }

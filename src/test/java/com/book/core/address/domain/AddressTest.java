@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 class AddressTest {
     @Test
-    void 주소지를_생성하면_값을_정규화하고_ACTIVE_상태로_시작한다() {
+    void 주소지를_생성하면_값을_정규화하고_활성_상태로_시작한다() {
         final var address = Address.of(1L, "  집  ", " 12345 ", " 서울시 강남구 ", "   ", false);
 
         assertThat(address.userId()).isEqualTo(1L);

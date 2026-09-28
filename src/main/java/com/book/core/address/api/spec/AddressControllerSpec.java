@@ -18,101 +18,63 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Address", description = "배송지 API")
 public interface AddressControllerSpec {
     @Operation(summary = "배송지 등록", description = "요청 회원의 활성 배송지를 등록합니다.")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "배송지 등록 성공"),
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "배송지 등록 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않거나 등록 정책을 위반함"),
-        @ApiResponse(responseCode = "401", description = "인증 연동 시 인증 정보가 유효하지 않음"),
-        @ApiResponse(responseCode = "500", description = "알 수 없는 오류")
-    })
-    ResponseEntity<com.book.common.response.ApiResponse<Void>> registerAddress(
-            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
-                    final Long userId,
-            @RequestBody(
-                            description = "등록할 배송지 정보",
-                            required = true,
-                            content = @Content(schema = @Schema(implementation = RegisterAddressRequest.class)))
-                    @Valid
-                    final RegisterAddressRequest request);
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> registerAddress(@AuthenticationPrincipal final Jwt jwt,
+        @RequestBody(description = "등록할 배송지 정보", required = true,
+            content = @Content(schema = @Schema(implementation = RegisterAddressRequest.class)))
+        @Valid final RegisterAddressRequest request);
 
-    @Operation(summary = "배송지 목록 조회", description = "userId에 해당하는 활성 배송지 목록을 기본 배송지 우선으로 조회합니다.")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "배송지 목록 조회 성공"),
-        @ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
-        @ApiResponse(responseCode = "500", description = "알 수 없는 오류")
-    })
-    ResponseEntity<com.book.common.response.ApiResponse<AddressListResponse>> getAddresses(
-            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
-                    final Long userId);
+    @Operation(summary = "배송지 목록 조회", description = "인증된 회원의 활성 배송지 목록을 기본 배송지 우선으로 조회합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "배송지 목록 조회 성공"),
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<AddressListResponse>> getAddresses(@AuthenticationPrincipal final Jwt jwt);
 
     @Operation(summary = "배송지 수정", description = "배송지 전체 정보를 교체합니다.")
     @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "배송지 수정 성공"),
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "배송지 수정 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식 또는 수정 정책이 올바르지 않음"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @ApiResponse(responseCode = "403", description = "수정 대상 배송지에 접근할 수 없음"),
-        @ApiResponse(responseCode = "500", description = "알 수 없는 오류")
-    })
-    @Parameter(
-            in = ParameterIn.HEADER,
-            name = HttpHeaders.AUTHORIZATION,
-            required = true,
-            example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<UpdateAddressResponse>> updateAddress(
-            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
-                    final Long userId,
-            @Parameter(in = ParameterIn.PATH, required = true, example = "101") @Positive @PathVariable("addressId")
-                    final Long addressId,
-            @RequestBody(
-                            description = "교체할 배송지 전체 정보",
-                            required = true,
-                            content = @Content(schema = @Schema(implementation = UpdateAddressRequest.class)))
-                    @Valid
-                    final UpdateAddressRequest request);
+        @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<UpdateAddressResponse>> updateAddress(@AuthenticationPrincipal final Jwt jwt,
+        @Parameter(in = ParameterIn.PATH, required = true, example = "101") @Positive @PathVariable("addressId") final Long addressId,
+        @RequestBody(description = "교체할 배송지 전체 정보", required = true,
+            content = @Content(schema = @Schema(implementation = UpdateAddressRequest.class)))
+        @Valid final UpdateAddressRequest request);
 
     @Operation(summary = "기본 배송지 지정", description = "요청 회원의 활성 배송지를 기본 배송지로 지정합니다.")
     @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "기본 배송지 지정 성공"),
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "기본 배송지 지정 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @ApiResponse(responseCode = "403", description = "기본 배송지 지정 대상에 접근할 수 없음"),
-        @ApiResponse(responseCode = "500", description = "알 수 없는 오류")
-    })
-    @Parameter(
-            in = ParameterIn.HEADER,
-            name = HttpHeaders.AUTHORIZATION,
-            required = true,
-            example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<UpdateAddressResponse>> setDefaultAddress(
-            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
-                    final Long userId,
-            @Parameter(in = ParameterIn.PATH, required = true, example = "101") @Positive @PathVariable("addressId")
-                    final Long addressId);
+        @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<UpdateAddressResponse>> setDefaultAddress(@AuthenticationPrincipal final Jwt jwt,
+        @Parameter(in = ParameterIn.PATH, required = true, example = "101") @Positive @PathVariable("addressId") final Long addressId);
 
     @Operation(summary = "배송지 삭제", description = "요청 회원의 배송지를 삭제합니다.")
     @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "배송지 삭제 성공"),
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "배송지 삭제 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @ApiResponse(responseCode = "403", description = "삭제 대상 배송지에 접근할 수 없음"),
-        @ApiResponse(responseCode = "500", description = "알 수 없는 오류")
-    })
-    @Parameter(
-            in = ParameterIn.HEADER,
-            name = HttpHeaders.AUTHORIZATION,
-            required = true,
-            example = "Bearer {accessToken}")
-    ResponseEntity<Void> deleteAddress(
-            @Parameter(in = ParameterIn.QUERY, required = true, example = "42") @Positive @RequestParam("userId")
-                    final Long userId,
-            @Parameter(in = ParameterIn.PATH, required = true, example = "101") @Positive @PathVariable("addressId")
-                    final Long addressId);
+        @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<Void> deleteAddress(@AuthenticationPrincipal final Jwt jwt,
+        @Parameter(in = ParameterIn.PATH, required = true, example = "101") @Positive @PathVariable("addressId") final Long addressId);
 }

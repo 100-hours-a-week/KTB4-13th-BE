@@ -2,7 +2,6 @@ package com.book.core.cart.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.book.core.cart.application.command.GetCartCommand;
 import com.book.core.cart.application.port.CartItemRepositoryPort;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.application.result.GetCartItemResult;
@@ -21,7 +20,7 @@ class GetCartUseCaseTest {
 
     @Test
     void 장바구니가_없으면_빈_items를_반환한다() {
-        final GetCartResult result = useCase.execute(new GetCartCommand(42L));
+        final GetCartResult result = useCase.execute(42L);
 
         assertThat(result.items()).isEmpty();
         assertThat(cartItemRepository.requestedCartId).isNull();
@@ -32,14 +31,11 @@ class GetCartUseCaseTest {
         cartRepository.cart = new Cart(7L, 42L);
         cartItemRepository.items = List.of(new CartItem(11L, 7L, 200L, 2), new CartItem(10L, 7L, 100L, 1));
 
-        final GetCartResult result = useCase.execute(new GetCartCommand(42L));
+        final GetCartResult result = useCase.execute(42L);
 
         assertThat(cartItemRepository.requestedCartId).isEqualTo(7L);
-        assertThat(result.items())
-                .extracting(GetCartItemResult::cartItemId, GetCartItemResult::productId, GetCartItemResult::quantity)
-                .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(11L, 200L, 2),
-                        org.assertj.core.groups.Tuple.tuple(10L, 100L, 1));
+        assertThat(result.items()).extracting(GetCartItemResult::cartItemId, GetCartItemResult::productId, GetCartItemResult::quantity)
+            .containsExactly(org.assertj.core.groups.Tuple.tuple(11L, 200L, 2), org.assertj.core.groups.Tuple.tuple(10L, 100L, 1));
     }
 
     private static final class FakeCartRepository implements CartRepositoryPort {

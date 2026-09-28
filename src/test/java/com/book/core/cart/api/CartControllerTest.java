@@ -15,17 +15,27 @@ import com.book.core.cart.api.converter.CartResultConverter;
 import com.book.core.cart.application.command.AddCartItemCommand;
 import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.service.CartService;
+import java.time.Instant;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @WebMvcTest(CartController.class)
-@Import({CartCommandConverter.class, CartResultConverter.class})
+@Import({CartCommandConverter.class, CartResultConverter.class, CartControllerTest.AuthenticationPrincipalTestConfig.class})
 @ActiveProfiles("test")
 class CartControllerTest {
     @Autowired
@@ -34,153 +44,125 @@ class CartControllerTest {
     @MockitoBean
     CartService cartService;
 
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void quantity가_누락되면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
-        mvc.perform(post("/api/v1/cart/items")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productId\":20}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("E400"));
+        authenticateAs(42L);
+
+        mvc.perform(post("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"productId\":20}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(cartService);
     }
 
     @Test
     void 상품_추가는_요청한_값으로_Command를_Service에_전달한다() throws Exception {
-        mvc.perform(post("/api/v1/cart/items")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productId\":20,\"quantity\":3}"))
-                .andExpect(status().isOk());
+        authenticateAs(42L);
+
+        mvc.perform(post("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"productId\":20,\"quantity\":3}"))
+            .andExpect(status().isOk());
 
         verify(cartService).addCartItem(new AddCartItemCommand(42L, 20L, 3));
     }
 
     @Test
     void 상품_추가_시_재고가_부족하면_400과_재고_부족_오류_코드를_응답한다() throws Exception {
-        doThrow(new CoreException(ErrorCode.INSUFFICIENT_PRODUCT_STOCK))
-                .when(cartService)
-                .addCartItem(new AddCartItemCommand(42L, 20L, 3));
+        authenticateAs(42L);
+        doThrow(new CoreException(ErrorCode.INSUFFICIENT_PRODUCT_STOCK)).when(cartService).addCartItem(new AddCartItemCommand(42L, 20L, 3));
 
-        mvc.perform(post("/api/v1/cart/items")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productId\":20,\"quantity\":3}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.code").value("E8001"));
+        mvc.perform(post("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"productId\":20,\"quantity\":3}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E8001"));
     }
 
     @Test
     void 잘못된_상품_ID는_400을_응답하고_Service를_호출하지_않는다() throws Exception {
-        mvc.perform(post("/api/v1/cart/items")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productId\":0,\"quantity\":1}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("E400"));
+        authenticateAs(42L);
+
+        mvc.perform(post("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"productId\":0,\"quantity\":1}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(cartService);
     }
 
     @Test
     void 잘못된_수량은_400을_응답하고_Service를_호출하지_않는다() throws Exception {
-        mvc.perform(post("/api/v1/cart/items")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productId\":20,\"quantity\":0}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("E400"));
+        authenticateAs(42L);
+
+        mvc.perform(post("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"productId\":20,\"quantity\":0}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(cartService);
     }
 
-    @Test
-    void userId가_양수가_아니면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
-        mvc.perform(post("/api/v1/cart/items")
-                        .param("userId", "0")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productId\":20,\"quantity\":1}"))
-                .andExpect(status().isBadRequest());
+    private void authenticateAs(final Long userId) {
+        final Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "none").claim("sub", userId.toString()).issuedAt(Instant.now())
+            .expiresAt(Instant.now().plusSeconds(3600)).build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+    }
 
-        verifyNoInteractions(cartService);
+    @TestConfiguration
+    static class AuthenticationPrincipalTestConfig implements WebMvcConfigurer {
+        @Override
+        public void addArgumentResolvers(final List<HandlerMethodArgumentResolver> resolvers) {
+            resolvers.add(new AuthenticationPrincipalArgumentResolver());
+        }
     }
 
     @Test
-    void 장바구니_상품_수량_변경은_임시_userId와_경로_ID와_수량을_Command로_전달한다() throws Exception {
-        mvc.perform(put("/api/v1/cart/items/11")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"quantity\":4}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+    void 장바구니_상품_수량_변경은_JWT_회원_ID와_경로_ID와_수량을_Command로_전달한다() throws Exception {
+        authenticateAs(42L);
+        mvc.perform(put("/api/v1/cart/items/11").contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":4}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
 
         verify(cartService).modifyCartItem(new ModifyCartItemCommand(42L, 11L, 4));
     }
 
     @Test
     void 수량_0은_400을_응답하고_Service를_호출하지_않는다() throws Exception {
-        mvc.perform(put("/api/v1/cart/items/11")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"quantity\":0}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("E400"));
+        authenticateAs(42L);
+        mvc.perform(put("/api/v1/cart/items/11").contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":0}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(cartService);
     }
 
     @Test
     void 수량이_500개를_초과하면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
-        mvc.perform(put("/api/v1/cart/items/11")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"quantity\":501}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("E400"));
+        authenticateAs(42L);
+        mvc.perform(put("/api/v1/cart/items/11").contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":501}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(cartService);
     }
 
     @Test
     void 재고가_부족하면_400과_재고_부족_오류_코드를_응답한다() throws Exception {
-        doThrow(new CoreException(ErrorCode.INSUFFICIENT_PRODUCT_STOCK))
-                .when(cartService)
-                .modifyCartItem(new ModifyCartItemCommand(42L, 11L, 4));
+        authenticateAs(42L);
+        doThrow(new CoreException(ErrorCode.INSUFFICIENT_PRODUCT_STOCK)).when(cartService)
+            .modifyCartItem(new ModifyCartItemCommand(42L, 11L, 4));
 
-        mvc.perform(put("/api/v1/cart/items/11")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"quantity\":4}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.code").value("E8001"));
+        mvc.perform(put("/api/v1/cart/items/11").contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":4}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E8001"));
     }
 
     @Test
     void 변경할_장바구니_상품이_없으면_404를_응답한다() throws Exception {
-        doThrow(new CoreException(ErrorCode.CART_ITEM_NOT_FOUND))
-                .when(cartService)
-                .modifyCartItem(new ModifyCartItemCommand(42L, 11L, 4));
+        authenticateAs(42L);
+        doThrow(new CoreException(ErrorCode.CART_ITEM_NOT_FOUND)).when(cartService).modifyCartItem(new ModifyCartItemCommand(42L, 11L, 4));
 
-        mvc.perform(put("/api/v1/cart/items/11")
-                        .param("userId", "42")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"quantity\":4}"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.code").value("E401"));
+        mvc.perform(put("/api/v1/cart/items/11").contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":4}"))
+            .andExpect(status().isNotFound()).andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E401"));
     }
 
     @Test
-    void 변경_요청의_userId와_cartItemId가_양수가_아니면_400을_응답한다() throws Exception {
-        mvc.perform(put("/api/v1/cart/items/0")
-                        .param("userId", "0")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"quantity\":4}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("E400"));
+    void 변경_요청의_cartItemId가_양수가_아니면_400을_응답한다() throws Exception {
+        authenticateAs(42L);
+        mvc.perform(put("/api/v1/cart/items/0").contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":4}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(cartService);
     }

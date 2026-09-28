@@ -1,8 +1,10 @@
 package com.book.core.product.infrastructure.persistence.repository;
 
-import com.book.common.domain.EntityStatus;
 import com.book.core.product.application.port.ProductRepositoryPort;
+import com.book.core.product.application.command.ProductListCursor;
+import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.domain.Product;
+import com.book.core.product.application.result.ProductListItem;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -16,11 +18,17 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort {
 
     @Override
     public Optional<Product> findActiveById(final Long productId) {
-        return jpaRepository.findActiveById(productId, EntityStatus.ACTIVE);
+        return jpaRepository.findActiveById(productId);
     }
 
     @Override
-    public List<Product> findActiveProducts(final Long categoryId, final Long cursor, final int limit) {
-        return queryRepository.findActiveProducts(categoryId, cursor, limit);
+    public Optional<Product> findActiveByBookId(final Long bookId) {
+        return jpaRepository.findActiveByBookId(bookId);
+    }
+
+    @Override
+    public List<ProductListItem> findActiveProducts(final Long categoryId, final ProductListSort sort, final ProductListCursor cursor,
+        final int limit) {
+        return queryRepository.findActiveProducts(categoryId, sort, cursor, limit);
     }
 }

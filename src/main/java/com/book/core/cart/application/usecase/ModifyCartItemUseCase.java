@@ -18,9 +18,8 @@ public class ModifyCartItemUseCase {
 
     @Transactional
     public void execute(final ModifyCartItemCommand command) {
-        final CartItem cartItem = cartItemRepository
-                .findActiveByUserIdAndId(command.userId(), command.cartItemId())
-                .orElseThrow(() -> new CoreException(ErrorCode.CART_ITEM_NOT_FOUND));
+        final CartItem cartItem = cartItemRepository.findActiveByUserIdAndId(command.userId(), command.cartItemId())
+            .orElseThrow(() -> new CoreException(ErrorCode.CART_ITEM_NOT_FOUND));
         CartItem.validateQuantity(command.quantity());
         productDetailUseCase.validateAvailableStock(cartItem.productId(), command.quantity());
         cartItem.applyQuantity(command.quantity());

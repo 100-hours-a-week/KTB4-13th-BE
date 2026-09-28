@@ -58,3 +58,16 @@ test('PR 크기 라벨과 대기 알림 workflow 계약을 유지한다', () => 
   assert.match(pendingAlarm, /now - approvalAt >= oneDay/);
   assert.equal(existsSync(join(root, '.github/workflows/sync-label.yml')), false);
 });
+
+test('Backend CI가 SHA 이미지를 게시하고 배포 책임은 Cloud Repository에 둔다', () => {
+  const ciWorkflow = read('.github/workflows/ci.yml');
+  const buildCompose = read('compose.build.yml');
+
+  assert.match(ciWorkflow, /AWS_CI_ROLE_ARN/);
+  assert.match(ciWorkflow, /docker compose -f compose\.build\.yml build backend/);
+  assert.match(ciWorkflow, /docker compose -f compose\.build\.yml push backend/);
+  assert.equal(existsSync(join(root, '.github/workflows/cd.yml')), false);
+
+  assert.match(buildCompose, /image: \$\{BACKEND_IMAGE:\?BACKEND_IMAGE is required\}/);
+  assert.match(buildCompose, /dockerfile: Dockerfile/);
+});

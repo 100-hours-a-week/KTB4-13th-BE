@@ -8,6 +8,9 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.book.domain.Book;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.port.ProductRepositoryPort;
+import com.book.core.product.application.command.ProductListCursor;
+import com.book.core.product.application.command.ProductListSort;
+import com.book.core.product.application.result.ProductListItem;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.domain.Product;
 import java.math.BigDecimal;
@@ -41,31 +44,20 @@ class GetProductDetailUseCaseTest {
 
     @Test
     void 상품이_없으면_E404를_던진다() {
-        assertThatThrownBy(() -> useCase.execute(new GetProductDetailCommand(20L)))
-                .isInstanceOfSatisfying(
-                        CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PRODUCT_NOT_FOUND));
+        assertThatThrownBy(() -> useCase.execute(new GetProductDetailCommand(20L))).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PRODUCT_NOT_FOUND));
     }
 
     @Test
     void 양수가_아닌_상품_ID는_요청_오류다() {
-        assertThatThrownBy(() -> new GetProductDetailCommand(0L))
-                .isInstanceOfSatisfying(
-                        CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+        assertThatThrownBy(() -> new GetProductDetailCommand(0L)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
     }
 
     private static Product product() {
         final var book = new Book(10L, null, null, "도서명", "작가", null, "출판사", "소설", LocalDate.of(2026, 1, 1), null);
-        return new Product(
-                20L,
-                book,
-                "상품명",
-                "thumbnail.jpg",
-                new BigDecimal("20000.00"),
-                new BigDecimal("18000.00"),
-                new BigDecimal("12000.00"),
-                10);
+        return new Product(20L, book, "상품명", "thumbnail.jpg", new BigDecimal("20000.00"), new BigDecimal("18000.00"),
+            new BigDecimal("12000.00"), 10);
     }
 
     private static final class FakeProductRepository implements ProductRepositoryPort {
@@ -77,7 +69,13 @@ class GetProductDetailUseCaseTest {
         }
 
         @Override
-        public List<Product> findActiveProducts(final Long categoryId, final Long cursor, final int limit) {
+        public Optional<Product> findActiveByBookId(final Long bookId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<ProductListItem> findActiveProducts(final Long categoryId, final ProductListSort sort, final ProductListCursor cursor,
+            final int limit) {
             return List.of();
         }
     }

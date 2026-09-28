@@ -4,7 +4,7 @@
 
 - 상품 상세 조회 API는 공개 `GET /api/v1/products/{productId}`다.
 - 상품 상세 API의 경로와 응답 식별자는 모두 `productId`를 사용한다.
-- 활성 상품과 상품이 참조하는 활성 도서만 조회한다. 활성 상태는 `status = ACTIVE`다.
+- `deleted_at IS NULL`인 상품과 그 상품이 참조하는 `deleted_at IS NULL`인 도서만 조회한다.
 - 상품을 찾을 수 없거나 활성 상태가 아니면 E404 `상품을 찾을 수 없습니다.`를 반환한다.
 - 상품은 `products.book_id`로 `books.id`를 참조한다.
 - HTTP 응답 외피는 프로젝트의 `ApiResponse` 계약(`success`, `data`)을 따른다.
@@ -13,8 +13,8 @@
 ## 프로젝트 결정
 
 - API 명세서의 경로와 Path Params·응답 식별자 표기가 일치하지 않지만, 프로젝트 API에서는 모두 `productId`로 통일한다.
-- ERD의 `books`·`products`에는 `deleted_at`이 있으나 프로젝트 공통 생명주기는 `status`를 사용한다. 이번 기능은 `status = ACTIVE`만 조회한다.
-- ERD의 `status` 길이는 `VARCHAR(10)`이지만 현재 Flyway의 상태 컬럼은 `VARCHAR(16)`이다. 이번 마이그레이션은 기존 Flyway 형식을 따른다.
+- 공통 삭제 생명주기는 `BaseTimeEntity.deletedAt`과 nullable `deleted_at` 컬럼을 사용한다. V8 마이그레이션에서 `books`·`products`의 삭제 전용 `status`를 제거했다.
+- 상세 조회는 상품과 도서 모두 `deleted_at IS NULL`인지 확인한다.
 
 ## 확인 필요
 

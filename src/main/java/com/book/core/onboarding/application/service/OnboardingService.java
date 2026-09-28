@@ -4,12 +4,15 @@ import com.book.core.onboarding.application.command.GetOnboardingProgressCommand
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
+import com.book.core.onboarding.application.command.UpdatePersonalizedRecommendationConsentCommand;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.result.OnboardingQuestionResult;
+import com.book.core.onboarding.application.result.PersonalizedRecommendationConsentResult;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingQuestionUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingAnswersUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
+import com.book.core.onboarding.application.usecase.UpdatePersonalizedRecommendationConsentUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +23,7 @@ public class OnboardingService {
     private final GetOnboardingProgressUseCase getOnboardingProgressUseCase;
     private final SaveOnboardingAnswersUseCase saveOnboardingAnswersUseCase;
     private final SaveOnboardingBooksUseCase saveOnboardingBooksUseCase;
+    private final UpdatePersonalizedRecommendationConsentUseCase updatePersonalizedRecommendationConsentUseCase;
 
     public OnboardingQuestionResult getQuestion(final GetOnboardingQuestionCommand command) {
         return getOnboardingQuestionUseCase.execute(command);
@@ -35,5 +39,9 @@ public class OnboardingService {
 
     public void saveBooks(final PutOnboardingBooksCommand command) {
         saveOnboardingBooksUseCase.execute(command);
+    }
+
+    public PersonalizedRecommendationConsentResult updateConsent(final UpdatePersonalizedRecommendationConsentCommand command) {
+        return updatePersonalizedRecommendationConsentUseCase.execute(command);
     }
 }

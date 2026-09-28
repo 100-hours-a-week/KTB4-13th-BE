@@ -1,11 +1,13 @@
 package com.book.core.onboarding.api.converter;
 
+import com.book.core.onboarding.api.request.PersonalizedRecommendationConsentRequest;
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
 import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
+import com.book.core.onboarding.application.command.UpdatePersonalizedRecommendationConsentCommand;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -25,5 +27,10 @@ public class OnboardingCommandConverter {
 
     public PutOnboardingBooksCommand toPutOnboardingBooksCommand(final Long userId, final PutOnboardingBooksRequest request) {
         return new PutOnboardingBooksCommand(userId, request.bookIds());
+    }
+
+    public UpdatePersonalizedRecommendationConsentCommand toUpdatePersonalizedRecommendationConsentCommand(final Long userId,
+        final PersonalizedRecommendationConsentRequest request) {
+        return new UpdatePersonalizedRecommendationConsentCommand(userId, request.consented());
     }
 }

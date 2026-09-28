@@ -48,12 +48,14 @@ public enum ErrorCode {
                                                                                                 LogLevel.INFO), NICKNAME_GENERATION_FAILED(
                                                                                                     HttpStatus.INTERNAL_SERVER_ERROR,
                                                                                                     "NICKNAME_GENERATION_FAILED",
-                                                                                                    "닉네임을 생성하지 못했습니다.",
-                                                                                                    LogLevel.ERROR), PROVIDER_IDENTITY_CONFLICT(
-                                                                                                        HttpStatus.CONFLICT,
-                                                                                                        "PROVIDER_IDENTITY_CONFLICT",
-                                                                                                        "동일한 활성 소셜 로그인 계정이 이미 존재합니다.",
-                                                                                                        LogLevel.INFO),
+                                                                                                    "닉네임을 생성하지 못했습니다.", LogLevel.ERROR),
+    // spotless:off
+    PROVIDER_IDENTITY_CONFLICT(
+        HttpStatus.CONFLICT,
+        "PROVIDER_IDENTITY_CONFLICT",
+        "동일한 활성 소셜 로그인 계정이 이미 존재합니다.",
+        LogLevel.INFO),
+    // spotless:on
     // spotless:off
     USER_PROVIDER_USER_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_NOT_FOUND", "회원 연결의 내부 회원을 찾을 수 없습니다.",
         LogLevel.ERROR),

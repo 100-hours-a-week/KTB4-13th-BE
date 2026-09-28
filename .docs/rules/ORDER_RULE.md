@@ -23,9 +23,9 @@
 
 ## 3. API·인증 계약
 
-- 구현 경로는 요청에 따라 `POST /api/v1/orders/checkout`입니다. Notion API 명세의 `POST /api/v1/orders`와 다르므로 코드의 OpenAPI 계약에 구현 경로를 반영하며 Notion은 수정하지 않습니다.
+- 주문 생성 경로는 최신 확정 계약인 `POST /api/v1/orders`입니다.
 - Notion의 응답 예시는 `result/data/error` 외피지만, 구현 응답은 프로젝트의 `ApiResponse` 계약을 따릅니다.
-- 현재 인증 Resolver가 없으므로 회원 식별은 기존 주소·장바구니 API 규칙대로 임시 `userId` Query Parameter를 사용합니다.
+- 회원 식별은 Bearer Access Token의 JWT Principal에서 가져오며 client가 `userId`를 전달하지 않습니다.
 - 장바구니에 없는 상품은 API 명세의 `E3000 PRODUCT_MISMATCH_IN_ORDER`로 거부합니다. 주소 소유권 위반은 프로젝트의 `E403 FORBIDDEN`을 따릅니다.
 
 ## 4. 확인 필요
@@ -41,12 +41,12 @@
 
 ## 5. 주문 전체 취소
 
-- 주문 소유자는 `DELETE /api/v1/orders/{orderKey}/cancel?userId={id}`로 결제 전 주문 전체를 취소합니다. 요청 본문과 취소 사유는 없습니다.
+- 주문 소유자는 `DELETE /api/v1/orders/{orderKey}/cancel`로 결제 전 주문 전체를 취소합니다. 요청 본문과 취소 사유는 없습니다.
 - 취소 대상은 요청 회원 소유의 활성 주문이며, 주문과 모든 주문상품의 업무 상태가 `CREATED`일 때만 허용합니다. 주문·주문상품을 `CANCELED`로 전이하고 `orders.canceled_at`을 기록합니다.
 - 주문 및 주문상품 변경은 하나의 쓰기 트랜잭션에서 처리합니다. 주문 행 잠금으로 같은 주문의 동시 취소를 직렬화하고, 첫 취소 후 도착한 요청은 상태 충돌로 거부합니다. 중복 요청도 성공으로 처리하지 않습니다.
 - 주문 없음은 404 `ORDER_NOT_FOUND`, 소유자 불일치는 403 `E403`, 취소할 수 없는 상태와 중복 취소는 409 `ORDER_CANNOT_BE_CANCELED`로 응답합니다. 성공 응답은 기존 `ApiResponse<Void>` 계약을 사용합니다.
 - 결제·환불, 재고 복구, 쿠폰·포인트 정산, 장바구니 복원은 이 기능에서 수행하지 않습니다. 주문 금액과 상품 스냅샷은 변경하지 않습니다.
-- 현재 인증 Resolver가 없어 기존 규칙대로 임시 `userId` Query Parameter를 사용합니다.
+- 취소 요청도 Bearer Access Token의 JWT Principal로 주문 소유자를 식별합니다.
 
 ### 취소 문서 확인 필요
 

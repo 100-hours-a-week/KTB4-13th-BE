@@ -5,9 +5,9 @@ import com.book.common.exception.ErrorCode;
 import java.util.List;
 
 // @formatter:off
-public record CreateOrderCommand(Long userId, List<CreateOrderItemCommand> items) {
+public record CreateOrderCommand(Long userId, Long addressId, List<CreateOrderItemCommand> items) {
     public CreateOrderCommand {
-        if (userId == null || userId <= 0 || items == null || items.isEmpty()) {
+        if (userId == null || userId <= 0 || addressId == null || addressId <= 0 || items == null || items.isEmpty()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (items.stream().anyMatch(item -> item == null)) {

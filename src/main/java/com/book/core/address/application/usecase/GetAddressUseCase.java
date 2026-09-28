@@ -21,4 +21,12 @@ public class GetAddressUseCase {
         }
         return addressRepository.findActiveDefaultByUserId(userId).map(GetAddressItemResult::from);
     }
+
+    @Transactional(readOnly = true)
+    public Optional<GetAddressItemResult> execute(final Long userId, final Long addressId) {
+        if (userId == null || userId <= 0 || addressId == null || addressId <= 0) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        return addressRepository.findActiveByIdAndUserId(addressId, userId).map(GetAddressItemResult::from);
+    }
 }

@@ -6,12 +6,18 @@ import com.book.core.address.application.result.GetAddressItemResult;
 import com.book.core.address.application.usecase.GetAddressUseCase;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
+import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
-import com.book.core.order.application.command.CancelOrderCommand;
+import com.book.core.order.application.command.GetOrderCommand;
+import com.book.core.order.application.command.GetOrdersCommand;
 import com.book.core.order.application.result.CreateOrderResult;
-import com.book.core.order.application.usecase.CreateOrderUseCase;
+import com.book.core.order.application.result.GetOrderResult;
+import com.book.core.order.application.result.GetOrdersResult;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
+import com.book.core.order.application.usecase.CreateOrderUseCase;
+import com.book.core.order.application.usecase.GetOrderUseCase;
+import com.book.core.order.application.usecase.GetOrdersUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.product.application.command.GetProductDetailCommand;
@@ -32,16 +38,26 @@ public class OrderService {
     private final GetProductDetailUseCase getProductDetailUseCase;
     private final CreateOrderUseCase createOrderUseCase;
     private final CancelOrderUseCase cancelOrderUseCase;
+    private final GetOrdersUseCase getOrdersUseCase;
+    private final GetOrderUseCase getOrderUseCase;
+
+    public GetOrdersResult getOrders(final GetOrdersCommand command) {
+        return getOrdersUseCase.execute(command);
+    }
+
+    public GetOrderResult getOrder(final GetOrderCommand command) {
+        return getOrderUseCase.execute(command);
+    }
 
     public void cancelOrder(final CancelOrderCommand command) {
         cancelOrderUseCase.execute(command);
     }
 
     public CreateOrderResult createOrder(final CreateOrderCommand command) {
-        // 기본 주소가 없어도 주문을 생성하고, 주소 존재 여부는 결제 가능 여부로 반환
-        final OrderAddress defaultAddress =
-            getAddressUseCase.execute(command.userId()).map((final GetAddressItemResult address) -> OrderAddress
-                .from(address.addressPostalCode(), address.address(), address.detailAddress())).orElse(null);
+        final GetAddressItemResult selectedAddress =
+            getAddressUseCase.execute(command.userId(), command.addressId()).orElseThrow(() -> new CoreException(ErrorCode.FORBIDDEN));
+        final OrderAddress orderAddress =
+            OrderAddress.from(selectedAddress.addressPostalCode(), selectedAddress.address(), selectedAddress.detailAddress());
 
         // 주문 요청 상품이 사용자의 장바구니에 포함됐는지 확인
         final Set<Long> cartProductIds =
@@ -64,7 +80,7 @@ public class OrderService {
             productsByProductId.put(entry.getKey(), product);
         }
 
-        final Order order = Order.create(command.userId(), "order_" + UUID.randomUUID(), defaultAddress);
+        final Order order = Order.create(command.userId(), "order_" + UUID.randomUUID(), orderAddress);
         for (final CreateOrderItemCommand item : command.items()) {
             final GetProductDetailResult product = productsByProductId.get(item.productId());
             order.addItem(item.productId(), product.itemName(), product.thumbnailUrl(), product.author(), product.salePrice(),

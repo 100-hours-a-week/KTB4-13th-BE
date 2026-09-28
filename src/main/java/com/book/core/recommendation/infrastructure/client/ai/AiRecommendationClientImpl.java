@@ -54,7 +54,14 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
                 .body(aiRequest).exchange((httpRequest, response) -> {
                     final HttpStatusCode status = response.getStatusCode();
                     if (status.is2xxSuccessful()) {
-                        return response.bodyTo(AiChatResponse.class);
+                        final AiChatEnvelope envelope = response.bodyTo(AiChatEnvelope.class);
+                        if (envelope == null || envelope.data() == null) {
+                            throw new CoreException(ErrorCode.AI_RECOMMENDATION_FAILURE);
+                        }
+                        return envelope.data();
+                    }
+                    if (status.value() == 401) {
+                        throw new CoreException(ErrorCode.AI_SERVICE_UNAUTHORIZED);
                     }
                     if (status.value() == 422 && !isRetry) {
                         return null;

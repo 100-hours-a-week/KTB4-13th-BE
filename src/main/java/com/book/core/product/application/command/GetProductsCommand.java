@@ -18,8 +18,7 @@ public record GetProductsCommand(Long categoryId, ProductListSort sort, ProductL
             if (cursor.productId() == null || cursor.productId() <= 0) {
                 throw new CoreException(ErrorCode.INVALID_REQUEST);
             }
-            if (sort == ProductListSort.CREATED_AT
-                    && (cursor.salesQuantity() != null || cursor.reviewCount() != null || cursor.reviewRate() != null)) {
+            if (sort == ProductListSort.CREATED_AT && cursor.salesQuantity() != null) {
                 throw new CoreException(ErrorCode.INVALID_REQUEST);
             }
             if (sort == ProductListSort.POPULARITY && !cursor.hasPopularityKeys()) {

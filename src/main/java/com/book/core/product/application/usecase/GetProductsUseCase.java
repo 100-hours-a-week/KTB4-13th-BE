@@ -37,9 +37,7 @@ public class GetProductsUseCase {
         } else {
             final var lastItem = page.getLast();
             if (command.sort() == ProductListSort.POPULARITY) {
-                nextCursor =
-                    new ProductListCursor(lastItem.product().id(), lastItem.salesQuantity(), lastItem.reviewCount(), lastItem.reviewRate())
-                        .toPopularityToken();
+                nextCursor = new ProductListCursor(lastItem.product().id(), lastItem.salesQuantity()).toPopularityToken();
             } else {
                 nextCursor = String.valueOf(lastItem.product().id());
             }

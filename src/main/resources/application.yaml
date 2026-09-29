@@ -6,6 +6,21 @@ spring:
   config:
     import: classpath:persistence.yml,classpath:ai.yml
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-components: never
+      show-details: never
+
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:local}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}
+
 app:
   cors:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}

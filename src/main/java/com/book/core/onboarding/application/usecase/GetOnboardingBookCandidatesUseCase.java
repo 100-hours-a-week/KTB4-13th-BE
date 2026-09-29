@@ -1,7 +1,7 @@
 package com.book.core.onboarding.application.usecase;
 
 import com.book.common.annotation.UseCase;
-import com.book.core.book.application.usecase.FindBooksByIdsUseCase;
+import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.book.domain.Book;
 import com.book.core.onboarding.application.port.OnboardingBookCandidateRepositoryPort;
 import com.book.core.onboarding.application.result.OnboardingBookCandidateResult;
@@ -17,14 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GetOnboardingBookCandidatesUseCase {
     private final OnboardingBookCandidateRepositoryPort candidateRepository;
-    private final FindBooksByIdsUseCase findBooksByIdsUseCase;
+    private final GetBooksUseCase getBooksUseCase;
 
     @Transactional(readOnly = true)
     public List<OnboardingBookCandidateResult> execute() {
         final List<OnboardingBookCandidate> candidates = candidateRepository.findAllOrderByDisplayOrder();
         final List<Long> bookIds = candidates.stream().map(OnboardingBookCandidate::bookId).toList();
         final Map<Long, Book> booksById =
-            findBooksByIdsUseCase.execute(bookIds).stream().collect(Collectors.toMap(Book::id, Function.identity()));
+            getBooksUseCase.execute(bookIds).stream().collect(Collectors.toMap(Book::id, Function.identity()));
 
         return candidates.stream().filter(candidate -> booksById.containsKey(candidate.bookId()))
             .map(candidate -> toResult(booksById.get(candidate.bookId()))).toList();

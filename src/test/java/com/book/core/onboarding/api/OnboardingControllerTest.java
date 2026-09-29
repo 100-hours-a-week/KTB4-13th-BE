@@ -5,16 +5,19 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.book.common.config.security.UserIdMvcConfig;
 import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
+import com.book.core.onboarding.application.command.RecordPersonalizationAgreementCommand;
 import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
 import com.book.core.onboarding.application.result.OnboardingBookCandidateResult;
 import com.book.core.onboarding.application.result.OnboardingOptionResult;
@@ -36,15 +39,12 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @WebMvcTest(OnboardingController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({OnboardingCommandConverter.class, OnboardingResultConverter.class, OnboardingControllerTest.TestWebMvcConfig.class})
+@Import({OnboardingCommandConverter.class, OnboardingResultConverter.class, UserIdMvcConfig.class})
 class OnboardingControllerTest {
     private static final Long USER_ID = 42L;
 
@@ -228,17 +228,20 @@ class OnboardingControllerTest {
             .andExpect(jsonPath("$.data.candidates").isEmpty());
     }
 
+    @Test
+    void 본문_없는_개인화_동의_요청을_JWT_사용자의_커맨드로_전달한다() throws Exception {
+        authenticateAs(USER_ID);
+
+        mvc.perform(post("/api/v1/onboarding/personalization-agreement")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(onboardingService).recordPersonalizationAgreement(new RecordPersonalizationAgreementCommand(USER_ID));
+    }
+
     private void authenticateAs(final Long userId) {
         final Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "none").claim("sub", userId.toString()).issuedAt(Instant.now())
             .expiresAt(Instant.now().plusSeconds(3600)).build();
         final AbstractAuthenticationToken authentication = new JwtAuthenticationToken(jwt);
         SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
-
-    static class TestWebMvcConfig implements WebMvcConfigurer {
-        @Override
-        public void addArgumentResolvers(final List<HandlerMethodArgumentResolver> resolvers) {
-            resolvers.add(new AuthenticationPrincipalArgumentResolver());
-        }
     }
 }

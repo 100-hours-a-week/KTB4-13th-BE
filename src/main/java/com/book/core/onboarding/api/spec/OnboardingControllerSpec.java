@@ -19,8 +19,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @Tag(name = "Onboarding", description = "온보딩 질문/응답 API")
@@ -35,7 +33,7 @@ public interface OnboardingControllerSpec {
             description = "선행 질문(Question 3)에 대한 답변이 아직 없어 조회할 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<OnboardingQuestionResponse>> getQuestion(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<ApiResponse<OnboardingQuestionResponse>> getQuestion(@Parameter(hidden = true) final Long userId,
         @Parameter(in = ParameterIn.PATH, required = true, example = "1") @Positive @PathVariable("questionId") final Long questionId);
 
     @Operation(summary = "온보딩 진행 정보 조회", description = "요청 회원의 활성 온보딩 진행 상태, 질문별 응답, 선택 도서 목록을 조회합니다.")
@@ -45,7 +43,7 @@ public interface OnboardingControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "진행 중인 온보딩이 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<OnboardingProgressResponse>> getProgress(@AuthenticationPrincipal final Jwt jwt);
+    ResponseEntity<ApiResponse<OnboardingProgressResponse>> getProgress(@Parameter(hidden = true) final Long userId);
 
     @Operation(summary = "온보딩 답변 등록/수정",
         description = "questionId에 대한 답변을 optionIds로 교체합니다. 활성 온보딩이 없으면 새로 시작합니다. "
@@ -60,7 +58,7 @@ public interface OnboardingControllerSpec {
             description = "선택지가 해당 질문에 속하지 않거나, 선행 질문(Question 3)에 대한 답변이 아직 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Void>> saveAnswers(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<ApiResponse<Void>> saveAnswers(@Parameter(hidden = true) final Long userId,
         @Parameter(in = ParameterIn.PATH, required = true, example = "1") @Positive @PathVariable("questionId") final Long questionId,
         @RequestBody(description = "선택한 옵션 ID 목록", required = true,
             content = @Content(schema = @Schema(implementation = PutOnboardingAnswersRequest.class)))
@@ -72,7 +70,7 @@ public interface OnboardingControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<OnboardingBookCandidatesResponse>> getBookCandidates(@AuthenticationPrincipal final Jwt jwt);
+    ResponseEntity<ApiResponse<OnboardingBookCandidatesResponse>> getBookCandidates(@Parameter(hidden = true) final Long userId);
 
     @Operation(summary = "온보딩 도서 선택 저장 및 완료",
         description = "선택한 도서 목록을 저장합니다. bookIds는 null일 수 없고 중복을 허용하지 않으며, 빈 배열은 허용합니다. "
@@ -84,8 +82,17 @@ public interface OnboardingControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "진행 중인 온보딩이 없거나 존재하지 않는 도서가 포함됨"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Void>> saveBooks(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<ApiResponse<Void>> saveBooks(@Parameter(hidden = true) final Long userId,
         @RequestBody(description = "선택한 도서 ID 목록", required = true,
             content = @Content(schema = @Schema(implementation = PutOnboardingBooksRequest.class)))
         @Valid final PutOnboardingBooksRequest request);
+
+    @Operation(summary = "개인화 추천 동의 기록",
+        description = "요청 회원의 개인화 추천 동의를 활성 개인화 약관에 기록합니다. 요청 본문은 없으며, 동의하지 않는 회원은 호출하지 않습니다. " + "이미 동의한 회원이 다시 호출해도 새 기록 없이 성공합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "개인화 추천 동의 기록 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<ApiResponse<Void>> recordPersonalizationAgreement(@Parameter(hidden = true) final Long userId);
 }

@@ -3,16 +3,20 @@ package com.book.core.cart.api;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.book.common.config.security.UserIdMvcConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.cart.api.converter.CartCommandConverter;
 import com.book.core.cart.api.converter.CartResultConverter;
 import com.book.core.cart.application.command.AddCartItemCommand;
+import com.book.core.cart.application.command.DeleteCartItemCommand;
+import com.book.core.cart.application.command.DeleteCartItemsCommand;
 import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.service.CartService;
 import java.time.Instant;
@@ -20,22 +24,18 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @WebMvcTest(CartController.class)
-@Import({CartCommandConverter.class, CartResultConverter.class, CartControllerTest.AuthenticationPrincipalTestConfig.class})
+@Import({CartCommandConverter.class, CartResultConverter.class, UserIdMvcConfig.class})
 @ActiveProfiles("test")
 class CartControllerTest {
     @Autowired
@@ -104,14 +104,6 @@ class CartControllerTest {
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
     }
 
-    @TestConfiguration
-    static class AuthenticationPrincipalTestConfig implements WebMvcConfigurer {
-        @Override
-        public void addArgumentResolvers(final List<HandlerMethodArgumentResolver> resolvers) {
-            resolvers.add(new AuthenticationPrincipalArgumentResolver());
-        }
-    }
-
     @Test
     void 장바구니_상품_수량_변경은_JWT_회원_ID와_경로_ID와_수량을_Command로_전달한다() throws Exception {
         authenticateAs(42L);
@@ -165,5 +157,73 @@ class CartControllerTest {
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(cartService);
+    }
+
+    @Test
+    void 단건_삭제는_JWT_회원_ID를_사용하고_userId_쿼리_값을_무시한다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(delete("/api/v1/cart/items/11").param("userId", "99")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true));
+
+        verify(cartService).deleteCartItem(new DeleteCartItemCommand(42L, 11L));
+    }
+
+    @Test
+    void 단건_삭제_요청의_cartItemId가_양수가_아니면_400을_응답한다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(delete("/api/v1/cart/items/0")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(cartService);
+    }
+
+    @Test
+    void 삭제할_장바구니_상품이_없으면_404를_응답한다() throws Exception {
+        authenticateAs(42L);
+        doThrow(new CoreException(ErrorCode.CART_ITEM_NOT_FOUND)).when(cartService).deleteCartItem(new DeleteCartItemCommand(42L, 11L));
+
+        mvc.perform(delete("/api/v1/cart/items/11")).andExpect(status().isNotFound()).andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.code").value("E401"));
+    }
+
+    @Test
+    void 다건_삭제는_JWT_회원_ID와_요청_ID를_Command로_전달한다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(delete("/api/v1/cart/items").param("userId", "99").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"cartItemIds\":[11,12,11]}")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
+
+        verify(cartService).deleteCartItems(new DeleteCartItemsCommand(42L, List.of(11L, 12L, 11L)));
+    }
+
+    @Test
+    void 다건_삭제_목록이_비어_있으면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(delete("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"cartItemIds\":[]}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(cartService);
+    }
+
+    @Test
+    void 다건_삭제_목록에_양수가_아닌_ID가_있으면_400을_응답한다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(delete("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"cartItemIds\":[11,0]}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(cartService);
+    }
+
+    @Test
+    void 다건_삭제_대상_중_하나라도_없으면_404를_응답한다() throws Exception {
+        authenticateAs(42L);
+        doThrow(new CoreException(ErrorCode.CART_ITEM_NOT_FOUND)).when(cartService)
+            .deleteCartItems(new DeleteCartItemsCommand(42L, List.of(11L, 12L)));
+
+        mvc.perform(delete("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"cartItemIds\":[11,12]}"))
+            .andExpect(status().isNotFound()).andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E401"));
     }
 }

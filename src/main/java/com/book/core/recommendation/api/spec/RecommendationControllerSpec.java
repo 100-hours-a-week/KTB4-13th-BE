@@ -20,8 +20,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 @Tag(name = "Recommendation", description = "대화형 도서 추천 API")
 public interface RecommendationControllerSpec {
@@ -35,7 +33,7 @@ public interface RecommendationControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI 추천 서비스 일시 불가"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "504", description = "AI 추천 서비스 응답 지연")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@Parameter(hidden = true) final Long userId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ChatRecommendationRequest.class)))
         @Valid final ChatRecommendationRequest request);
 
@@ -45,7 +43,7 @@ public interface RecommendationControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않거나 다른 사용자의 카드")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<RecommendationCardDetailResponse>> getCard(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<ApiResponse<RecommendationCardDetailResponse>> getCard(@Parameter(hidden = true) final Long userId,
         @Parameter(required = true, example = "1") @Positive final Long recommendationCardId);
 
     @Operation(summary = "홈 추천 피드 조회",

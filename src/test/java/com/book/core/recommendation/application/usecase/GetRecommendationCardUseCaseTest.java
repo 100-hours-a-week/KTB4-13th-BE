@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.book.application.port.BookRepositoryPort;
-import com.book.core.book.application.usecase.FindBooksByIdsUseCase;
+import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.book.domain.Book;
 import com.book.core.product.application.port.ProductRepositoryPort;
 import com.book.core.product.application.usecase.FindProductByBookIdUseCase;
@@ -28,7 +28,7 @@ class GetRecommendationCardUseCaseTest {
     private final FakeBookRepositoryPort bookRepository = new FakeBookRepositoryPort();
     private final FakeProductRepositoryPort productRepository = new FakeProductRepositoryPort();
     private final GetRecommendationCardUseCase useCase = new GetRecommendationCardUseCase(cardRepository,
-        new FindBooksByIdsUseCase(bookRepository), new FindProductByBookIdUseCase(productRepository));
+        new GetBooksUseCase(bookRepository), new FindProductByBookIdUseCase(productRepository));
 
     @Test
     void 소유자의_카드_상세를_Book과_Product_정보로_조회한다() {

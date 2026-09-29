@@ -19,6 +19,11 @@ public class CartItemRepositoryAdapter implements CartItemRepositoryPort {
     }
 
     @Override
+    public List<CartItem> findActiveByUserIdAndIds(final Long userId, final List<Long> cartItemIds) {
+        return jpaRepository.findActiveByUserIdAndIds(userId, cartItemIds);
+    }
+
+    @Override
     public Optional<CartItem> findByCartIdAndProductId(final Long cartId, final Long productId) {
         return jpaRepository.findByCartIdAndProductId(cartId, productId);
     }

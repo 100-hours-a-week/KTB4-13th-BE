@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @UseCase
 @RequiredArgsConstructor
-public class FindBooksByIdsUseCase {
+public class GetBooksUseCase {
     private final BookRepositoryPort bookRepository;
 
     @Transactional(readOnly = true)

@@ -1,4 +1,4 @@
-package com.book.core.user.infrastructure.nickname;
+package com.book.core.user.infrastructure.nickname.generator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -6,8 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import com.book.core.user.domain.User;
 import org.junit.jupiter.api.Test;
 
-class RandomNicknameGeneratorTest {
-    private final RandomNicknameGenerator generator = new RandomNicknameGenerator();
+class NicknameGeneratorTest {
+    private final NicknameGenerator generator = new NicknameGenerator();
 
     @Test
     void 한글_단어와_숫자_suffix를_조합해_User_규칙을_만족하는_후보를_생성한다() {

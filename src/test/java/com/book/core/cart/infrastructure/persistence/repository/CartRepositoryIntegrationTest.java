@@ -6,10 +6,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.cart.application.command.AddCartItemCommand;
+import com.book.core.cart.application.command.DeleteCartItemCommand;
+import com.book.core.cart.application.command.DeleteCartItemsCommand;
 import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
+import com.book.core.cart.application.usecase.DeleteCartItemUseCase;
+import com.book.core.cart.application.usecase.DeleteCartItemsUseCase;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.cart.application.usecase.ModifyCartItemUseCase;
 import java.sql.SQLException;
@@ -42,6 +46,12 @@ class CartRepositoryIntegrationTest {
 
     @Autowired
     ModifyCartItemUseCase modifyCartItemUseCase;
+
+    @Autowired
+    DeleteCartItemUseCase deleteCartItemUseCase;
+
+    @Autowired
+    DeleteCartItemsUseCase deleteCartItemsUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -145,6 +155,89 @@ class CartRepositoryIntegrationTest {
         assertThat(quantityOf(cartItemId)).isEqualTo(1);
     }
 
+    @Test
+    void 단건_삭제는_요청_회원의_활성_상품에_deleted_at을_기록하고_행을_유지한다() {
+        createCart(1007L);
+        createProduct(2061L, 3061L, 10);
+        addUseCase.execute(new AddCartItemCommand(1007L, 2061L, 2));
+        final Long cartItemId = cartItemIdOf(1007L, 2061L);
+
+        deleteCartItemUseCase.execute(new DeleteCartItemCommand(1007L, cartItemId));
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cart_item WHERE id = ?", Integer.class, cartItemId)).isEqualTo(1);
+        assertThat(deletedCount(cartItemId)).isEqualTo(1);
+        assertThat(quantityOf(cartItemId)).isEqualTo(2);
+    }
+
+    @Test
+    void 단건_삭제는_소유하지_않거나_이미_삭제된_상품을_변경하지_않는다() {
+        createCart(1008L);
+        createProduct(2062L, 3062L, 10);
+        addUseCase.execute(new AddCartItemCommand(1008L, 2062L, 2));
+        final Long cartItemId = cartItemIdOf(1008L, 2062L);
+
+        assertThatThrownBy(() -> deleteCartItemUseCase.execute(new DeleteCartItemCommand(1999L, cartItemId))).isInstanceOfSatisfying(
+            CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(deletedCount(cartItemId)).isZero();
+
+        jdbc.update("UPDATE cart_item SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", cartItemId);
+        assertThatThrownBy(() -> deleteCartItemUseCase.execute(new DeleteCartItemCommand(1008L, cartItemId))).isInstanceOfSatisfying(
+            CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(deletedCount(cartItemId)).isEqualTo(1);
+    }
+
+    @Test
+    void 다건_삭제는_중복_ID도_한번만_처리하고_행을_물리_삭제하지_않는다() {
+        createCart(1009L);
+        createProduct(2063L, 3063L, 10);
+        createProduct(2064L, 3064L, 10);
+        addUseCase.execute(new AddCartItemCommand(1009L, 2063L, 2));
+        addUseCase.execute(new AddCartItemCommand(1009L, 2064L, 3));
+        final Long firstItemId = cartItemIdOf(1009L, 2063L);
+        final Long secondItemId = cartItemIdOf(1009L, 2064L);
+
+        deleteCartItemsUseCase.execute(new DeleteCartItemsCommand(1009L, java.util.List.of(firstItemId, secondItemId, firstItemId)));
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cart_item WHERE id IN (?, ?)", Integer.class, firstItemId, secondItemId))
+            .isEqualTo(2);
+        assertThat(deletedCount(firstItemId)).isEqualTo(1);
+        assertThat(deletedCount(secondItemId)).isEqualTo(1);
+        assertThat(quantityOf(firstItemId)).isEqualTo(2);
+        assertThat(quantityOf(secondItemId)).isEqualTo(3);
+    }
+
+    @Test
+    void 다건_삭제_대상에_타인_소유_또는_이미_삭제된_상품이_포함되면_전체를_변경하지_않는다() {
+        createCart(1010L);
+        createCart(1011L);
+        createProduct(2065L, 3065L, 10);
+        createProduct(2066L, 3066L, 10);
+        addUseCase.execute(new AddCartItemCommand(1010L, 2065L, 2));
+        addUseCase.execute(new AddCartItemCommand(1011L, 2066L, 3));
+        final Long ownedItemId = cartItemIdOf(1010L, 2065L);
+        final Long foreignItemId = cartItemIdOf(1011L, 2066L);
+
+        assertThatThrownBy(
+            () -> deleteCartItemsUseCase.execute(new DeleteCartItemsCommand(1010L, java.util.List.of(ownedItemId, foreignItemId))))
+            .isInstanceOfSatisfying(CoreException.class,
+                exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(deletedCount(ownedItemId)).isZero();
+        assertThat(deletedCount(foreignItemId)).isZero();
+
+        jdbc.update("UPDATE cart_item SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", foreignItemId);
+        assertThatThrownBy(
+            () -> deleteCartItemsUseCase.execute(new DeleteCartItemsCommand(1010L, java.util.List.of(ownedItemId, foreignItemId))))
+            .isInstanceOfSatisfying(CoreException.class,
+                exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(deletedCount(ownedItemId)).isZero();
+        assertThat(deletedCount(foreignItemId)).isEqualTo(1);
+
+        assertThatThrownBy(() -> deleteCartItemsUseCase.execute(new DeleteCartItemsCommand(1010L, java.util.List.of(ownedItemId, 999999L))))
+            .isInstanceOfSatisfying(CoreException.class,
+                exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(deletedCount(ownedItemId)).isZero();
+    }
+
     private void createCart(final long userId) {
         jdbc.update("INSERT INTO carts (user_id) VALUES (?)", userId);
     }
@@ -164,5 +257,18 @@ class CartRepositoryIntegrationTest {
 
     private int quantityOf(final Long cartItemId) {
         return jdbc.queryForObject("SELECT quantity FROM cart_item WHERE id = ?", Integer.class, cartItemId);
+    }
+
+    private Long cartItemIdOf(final long userId, final long productId) {
+        return jdbc.queryForObject("""
+                SELECT item.id
+                FROM cart_item item
+                JOIN carts cart ON cart.id = item.cart_id
+                WHERE cart.user_id = ? AND item.product_id = ?
+                """, Long.class, userId, productId);
+    }
+
+    private int deletedCount(final Long cartItemId) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM cart_item WHERE id = ? AND deleted_at IS NOT NULL", Integer.class, cartItemId);
     }
 }

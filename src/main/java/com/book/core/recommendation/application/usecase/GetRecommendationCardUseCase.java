@@ -3,7 +3,7 @@ package com.book.core.recommendation.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.core.book.application.usecase.FindBooksByIdsUseCase;
+import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.book.domain.Book;
 import com.book.core.product.application.usecase.FindProductByBookIdUseCase;
 import com.book.core.recommendation.application.command.GetRecommendationCardCommand;
@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GetRecommendationCardUseCase {
     private final RecommendationCardRepositoryPort recommendationCardRepository;
-    private final FindBooksByIdsUseCase findBooksByIdsUseCase;
+    private final GetBooksUseCase getBooksUseCase;
     private final FindProductByBookIdUseCase findProductByBookIdUseCase;
 
     @Transactional(readOnly = true)
@@ -27,7 +27,7 @@ public class GetRecommendationCardUseCase {
             recommendationCardRepository.findById(command.recommendationCardId()).filter(found -> found.isOwnedBy(command.userId()))
                 .orElseThrow(() -> new CoreException(ErrorCode.RECOMMENDATION_CARD_NOT_FOUND));
 
-        final Book book = findBooksByIdsUseCase.execute(List.of(card.bookId())).stream().findFirst()
+        final Book book = getBooksUseCase.execute(List.of(card.bookId())).stream().findFirst()
             .orElseThrow(() -> new CoreException(ErrorCode.RECOMMENDATION_CARD_NOT_FOUND));
 
         final var product = findProductByBookIdUseCase.execute(card.bookId());

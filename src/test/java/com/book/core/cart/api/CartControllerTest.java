@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.book.common.config.security.UserIdMvcConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.cart.api.converter.CartCommandConverter;
@@ -16,26 +17,21 @@ import com.book.core.cart.application.command.AddCartItemCommand;
 import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.service.CartService;
 import java.time.Instant;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @WebMvcTest(CartController.class)
-@Import({CartCommandConverter.class, CartResultConverter.class, CartControllerTest.AuthenticationPrincipalTestConfig.class})
+@Import({CartCommandConverter.class, CartResultConverter.class, UserIdMvcConfig.class})
 @ActiveProfiles("test")
 class CartControllerTest {
     @Autowired
@@ -102,14 +98,6 @@ class CartControllerTest {
         final Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "none").claim("sub", userId.toString()).issuedAt(Instant.now())
             .expiresAt(Instant.now().plusSeconds(3600)).build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
-    }
-
-    @TestConfiguration
-    static class AuthenticationPrincipalTestConfig implements WebMvcConfigurer {
-        @Override
-        public void addArgumentResolvers(final List<HandlerMethodArgumentResolver> resolvers) {
-            resolvers.add(new AuthenticationPrincipalArgumentResolver());
-        }
     }
 
     @Test

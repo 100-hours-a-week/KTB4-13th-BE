@@ -17,8 +17,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @Tag(name = "Cart", description = "장바구니 API")
@@ -29,7 +27,7 @@ public interface CartControllerSpec {
     @ApiResponses({@ApiResponse(responseCode = "200", description = "추가 성공"), @ApiResponse(responseCode = "400", description = "요청 오류"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<Void>> addCartItem(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> addCartItem(@Parameter(hidden = true) final Long userId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = AddCartItemRequest.class)))
         @Valid final AddCartItemRequest request);
 
@@ -40,7 +38,7 @@ public interface CartControllerSpec {
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @ApiResponse(responseCode = "404", description = "장바구니 상품 또는 상품을 찾을 수 없음")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<Void>> modifyCartItem(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> modifyCartItem(@Parameter(hidden = true) final Long userId,
         @Parameter(in = ParameterIn.PATH, required = true, example = "11") @Positive @PathVariable("cartItemId") final Long cartItemId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ModifyCartItemRequest.class)))
         @Valid final ModifyCartItemRequest request);
@@ -50,5 +48,5 @@ public interface CartControllerSpec {
     @ApiResponses({@ApiResponse(responseCode = "200", description = "장바구니 조회 성공"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"), @ApiResponse(responseCode = "500", description = "장바구니 조회 실패")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<CartResponse>> getCart(@AuthenticationPrincipal final Jwt jwt);
+    ResponseEntity<com.book.common.response.ApiResponse<CartResponse>> getCart(@Parameter(hidden = true) final Long userId);
 }

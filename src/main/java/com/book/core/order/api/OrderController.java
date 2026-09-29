@@ -1,5 +1,6 @@
 package com.book.core.order.api;
 
+import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.order.api.converter.OrderCommandConverter;
 import com.book.core.order.api.converter.OrderResultConverter;
@@ -18,8 +19,6 @@ import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,13 +40,12 @@ class OrderController implements OrderControllerSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<OrderListResponse>> getOrders(@AuthenticationPrincipal final Jwt jwt,
+    public ResponseEntity<ApiResponse<OrderListResponse>> getOrders(@UserId final Long userId,
         @RequestParam(value = "status", required = false) final OrderStatus status,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "from", required = false) final LocalDateTime from,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "to", required = false) final LocalDateTime to,
         @RequestParam(value = "cursor", required = false) final String cursor,
         @RequestParam(value = "limit", required = false) final Integer limit) {
-        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toGetOrdersCommand(userId, status, from, to, cursor, limit);
         final var response = resultConverter.toOrderListResponse(orderService.getOrders(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -55,9 +53,8 @@ class OrderController implements OrderControllerSpec {
 
     @Override
     @GetMapping("/{orderKey}")
-    public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrder(@AuthenticationPrincipal final Jwt jwt,
+    public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrder(@UserId final Long userId,
         @NotBlank @Size(max = 255) @PathVariable("orderKey") final String orderKey) {
-        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toGetOrderCommand(userId, orderKey);
         final var response = resultConverter.toOrderDetailResponse(orderService.getOrder(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -65,9 +62,8 @@ class OrderController implements OrderControllerSpec {
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<CreateOrderResponse>> createOrder(@AuthenticationPrincipal final Jwt jwt,
+    public ResponseEntity<ApiResponse<CreateOrderResponse>> createOrder(@UserId final Long userId,
         @Valid @RequestBody final CreateOrderRequest request) {
-        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toCreateOrderCommand(userId, request);
         final var result = orderService.createOrder(command);
         final var response = resultConverter.toCreateOrderResponse(result);
@@ -76,9 +72,8 @@ class OrderController implements OrderControllerSpec {
 
     @Override
     @DeleteMapping("/{orderKey}/cancel")
-    public ResponseEntity<ApiResponse<Void>> cancelOrder(@AuthenticationPrincipal final Jwt jwt,
+    public ResponseEntity<ApiResponse<Void>> cancelOrder(@UserId final Long userId,
         @NotBlank @Size(max = 255) @PathVariable("orderKey") final String orderKey) {
-        final Long userId = Long.parseLong(jwt.getSubject());
         final CancelOrderCommand command = commandConverter.toCancelOrderCommand(userId, orderKey);
         orderService.cancelOrder(command);
         return ResponseEntity.ok(ApiResponse.ok());

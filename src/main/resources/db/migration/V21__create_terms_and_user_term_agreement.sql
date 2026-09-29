@@ -25,3 +25,14 @@ CREATE TABLE user_term_agreement (
     CONSTRAINT fk_user_term_agreement_user_id FOREIGN KEY (user_id) REFERENCES users (id),
     CONSTRAINT fk_user_term_agreement_term_id FOREIGN KEY (term_id) REFERENCES terms (id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+INSERT INTO terms (term_type, title, content, version, is_required, is_active, display_order)
+SELECT 'PERSONALIZED_RECOMMENDATION',
+       '개인화 도서 추천을 위한 정보 수집·이용 동의',
+       '이용 목적: 독서 취향 분석 및 개인화 도서 추천 제공
+수집·이용 항목: 온보딩 질문 응답, 선택한 관심 도서',
+       '1.0',
+       b'0',
+       b'1',
+       1
+WHERE NOT EXISTS (SELECT 1 FROM terms WHERE term_type = 'PERSONALIZED_RECOMMENDATION');

@@ -16,9 +16,11 @@ import com.book.core.cart.api.converter.CartCommandConverter;
 import com.book.core.cart.api.converter.CartResultConverter;
 import com.book.core.cart.application.command.AddCartItemCommand;
 import com.book.core.cart.application.command.DeleteCartItemCommand;
+import com.book.core.cart.application.command.DeleteCartItemsCommand;
 import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.service.CartService;
 import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -183,5 +185,45 @@ class CartControllerTest {
 
         mvc.perform(delete("/api/v1/cart/items/11")).andExpect(status().isNotFound()).andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.code").value("E401"));
+    }
+
+    @Test
+    void 다건_삭제는_JWT_회원_ID와_요청_ID를_Command로_전달한다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(delete("/api/v1/cart/items").param("userId", "99").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"cartItemIds\":[11,12,11]}")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
+
+        verify(cartService).deleteCartItems(new DeleteCartItemsCommand(42L, List.of(11L, 12L, 11L)));
+    }
+
+    @Test
+    void 다건_삭제_목록이_비어_있으면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(delete("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"cartItemIds\":[]}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(cartService);
+    }
+
+    @Test
+    void 다건_삭제_목록에_양수가_아닌_ID가_있으면_400을_응답한다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(delete("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"cartItemIds\":[11,0]}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(cartService);
+    }
+
+    @Test
+    void 다건_삭제_대상_중_하나라도_없으면_404를_응답한다() throws Exception {
+        authenticateAs(42L);
+        doThrow(new CoreException(ErrorCode.CART_ITEM_NOT_FOUND)).when(cartService)
+            .deleteCartItems(new DeleteCartItemsCommand(42L, List.of(11L, 12L)));
+
+        mvc.perform(delete("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"cartItemIds\":[11,12]}"))
+            .andExpect(status().isNotFound()).andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E401"));
     }
 }

@@ -5,6 +5,7 @@ import com.book.common.response.ApiResponse;
 import com.book.core.cart.api.converter.CartCommandConverter;
 import com.book.core.cart.api.converter.CartResultConverter;
 import com.book.core.cart.api.request.AddCartItemRequest;
+import com.book.core.cart.api.request.DeleteCartItemsRequest;
 import com.book.core.cart.api.request.ModifyCartItemRequest;
 import com.book.core.cart.api.response.CartResponse;
 import com.book.core.cart.api.spec.CartControllerSpec;
@@ -55,6 +56,15 @@ class CartController implements CartControllerSpec {
         @Positive @PathVariable("cartItemId") final Long cartItemId) {
         final var command = commandConverter.toDeleteCartItemCommand(userId, cartItemId);
         cartService.deleteCartItem(command);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @DeleteMapping("/items")
+    public ResponseEntity<ApiResponse<Void>> deleteCartItems(@UserId final Long userId,
+        @Valid @RequestBody final DeleteCartItemsRequest request) {
+        final var command = commandConverter.toDeleteCartItemsCommand(userId, request);
+        cartService.deleteCartItems(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 

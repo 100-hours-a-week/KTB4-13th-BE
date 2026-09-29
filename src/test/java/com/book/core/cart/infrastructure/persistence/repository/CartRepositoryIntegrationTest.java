@@ -7,11 +7,13 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.cart.application.command.AddCartItemCommand;
 import com.book.core.cart.application.command.DeleteCartItemCommand;
+import com.book.core.cart.application.command.DeleteCartItemsCommand;
 import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
 import com.book.core.cart.application.usecase.DeleteCartItemUseCase;
+import com.book.core.cart.application.usecase.DeleteCartItemsUseCase;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.cart.application.usecase.ModifyCartItemUseCase;
 import java.sql.SQLException;
@@ -47,6 +49,9 @@ class CartRepositoryIntegrationTest {
 
     @Autowired
     DeleteCartItemUseCase deleteCartItemUseCase;
+
+    @Autowired
+    DeleteCartItemsUseCase deleteCartItemsUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -179,6 +184,58 @@ class CartRepositoryIntegrationTest {
         assertThatThrownBy(() -> deleteCartItemUseCase.execute(new DeleteCartItemCommand(1008L, cartItemId))).isInstanceOfSatisfying(
             CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
         assertThat(deletedCount(cartItemId)).isEqualTo(1);
+    }
+
+    @Test
+    void 다건_삭제는_중복_ID도_한번만_처리하고_행을_물리_삭제하지_않는다() {
+        createCart(1009L);
+        createProduct(2063L, 3063L, 10);
+        createProduct(2064L, 3064L, 10);
+        addUseCase.execute(new AddCartItemCommand(1009L, 2063L, 2));
+        addUseCase.execute(new AddCartItemCommand(1009L, 2064L, 3));
+        final Long firstItemId = cartItemIdOf(1009L, 2063L);
+        final Long secondItemId = cartItemIdOf(1009L, 2064L);
+
+        deleteCartItemsUseCase.execute(new DeleteCartItemsCommand(1009L, java.util.List.of(firstItemId, secondItemId, firstItemId)));
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cart_item WHERE id IN (?, ?)", Integer.class, firstItemId, secondItemId))
+            .isEqualTo(2);
+        assertThat(deletedCount(firstItemId)).isEqualTo(1);
+        assertThat(deletedCount(secondItemId)).isEqualTo(1);
+        assertThat(quantityOf(firstItemId)).isEqualTo(2);
+        assertThat(quantityOf(secondItemId)).isEqualTo(3);
+    }
+
+    @Test
+    void 다건_삭제_대상에_타인_소유_또는_이미_삭제된_상품이_포함되면_전체를_변경하지_않는다() {
+        createCart(1010L);
+        createCart(1011L);
+        createProduct(2065L, 3065L, 10);
+        createProduct(2066L, 3066L, 10);
+        addUseCase.execute(new AddCartItemCommand(1010L, 2065L, 2));
+        addUseCase.execute(new AddCartItemCommand(1011L, 2066L, 3));
+        final Long ownedItemId = cartItemIdOf(1010L, 2065L);
+        final Long foreignItemId = cartItemIdOf(1011L, 2066L);
+
+        assertThatThrownBy(
+            () -> deleteCartItemsUseCase.execute(new DeleteCartItemsCommand(1010L, java.util.List.of(ownedItemId, foreignItemId))))
+            .isInstanceOfSatisfying(CoreException.class,
+                exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(deletedCount(ownedItemId)).isZero();
+        assertThat(deletedCount(foreignItemId)).isZero();
+
+        jdbc.update("UPDATE cart_item SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", foreignItemId);
+        assertThatThrownBy(
+            () -> deleteCartItemsUseCase.execute(new DeleteCartItemsCommand(1010L, java.util.List.of(ownedItemId, foreignItemId))))
+            .isInstanceOfSatisfying(CoreException.class,
+                exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(deletedCount(ownedItemId)).isZero();
+        assertThat(deletedCount(foreignItemId)).isEqualTo(1);
+
+        assertThatThrownBy(() -> deleteCartItemsUseCase.execute(new DeleteCartItemsCommand(1010L, java.util.List.of(ownedItemId, 999999L))))
+            .isInstanceOfSatisfying(CoreException.class,
+                exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+        assertThat(deletedCount(ownedItemId)).isZero();
     }
 
     private void createCart(final long userId) {

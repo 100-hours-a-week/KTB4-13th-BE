@@ -2,6 +2,7 @@ package com.book.core.recommendation.infrastructure.client.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
@@ -10,8 +11,12 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.recommendation.application.command.RecommendationFeedSort;
+import com.book.core.recommendation.application.command.RecommendationFeedSurface;
 import com.book.core.recommendation.application.port.RecommendationFeedRequest;
 import com.book.core.recommendation.application.port.RecommendationFeedResult;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -35,7 +40,7 @@ class RecommendationFeedClientImplTest {
             .andExpect(method(HttpMethod.GET)).andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN))
             .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
 
-        client.getFeed(new RecommendationFeedRequest(42L, 15, null));
+        client.getFeed(homeRequest(null));
 
         server.verify();
     }
@@ -49,7 +54,7 @@ class RecommendationFeedClientImplTest {
         server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
             .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
 
-        client.getFeed(new RecommendationFeedRequest(42L, 15, null));
+        client.getFeed(homeRequest(null));
 
         server.verify();
     }
@@ -63,7 +68,43 @@ class RecommendationFeedClientImplTest {
         server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15&cursor=abc"))
             .andExpect(queryParam("cursor", "abc")).andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
 
-        client.getFeed(new RecommendationFeedRequest(42L, 15, "abc"));
+        client.getFeed(homeRequest("abc"));
+
+        server.verify();
+    }
+
+    @Test
+    void recommend_more_조건을_AI_snake_case_query로_전달한다() {
+        final RestClient.Builder builder = restClientBuilder();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+
+        server.expect(MockRestRequestMatchers.requestTo(startsWith(BASE_URL + "/recommendations/feed?")))
+            .andExpect(queryParam("user_id", "42")).andExpect(queryParam("surface", "recommend_more")).andExpect(queryParam("size", "20"))
+            .andExpect(queryParam("cursor", "abc")).andExpect(queryParam("sort", "price_asc"))
+            .andExpect(queryParam("category", URLEncoder.encode("에세이", StandardCharsets.UTF_8)))
+            .andExpect(queryParam("pub_year_from", "2020")).andExpect(queryParam("pub_year_to", "2024"))
+            .andExpect(queryParam("match_score_min", "70")).andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
+
+        client.getFeed(new RecommendationFeedRequest(42L, RecommendationFeedSurface.RECOMMEND_MORE, 20, "abc",
+            RecommendationFeedSort.PRICE_ASC, "에세이", 2020, 2024, 70));
+
+        server.verify();
+    }
+
+    @Test
+    void recommend_more에서_값이_없는_조건은_query로_보내지_않는다() {
+        final RestClient.Builder builder = restClientBuilder();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+
+        server
+            .expect(
+                MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=recommend_more&size=15&sort=match"))
+            .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
+
+        client.getFeed(new RecommendationFeedRequest(42L, RecommendationFeedSurface.RECOMMEND_MORE, 15, null, RecommendationFeedSort.MATCH,
+            null, null, null, null));
 
         server.verify();
     }
@@ -77,7 +118,7 @@ class RecommendationFeedClientImplTest {
         server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
             .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
 
-        final RecommendationFeedResult result = client.getFeed(new RecommendationFeedRequest(42L, 15, null));
+        final RecommendationFeedResult result = client.getFeed(homeRequest(null));
 
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).bookId()).isEqualTo(3310L);
@@ -99,7 +140,7 @@ class RecommendationFeedClientImplTest {
             .andRespond(withSuccess("{\"message\":\"feed_success\",\"data\":{\"items\":[],\"next_cursor\":null,\"cold_start\":false}}",
                 MediaType.APPLICATION_JSON));
 
-        final RecommendationFeedResult result = client.getFeed(new RecommendationFeedRequest(42L, 15, null));
+        final RecommendationFeedResult result = client.getFeed(homeRequest(null));
 
         assertThat(result.items()).isEmpty();
         assertThat(result.nextCursor()).isNull();
@@ -115,7 +156,7 @@ class RecommendationFeedClientImplTest {
             .andRespond(withSuccess("{\"message\":\"feed_success\",\"data\":{\"items\":[],\"next_cursor\":null,\"cold_start\":true}}",
                 MediaType.APPLICATION_JSON));
 
-        final RecommendationFeedResult result = client.getFeed(new RecommendationFeedRequest(42L, 15, null));
+        final RecommendationFeedResult result = client.getFeed(homeRequest(null));
 
         assertThat(result.coldStart()).isTrue();
     }
@@ -129,7 +170,7 @@ class RecommendationFeedClientImplTest {
         server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
             .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON).header("X-Degraded", "rule-only"));
 
-        final RecommendationFeedResult result = client.getFeed(new RecommendationFeedRequest(42L, 15, null));
+        final RecommendationFeedResult result = client.getFeed(homeRequest(null));
 
         assertThat(result.degraded()).isEqualTo("rule-only");
     }
@@ -160,7 +201,7 @@ class RecommendationFeedClientImplTest {
             RestClient.builder().baseUrl("http://127.0.0.1:1").defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN);
         final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
 
-        assertThatThrownBy(() -> client.getFeed(new RecommendationFeedRequest(42L, 15, null))).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> client.getFeed(homeRequest(null))).isInstanceOf(CoreException.class)
             .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_FEED_TIMEOUT));
     }
 
@@ -173,7 +214,7 @@ class RecommendationFeedClientImplTest {
         server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
             .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
 
-        assertThatThrownBy(() -> client.getFeed(new RecommendationFeedRequest(42L, 15, null))).hasMessageNotContaining(SERVICE_TOKEN);
+        assertThatThrownBy(() -> client.getFeed(homeRequest(null))).hasMessageNotContaining(SERVICE_TOKEN);
     }
 
     private void assertErrorMapping(final HttpStatus status, final ErrorCode expected) {
@@ -184,7 +225,7 @@ class RecommendationFeedClientImplTest {
         server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
             .andRespond(withStatus(status));
 
-        assertThatThrownBy(() -> client.getFeed(new RecommendationFeedRequest(42L, 15, null))).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> client.getFeed(homeRequest(null))).isInstanceOf(CoreException.class)
             .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(expected));
 
         server.verify();
@@ -215,5 +256,9 @@ class RecommendationFeedClientImplTest {
               }
             }
             """;
+    }
+
+    private static RecommendationFeedRequest homeRequest(final String cursor) {
+        return new RecommendationFeedRequest(42L, RecommendationFeedSurface.HOME, 15, cursor, null, null, null, null, null);
     }
 }

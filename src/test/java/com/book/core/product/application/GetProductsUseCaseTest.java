@@ -96,6 +96,11 @@ class GetProductsUseCaseTest {
         private int limit;
 
         @Override
+        public List<Product> findByIds(final List<Long> productIds) {
+            return List.of();
+        }
+
+        @Override
         public Optional<Product> findActiveById(final Long productId) {
             return Optional.empty();
         }

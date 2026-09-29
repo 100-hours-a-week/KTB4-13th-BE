@@ -154,6 +154,11 @@ class CartAddUseCaseTest {
         private Product product = product(500);
 
         @Override
+        public List<Product> findByIds(final List<Long> productIds) {
+            return List.of();
+        }
+
+        @Override
         public Optional<Product> findActiveById(final Long productId) {
             return Optional.ofNullable(product).filter(Product::isActive);
         }

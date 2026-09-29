@@ -94,5 +94,5 @@ public interface OnboardingControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Void>> recordPersonalizationAgreement(@AuthenticationPrincipal final Jwt jwt);
+    ResponseEntity<ApiResponse<Void>> recordPersonalizationAgreement(@Parameter(hidden = true) final Long userId);
 }

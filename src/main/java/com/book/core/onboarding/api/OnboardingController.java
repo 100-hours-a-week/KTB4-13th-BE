@@ -19,6 +19,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -76,6 +77,15 @@ class OnboardingController implements OnboardingControllerSpec {
         final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toPutOnboardingBooksCommand(userId, request);
         onboardingService.saveBooks(command);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @PostMapping("/personalization-agreement")
+    public ResponseEntity<ApiResponse<Void>> recordPersonalizationAgreement(@AuthenticationPrincipal final Jwt jwt) {
+        final Long userId = Long.parseLong(jwt.getSubject());
+        final var command = commandConverter.toRecordPersonalizationAgreementCommand(userId);
+        onboardingService.recordPersonalizationAgreement(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 }

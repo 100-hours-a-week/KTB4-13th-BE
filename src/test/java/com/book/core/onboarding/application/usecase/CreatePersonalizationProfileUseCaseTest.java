@@ -6,14 +6,17 @@ import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.PersonalizationProfileClient;
 import com.book.core.onboarding.application.port.PersonalizationProfileRequest;
 import com.book.core.onboarding.application.port.PersonalizationProfileResult;
-import com.book.core.onboarding.application.port.UserConsentRepositoryPort;
+import com.book.core.onboarding.application.port.TermRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
-import com.book.core.onboarding.domain.ConsentType;
+import com.book.core.onboarding.application.port.UserTermAgreementRepositoryPort;
 import com.book.core.onboarding.domain.OnboardingOption;
-import com.book.core.onboarding.domain.UserConsent;
+import com.book.core.onboarding.domain.Term;
+import com.book.core.onboarding.domain.TermAgreementAction;
+import com.book.core.onboarding.domain.TermType;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
+import com.book.core.onboarding.domain.UserTermAgreement;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,24 +27,38 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class CreatePersonalizationProfileUseCaseTest {
-    private final FakeUserConsentRepository consentRepository = new FakeUserConsentRepository();
+    private final FakeTermAgreementStorage consents = new FakeTermAgreementStorage();
     private final FakeAnswerRepository answerRepository = new FakeAnswerRepository();
     private final FakeOptionRepository optionRepository = new FakeOptionRepository();
     private final FakeBookRepository bookRepository = new FakeBookRepository();
     private final FakeProfileClient profileClient = new FakeProfileClient();
     private final CreatePersonalizationProfileUseCase useCase =
-        new CreatePersonalizationProfileUseCase(consentRepository, answerRepository, optionRepository, bookRepository, profileClient);
+        new CreatePersonalizationProfileUseCase(new GetPersonalizedRecommendationConsentUseCase(consents, consents), answerRepository,
+            optionRepository, bookRepository, profileClient);
 
     @Test
-    void 활성_동의가_없으면_AI를_호출하지_않는다() {
+    void 개인화_추천_동의가_없으면_AI를_호출하지_않는다() {
+        consents.agree(99L);
+        seedAnswers(42L);
+
         useCase.execute(42L);
 
         assertThat(profileClient.requests).isEmpty();
     }
 
     @Test
-    void 활성_동의가_있으면_AI를_호출한다() {
-        consentRepository.active(42L);
+    void 활성_개인화_추천_약관이_없으면_AI를_호출하지_않는다() {
+        consents.activeTerm = null;
+        seedAnswers(42L);
+
+        useCase.execute(42L);
+
+        assertThat(profileClient.requests).isEmpty();
+    }
+
+    @Test
+    void 개인화_추천에_동의했으면_AI를_호출한다() {
+        consents.agree(42L);
         seedAnswers(42L);
 
         useCase.execute(42L);
@@ -51,7 +68,7 @@ class CreatePersonalizationProfileUseCaseTest {
 
     @Test
     void Q1부터_Q4까지_content로_매핑되고_Q5는_liked_book_ids로_매핑된다() {
-        consentRepository.active(42L);
+        consents.agree(42L);
         seedAnswers(42L);
         bookRepository.books.put(42L, List.of(UserOnboardingBook.of(42L, 100L), UserOnboardingBook.of(42L, 50L)));
 
@@ -67,7 +84,7 @@ class CreatePersonalizationProfileUseCaseTest {
 
     @Test
     void 동일한_입력이면_동일한_idempotency_key를_생성한다() {
-        consentRepository.active(42L);
+        consents.agree(42L);
         seedAnswers(42L);
 
         useCase.execute(42L);
@@ -78,7 +95,7 @@ class CreatePersonalizationProfileUseCaseTest {
 
     @Test
     void 저장_조회_순서가_달라도_정규화된_입력이_같으면_동일한_idempotency_key를_생성한다() {
-        consentRepository.active(42L);
+        consents.agree(42L);
         seedAnswers(42L);
         bookRepository.books.put(42L, List.of(UserOnboardingBook.of(42L, 100L), UserOnboardingBook.of(42L, 50L)));
         useCase.execute(42L);
@@ -92,7 +109,7 @@ class CreatePersonalizationProfileUseCaseTest {
 
     @Test
     void 입력이_바뀌면_idempotency_key도_바뀐다() {
-        consentRepository.active(42L);
+        consents.agree(42L);
         seedAnswers(42L);
         useCase.execute(42L);
         final String firstKey = profileClient.requests.get(0).idempotencyKey();
@@ -106,7 +123,7 @@ class CreatePersonalizationProfileUseCaseTest {
 
     @Test
     void idempotency_key는_userId를_포함한다() {
-        consentRepository.active(42L);
+        consents.agree(42L);
         seedAnswers(42L);
 
         useCase.execute(42L);
@@ -123,22 +140,33 @@ class CreatePersonalizationProfileUseCaseTest {
             UserOnboardingAnswer.of(userId, 2L), UserOnboardingAnswer.of(userId, 3L), UserOnboardingAnswer.of(userId, 4L))));
     }
 
-    private static class FakeUserConsentRepository implements UserConsentRepositoryPort {
-        private final Map<Long, UserConsent> activeByUserId = new HashMap<>();
+    private static class FakeTermAgreementStorage implements TermRepositoryPort, UserTermAgreementRepositoryPort {
+        private static final Long TERM_ID = 7L;
 
-        void active(final Long userId) {
-            activeByUserId.put(userId, UserConsent.create(userId, ConsentType.PERSONALIZED_RECOMMENDATION, "v1", LocalDateTime.now()));
+        private final List<UserTermAgreement> agreements = new ArrayList<>();
+        Term activeTerm = new Term(TERM_ID, TermType.PERSONALIZED_RECOMMENDATION, true);
+
+        void agree(final Long userId) {
+            agreements.add(UserTermAgreement.agree(userId, TERM_ID, LocalDateTime.now()));
         }
 
         @Override
-        public Optional<UserConsent> findActiveByUserIdAndConsentType(final Long userId, final ConsentType consentType) {
-            return Optional.ofNullable(activeByUserId.get(userId));
+        public Optional<Term> findActiveByTermType(final TermType termType) {
+            return Optional.ofNullable(activeTerm).filter(term -> term.termType() == termType);
         }
 
         @Override
-        public UserConsent save(final UserConsent userConsent) {
-            activeByUserId.put(userConsent.userId(), userConsent);
-            return userConsent;
+        public Optional<UserTermAgreement> findByUserIdAndTermIdAndAction(final Long userId, final Long termId,
+            final TermAgreementAction action) {
+            return agreements.stream()
+                .filter(agreement -> agreement.userId().equals(userId) && agreement.termId().equals(termId) && agreement.action() == action)
+                .findFirst();
+        }
+
+        @Override
+        public UserTermAgreement save(final UserTermAgreement agreement) {
+            agreements.add(agreement);
+            return agreement;
         }
     }
 

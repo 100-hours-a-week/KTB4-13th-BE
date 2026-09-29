@@ -1,13 +1,12 @@
 package com.book.core.onboarding.application.usecase;
 
 import com.book.common.annotation.UseCase;
+import com.book.core.onboarding.application.command.GetPersonalizedRecommendationConsentCommand;
 import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.PersonalizationProfileClient;
 import com.book.core.onboarding.application.port.PersonalizationProfileRequest;
-import com.book.core.onboarding.application.port.UserConsentRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
-import com.book.core.onboarding.domain.ConsentType;
 import com.book.core.onboarding.domain.OnboardingOption;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
@@ -23,8 +22,8 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 온보딩 완료 후 개인화 추천 동의가 활성 상태인 사용자에 한해 AI 취향 프로필을 생성/갱신한다. DB 트랜잭션 밖에서 실행된다 — 호출부(OnboardingService)가
- * 별도 bean의 저장 UseCase 반환 뒤 이 UseCase를 부른다.
+ * 온보딩 완료 후 개인화 추천에 동의한 사용자에 한해 AI 취향 프로필을 생성/갱신한다. DB 트랜잭션 밖에서 실행된다 — 호출부(OnboardingService)가 별도
+ * bean의 저장 UseCase 반환 뒤 이 UseCase를 부른다.
  *
  * Q4(tags)는 현재 DB에 저장된 답변을 그대로 사용한다. Q3 부모 답변이 나중에 바뀌어도 기존 Q4 답변이 정리되지 않는 정합성 문제는 BE #130 known
  * issue로 별도 관리하며 이 UseCase에서 수정하지 않는다.
@@ -41,14 +40,14 @@ public class CreatePersonalizationProfileUseCase {
     private static final String FIELD_SEPARATOR = "\u0002";
     private static final String ALGORITHM = "SHA-256";
 
-    private final UserConsentRepositoryPort userConsentRepository;
+    private final GetPersonalizedRecommendationConsentUseCase getPersonalizedRecommendationConsentUseCase;
     private final UserOnboardingAnswerRepositoryPort answerRepository;
     private final OnboardingOptionRepositoryPort optionRepository;
     private final UserOnboardingBookRepositoryPort onboardingBookRepository;
     private final PersonalizationProfileClient personalizationProfileClient;
 
     public void execute(final Long userId) {
-        if (userConsentRepository.findActiveByUserIdAndConsentType(userId, ConsentType.PERSONALIZED_RECOMMENDATION).isEmpty()) {
+        if (!getPersonalizedRecommendationConsentUseCase.execute(new GetPersonalizedRecommendationConsentCommand(userId)).consented()) {
             return;
         }
 

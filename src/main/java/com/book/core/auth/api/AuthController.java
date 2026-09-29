@@ -1,6 +1,6 @@
 package com.book.core.auth.api;
 
-import com.book.common.config.security.CurrentUser;
+import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.auth.api.cookie.RefreshTokenCookieFactory;
 import com.book.core.auth.api.converter.AuthCommandConverter;
@@ -60,7 +60,7 @@ class AuthController implements AuthControllerSpec {
 
     @PostMapping("/logout")
     @Override
-    public ResponseEntity<Void> logout(@CurrentUser final Long userId) {
+    public ResponseEntity<Void> logout(@UserId final Long userId) {
         authService.logout(userId);
         final String expiredRefreshCookie = refreshTokenCookieFactory.expire().toString();
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, expiredRefreshCookie).build();

@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.book.common.config.security.CurrentUserMvcConfig;
+import com.book.common.config.security.UserIdMvcConfig;
 import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
@@ -42,7 +42,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(OnboardingController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({OnboardingCommandConverter.class, OnboardingResultConverter.class, CurrentUserMvcConfig.class})
+@Import({OnboardingCommandConverter.class, OnboardingResultConverter.class, UserIdMvcConfig.class})
 class OnboardingControllerTest {
     private static final Long USER_ID = 42L;
 

@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.book.common.config.security.CurrentUserMvcConfig;
+import com.book.common.config.security.UserIdMvcConfig;
 import com.book.core.recommendation.api.converter.RecommendationCommandConverter;
 import com.book.core.recommendation.api.converter.RecommendationResultConverter;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
@@ -36,7 +36,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(RecommendationController.class)
-@Import({RecommendationCommandConverter.class, RecommendationResultConverter.class, CurrentUserMvcConfig.class})
+@Import({RecommendationCommandConverter.class, RecommendationResultConverter.class, UserIdMvcConfig.class})
 @ActiveProfiles("test")
 class RecommendationControllerTest {
     private static final String SPEC_JSON = """

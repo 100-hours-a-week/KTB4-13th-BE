@@ -1,6 +1,6 @@
 package com.book.core.cart.api;
 
-import com.book.common.config.security.CurrentUser;
+import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.cart.api.converter.CartCommandConverter;
 import com.book.core.cart.api.converter.CartResultConverter;
@@ -33,8 +33,7 @@ class CartController implements CartControllerSpec {
 
     @Override
     @PostMapping("/items")
-    public ResponseEntity<ApiResponse<Void>> addCartItem(@CurrentUser final Long userId,
-        @Valid @RequestBody final AddCartItemRequest request) {
+    public ResponseEntity<ApiResponse<Void>> addCartItem(@UserId final Long userId, @Valid @RequestBody final AddCartItemRequest request) {
         final var command = commandConverter.toAddCartItemCommand(userId, request);
         cartService.addCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -42,7 +41,7 @@ class CartController implements CartControllerSpec {
 
     @Override
     @PutMapping("/items/{cartItemId}")
-    public ResponseEntity<ApiResponse<Void>> modifyCartItem(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<Void>> modifyCartItem(@UserId final Long userId,
         @Positive @PathVariable("cartItemId") final Long cartItemId, @Valid @RequestBody final ModifyCartItemRequest request) {
         final var command = commandConverter.toModifyCartItemCommand(userId, cartItemId, request);
         cartService.modifyCartItem(command);
@@ -51,7 +50,7 @@ class CartController implements CartControllerSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<CartResponse>> getCart(@CurrentUser final Long userId) {
+    public ResponseEntity<ApiResponse<CartResponse>> getCart(@UserId final Long userId) {
         final var command = commandConverter.toGetCartCommand(userId);
         final var cartResponse = resultConverter.toGetCartResponse(cartService.getCart(command));
         return ResponseEntity.ok(ApiResponse.ok(cartResponse));

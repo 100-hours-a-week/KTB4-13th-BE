@@ -1,6 +1,6 @@
 package com.book.core.review.api;
 
-import com.book.common.config.security.CurrentUser;
+import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.review.api.converter.ReviewCommandConverter;
 import com.book.core.review.api.request.CreateReviewRequest;
@@ -30,7 +30,7 @@ class ReviewController implements ReviewControllerSpec {
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<Void>> createReview(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<Void>> createReview(@UserId final Long userId,
         @Valid @RequestBody final CreateReviewRequest request) {
         reviewService.createReview(commandConverter.toCreateReviewCommand(userId, request));
         return ResponseEntity.ok(ApiResponse.ok());
@@ -38,7 +38,7 @@ class ReviewController implements ReviewControllerSpec {
 
     @Override
     @PatchMapping("/{reviewId}")
-    public ResponseEntity<ApiResponse<Void>> updateReview(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<Void>> updateReview(@UserId final Long userId,
         @Positive @PathVariable("reviewId") final Long reviewId, @Valid @RequestBody final UpdateReviewRequest request) {
         reviewService.updateReview(commandConverter.toUpdateReviewCommand(userId, reviewId, request));
         return ResponseEntity.ok(ApiResponse.ok());
@@ -46,7 +46,7 @@ class ReviewController implements ReviewControllerSpec {
 
     @Override
     @DeleteMapping("/{reviewId}")
-    public ResponseEntity<ApiResponse<Void>> deleteReview(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<Void>> deleteReview(@UserId final Long userId,
         @Positive @PathVariable("reviewId") final Long reviewId) {
         reviewService.deleteReview(commandConverter.toDeleteReviewCommand(userId, reviewId));
         return ResponseEntity.ok(ApiResponse.ok());

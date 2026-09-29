@@ -1,6 +1,6 @@
 package com.book.core.onboarding.api;
 
-import com.book.common.config.security.CurrentUser;
+import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
@@ -34,7 +34,7 @@ class OnboardingController implements OnboardingControllerSpec {
 
     @Override
     @GetMapping("/questions/{questionId}")
-    public ResponseEntity<ApiResponse<OnboardingQuestionResponse>> getQuestion(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<OnboardingQuestionResponse>> getQuestion(@UserId final Long userId,
         @Positive @PathVariable("questionId") final Long questionId) {
         final var command = commandConverter.toGetOnboardingQuestionCommand(userId, questionId);
         final var response = resultConverter.toOnboardingQuestionResponse(onboardingService.getQuestion(command));
@@ -43,7 +43,7 @@ class OnboardingController implements OnboardingControllerSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<OnboardingProgressResponse>> getProgress(@CurrentUser final Long userId) {
+    public ResponseEntity<ApiResponse<OnboardingProgressResponse>> getProgress(@UserId final Long userId) {
         final var command = commandConverter.toGetOnboardingProgressCommand(userId);
         final var response = resultConverter.toOnboardingProgressResponse(onboardingService.getProgress(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -51,7 +51,7 @@ class OnboardingController implements OnboardingControllerSpec {
 
     @Override
     @PutMapping("/questions/{questionId}/answers")
-    public ResponseEntity<ApiResponse<Void>> saveAnswers(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<Void>> saveAnswers(@UserId final Long userId,
         @Positive @PathVariable("questionId") final Long questionId, @Valid @RequestBody final PutOnboardingAnswersRequest request) {
         final var command = commandConverter.toPutOnboardingAnswersCommand(userId, questionId, request);
         onboardingService.saveAnswers(command);
@@ -60,14 +60,14 @@ class OnboardingController implements OnboardingControllerSpec {
 
     @Override
     @GetMapping("/books")
-    public ResponseEntity<ApiResponse<OnboardingBookCandidatesResponse>> getBookCandidates(@CurrentUser final Long userId) {
+    public ResponseEntity<ApiResponse<OnboardingBookCandidatesResponse>> getBookCandidates(@UserId final Long userId) {
         final var response = resultConverter.toOnboardingBookCandidatesResponse(onboardingService.getBookCandidates());
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @Override
     @PutMapping("/books")
-    public ResponseEntity<ApiResponse<Void>> saveBooks(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<Void>> saveBooks(@UserId final Long userId,
         @Valid @RequestBody final PutOnboardingBooksRequest request) {
         final var command = commandConverter.toPutOnboardingBooksCommand(userId, request);
         onboardingService.saveBooks(command);

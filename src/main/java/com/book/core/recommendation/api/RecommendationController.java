@@ -1,6 +1,6 @@
 package com.book.core.recommendation.api;
 
-import com.book.common.config.security.CurrentUser;
+import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.recommendation.api.converter.RecommendationCommandConverter;
 import com.book.core.recommendation.api.converter.RecommendationResultConverter;
@@ -32,7 +32,7 @@ class RecommendationController implements RecommendationControllerSpec {
 
     @Override
     @PostMapping("/chat")
-    public ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@UserId final Long userId,
         @Valid @RequestBody final ChatRecommendationRequest request) {
         final var command = commandConverter.toChatRecommendationCommand(userId, request);
         final var result = recommendationService.chat(command);
@@ -42,7 +42,7 @@ class RecommendationController implements RecommendationControllerSpec {
 
     @Override
     @GetMapping("/cards/{recommendationCardId}")
-    public ResponseEntity<ApiResponse<RecommendationCardDetailResponse>> getCard(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<RecommendationCardDetailResponse>> getCard(@UserId final Long userId,
         @Positive @PathVariable("recommendationCardId") final Long recommendationCardId) {
         final var command = commandConverter.toGetRecommendationCardCommand(userId, recommendationCardId);
         final var result = recommendationService.getCard(command);

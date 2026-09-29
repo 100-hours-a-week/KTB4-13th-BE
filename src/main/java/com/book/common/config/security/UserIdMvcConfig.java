@@ -5,11 +5,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-/** Registers the current-user argument resolver with Spring MVC. */
 @Configuration(proxyBeanMethods = false)
-public class CurrentUserMvcConfig implements WebMvcConfigurer {
+public class UserIdMvcConfig implements WebMvcConfigurer {
     @Override
     public void addArgumentResolvers(final List<HandlerMethodArgumentResolver> resolvers) {
-        resolvers.add(new CurrentUserArgumentResolver());
+        resolvers.add(new UserIdArgumentResolver());
     }
 }

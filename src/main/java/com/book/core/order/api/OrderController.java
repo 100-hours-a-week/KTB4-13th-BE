@@ -1,6 +1,6 @@
 package com.book.core.order.api;
 
-import com.book.common.config.security.CurrentUser;
+import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.order.api.converter.OrderCommandConverter;
 import com.book.core.order.api.converter.OrderResultConverter;
@@ -40,7 +40,7 @@ class OrderController implements OrderControllerSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<OrderListResponse>> getOrders(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<OrderListResponse>> getOrders(@UserId final Long userId,
         @RequestParam(value = "status", required = false) final OrderStatus status,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "from", required = false) final LocalDateTime from,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "to", required = false) final LocalDateTime to,
@@ -53,7 +53,7 @@ class OrderController implements OrderControllerSpec {
 
     @Override
     @GetMapping("/{orderKey}")
-    public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrder(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrder(@UserId final Long userId,
         @NotBlank @Size(max = 255) @PathVariable("orderKey") final String orderKey) {
         final var command = commandConverter.toGetOrderCommand(userId, orderKey);
         final var response = resultConverter.toOrderDetailResponse(orderService.getOrder(command));
@@ -62,7 +62,7 @@ class OrderController implements OrderControllerSpec {
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<CreateOrderResponse>> createOrder(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<CreateOrderResponse>> createOrder(@UserId final Long userId,
         @Valid @RequestBody final CreateOrderRequest request) {
         final var command = commandConverter.toCreateOrderCommand(userId, request);
         final var result = orderService.createOrder(command);
@@ -72,7 +72,7 @@ class OrderController implements OrderControllerSpec {
 
     @Override
     @DeleteMapping("/{orderKey}/cancel")
-    public ResponseEntity<ApiResponse<Void>> cancelOrder(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<Void>> cancelOrder(@UserId final Long userId,
         @NotBlank @Size(max = 255) @PathVariable("orderKey") final String orderKey) {
         final CancelOrderCommand command = commandConverter.toCancelOrderCommand(userId, orderKey);
         orderService.cancelOrder(command);

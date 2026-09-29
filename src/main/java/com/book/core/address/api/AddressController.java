@@ -1,6 +1,6 @@
 package com.book.core.address.api;
 
-import com.book.common.config.security.CurrentUser;
+import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.address.api.converter.AddressCommandConverter;
 import com.book.core.address.api.converter.AddressResultConverter;
@@ -36,7 +36,7 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<Void>> registerAddress(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<Void>> registerAddress(@UserId final Long userId,
         @Valid @RequestBody final RegisterAddressRequest request) {
         final var command = commandConverter.toRegisterAddressCommand(userId, request);
         addressService.registerAddress(command);
@@ -45,7 +45,7 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<AddressListResponse>> getAddresses(@CurrentUser final Long userId) {
+    public ResponseEntity<ApiResponse<AddressListResponse>> getAddresses(@UserId final Long userId) {
         final GetAddressesCommand command = commandConverter.toGetAddressesCommand(userId);
         final var response = resultConverter.toGetAddressesResponse(addressService.getAddresses(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -53,7 +53,7 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PutMapping("/{addressId}")
-    public ResponseEntity<ApiResponse<UpdateAddressResponse>> updateAddress(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<UpdateAddressResponse>> updateAddress(@UserId final Long userId,
         @Positive @PathVariable("addressId") final Long addressId, @Valid @RequestBody final UpdateAddressRequest request) {
         final var command = commandConverter.toUpdateAddressCommand(userId, addressId, request);
         final var result = addressService.updateAddress(command);
@@ -63,7 +63,7 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PutMapping("/{addressId}/default")
-    public ResponseEntity<ApiResponse<UpdateAddressResponse>> setDefaultAddress(@CurrentUser final Long userId,
+    public ResponseEntity<ApiResponse<UpdateAddressResponse>> setDefaultAddress(@UserId final Long userId,
         @Positive @PathVariable("addressId") final Long addressId) {
         final var command = commandConverter.toSetDefaultAddressCommand(userId, addressId);
         final var result = addressService.setDefaultAddress(command);
@@ -73,7 +73,7 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @DeleteMapping("/{addressId}")
-    public ResponseEntity<Void> deleteAddress(@CurrentUser final Long userId, @Positive @PathVariable("addressId") final Long addressId) {
+    public ResponseEntity<Void> deleteAddress(@UserId final Long userId, @Positive @PathVariable("addressId") final Long addressId) {
         final var command = commandConverter.toDeleteAddressCommand(userId, addressId);
         addressService.deleteAddress(command);
         return ResponseEntity.ok().build();

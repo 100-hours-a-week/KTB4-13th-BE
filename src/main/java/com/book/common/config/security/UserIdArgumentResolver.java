@@ -9,11 +9,10 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
-/** Resolves {@link CurrentUser} parameters from the authenticated JWT subject. */
-public final class CurrentUserArgumentResolver implements HandlerMethodArgumentResolver {
+public final class UserIdArgumentResolver implements HandlerMethodArgumentResolver {
     @Override
     public boolean supportsParameter(final MethodParameter parameter) {
-        return parameter.hasParameterAnnotation(CurrentUser.class) && parameter.getParameterType().equals(Long.class);
+        return parameter.hasParameterAnnotation(UserId.class) && parameter.getParameterType().equals(Long.class);
     }
 
     @Override
@@ -21,7 +20,7 @@ public final class CurrentUserArgumentResolver implements HandlerMethodArgumentR
         final NativeWebRequest webRequest, final WebDataBinderFactory binderFactory) {
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
-            throw new IllegalStateException("CurrentUser requires an authenticated JWT principal.");
+            throw new IllegalStateException("@UserId requires an authenticated JWT principal.");
         }
         return Long.valueOf(jwt.getSubject());
     }

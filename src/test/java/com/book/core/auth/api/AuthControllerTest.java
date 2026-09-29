@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.book.common.config.security.CurrentUserMvcConfig;
+import com.book.common.config.security.UserIdMvcConfig;
 import com.book.core.auth.api.converter.AuthCommandConverter;
 import com.book.core.auth.api.cookie.AuthCookieProperties;
 import com.book.core.auth.api.cookie.RefreshTokenCookieFactory;
@@ -39,7 +39,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({ProviderTypePathConverter.class, RefreshTokenCookieFactory.class, AuthCommandConverter.class, CurrentUserMvcConfig.class})
+@Import({ProviderTypePathConverter.class, RefreshTokenCookieFactory.class, AuthCommandConverter.class, UserIdMvcConfig.class})
 @EnableConfigurationProperties(AuthCookieProperties.class)
 @TestPropertySource(properties = "auth.cookie.secure=false")
 class AuthControllerTest {

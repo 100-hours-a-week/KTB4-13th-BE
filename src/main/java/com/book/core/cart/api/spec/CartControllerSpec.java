@@ -1,6 +1,7 @@
 package com.book.core.cart.api.spec;
 
 import com.book.core.cart.api.request.AddCartItemRequest;
+import com.book.core.cart.api.request.DeleteCartItemsRequest;
 import com.book.core.cart.api.request.ModifyCartItemRequest;
 import com.book.core.cart.api.response.CartResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,6 +43,27 @@ public interface CartControllerSpec {
         @Parameter(in = ParameterIn.PATH, required = true, example = "11") @Positive @PathVariable("cartItemId") final Long cartItemId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ModifyCartItemRequest.class)))
         @Valid final ModifyCartItemRequest request);
+
+    @Operation(summary = "장바구니 상품 삭제", description = "인증된 회원의 활성 장바구니 상품을 논리 삭제합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "삭제 성공"),
+        @ApiResponse(responseCode = "400", description = "장바구니 상품 ID가 잘못됨"),
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @ApiResponse(responseCode = "404", description = "장바구니 상품을 찾을 수 없음")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> deleteCartItem(@Parameter(hidden = true) final Long userId,
+        @Parameter(in = ParameterIn.PATH, required = true, example = "11") @Positive @PathVariable("cartItemId") final Long cartItemId);
+
+    @Operation(summary = "장바구니 상품 다건 삭제", description = "인증된 회원의 활성 장바구니 상품들을 논리 삭제합니다. 대상이 하나라도 유효하지 않으면 전체 요청을 실패합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "삭제 성공"),
+        @ApiResponse(responseCode = "400", description = "요청 목록이 비었거나 장바구니 상품 ID가 잘못됨"),
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @ApiResponse(responseCode = "404", description = "장바구니 상품을 찾을 수 없음")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> deleteCartItems(@Parameter(hidden = true) final Long userId,
+        @RequestBody(required = true, content = @Content(schema = @Schema(implementation = DeleteCartItemsRequest.class)))
+        @Valid final DeleteCartItemsRequest request);
 
     @Operation(summary = "장바구니 조회", description = "인증된 회원의 활성 장바구니 항목을 최근 추가순으로 조회합니다.")
     @SecurityRequirement(name = "bearerAuth")

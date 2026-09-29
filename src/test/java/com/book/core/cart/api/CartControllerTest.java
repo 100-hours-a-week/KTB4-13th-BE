@@ -3,6 +3,7 @@ package com.book.core.cart.api;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -14,6 +15,7 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.cart.api.converter.CartCommandConverter;
 import com.book.core.cart.api.converter.CartResultConverter;
 import com.book.core.cart.application.command.AddCartItemCommand;
+import com.book.core.cart.application.command.DeleteCartItemCommand;
 import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.service.CartService;
 import java.time.Instant;
@@ -153,5 +155,33 @@ class CartControllerTest {
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(cartService);
+    }
+
+    @Test
+    void 단건_삭제는_JWT_회원_ID를_사용하고_userId_쿼리_값을_무시한다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(delete("/api/v1/cart/items/11").param("userId", "99")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true));
+
+        verify(cartService).deleteCartItem(new DeleteCartItemCommand(42L, 11L));
+    }
+
+    @Test
+    void 단건_삭제_요청의_cartItemId가_양수가_아니면_400을_응답한다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(delete("/api/v1/cart/items/0")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(cartService);
+    }
+
+    @Test
+    void 삭제할_장바구니_상품이_없으면_404를_응답한다() throws Exception {
+        authenticateAs(42L);
+        doThrow(new CoreException(ErrorCode.CART_ITEM_NOT_FOUND)).when(cartService).deleteCartItem(new DeleteCartItemCommand(42L, 11L));
+
+        mvc.perform(delete("/api/v1/cart/items/11")).andExpect(status().isNotFound()).andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.code").value("E401"));
     }
 }

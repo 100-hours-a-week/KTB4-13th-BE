@@ -43,6 +43,16 @@ public interface CartControllerSpec {
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ModifyCartItemRequest.class)))
         @Valid final ModifyCartItemRequest request);
 
+    @Operation(summary = "장바구니 상품 삭제", description = "인증된 회원의 활성 장바구니 상품을 논리 삭제합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "삭제 성공"),
+        @ApiResponse(responseCode = "400", description = "장바구니 상품 ID가 잘못됨"),
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @ApiResponse(responseCode = "404", description = "장바구니 상품을 찾을 수 없음")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> deleteCartItem(@Parameter(hidden = true) final Long userId,
+        @Parameter(in = ParameterIn.PATH, required = true, example = "11") @Positive @PathVariable("cartItemId") final Long cartItemId);
+
     @Operation(summary = "장바구니 조회", description = "인증된 회원의 활성 장바구니 항목을 최근 추가순으로 조회합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "장바구니 조회 성공"),

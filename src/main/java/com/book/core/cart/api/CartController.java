@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -45,6 +46,15 @@ class CartController implements CartControllerSpec {
         @Positive @PathVariable("cartItemId") final Long cartItemId, @Valid @RequestBody final ModifyCartItemRequest request) {
         final var command = commandConverter.toModifyCartItemCommand(userId, cartItemId, request);
         cartService.modifyCartItem(command);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @DeleteMapping("/items/{cartItemId}")
+    public ResponseEntity<ApiResponse<Void>> deleteCartItem(@UserId final Long userId,
+        @Positive @PathVariable("cartItemId") final Long cartItemId) {
+        final var command = commandConverter.toDeleteCartItemCommand(userId, cartItemId);
+        cartService.deleteCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 

@@ -1,4 +1,4 @@
-package com.book.common.config.ai;
+package com.book.core.recommendation.infrastructure.client.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

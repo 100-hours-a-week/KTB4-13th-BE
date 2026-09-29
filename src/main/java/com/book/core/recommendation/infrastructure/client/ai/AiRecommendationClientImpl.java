@@ -1,6 +1,5 @@
 package com.book.core.recommendation.infrastructure.client.ai;
 
-import com.book.common.config.ai.AiRestClientConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
@@ -34,7 +33,7 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
 
     private final RestClient restClient;
 
-    public AiRecommendationClientImpl(@Qualifier(AiRestClientConfig.RECOMMENDATION_AI_REST_CLIENT) final RestClient restClient) {
+    public AiRecommendationClientImpl(@Qualifier(RestClientConfig.REST_CLIENT) final RestClient restClient) {
         this.restClient = restClient;
     }
 

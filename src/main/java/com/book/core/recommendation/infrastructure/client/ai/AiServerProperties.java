@@ -1,4 +1,4 @@
-package com.book.common.config.ai;
+package com.book.core.recommendation.infrastructure.client.ai;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

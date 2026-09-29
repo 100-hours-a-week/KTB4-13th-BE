@@ -1,5 +1,5 @@
 package com.book.core.onboarding.domain;
 
-public enum ConsentType {
+public enum TermType {
     PERSONALIZED_RECOMMENDATION
 }

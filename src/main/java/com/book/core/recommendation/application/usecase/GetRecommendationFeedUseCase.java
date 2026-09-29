@@ -13,6 +13,7 @@ public class GetRecommendationFeedUseCase {
     private final RecommendationFeedClient recommendationFeedClient;
 
     public RecommendationFeedResult execute(final GetRecommendationFeedCommand command) {
-        return recommendationFeedClient.getFeed(new RecommendationFeedRequest(command.userId(), command.size(), command.cursor()));
+        return recommendationFeedClient.getFeed(new RecommendationFeedRequest(command.userId(), command.surface(), command.size(),
+            command.cursor(), command.sort(), command.category(), command.pubYearFrom(), command.pubYearTo(), command.matchScoreMin()));
     }
 }

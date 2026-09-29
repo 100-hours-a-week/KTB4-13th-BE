@@ -13,6 +13,7 @@ import com.book.core.recommendation.application.port.RecommendationFeedResult;
 import com.book.core.recommendation.application.service.RecommendationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -58,10 +59,17 @@ class RecommendationController implements RecommendationControllerSpec {
     @Override
     @GetMapping("/feed")
     public ResponseEntity<ApiResponse<RecommendationFeedResponse>> getFeed(@UserId final Long userId,
-        @Pattern(regexp = "home") @RequestParam(value = "surface", required = false, defaultValue = "home") final String surface,
+        @Pattern(regexp = "home|recommend_more")
+        @RequestParam(value = "surface", required = false, defaultValue = "home") final String surface,
         @Positive @Max(50) @RequestParam(value = "size", required = false, defaultValue = "15") final int size,
-        @RequestParam(value = "cursor", required = false) final String cursor) {
-        final var command = commandConverter.toGetRecommendationFeedCommand(userId, size, cursor);
+        @RequestParam(value = "cursor", required = false) final String cursor,
+        @Pattern(regexp = "match|newest|price_asc") @RequestParam(value = "sort", required = false) final String sort,
+        @RequestParam(value = "category", required = false) final String category,
+        @Positive @RequestParam(value = "pubYearFrom", required = false) final Integer pubYearFrom,
+        @Positive @RequestParam(value = "pubYearTo", required = false) final Integer pubYearTo,
+        @Min(0) @Max(100) @RequestParam(value = "matchScoreMin", required = false) final Integer matchScoreMin) {
+        final var command = commandConverter.toGetRecommendationFeedCommand(userId, surface, size, cursor, sort, category, pubYearFrom,
+            pubYearTo, matchScoreMin);
         final RecommendationFeedResult result = recommendationService.getFeed(command);
         final var response = resultConverter.toRecommendationFeedResponse(result);
 

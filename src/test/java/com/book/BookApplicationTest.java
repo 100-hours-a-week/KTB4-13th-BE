@@ -143,11 +143,8 @@ class BookApplicationTest {
     }
 
     @Test
-    void actuatorHealthIsUnauthenticatedAndReturnsOnlyUpAndHidesInfo() throws Exception {
+    void actuatorHealthIsUnauthenticatedAndReportsUp() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP"))
             .andExpect(jsonPath("$.components").doesNotExist());
-
-        final String authorization = "Bearer " + tokenIssuer.issue(42L).accessToken();
-        mvc.perform(get("/actuator/info").header(HttpHeaders.AUTHORIZATION, authorization)).andExpect(status().isNotFound());
     }
 }

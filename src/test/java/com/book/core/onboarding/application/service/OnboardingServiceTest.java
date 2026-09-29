@@ -15,9 +15,9 @@ import com.book.core.onboarding.application.usecase.GetOnboardingBookCandidatesU
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingQuestionUseCase;
 import com.book.core.onboarding.application.usecase.GetPersonalizedRecommendationConsentUseCase;
+import com.book.core.onboarding.application.usecase.RecordPersonalizedRecommendationConsentUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingAnswersUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
-import com.book.core.onboarding.application.usecase.UpdatePersonalizedRecommendationConsentUseCase;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,8 +29,8 @@ class OnboardingServiceTest {
     private final SaveOnboardingBooksUseCase saveOnboardingBooksUseCase = mock(SaveOnboardingBooksUseCase.class);
     private final GetPersonalizedRecommendationConsentUseCase getPersonalizedRecommendationConsentUseCase =
         mock(GetPersonalizedRecommendationConsentUseCase.class);
-    private final UpdatePersonalizedRecommendationConsentUseCase updatePersonalizedRecommendationConsentUseCase =
-        mock(UpdatePersonalizedRecommendationConsentUseCase.class);
+    private final RecordPersonalizedRecommendationConsentUseCase recordPersonalizedRecommendationConsentUseCase =
+        mock(RecordPersonalizedRecommendationConsentUseCase.class);
     private final GetOnboardingBookCandidatesUseCase getOnboardingBookCandidatesUseCase = mock(GetOnboardingBookCandidatesUseCase.class);
     private final CreatePersonalizationProfileUseCase createPersonalizationProfileUseCase = mock(CreatePersonalizationProfileUseCase.class);
 
@@ -39,7 +39,7 @@ class OnboardingServiceTest {
     @BeforeEach
     void setUp() {
         onboardingService = new OnboardingService(getOnboardingQuestionUseCase, getOnboardingProgressUseCase, saveOnboardingAnswersUseCase,
-            saveOnboardingBooksUseCase, getPersonalizedRecommendationConsentUseCase, updatePersonalizedRecommendationConsentUseCase,
+            saveOnboardingBooksUseCase, getPersonalizedRecommendationConsentUseCase, recordPersonalizedRecommendationConsentUseCase,
             getOnboardingBookCandidatesUseCase, createPersonalizationProfileUseCase);
     }
 

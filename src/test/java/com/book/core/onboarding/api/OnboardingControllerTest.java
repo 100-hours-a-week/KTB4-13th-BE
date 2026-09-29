@@ -247,7 +247,7 @@ class OnboardingControllerTest {
     }
 
     @Test
-    void 동의를_철회한다() throws Exception {
+    void 미동의_요청을_JWT_사용자의_커맨드로_전달한다() throws Exception {
         authenticateAs(USER_ID);
         final UpdatePersonalizedRecommendationConsentCommand command = new UpdatePersonalizedRecommendationConsentCommand(USER_ID, false);
         when(onboardingService.updateConsent(command)).thenReturn(new PersonalizedRecommendationConsentResult(false, null));

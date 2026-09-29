@@ -1,13 +1,20 @@
 package com.book.core.onboarding.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.onboarding.application.command.UpdatePersonalizedRecommendationConsentCommand;
-import com.book.core.onboarding.application.port.UserConsentRepositoryPort;
-import com.book.core.onboarding.domain.ConsentType;
-import com.book.core.onboarding.domain.UserConsent;
+import com.book.core.onboarding.application.port.TermRepositoryPort;
+import com.book.core.onboarding.application.port.UserTermAgreementRepositoryPort;
+import com.book.core.onboarding.domain.Term;
+import com.book.core.onboarding.domain.TermAgreementAction;
+import com.book.core.onboarding.domain.TermType;
+import com.book.core.onboarding.domain.UserTermAgreement;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,92 +23,122 @@ import org.junit.jupiter.api.Test;
 
 class UpdatePersonalizedRecommendationConsentUseCaseTest {
     private static final Instant NOW = Instant.parse("2026-01-01T00:00:00Z");
+    private static final LocalDateTime NOW_LOCAL = LocalDateTime.ofInstant(NOW, ZoneOffset.UTC);
+    private static final Long TERM_ID = 7L;
 
-    private final FakeUserConsentRepository consentRepository = new FakeUserConsentRepository();
+    private final FakeTermRepository termRepository = new FakeTermRepository();
+    private final FakeUserTermAgreementRepository agreementRepository = new FakeUserTermAgreementRepository();
     private final UpdatePersonalizedRecommendationConsentUseCase useCase =
-        new UpdatePersonalizedRecommendationConsentUseCase(consentRepository, Clock.fixed(NOW, ZoneOffset.UTC));
+        new UpdatePersonalizedRecommendationConsentUseCase(termRepository, agreementRepository, Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
-    void 최초_동의는_새_행을_생성한다() {
+    void 동의하면_활성_개인화_추천_약관에_AGREE_이력을_생성한다() {
+        termRepository.activeTerm = activeTerm();
+
         final var result = useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, true));
 
         assertThat(result.consented()).isTrue();
-        assertThat(result.agreedAt()).isNotNull();
-        assertThat(consentRepository.all).hasSize(1);
-        assertThat(consentRepository.all.get(0).isActive()).isTrue();
+        assertThat(result.agreedAt()).isEqualTo(NOW_LOCAL);
+        assertThat(agreementRepository.all).singleElement().satisfies(agreement -> {
+            assertThat(agreement.userId()).isEqualTo(42L);
+            assertThat(agreement.termId()).isEqualTo(TERM_ID);
+            assertThat(agreement.action()).isEqualTo(TermAgreementAction.AGREE);
+            assertThat(agreement.agreedAt()).isEqualTo(NOW_LOCAL);
+        });
     }
 
     @Test
-    void 이미_활성_동의가_있으면_중복_행을_생성하지_않는다() {
-        useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, true));
+    void 이미_동의했으면_새_이력을_만들지_않고_기존_동의_시각을_반환한다() {
+        termRepository.activeTerm = activeTerm();
+        final LocalDateTime firstAgreedAt = LocalDateTime.of(2025, 12, 1, 0, 0);
+        agreementRepository.save(UserTermAgreement.agree(42L, TERM_ID, firstAgreedAt));
+
         final var result = useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, true));
 
         assertThat(result.consented()).isTrue();
-        assertThat(consentRepository.all).hasSize(1);
+        assertThat(result.agreedAt()).isEqualTo(firstAgreedAt);
+        assertThat(agreementRepository.all).hasSize(1);
     }
 
     @Test
-    void 철회하면_기존_행이_비활성화된다() {
-        useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, true));
+    void 동의하지_않으면_이력을_만들지_않고_미동의로_응답한다() {
+        termRepository.activeTerm = activeTerm();
+
         final var result = useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, false));
 
         assertThat(result.consented()).isFalse();
         assertThat(result.agreedAt()).isNull();
-        assertThat(consentRepository.all).hasSize(1);
-        assertThat(consentRepository.all.get(0).isActive()).isFalse();
+        assertThat(agreementRepository.all).isEmpty();
     }
 
     @Test
-    void 활성_동의가_없는_상태에서_철회하면_아무_변화가_없다() {
+    void V1은_철회가_없으므로_이미_동의한_사용자의_false_요청은_기존_동의를_유지한다() {
+        termRepository.activeTerm = activeTerm();
+        final LocalDateTime firstAgreedAt = LocalDateTime.of(2025, 12, 1, 0, 0);
+        agreementRepository.save(UserTermAgreement.agree(42L, TERM_ID, firstAgreedAt));
+
         final var result = useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, false));
 
-        assertThat(result.consented()).isFalse();
-        assertThat(consentRepository.all).isEmpty();
-    }
-
-    @Test
-    void 철회_후_재동의하면_새_행이_생성되고_기존_행은_철회_상태로_남는다() {
-        useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, true));
-        useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, false));
-        useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, true));
-
-        assertThat(consentRepository.all).hasSize(2);
-        assertThat(consentRepository.all.get(0).isActive()).isFalse();
-        assertThat(consentRepository.all.get(1).isActive()).isTrue();
+        assertThat(result.consented()).isTrue();
+        assertThat(result.agreedAt()).isEqualTo(firstAgreedAt);
+        assertThat(agreementRepository.all).hasSize(1);
     }
 
     @Test
     void 다른_사용자의_동의는_서로_섞이지_않는다() {
+        termRepository.activeTerm = activeTerm();
         useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, true));
-        useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(99L, true));
 
-        assertThat(consentRepository.findActiveByUserIdAndConsentType(42L, ConsentType.PERSONALIZED_RECOMMENDATION)).isPresent();
-        assertThat(consentRepository.findActiveByUserIdAndConsentType(99L, ConsentType.PERSONALIZED_RECOMMENDATION)).isPresent();
-        useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, false));
-        assertThat(consentRepository.findActiveByUserIdAndConsentType(42L, ConsentType.PERSONALIZED_RECOMMENDATION)).isEmpty();
-        assertThat(consentRepository.findActiveByUserIdAndConsentType(99L, ConsentType.PERSONALIZED_RECOMMENDATION)).isPresent();
+        final var otherUser = useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(99L, false));
+
+        assertThat(otherUser.consented()).isFalse();
+        assertThat(agreementRepository.all).extracting(UserTermAgreement::userId).containsExactly(42L);
     }
 
-    private static class FakeUserConsentRepository implements UserConsentRepositoryPort {
-        final List<UserConsent> all = new ArrayList<>();
-        private long nextId = 1;
+    @Test
+    void 활성_개인화_추천_약관이_없으면_동의를_저장하지_않고_예외를_던진다() {
+        assertThatThrownBy(() -> useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, true)))
+            .isInstanceOf(CoreException.class).satisfies(exception -> assertThat(((CoreException) exception).errorCode())
+                .isEqualTo(ErrorCode.PERSONALIZED_RECOMMENDATION_TERM_NOT_FOUND));
+        assertThat(agreementRepository.all).isEmpty();
+    }
+
+    @Test
+    void 활성_개인화_추천_약관이_없어도_미동의_요청은_성공한다() {
+        final var result = useCase.execute(new UpdatePersonalizedRecommendationConsentCommand(42L, false));
+
+        assertThat(result.consented()).isFalse();
+        assertThat(result.agreedAt()).isNull();
+    }
+
+    private static Term activeTerm() {
+        return new Term(TERM_ID, TermType.PERSONALIZED_RECOMMENDATION, true);
+    }
+
+    private static class FakeTermRepository implements TermRepositoryPort {
+        Term activeTerm;
 
         @Override
-        public Optional<UserConsent> findActiveByUserIdAndConsentType(final Long userId, final ConsentType consentType) {
+        public Optional<Term> findActiveByTermType(final TermType termType) {
+            return Optional.ofNullable(activeTerm).filter(term -> term.termType() == termType);
+        }
+    }
+
+    private static class FakeUserTermAgreementRepository implements UserTermAgreementRepositoryPort {
+        final List<UserTermAgreement> all = new ArrayList<>();
+
+        @Override
+        public Optional<UserTermAgreement> findByUserIdAndTermIdAndAction(final Long userId, final Long termId,
+            final TermAgreementAction action) {
             return all.stream()
-                .filter(consent -> consent.userId().equals(userId) && consent.consentType() == consentType && consent.isActive())
+                .filter(agreement -> agreement.userId().equals(userId) && agreement.termId().equals(termId) && agreement.action() == action)
                 .findFirst();
         }
 
         @Override
-        public UserConsent save(final UserConsent userConsent) {
-            if (userConsent.id() == null) {
-                final UserConsent persisted = new UserConsent(nextId++, userConsent.userId(), userConsent.consentType(),
-                    userConsent.policyVersion(), userConsent.agreedAt(), userConsent.withdrawnAt());
-                all.add(persisted);
-                return persisted;
-            }
-            return userConsent;
+        public UserTermAgreement save(final UserTermAgreement agreement) {
+            all.add(agreement);
+            return agreement;
         }
     }
 }

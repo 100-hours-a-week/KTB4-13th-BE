@@ -32,26 +32,19 @@ public class CreatePersonalizationProfileUseCase {
     private final AiPersonalizationProfileClient profileClient;
 
     public void execute(final Long userId) {
-        if (!hasAgreedToPersonalization(userId)) {
+        final boolean agreed = termRepository.findActiveByTermType(TermType.PERSONALIZED_RECOMMENDATION)
+            .map(term -> agreementRepository.existsAgreedByUserIdAndTermId(userId, term.id())).orElse(false);
+        if (!agreed) {
             return;
         }
-        profileClient.createProfile(toProfileRequest(userId));
-    }
 
-    private boolean hasAgreedToPersonalization(final Long userId) {
-        return termRepository.findActiveByTermType(TermType.PERSONALIZED_RECOMMENDATION)
-            .map(term -> agreementRepository.existsAgreedByUserIdAndTermId(userId, term.id())).orElse(false);
-    }
-
-    private AiPersonalizationProfileRequest toProfileRequest(final Long userId) {
-        final List<Long> answeredOptionIds =
-            answerRepository.findByUserId(userId).stream().map(UserOnboardingAnswer::onboardingOptionId).toList();
-        final List<OnboardingOption> answeredOptions =
+        final var answeredOptionIds = answerRepository.findByUserId(userId).stream().map(UserOnboardingAnswer::onboardingOptionId).toList();
+        final var answeredOptions =
             optionRepository.findAllByIdIn(answeredOptionIds).stream().sorted(Comparator.comparing(OnboardingOption::id)).toList();
-        final List<Long> likedBookIds = bookRepository.findByUserId(userId).stream().map(UserOnboardingBook::bookId).sorted().toList();
-        return new AiPersonalizationProfileRequest(userId, contentsOf(answeredOptions, READING_TIME_QUESTION_ID),
+        final var likedBookIds = bookRepository.findByUserId(userId).stream().map(UserOnboardingBook::bookId).sorted().toList();
+        profileClient.createProfile(new AiPersonalizationProfileRequest(userId, contentsOf(answeredOptions, READING_TIME_QUESTION_ID),
             contentsOf(answeredOptions, CRITERIA_QUESTION_ID), contentsOf(answeredOptions, CATEGORY_QUESTION_ID),
-            contentsOf(answeredOptions, TAG_QUESTION_ID), likedBookIds);
+            contentsOf(answeredOptions, TAG_QUESTION_ID), likedBookIds));
     }
 
     private static List<String> contentsOf(final List<OnboardingOption> options, final Long questionId) {

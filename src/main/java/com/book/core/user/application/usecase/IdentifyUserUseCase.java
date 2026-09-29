@@ -4,7 +4,7 @@ import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.user.application.command.IdentifyUserCommand;
 import com.book.core.user.application.command.UserRegistrationCommand;
-import com.book.core.user.application.port.NicknameGenerator;
+import com.book.core.user.application.port.NicknameGeneratorPort;
 import com.book.core.user.application.port.UserProviderRepositoryPort;
 import com.book.core.user.application.port.UserRepositoryPort;
 import com.book.core.user.application.result.IdentifyUserResult;
@@ -21,7 +21,7 @@ public class IdentifyUserUseCase {
 
     private final UserRepositoryPort userRepository;
     private final UserProviderRepositoryPort userProviderRepository;
-    private final NicknameGenerator nicknameGenerator;
+    private final NicknameGeneratorPort nicknameGenerator;
     private final UserRegistrationUseCase userRegistrationUseCase;
 
     public IdentifyUserResult execute(final IdentifyUserCommand command) {

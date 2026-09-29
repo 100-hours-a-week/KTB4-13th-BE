@@ -2,9 +2,16 @@ package com.book.core.product.application.command;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import java.time.LocalDate;
 
 // @formatter:off
-public record GetProductsCommand(Long categoryId, ProductListSort sort, ProductListCursor cursor, Integer limit) {
+public record GetProductsCommand(
+        Long categoryId,
+        LocalDate publishedFrom,
+        LocalDate publishedTo,
+        ProductListSort sort,
+        ProductListCursor cursor,
+        Integer limit) {
     public static final int DEFAULT_LIMIT = 20;
 
     public GetProductsCommand {
@@ -12,6 +19,9 @@ public record GetProductsCommand(Long categoryId, ProductListSort sort, ProductL
             sort = ProductListSort.CREATED_AT;
         }
         if (categoryId != null && categoryId <= 0) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        if (publishedFrom != null && publishedTo != null && publishedFrom.isAfter(publishedTo)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (cursor != null) {

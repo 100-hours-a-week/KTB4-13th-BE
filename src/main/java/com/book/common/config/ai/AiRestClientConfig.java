@@ -14,12 +14,13 @@ import org.springframework.web.client.RestClient;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(AiServerProperties.class)
 public class AiRestClientConfig {
+    public static final String DEFAULT_AI_REST_CLIENT = "aiRestClient";
     public static final String RECOMMENDATION_AI_REST_CLIENT = "recommendationAiRestClient";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration RECOMMENDATION_READ_TIMEOUT = Duration.ofSeconds(30);
 
-    @Bean
+    @Bean(DEFAULT_AI_REST_CLIENT)
     public RestClient aiRestClient(final AiServerProperties properties) {
         return restClientBuilder(properties, READ_TIMEOUT).build();
     }

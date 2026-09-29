@@ -1,6 +1,6 @@
 package com.book.core.recommendation.application.usecase;
 
-import com.book.core.book.application.usecase.FindBooksByIdsUseCase;
+import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.book.domain.Book;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
 import com.book.core.recommendation.application.port.AiRecommendationCard;
@@ -22,7 +22,7 @@ public class ChatRecommendationUseCase {
     private static final int MAX_CARDS = 3;
 
     private final AiRecommendationClient aiRecommendationClient;
-    private final FindBooksByIdsUseCase findBooksByIdsUseCase;
+    private final GetBooksUseCase getBooksUseCase;
 
     public ChatRecommendationAiOutcome execute(final ChatRecommendationCommand command) {
         final AiRecommendationChatRequest aiRequest = new AiRecommendationChatRequest(command.userId(), command.consented(), command.spec(),
@@ -31,7 +31,7 @@ public class ChatRecommendationUseCase {
 
         final List<Long> bookIds = aiResult.cards().stream().map(AiRecommendationCard::bookId).toList();
         final Map<Long, Book> booksById =
-            findBooksByIdsUseCase.execute(bookIds).stream().collect(Collectors.toMap(Book::id, Function.identity()));
+            getBooksUseCase.execute(bookIds).stream().collect(Collectors.toMap(Book::id, Function.identity()));
 
         final List<ResolvedRecommendationCard> cards = aiResult.cards().stream().filter(card -> booksById.containsKey(card.bookId()))
             .map(card -> toResolvedCard(card, booksById.get(card.bookId()))).limit(MAX_CARDS).toList();

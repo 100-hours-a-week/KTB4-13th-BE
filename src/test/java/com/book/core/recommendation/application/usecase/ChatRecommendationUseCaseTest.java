@@ -3,7 +3,7 @@ package com.book.core.recommendation.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.core.book.application.port.BookRepositoryPort;
-import com.book.core.book.application.usecase.FindBooksByIdsUseCase;
+import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.book.domain.Book;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
 import com.book.core.recommendation.application.port.AiRecommendationCard;
@@ -20,8 +20,8 @@ import org.junit.jupiter.api.Test;
 class ChatRecommendationUseCaseTest {
     private final FakeAiRecommendationClient aiRecommendationClient = new FakeAiRecommendationClient();
     private final FakeBookRepositoryPort bookRepository = new FakeBookRepositoryPort();
-    private final FindBooksByIdsUseCase findBooksByIdsUseCase = new FindBooksByIdsUseCase(bookRepository);
-    private final ChatRecommendationUseCase useCase = new ChatRecommendationUseCase(aiRecommendationClient, findBooksByIdsUseCase);
+    private final GetBooksUseCase getBooksUseCase = new GetBooksUseCase(bookRepository);
+    private final ChatRecommendationUseCase useCase = new ChatRecommendationUseCase(aiRecommendationClient, getBooksUseCase);
 
     @Test
     void AI_응답의_카드를_Book_정보로_보강한다() {

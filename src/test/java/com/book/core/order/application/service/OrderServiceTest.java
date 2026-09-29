@@ -54,7 +54,8 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         when(getAddressUseCase.execute(42L, 101L)).thenReturn(Optional.of(address()));
-        when(getCartUseCase.execute(42L)).thenReturn(new GetCartResult(List.of(new GetCartItemResult(17L, 701L, 4))));
+        when(getCartUseCase.execute(42L)).thenReturn(new GetCartResult(List
+            .of(new GetCartItemResult(17L, 701L, "장바구니 상품", "thumbnail.jpg", new BigDecimal("20.00"), new BigDecimal("17.25"), 4, true))));
         when(getProductDetailUseCase.execute(any())).thenReturn(product(10));
         when(createOrderUseCase.execute(any(Order.class))).thenAnswer(invocation -> {
             final Order order = invocation.getArgument(0);

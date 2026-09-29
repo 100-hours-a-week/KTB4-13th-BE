@@ -17,6 +17,11 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort {
     private final ProductQueryRepository queryRepository;
 
     @Override
+    public List<Product> findByIds(final List<Long> productIds) {
+        return jpaRepository.findByIdInWithBook(productIds);
+    }
+
+    @Override
     public Optional<Product> findActiveById(final Long productId) {
         return jpaRepository.findActiveById(productId);
     }

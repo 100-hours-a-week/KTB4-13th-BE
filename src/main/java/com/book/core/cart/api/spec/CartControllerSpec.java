@@ -65,7 +65,13 @@ public interface CartControllerSpec {
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = DeleteCartItemsRequest.class)))
         @Valid final DeleteCartItemsRequest request);
 
-    @Operation(summary = "장바구니 조회", description = "인증된 회원의 활성 장바구니 항목을 최근 추가순으로 조회합니다.")
+    @Operation(summary = "장바구니 조회", description = """
+        인증된 회원의 활성 장바구니 항목을 최근 추가순으로 조회합니다. 항목에는 cartItemId, productId, itemName, thumbnailUrl,
+        salePrice, discountedPrice, quantity, isAvailableForPurchase를 반환합니다. 상품 가격은 표시용 현재 가격이며 합계는 반환하지 않습니다.
+        상품 또는 연결 도서가 삭제된 항목은 유지하고 이름과 표지를 반환하며 가격은 null, isAvailableForPurchase는 false로 반환합니다.
+        상품 행이 없는 항목도 유지하며 상품 표시 정보는 null, isAvailableForPurchase는 false로 반환합니다.
+        isAvailableForPurchase는 상품과 연결 도서가 활성이고 상품 재고가 장바구니 수량 이상일 때만 true입니다.
+        """)
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "장바구니 조회 성공"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"), @ApiResponse(responseCode = "500", description = "장바구니 조회 실패")})

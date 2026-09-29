@@ -47,6 +47,11 @@ class FindProductByBookIdUseCaseTest {
         final Map<Long, Product> products = new HashMap<>();
 
         @Override
+        public List<Product> findByIds(final List<Long> productIds) {
+            return List.of();
+        }
+
+        @Override
         public Optional<Product> findActiveById(final Long productId) {
             throw new UnsupportedOperationException();
         }

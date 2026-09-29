@@ -52,7 +52,9 @@
 
 - 장바구니에는 상품 식별자와 수량만 저장합니다.
 - 장바구니에 담은 시점의 가격은 보장하지 않습니다.
-- 주문을 생성할 때 상품의 현재 가격을 적용합니다.
+- `GET /api/v1/cart`의 `salePrice`와 `discountedPrice`는 조회 시점의 상품 가격을 화면에 표시하기 위한 값이며 장바구니에 저장하지 않습니다.
+- 선택 합계는 프론트엔드가 `discountedPrice * quantity`로 계산하며, Cart 응답에는 합계를 포함하지 않습니다.
+- 주문 생성은 현재 상품 가격과 재고를 다시 확인하고, 주문 시점의 가격을 적용합니다.
 
 ### 2.7 조회는 최근 추가순입니다
 
@@ -97,7 +99,12 @@
 장바구니 조회(회원):
   1. 회원의 장바구니가 없으면 빈 items를 반환한다.
   2. 활성 장바구니 상품만 확인한다.
-  3. 가장 최근에 추가된 상품부터 cartItemId, productId, quantity를 반환한다.
+  3. 가장 최근에 추가된 상품부터 조회하며 productId 목록으로 상품을 한 번에 조회한다.
+  4. cartItemId, productId, itemName, thumbnailUrl, salePrice, discountedPrice, quantity, isAvailableForPurchase를 반환한다.
+  5. 상품과 연결 도서가 활성이고 재고가 장바구니 수량 이상일 때만 isAvailableForPurchase를 true로 반환한다.
+  6. 상품 또는 연결 도서가 삭제된 항목은 유지하고 이름·표지는 보존하며 가격은 null, 구매 가능 여부는 false로 반환한다.
+  7. 상품 행이 없는 항목도 유지하고 ID·수량만 보존하며 상품 표시 정보는 null, 구매 가능 여부는 false로 반환한다.
+  8. 조회 중 장바구니 상태를 변경하거나 항목을 삭제하지 않는다.
 ```
 
 ### 3.4 상품 삭제
@@ -111,6 +118,6 @@
 ## 4. 추가 검토 사항
 
 - Cart API의 회원 식별은 인증 JWT subject를 사용하며, GET·POST·PUT에서 `userId` Query Parameter를 받지 않습니다.
-- 조회 API(`GET /api/v1/cart`)는 `success/data/items` 형식으로 `cartItemId`, `productId`, `quantity`만 제공합니다. 상품 기능이 연동되면 도서·상품 정보를 조회 결과·응답 DTO·`ResultConverter`에 추가해야 합니다.
+- 조회 API(`GET /api/v1/cart`)는 `success/data/items` 형식으로 `cartItemId`, `productId`, `itemName`, `thumbnailUrl`, `salePrice`, `discountedPrice`, `quantity`, `isAvailableForPurchase`를 제공합니다. `thumbnailUrl`은 null일 수 있습니다. author·publisher와 합계는 반환하지 않습니다.
 - 동일 상품 추가와 30개 한도 초과 경쟁 요청의 최종 처리 방식은 추가 검토 사항입니다. 현재는 동일 장바구니 요청을 직렬화하기 위해 장바구니 행에 비관적 락을 임시로 적용하고 있습니다.
 - 판매 중지·삭제 상품은 활성 상품 조회에 실패하므로 장바구니를 변경하지 않습니다.

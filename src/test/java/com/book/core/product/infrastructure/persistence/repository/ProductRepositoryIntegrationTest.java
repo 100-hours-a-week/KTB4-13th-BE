@@ -12,6 +12,7 @@ import com.book.core.product.domain.Product;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
@@ -60,6 +61,28 @@ class ProductRepositoryIntegrationTest {
         assertThat(found.book().title()).isEqualTo("활성 도서");
         assertThat(productRepository.findActiveById(2002L)).isEmpty();
         assertThat(productRepository.findActiveById(2003L)).isEmpty();
+    }
+
+    @Test
+    void 상품_ID_목록을_조회하면_삭제된_상품과_도서도_함께_반환한다() {
+        insertBook(9801L, "활성 도서", null);
+        insertBook(9802L, "삭제 도서", Timestamp.valueOf("2026-01-01 00:00:00"));
+        insertBook(9803L, "삭제 상품 도서", null);
+        insertProduct(9801L, 9801L, "활성 상품", null);
+        insertProduct(9802L, 9802L, "삭제된 도서의 상품", null);
+        insertProduct(9803L, 9803L, "삭제된 상품", Timestamp.valueOf("2026-01-01 00:00:00"));
+
+        final List<Product> found = productRepository.findByIds(List.of(9801L, 9802L, 9803L, 9804L));
+
+        assertThat(found).extracting(Product::id).containsExactlyInAnyOrder(9801L, 9802L, 9803L);
+        assertThat(found).filteredOn((final var product) -> product.id().equals(9802L)).singleElement().satisfies((final var product) -> {
+            assertThat(product.isActive()).isTrue();
+            assertThat(product.book().isActive()).isFalse();
+        });
+        assertThat(found).filteredOn((final var product) -> product.id().equals(9803L)).singleElement().satisfies((final var product) -> {
+            assertThat(product.isActive()).isFalse();
+            assertThat(product.book().isActive()).isTrue();
+        });
     }
 
     @Test

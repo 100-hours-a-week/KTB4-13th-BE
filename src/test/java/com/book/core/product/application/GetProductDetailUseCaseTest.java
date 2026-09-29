@@ -64,6 +64,11 @@ class GetProductDetailUseCaseTest {
         private Product product;
 
         @Override
+        public List<Product> findByIds(final List<Long> productIds) {
+            return List.of();
+        }
+
+        @Override
         public Optional<Product> findActiveById(final Long productId) {
             return Optional.ofNullable(product);
         }

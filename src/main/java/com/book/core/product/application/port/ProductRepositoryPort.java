@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProductRepositoryPort {
+    List<Product> findByIds(final List<Long> productIds);
+
     Optional<Product> findActiveById(final Long productId);
 
     Optional<Product> findActiveByBookId(final Long bookId);

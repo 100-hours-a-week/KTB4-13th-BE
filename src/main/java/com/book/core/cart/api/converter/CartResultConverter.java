@@ -8,8 +8,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class CartResultConverter {
     public CartResponse toGetCartResponse(final GetCartResult result) {
-        return new CartResponse(result.items().stream()
-                .map(item -> new CartItemResponse(item.cartItemId(), item.productId(), item.quantity()))
+        return new CartResponse(
+            result
+                .items().stream().map((final var item) -> new CartItemResponse(item.cartItemId(), item.productId(), item.itemName(),
+                    item.thumbnailUrl(), item.salePrice(), item.discountedPrice(), item.quantity(), item.isAvailableForPurchase()))
                 .toList());
     }
 }

@@ -111,6 +111,11 @@ class GetRecommendationCardUseCaseTest {
         final Map<Long, Product> products = new HashMap<>();
 
         @Override
+        public List<Product> findByIds(final List<Long> productIds) {
+            return List.of();
+        }
+
+        @Override
         public Optional<com.book.core.product.domain.Product> findActiveById(final Long productId) {
             throw new UnsupportedOperationException();
         }

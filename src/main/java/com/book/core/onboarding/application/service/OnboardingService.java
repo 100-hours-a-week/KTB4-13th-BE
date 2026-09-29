@@ -6,16 +6,19 @@ import com.book.core.onboarding.application.command.GetPersonalizedRecommendatio
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.command.UpdatePersonalizedRecommendationConsentCommand;
+import com.book.core.onboarding.application.result.OnboardingBookCandidateResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.result.OnboardingQuestionResult;
 import com.book.core.onboarding.application.result.PersonalizedRecommendationConsentResult;
 import com.book.core.onboarding.application.usecase.CreatePersonalizationProfileUseCase;
+import com.book.core.onboarding.application.usecase.GetOnboardingBookCandidatesUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingQuestionUseCase;
 import com.book.core.onboarding.application.usecase.GetPersonalizedRecommendationConsentUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingAnswersUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
 import com.book.core.onboarding.application.usecase.UpdatePersonalizedRecommendationConsentUseCase;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +33,7 @@ public class OnboardingService {
     private final SaveOnboardingBooksUseCase saveOnboardingBooksUseCase;
     private final GetPersonalizedRecommendationConsentUseCase getPersonalizedRecommendationConsentUseCase;
     private final UpdatePersonalizedRecommendationConsentUseCase updatePersonalizedRecommendationConsentUseCase;
+    private final GetOnboardingBookCandidatesUseCase getOnboardingBookCandidatesUseCase;
     private final CreatePersonalizationProfileUseCase createPersonalizationProfileUseCase;
 
     public OnboardingQuestionResult getQuestion(final GetOnboardingQuestionCommand command) {
@@ -55,6 +59,10 @@ public class OnboardingService {
 
     public PersonalizedRecommendationConsentResult updateConsent(final UpdatePersonalizedRecommendationConsentCommand command) {
         return updatePersonalizedRecommendationConsentUseCase.execute(command);
+    }
+
+    public List<OnboardingBookCandidateResult> getBookCandidates() {
+        return getOnboardingBookCandidatesUseCase.execute();
     }
 
     /**

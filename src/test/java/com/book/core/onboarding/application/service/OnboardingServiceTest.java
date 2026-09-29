@@ -11,6 +11,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.usecase.CreatePersonalizationProfileUseCase;
+import com.book.core.onboarding.application.usecase.GetOnboardingBookCandidatesUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingQuestionUseCase;
 import com.book.core.onboarding.application.usecase.GetPersonalizedRecommendationConsentUseCase;
@@ -30,6 +31,7 @@ class OnboardingServiceTest {
         mock(GetPersonalizedRecommendationConsentUseCase.class);
     private final UpdatePersonalizedRecommendationConsentUseCase updatePersonalizedRecommendationConsentUseCase =
         mock(UpdatePersonalizedRecommendationConsentUseCase.class);
+    private final GetOnboardingBookCandidatesUseCase getOnboardingBookCandidatesUseCase = mock(GetOnboardingBookCandidatesUseCase.class);
     private final CreatePersonalizationProfileUseCase createPersonalizationProfileUseCase = mock(CreatePersonalizationProfileUseCase.class);
 
     private OnboardingService onboardingService;
@@ -38,7 +40,7 @@ class OnboardingServiceTest {
     void setUp() {
         onboardingService = new OnboardingService(getOnboardingQuestionUseCase, getOnboardingProgressUseCase, saveOnboardingAnswersUseCase,
             saveOnboardingBooksUseCase, getPersonalizedRecommendationConsentUseCase, updatePersonalizedRecommendationConsentUseCase,
-            createPersonalizationProfileUseCase);
+            getOnboardingBookCandidatesUseCase, createPersonalizationProfileUseCase);
     }
 
     @Test

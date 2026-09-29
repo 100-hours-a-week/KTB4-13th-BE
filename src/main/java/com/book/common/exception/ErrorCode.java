@@ -73,6 +73,7 @@ public enum ErrorCode {
     INVALID_ID_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_ID_TOKEN", "ID Token이 유효하지 않습니다.", LogLevel.INFO),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "Refresh Token이 유효하지 않습니다.", LogLevel.INFO),
     AI_SERVICE_UNAUTHORIZED(HttpStatus.BAD_GATEWAY, "E502", "외부 AI 서비스 인증에 실패했습니다.", LogLevel.ERROR),
+    AI_SERVICE_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "외부 AI 서비스 호출에 실패했습니다.", LogLevel.INFO),
     ONBOARDING_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "온보딩 질문을 찾을 수 없습니다.", LogLevel.INFO),
     ONBOARDING_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "진행 중인 온보딩이 없습니다.", LogLevel.INFO),
     ONBOARDING_OPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "온보딩 선택지를 찾을 수 없습니다.", LogLevel.INFO),

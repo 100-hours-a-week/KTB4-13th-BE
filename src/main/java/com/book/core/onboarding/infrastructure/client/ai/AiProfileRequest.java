@@ -10,10 +10,10 @@ record AiProfileRequest(
         @JsonProperty("idempotency_key") String idempotencyKey,
         @JsonProperty("onboarding") AiProfileOnboarding onboarding,
         @JsonProperty("memories") List<Object> memories) {
-    static AiProfileRequest from(final AiPersonalizationProfileRequest request) {
+    static AiProfileRequest from(final AiPersonalizationProfileRequest request, final String idempotencyKey) {
         final AiProfileOnboarding onboarding = new AiProfileOnboarding(request.readingTimes(), request.criteria(), request.categories(),
                 request.tags(), request.likedBookIds());
-        return new AiProfileRequest(request.userId(), request.idempotencyKey(), onboarding, List.of());
+        return new AiProfileRequest(request.userId(), idempotencyKey, onboarding, List.of());
     }
 }
 // @formatter:on

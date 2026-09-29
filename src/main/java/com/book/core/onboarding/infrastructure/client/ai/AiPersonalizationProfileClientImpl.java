@@ -19,18 +19,21 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
     private static final String REQUEST_ID_HEADER = "X-Request-Id";
 
     private final RestClient restClient;
+    private final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator;
 
-    public AiPersonalizationProfileClientImpl(@Qualifier("aiRestClient") final RestClient restClient) {
+    public AiPersonalizationProfileClientImpl(@Qualifier("aiRestClient") final RestClient restClient,
+        final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator) {
         this.restClient = restClient;
+        this.idempotencyKeyGenerator = idempotencyKeyGenerator;
     }
 
     @Override
     public void createProfile(final AiPersonalizationProfileRequest request) {
         try {
             restClient.post().uri(PROFILE_PATH).header(REQUEST_ID_HEADER, currentRequestId()).contentType(MediaType.APPLICATION_JSON)
-                .body(AiProfileRequest.from(request)).retrieve().toBodilessEntity();
+                .body(AiProfileRequest.from(request, idempotencyKeyGenerator.generate(request))).retrieve().toBodilessEntity();
         } catch (final RestClientException exception) {
-            throw new CoreException(ErrorCode.AI_RECOMMENDATION_FAILURE, exception);
+            throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
         }
     }
 

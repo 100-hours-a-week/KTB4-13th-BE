@@ -33,7 +33,10 @@ class AiPersonalizationProfileClientImplTest {
     private final RestClient.Builder builder =
         RestClient.builder().baseUrl(BASE_URL).defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN);
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-    private final AiPersonalizationProfileClientImpl client = new AiPersonalizationProfileClientImpl(builder.build());
+    private final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator =
+        new PersonalizationProfileIdempotencyKeyGenerator();
+    private final AiPersonalizationProfileClientImpl client =
+        new AiPersonalizationProfileClientImpl(builder.build(), idempotencyKeyGenerator);
 
     @AfterEach
     void clearMdc() {
@@ -56,7 +59,7 @@ class AiPersonalizationProfileClientImplTest {
     void 요청_본문을_AI_계약의_snake_case로_보낸다() {
         final AiPersonalizationProfileRequest request = profileRequest();
         server.expect(requestTo(PROFILE_URL)).andExpect(jsonPath("$.user_id").value(42))
-            .andExpect(jsonPath("$.idempotency_key").value(request.idempotencyKey()))
+            .andExpect(jsonPath("$.idempotency_key").value(idempotencyKeyGenerator.generate(request)))
             .andExpect(jsonPath("$.onboarding.reading_times[0]").value("잠들기 전"))
             .andExpect(jsonPath("$.onboarding.criteria[0]").value("베스트셀러")).andExpect(jsonPath("$.onboarding.categories[0]").value("소설"))
             .andExpect(jsonPath("$.onboarding.tags[0]").value("SF")).andExpect(jsonPath("$.onboarding.liked_book_ids[1]").value(300))
@@ -68,19 +71,19 @@ class AiPersonalizationProfileClientImplTest {
     }
 
     @Test
-    void AI가_오류_상태를_응답하면_공통_AI_실패로_변환한다() {
+    void AI가_오류_상태를_응답하면_AI_서비스_호출_실패로_변환한다() {
         server.expect(requestTo(PROFILE_URL)).andRespond(withStatus(HttpStatus.CONFLICT));
 
         assertThatThrownBy(() -> client.createProfile(profileRequest())).isInstanceOf(CoreException.class)
-            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_RECOMMENDATION_FAILURE));
+            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
     }
 
     @Test
-    void 응답_시간_초과나_연결_실패는_공통_AI_실패로_변환한다() {
+    void 응답_시간_초과나_연결_실패는_AI_서비스_호출_실패로_변환한다() {
         server.expect(requestTo(PROFILE_URL)).andRespond(withException(new SocketTimeoutException("read timed out")));
 
         assertThatThrownBy(() -> client.createProfile(profileRequest())).isInstanceOf(CoreException.class)
-            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_RECOMMENDATION_FAILURE));
+            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
     }
 
     private static AiPersonalizationProfileRequest profileRequest() {

@@ -77,8 +77,7 @@ class OnboardingController implements OnboardingControllerSpec {
 
     @Override
     @PostMapping("/personalization-agreement")
-    public ResponseEntity<ApiResponse<Void>> recordPersonalizationAgreement(@AuthenticationPrincipal final Jwt jwt) {
-        final Long userId = Long.parseLong(jwt.getSubject());
+    public ResponseEntity<ApiResponse<Void>> recordPersonalizationAgreement(@UserId final Long userId) {
         final var command = commandConverter.toRecordPersonalizationAgreementCommand(userId);
         onboardingService.recordPersonalizationAgreement(command);
         return ResponseEntity.ok(ApiResponse.ok());

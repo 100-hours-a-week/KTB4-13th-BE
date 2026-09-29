@@ -2,7 +2,7 @@ package com.book.core.onboarding.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.book.core.onboarding.application.command.UpdatePersonalizedRecommendationConsentCommand;
+import com.book.core.onboarding.application.command.RecordPersonalizedRecommendationConsentCommand;
 import java.util.Map;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -27,7 +27,7 @@ class PersonalizedRecommendationConsentIntegrationTest {
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
 
     @Autowired
-    UpdatePersonalizedRecommendationConsentUseCase updateConsentUseCase;
+    RecordPersonalizedRecommendationConsentUseCase recordConsentUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -44,22 +44,11 @@ class PersonalizedRecommendationConsentIntegrationTest {
     }
 
     @Test
-    void 미동의_요청은_성공하고_동의_이력을_만들지_않는다() {
-        final Long userId = insertUser("시드동의회원1");
-
-        final var result = updateConsentUseCase.execute(new UpdatePersonalizedRecommendationConsentCommand(userId, false));
-
-        assertThat(result.consented()).isFalse();
-        assertThat(result.agreedAt()).isNull();
-        assertThat(agreementCount(userId)).isZero();
-    }
-
-    @Test
     void 동의하면_AGREE_이력이_한_건_생기고_다시_동의해도_늘지_않는다() {
         final Long userId = insertUser("시드동의회원2");
 
-        final var first = updateConsentUseCase.execute(new UpdatePersonalizedRecommendationConsentCommand(userId, true));
-        final var second = updateConsentUseCase.execute(new UpdatePersonalizedRecommendationConsentCommand(userId, true));
+        final var first = recordConsentUseCase.execute(new RecordPersonalizedRecommendationConsentCommand(userId));
+        final var second = recordConsentUseCase.execute(new RecordPersonalizedRecommendationConsentCommand(userId));
 
         assertThat(first.consented()).isTrue();
         assertThat(second.agreedAt()).isEqualTo(first.agreedAt());
@@ -67,15 +56,15 @@ class PersonalizedRecommendationConsentIntegrationTest {
     }
 
     @Test
-    void 다른_사용자의_동의는_섞이지_않는다() {
-        final Long agreedUserId = insertUser("시드동의회원3");
+    void 다른_사용자의_동의는_각자의_이력으로_기록된다() {
+        final Long userId = insertUser("시드동의회원3");
         final Long otherUserId = insertUser("시드동의회원4");
-        updateConsentUseCase.execute(new UpdatePersonalizedRecommendationConsentCommand(agreedUserId, true));
 
-        final var other = updateConsentUseCase.execute(new UpdatePersonalizedRecommendationConsentCommand(otherUserId, false));
+        recordConsentUseCase.execute(new RecordPersonalizedRecommendationConsentCommand(userId));
+        recordConsentUseCase.execute(new RecordPersonalizedRecommendationConsentCommand(otherUserId));
 
-        assertThat(other.consented()).isFalse();
-        assertThat(agreementCount(otherUserId)).isZero();
+        assertThat(agreementCount(userId)).isEqualTo(1);
+        assertThat(agreementCount(otherUserId)).isEqualTo(1);
     }
 
     private Long insertUser(final String nickname) {

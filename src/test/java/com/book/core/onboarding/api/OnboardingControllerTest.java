@@ -5,6 +5,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -15,7 +16,7 @@ import com.book.core.onboarding.application.command.GetOnboardingProgressCommand
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
-import com.book.core.onboarding.application.command.UpdatePersonalizedRecommendationConsentCommand;
+import com.book.core.onboarding.application.command.RecordPersonalizedRecommendationConsentCommand;
 import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
 import com.book.core.onboarding.application.result.OnboardingBookCandidateResult;
 import com.book.core.onboarding.application.result.OnboardingOptionResult;
@@ -208,36 +209,16 @@ class OnboardingControllerTest {
     }
 
     @Test
-    void 동의를_저장하고_응답_계약을_반환한다() throws Exception {
+    void 본문_없는_동의_요청을_JWT_사용자의_커맨드로_기록하고_현재_동의_상태를_반환한다() throws Exception {
         authenticateAs(USER_ID);
-        final UpdatePersonalizedRecommendationConsentCommand command = new UpdatePersonalizedRecommendationConsentCommand(USER_ID, true);
-        when(onboardingService.updateConsent(command))
+        final RecordPersonalizedRecommendationConsentCommand command = new RecordPersonalizedRecommendationConsentCommand(USER_ID);
+        when(onboardingService.recordConsent(command))
             .thenReturn(new PersonalizedRecommendationConsentResult(true, LocalDateTime.of(2026, 1, 1, 0, 0)));
 
-        mvc.perform(put("/api/v1/onboarding/consent").contentType(MediaType.APPLICATION_JSON).content("{\"consented\":true}"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.data.consented").value(true));
+        mvc.perform(post("/api/v1/onboarding/consent")).andExpect(status().isOk()).andExpect(jsonPath("$.data.consented").value(true))
+            .andExpect(jsonPath("$.data.agreedAt").value("2026-01-01T00:00:00"));
 
-        verify(onboardingService).updateConsent(command);
-    }
-
-    @Test
-    void 미동의_요청을_JWT_사용자의_커맨드로_전달한다() throws Exception {
-        authenticateAs(USER_ID);
-        final UpdatePersonalizedRecommendationConsentCommand command = new UpdatePersonalizedRecommendationConsentCommand(USER_ID, false);
-        when(onboardingService.updateConsent(command)).thenReturn(new PersonalizedRecommendationConsentResult(false, null));
-
-        mvc.perform(put("/api/v1/onboarding/consent").contentType(MediaType.APPLICATION_JSON).content("{\"consented\":false}"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.data.consented").value(false));
-
-        verify(onboardingService).updateConsent(command);
-    }
-
-    @Test
-    void 동의_요청_본문에_consented가_없으면_400을_응답한다() throws Exception {
-        authenticateAs(USER_ID);
-
-        mvc.perform(put("/api/v1/onboarding/consent").contentType(MediaType.APPLICATION_JSON).content("{}"))
-            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+        verify(onboardingService).recordConsent(command);
     }
 
     @Test

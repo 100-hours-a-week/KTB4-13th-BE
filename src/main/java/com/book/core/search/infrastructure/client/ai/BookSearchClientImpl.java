@@ -3,6 +3,7 @@ package com.book.core.search.infrastructure.client.ai;
 import com.book.common.config.ai.AiRestClientConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.common.exception.RetryAfterException;
 import com.book.common.logging.TraceIdFilter;
 import com.book.core.search.application.port.BookSearchClient;
 import com.book.core.search.application.port.BookSearchItem;
@@ -13,6 +14,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -20,14 +22,12 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-/**
- * {@code POST /search} 연동.
- */
 @Component
 public class BookSearchClientImpl implements BookSearchClient {
     private static final String SEARCH_PATH = "/search";
     private static final String REQUEST_ID_HEADER = "X-Request-Id";
     private static final String DEGRADED_HEADER = "X-Degraded";
+    private static final long DEFAULT_RETRY_AFTER_SECONDS = 1;
 
     private final RestClient restClient;
 
@@ -57,12 +57,27 @@ public class BookSearchClientImpl implements BookSearchClient {
                     if (status.value() == 410) {
                         throw new CoreException(ErrorCode.AI_SEARCH_CURSOR_EXPIRED);
                     }
+                    if (status.value() == 429) {
+                        throw new RetryAfterException(ErrorCode.AI_SEARCH_RATE_LIMITED, retryAfterSeconds(httpResponse.getHeaders()));
+                    }
                     throw new CoreException(ErrorCode.AI_SEARCH_FAILURE);
                 });
         } catch (final ResourceAccessException exception) {
             throw new CoreException(ErrorCode.AI_SEARCH_TIMEOUT, exception);
         } catch (final RestClientException exception) {
             throw new CoreException(ErrorCode.AI_SEARCH_FAILURE, exception);
+        }
+    }
+
+    private long retryAfterSeconds(final HttpHeaders headers) {
+        final String value = headers.getFirst(HttpHeaders.RETRY_AFTER);
+        if (value == null) {
+            return DEFAULT_RETRY_AFTER_SECONDS;
+        }
+        try {
+            return Long.parseLong(value);
+        } catch (final NumberFormatException exception) {
+            return DEFAULT_RETRY_AFTER_SECONDS;
         }
     }
 

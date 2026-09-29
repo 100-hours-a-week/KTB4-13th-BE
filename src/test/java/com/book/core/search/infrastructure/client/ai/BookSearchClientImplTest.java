@@ -12,6 +12,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.common.exception.RetryAfterException;
 import com.book.common.logging.TraceIdFilter;
 import com.book.core.search.application.command.BookSearchSort;
 import com.book.core.search.application.port.BookSearchItem;
@@ -106,8 +107,27 @@ class BookSearchClientImplTest {
         assertErrorMapping(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_REQUEST);
         assertErrorMapping(HttpStatus.UNAUTHORIZED, ErrorCode.AI_SERVICE_UNAUTHORIZED);
         assertErrorMapping(HttpStatus.GONE, ErrorCode.AI_SEARCH_CURSOR_EXPIRED);
-        assertErrorMapping(HttpStatus.TOO_MANY_REQUESTS, ErrorCode.AI_SEARCH_FAILURE);
         assertErrorMapping(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.AI_SEARCH_FAILURE);
+    }
+
+    @Test
+    void AI_429는_Retry_After와_함께_AI_SEARCH_RATE_LIMITED로_변환한다() {
+        server.expect(requestTo(SEARCH_URL)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS).header(HttpHeaders.RETRY_AFTER, "30"));
+
+        assertThatThrownBy(() -> client.search(popularRequest())).isInstanceOfSatisfying(RetryAfterException.class, exception -> {
+            assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_SEARCH_RATE_LIMITED);
+            assertThat(exception.retryAfterSeconds()).isEqualTo(30);
+        });
+    }
+
+    @Test
+    void AI_429에_Retry_After가_없으면_1초로_안내한다() {
+        server.expect(requestTo(SEARCH_URL)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+
+        assertThatThrownBy(() -> client.search(popularRequest())).isInstanceOfSatisfying(RetryAfterException.class, exception -> {
+            assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_SEARCH_RATE_LIMITED);
+            assertThat(exception.retryAfterSeconds()).isEqualTo(1);
+        });
     }
 
     @Test

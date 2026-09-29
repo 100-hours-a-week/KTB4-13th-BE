@@ -2,7 +2,6 @@ package com.book.core.search.api;
 
 import com.book.common.response.ApiResponse;
 import com.book.core.search.api.converter.SearchCommandConverter;
-import com.book.core.search.api.converter.SearchResultConverter;
 import com.book.core.search.api.response.BookSearchResponse;
 import com.book.core.search.api.spec.SearchControllerSpec;
 import com.book.core.search.application.port.BookSearchResult;
@@ -28,7 +27,6 @@ import org.springframework.web.bind.annotation.RestController;
 class SearchController implements SearchControllerSpec {
     private final SearchService searchService;
     private final SearchCommandConverter commandConverter;
-    private final SearchResultConverter resultConverter;
 
     @Override
     @GetMapping
@@ -45,7 +43,7 @@ class SearchController implements SearchControllerSpec {
         final var command =
             commandConverter.toSearchBooksCommand(query, category, priceMin, priceMax, pubYearFrom, pubYearTo, sort, cursor, size);
         final BookSearchResult result = searchService.searchBooks(command);
-        final var response = resultConverter.toBookSearchResponse(result);
+        final var response = BookSearchResponse.from(result);
 
         final ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok();
         if (result.degraded() != null) {

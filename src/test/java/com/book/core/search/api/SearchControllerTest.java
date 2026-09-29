@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.core.search.api.converter.SearchCommandConverter;
-import com.book.core.search.api.converter.SearchResultConverter;
 import com.book.core.search.application.command.BookSearchSort;
 import com.book.core.search.application.command.SearchBooksCommand;
 import com.book.core.search.application.port.BookSearchItem;
@@ -27,7 +26,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(SearchController.class)
-@Import({SearchCommandConverter.class, SearchResultConverter.class})
+@Import(SearchCommandConverter.class)
 @ActiveProfiles("test")
 class SearchControllerTest {
     @Autowired

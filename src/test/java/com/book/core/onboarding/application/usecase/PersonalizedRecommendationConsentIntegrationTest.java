@@ -2,6 +2,7 @@ package com.book.core.onboarding.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.book.core.onboarding.application.command.GetPersonalizedRecommendationConsentCommand;
 import com.book.core.onboarding.application.command.UpdatePersonalizedRecommendationConsentCommand;
 import java.util.Map;
 import org.junit.jupiter.api.Tag;
@@ -28,6 +29,9 @@ class PersonalizedRecommendationConsentIntegrationTest {
 
     @Autowired
     UpdatePersonalizedRecommendationConsentUseCase updateConsentUseCase;
+
+    @Autowired
+    GetPersonalizedRecommendationConsentUseCase getConsentUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -76,6 +80,28 @@ class PersonalizedRecommendationConsentIntegrationTest {
 
         assertThat(other.consented()).isFalse();
         assertThat(agreementCount(otherUserId)).isZero();
+    }
+
+    @Test
+    void 동의하지_않은_사용자의_조회는_미동의로_응답한다() {
+        final Long userId = insertUser("시드동의회원5");
+        updateConsentUseCase.execute(new UpdatePersonalizedRecommendationConsentCommand(userId, false));
+
+        final var result = getConsentUseCase.execute(new GetPersonalizedRecommendationConsentCommand(userId));
+
+        assertThat(result.consented()).isFalse();
+        assertThat(result.agreedAt()).isNull();
+    }
+
+    @Test
+    void 동의한_사용자의_조회는_동의_시각과_함께_동의로_응답한다() {
+        final Long userId = insertUser("시드동의회원6");
+        final var saved = updateConsentUseCase.execute(new UpdatePersonalizedRecommendationConsentCommand(userId, true));
+
+        final var result = getConsentUseCase.execute(new GetPersonalizedRecommendationConsentCommand(userId));
+
+        assertThat(result.consented()).isTrue();
+        assertThat(result.agreedAt()).isEqualTo(saved.agreedAt());
     }
 
     private Long insertUser(final String nickname) {

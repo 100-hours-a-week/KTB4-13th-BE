@@ -3,7 +3,6 @@ package com.book.core.onboarding.api;
 import com.book.common.response.ApiResponse;
 import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
-import com.book.core.onboarding.api.request.PersonalizedRecommendationConsentRequest;
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
 import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
 import com.book.core.onboarding.api.response.OnboardingBookCandidatesResponse;
@@ -21,6 +20,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -82,12 +82,11 @@ class OnboardingController implements OnboardingControllerSpec {
     }
 
     @Override
-    @PutMapping("/consent")
-    public ResponseEntity<ApiResponse<PersonalizedRecommendationConsentResponse>> updateConsent(@AuthenticationPrincipal final Jwt jwt,
-        @Valid @RequestBody final PersonalizedRecommendationConsentRequest request) {
+    @PostMapping("/consent")
+    public ResponseEntity<ApiResponse<PersonalizedRecommendationConsentResponse>> recordConsent(@AuthenticationPrincipal final Jwt jwt) {
         final Long userId = Long.parseLong(jwt.getSubject());
-        final var command = commandConverter.toUpdatePersonalizedRecommendationConsentCommand(userId, request);
-        final var response = resultConverter.toPersonalizedRecommendationConsentResponse(onboardingService.updateConsent(command));
+        final var command = commandConverter.toRecordPersonalizedRecommendationConsentCommand(userId);
+        final var response = resultConverter.toPersonalizedRecommendationConsentResponse(onboardingService.recordConsent(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

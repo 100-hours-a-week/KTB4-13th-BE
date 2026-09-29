@@ -122,6 +122,7 @@ class GetRecommendationCardUseCaseTest {
 
         @Override
         public List<com.book.core.product.application.result.ProductListItem> findActiveProducts(final Long categoryId,
+            final LocalDate publishedFrom, final LocalDate publishedTo,
             final com.book.core.product.application.command.ProductListSort sort,
             final com.book.core.product.application.command.ProductListCursor cursor, final int limit) {
             throw new UnsupportedOperationException();

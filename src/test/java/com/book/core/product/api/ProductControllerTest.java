@@ -1,7 +1,9 @@
 package com.book.core.product.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -178,6 +180,47 @@ class ProductControllerTest {
     }
 
     @Test
+    void 출간일_범위를_카테고리_인기순_조건과_함께_서비스에_전달한다() throws Exception {
+        when(productService.getProducts(any())).thenReturn(GetProductsResult.of(List.of(), null));
+
+        mvc.perform(get("/api/v1/items").queryParam("categoryId", "7").queryParam("sort", "POPULARITY")
+            .queryParam("publishedFrom", "2025-01-01").queryParam("publishedTo", "2025-12-31")).andExpect(status().isOk());
+
+        final var commandCaptor = ArgumentCaptor.forClass(GetProductsCommand.class);
+        verify(productService).getProducts(commandCaptor.capture());
+        assertThat(commandCaptor.getValue().categoryId()).isEqualTo(7L);
+        assertThat(commandCaptor.getValue().sort()).isEqualTo(ProductListSort.POPULARITY);
+        assertThat(commandCaptor.getValue().publishedFrom()).isEqualTo(LocalDate.of(2025, 1, 1));
+        assertThat(commandCaptor.getValue().publishedTo()).isEqualTo(LocalDate.of(2025, 12, 31));
+    }
+
+    @Test
+    void 출간일은_시작일이나_종료일_하나만_지정하거나_같은_날짜로_지정할_수_있다() throws Exception {
+        when(productService.getProducts(any())).thenReturn(GetProductsResult.of(List.of(), null));
+
+        mvc.perform(get("/api/v1/items").queryParam("publishedFrom", "2025-01-01")).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/items").queryParam("publishedTo", "2025-12-31")).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/items").queryParam("publishedFrom", "2025-06-01").queryParam("publishedTo", "2025-06-01"))
+            .andExpect(status().isOk());
+
+        final var commandCaptor = ArgumentCaptor.forClass(GetProductsCommand.class);
+        verify(productService, times(3)).getProducts(commandCaptor.capture());
+        assertThat(commandCaptor.getAllValues()).extracting(GetProductsCommand::publishedFrom, GetProductsCommand::publishedTo)
+            .containsExactly(tuple(LocalDate.of(2025, 1, 1), null), tuple(null, LocalDate.of(2025, 12, 31)),
+                tuple(LocalDate.of(2025, 6, 1), LocalDate.of(2025, 6, 1)));
+    }
+
+    @Test
+    void 출간일_시작일이_종료일보다_늦거나_날짜_형식이_아니면_E400이다() throws Exception {
+        mvc.perform(get("/api/v1/items").queryParam("publishedFrom", "2025-12-31").queryParam("publishedTo", "2025-01-01"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+        mvc.perform(get("/api/v1/items").queryParam("publishedFrom", "2025/01/01")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
     void 상품_상세와_목록_명세가_OpenAPI에_노출된다() throws Exception {
         mvc.perform(get("/v3/api-docs/general")).andExpect(status().isOk())
             .andExpect(jsonPath("$.paths['/api/v1/products/{productId}'].get.summary").value("상품 상세 조회"))
@@ -188,6 +231,8 @@ class ProductControllerTest {
             .andExpect(jsonPath("$.paths['/api/v1/items'].get.parameters[1].name").value("sort"))
             .andExpect(jsonPath("$.paths['/api/v1/items'].get.parameters[2].name").value("cursor"))
             .andExpect(jsonPath("$.paths['/api/v1/items'].get.parameters[3].name").value("limit"))
+            .andExpect(jsonPath("$.paths['/api/v1/items'].get.parameters[4].name").value("publishedFrom"))
+            .andExpect(jsonPath("$.paths['/api/v1/items'].get.parameters[5].name").value("publishedTo"))
             .andExpect(jsonPath("$.paths['/api/v1/items'].get.responses['200']").exists());
     }
 

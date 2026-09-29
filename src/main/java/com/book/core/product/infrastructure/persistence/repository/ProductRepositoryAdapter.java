@@ -6,6 +6,7 @@ import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.domain.Product;
 import com.book.core.product.application.result.ProductListItem;
 import java.util.List;
+import java.time.LocalDate;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -27,8 +28,8 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort {
     }
 
     @Override
-    public List<ProductListItem> findActiveProducts(final Long categoryId, final ProductListSort sort, final ProductListCursor cursor,
-        final int limit) {
-        return queryRepository.findActiveProducts(categoryId, sort, cursor, limit);
+    public List<ProductListItem> findActiveProducts(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
+        final ProductListSort sort, final ProductListCursor cursor, final int limit) {
+        return queryRepository.findActiveProducts(categoryId, publishedFrom, publishedTo, sort, cursor, limit);
     }
 }

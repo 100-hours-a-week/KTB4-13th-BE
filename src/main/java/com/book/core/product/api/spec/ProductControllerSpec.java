@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Positive;
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -36,5 +38,11 @@ public interface ProductControllerSpec {
         @RequestParam(value = "sort", required = false) final String sort,
         @Parameter(in = ParameterIn.QUERY, description = "createdAt 정렬은 상품 ID 문자열, POPULARITY 정렬은 응답의 nextCursor 값을 전달합니다.")
         @RequestParam(value = "cursor", required = false) final String cursor,
-        @Parameter(in = ParameterIn.QUERY, example = "20") @Positive @RequestParam(value = "limit", required = false) final Integer limit);
+        @Parameter(in = ParameterIn.QUERY, example = "20") @Positive @RequestParam(value = "limit", required = false) final Integer limit,
+        @Parameter(in = ParameterIn.QUERY, description = "출간일 시작(yyyy-MM-dd, 포함). 생략하면 하한 없이 조회합니다.", example = "2025-01-01")
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        @RequestParam(value = "publishedFrom", required = false) final LocalDate publishedFrom,
+        @Parameter(in = ParameterIn.QUERY, description = "출간일 종료(yyyy-MM-dd, 포함). 생략하면 상한 없이 조회합니다. publishedFrom보다 이르면 400입니다.",
+            example = "2025-12-31")
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @RequestParam(value = "publishedTo", required = false) final LocalDate publishedTo);
 }

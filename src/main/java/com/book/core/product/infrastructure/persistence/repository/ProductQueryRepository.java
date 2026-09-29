@@ -12,10 +12,12 @@ import com.book.core.product.domain.QProduct;
 import com.book.core.product.infrastructure.persistence.entity.QProductPopularitySnapshot;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -68,27 +70,31 @@ class ProductQueryRepository {
         jdbcTemplate.update(INSERT_POPULARITY_SNAPSHOTS_SQL);
     }
 
-    List<ProductListItem> findActiveProducts(final Long categoryId, final ProductListSort sort, final ProductListCursor cursor,
-        final int limit) {
+    List<ProductListItem> findActiveProducts(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
+        final ProductListSort sort, final ProductListCursor cursor, final int limit) {
+        final BooleanExpression publishedAtPredicate = publishedAtPredicate(publishedFrom, publishedTo);
         if (sort == ProductListSort.POPULARITY) {
-            return findByPopularity(categoryId, cursor, limit);
+            return findByPopularity(categoryId, publishedAtPredicate, cursor, limit);
         }
-        return findByCreatedAt(categoryId, cursor, limit);
+        return findByCreatedAt(categoryId, publishedAtPredicate, cursor, limit);
     }
 
-    private List<ProductListItem> findByCreatedAt(final Long categoryId, final ProductListCursor cursor, final int limit) {
+    private List<ProductListItem> findByCreatedAt(final Long categoryId, final BooleanExpression publishedAtPredicate,
+        final ProductListCursor cursor, final int limit) {
         return queryFactory.selectFrom(product).join(product.book, book).fetchJoin()
-            .where(product.deletedAt.isNull(), book.deletedAt.isNull(), createdAtCursorPredicate(cursor), categoryPredicate(categoryId))
+            .where(product.deletedAt.isNull(), book.deletedAt.isNull(), createdAtCursorPredicate(cursor), categoryPredicate(categoryId),
+                publishedAtPredicate)
             .orderBy(product.createdAt.desc(), product.id.desc()).limit(limit).fetch().stream()
             .map(item -> new ProductListItem(item, 0L, 0L, BigDecimal.ZERO)).toList();
     }
 
-    private List<ProductListItem> findByPopularity(final Long categoryId, final ProductListCursor cursor, final int limit) {
+    private List<ProductListItem> findByPopularity(final Long categoryId, final BooleanExpression publishedAtPredicate,
+        final ProductListCursor cursor, final int limit) {
         final var popularity = popularityExpressions();
         return queryFactory.select(product, popularity.salesQuantity(), popularity.reviewCount(), popularity.reviewRate()).from(product)
             .leftJoin(popularity.snapshot()).on(popularity.snapshot().productId.eq(product.id)).join(product.book, book).fetchJoin()
             .where(product.deletedAt.isNull(), book.deletedAt.isNull(), popularityCursorPredicate(cursor, popularity),
-                categoryPredicate(categoryId))
+                categoryPredicate(categoryId), publishedAtPredicate)
             .orderBy(popularity.salesQuantity().desc(), product.id.desc()).limit(limit).fetch().stream()
             .map(tuple -> toProductListItem(tuple, popularity)).toList();
     }
@@ -130,6 +136,12 @@ class ProductQueryRepository {
             .where(productCategory.product.eq(product), productCategory.deletedAt.isNull(), category.id.eq(categoryId),
                 category.deletedAt.isNull())
             .exists();
+    }
+
+    private BooleanExpression publishedAtPredicate(final LocalDate publishedFrom, final LocalDate publishedTo) {
+        final BooleanExpression fromPredicate = publishedFrom == null ? null : book.publishedAt.goe(publishedFrom);
+        final BooleanExpression toPredicate = publishedTo == null ? null : book.publishedAt.loe(publishedTo);
+        return Expressions.allOf(fromPredicate, toPredicate);
     }
 
     private record PopularityExpressions(QProductPopularitySnapshot snapshot, NumberExpression<Long> salesQuantity,

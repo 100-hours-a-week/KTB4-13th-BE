@@ -27,7 +27,8 @@ public class GetProductsUseCase {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
-        final var products = productRepository.findActiveProducts(command.categoryId(), command.sort(), command.cursor(), fetchSize);
+        final var products = productRepository.findActiveProducts(command.categoryId(), command.publishedFrom(), command.publishedTo(),
+            command.sort(), command.cursor(), fetchSize);
         final boolean hasNext = products.size() > pageSize;
         final var page = products.stream().limit(pageSize).toList();
         final var items = page.stream().map(item -> GetProductItemResult.from(item.product())).toList();

@@ -11,12 +11,6 @@ import com.book.core.onboarding.domain.TermType;
 import com.book.core.onboarding.domain.UserTermAgreement;
 import lombok.RequiredArgsConstructor;
 
-/**
- * 활성 개인화 약관에 대한 사용자의 동의를 한 번만 기록한다. 이미 동의했으면 저장하지 않고 성공한다.
- *
- * 외부 트랜잭션을 두지 않는다. 저장이 자체 트랜잭션에서 실행되어야 동시 요청의 UNIQUE 충돌이 이 흐름 전체를 rollback-only로 만들지 않고
- * {@link UserTermAgreementRepositoryPort#saveIfAbsent}에서 흡수된다.
- */
 @UseCase
 @RequiredArgsConstructor
 public class RecordPersonalizationAgreementUseCase {

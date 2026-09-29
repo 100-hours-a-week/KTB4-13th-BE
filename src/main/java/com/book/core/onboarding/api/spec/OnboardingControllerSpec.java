@@ -86,4 +86,13 @@ public interface OnboardingControllerSpec {
         @RequestBody(description = "선택한 도서 ID 목록", required = true,
             content = @Content(schema = @Schema(implementation = PutOnboardingBooksRequest.class)))
         @Valid final PutOnboardingBooksRequest request);
+
+    @Operation(summary = "개인화 추천 동의 기록",
+        description = "요청 회원의 개인화 추천 동의를 활성 개인화 약관에 기록합니다. 요청 본문은 없으며, 동의하지 않는 회원은 호출하지 않습니다. " + "이미 동의한 회원이 다시 호출해도 새 기록 없이 성공합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "개인화 추천 동의 기록 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<ApiResponse<Void>> recordPersonalizationAgreement(@AuthenticationPrincipal final Jwt jwt);
 }

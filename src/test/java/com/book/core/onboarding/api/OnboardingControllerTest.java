@@ -5,6 +5,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,6 +17,7 @@ import com.book.core.onboarding.application.command.GetOnboardingProgressCommand
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
+import com.book.core.onboarding.application.command.RecordPersonalizationAgreementCommand;
 import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
 import com.book.core.onboarding.application.result.OnboardingBookCandidateResult;
 import com.book.core.onboarding.application.result.OnboardingOptionResult;
@@ -224,6 +226,16 @@ class OnboardingControllerTest {
 
         mvc.perform(get("/api/v1/onboarding/books")).andExpect(status().isOk()).andExpect(jsonPath("$.data.candidates").isArray())
             .andExpect(jsonPath("$.data.candidates").isEmpty());
+    }
+
+    @Test
+    void 본문_없는_개인화_동의_요청을_JWT_사용자의_커맨드로_전달한다() throws Exception {
+        authenticateAs(USER_ID);
+
+        mvc.perform(post("/api/v1/onboarding/personalization-agreement")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(onboardingService).recordPersonalizationAgreement(new RecordPersonalizationAgreementCommand(USER_ID));
     }
 
     private void authenticateAs(final Long userId) {

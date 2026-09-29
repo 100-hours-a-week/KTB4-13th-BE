@@ -6,6 +6,7 @@ import com.book.core.onboarding.application.command.GetOnboardingProgressCommand
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
+import com.book.core.onboarding.application.command.RecordPersonalizationAgreementCommand;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -25,5 +26,9 @@ public class OnboardingCommandConverter {
 
     public PutOnboardingBooksCommand toPutOnboardingBooksCommand(final Long userId, final PutOnboardingBooksRequest request) {
         return new PutOnboardingBooksCommand(userId, request.bookIds());
+    }
+
+    public RecordPersonalizationAgreementCommand toRecordPersonalizationAgreementCommand(final Long userId) {
+        return new RecordPersonalizationAgreementCommand(userId);
     }
 }

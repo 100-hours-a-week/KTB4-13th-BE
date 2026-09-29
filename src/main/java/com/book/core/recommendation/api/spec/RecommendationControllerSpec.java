@@ -55,7 +55,7 @@ public interface RecommendationControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "410", description = "cursor가 만료되어 처음부터 다시 조회해야 함")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<RecommendationFeedResponse>> getFeed(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<ApiResponse<RecommendationFeedResponse>> getFeed(@Parameter(hidden = true) final Long userId,
         @Parameter(example = "home") @Pattern(regexp = "home") final String surface,
         @Parameter(example = "15") @Positive @Max(50) final int size, @Parameter(required = false) final String cursor);
 }

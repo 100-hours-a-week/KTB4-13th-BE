@@ -57,11 +57,10 @@ class RecommendationController implements RecommendationControllerSpec {
 
     @Override
     @GetMapping("/feed")
-    public ResponseEntity<ApiResponse<RecommendationFeedResponse>> getFeed(@AuthenticationPrincipal final Jwt jwt,
+    public ResponseEntity<ApiResponse<RecommendationFeedResponse>> getFeed(@UserId final Long userId,
         @Pattern(regexp = "home") @RequestParam(value = "surface", required = false, defaultValue = "home") final String surface,
         @Positive @Max(50) @RequestParam(value = "size", required = false, defaultValue = "15") final int size,
         @RequestParam(value = "cursor", required = false) final String cursor) {
-        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toGetRecommendationFeedCommand(userId, size, cursor);
         final RecommendationFeedResult result = recommendationService.getFeed(command);
         final var response = resultConverter.toRecommendationFeedResponse(result);

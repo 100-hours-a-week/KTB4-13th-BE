@@ -1,5 +1,6 @@
 package com.book.core.onboarding.api;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -63,14 +64,29 @@ class OnboardingControllerTest {
         authenticateAs(USER_ID);
         final GetOnboardingQuestionCommand command = new GetOnboardingQuestionCommand(USER_ID, 1L);
         when(onboardingService.getQuestion(command)).thenReturn(new OnboardingQuestionResult(1L, "reading-time", "주로 언제 책을 읽으시나요?", 1, 5,
-            List.of(new OnboardingOptionResult(1L, "morning", "아침, 하루를 시작할 때")), 2L));
+            List.of(new OnboardingOptionResult(1L, null, "morning", "아침, 하루를 시작할 때")), 2L));
 
         mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 1L)).andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data.questionId").value(1))
             .andExpect(jsonPath("$.data.code").doesNotExist()).andExpect(jsonPath("$.data.content").value("주로 언제 책을 읽으시나요?"))
             .andExpect(jsonPath("$.data.minSelection").value(1)).andExpect(jsonPath("$.data.maxSelection").value(5))
             .andExpect(jsonPath("$.data.options[0].optionId").value(1)).andExpect(jsonPath("$.data.options[0].code").value("morning"))
+            .andExpect(jsonPath("$.data.options[0].parentOptionId").value(nullValue()))
             .andExpect(jsonPath("$.data.nextQuestionId").value(2));
+
+        verify(onboardingService).getQuestion(command);
+    }
+
+    @Test
+    void Q4_option은_parentOptionId를_응답에_포함한다() throws Exception {
+        authenticateAs(USER_ID);
+        final GetOnboardingQuestionCommand command = new GetOnboardingQuestionCommand(USER_ID, 4L);
+        when(onboardingService.getQuestion(command)).thenReturn(new OnboardingQuestionResult(4L, "sub-genre", "세부 장르를 선택해주세요", 1, 3,
+            List.of(new OnboardingOptionResult(23L, 9L, "novel-thriller", "추리/스릴러")), null));
+
+        mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 4L)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.options[0].optionId").value(23)).andExpect(jsonPath("$.data.options[0].parentOptionId").value(9))
+            .andExpect(jsonPath("$.data.options[0].code").value("novel-thriller"));
 
         verify(onboardingService).getQuestion(command);
     }

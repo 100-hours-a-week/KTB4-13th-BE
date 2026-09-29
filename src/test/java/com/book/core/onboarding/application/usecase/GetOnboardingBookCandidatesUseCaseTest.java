@@ -3,7 +3,7 @@ package com.book.core.onboarding.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.core.book.application.port.BookRepositoryPort;
-import com.book.core.book.application.usecase.FindBooksByIdsUseCase;
+import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.book.domain.Book;
 import com.book.core.onboarding.application.port.OnboardingBookCandidateRepositoryPort;
 import com.book.core.onboarding.application.result.OnboardingBookCandidateResult;
@@ -19,7 +19,7 @@ class GetOnboardingBookCandidatesUseCaseTest {
     private final FakeCandidateRepository candidateRepository = new FakeCandidateRepository();
     private final FakeBookRepository bookRepository = new FakeBookRepository();
     private final GetOnboardingBookCandidatesUseCase useCase =
-        new GetOnboardingBookCandidatesUseCase(candidateRepository, new FindBooksByIdsUseCase(bookRepository));
+        new GetOnboardingBookCandidatesUseCase(candidateRepository, new GetBooksUseCase(bookRepository));
 
     @Test
     void display_order_순으로_실제_Book_정보와_함께_조회한다() {

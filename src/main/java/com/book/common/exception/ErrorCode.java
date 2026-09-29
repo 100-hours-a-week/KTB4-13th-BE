@@ -90,7 +90,10 @@ public enum ErrorCode {
     AI_FEED_INVALID_REQUEST(HttpStatus.BAD_GATEWAY, "E502", "AI 추천 피드 서비스가 요청을 거부했습니다.", LogLevel.ERROR),
     AI_FEED_CURSOR_EXPIRED(HttpStatus.GONE, "E410", "추천 피드 커서가 만료되었습니다. 처음부터 다시 조회해야 합니다.", LogLevel.INFO),
     AI_FEED_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "E504", "AI 추천 피드 서비스 응답이 시간 내에 도착하지 않았습니다.", LogLevel.INFO),
-    AI_FEED_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "AI 추천 피드 조회에 실패했습니다.", LogLevel.INFO);
+    AI_FEED_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "AI 추천 피드 조회에 실패했습니다.", LogLevel.INFO),
+    AI_SEARCH_CURSOR_EXPIRED(HttpStatus.GONE, "E410", "검색 결과 커서가 만료되었습니다. 처음부터 다시 검색해야 합니다.", LogLevel.INFO),
+    AI_SEARCH_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "E504", "AI 검색 서비스 응답이 시간 내에 도착하지 않았습니다.", LogLevel.INFO),
+    AI_SEARCH_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "AI 검색 결과 조회에 실패했습니다.", LogLevel.INFO);
     // spotless:on
 
     private final HttpStatus status;

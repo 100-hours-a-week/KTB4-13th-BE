@@ -4,6 +4,7 @@ import com.book.common.response.ApiResponse;
 import com.book.core.onboarding.api.request.PersonalizedRecommendationConsentRequest;
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
 import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
+import com.book.core.onboarding.api.response.OnboardingBookCandidatesResponse;
 import com.book.core.onboarding.api.response.OnboardingProgressResponse;
 import com.book.core.onboarding.api.response.OnboardingQuestionResponse;
 import com.book.core.onboarding.api.response.PersonalizedRecommendationConsentResponse;
@@ -66,6 +67,14 @@ public interface OnboardingControllerSpec {
         @RequestBody(description = "선택한 옵션 ID 목록", required = true,
             content = @Content(schema = @Schema(implementation = PutOnboardingAnswersRequest.class)))
         @Valid final PutOnboardingAnswersRequest request);
+
+    @Operation(summary = "온보딩 도서 후보 조회", description = "Question 5에서 사용자에게 보여줄 고정 대표 도서 후보 목록을 display_order 순으로 조회합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "도서 후보 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<ApiResponse<OnboardingBookCandidatesResponse>> getBookCandidates(@AuthenticationPrincipal final Jwt jwt);
 
     @Operation(summary = "온보딩 도서 선택 저장 및 완료",
         description = "선택한 도서 목록을 저장합니다. bookIds는 null일 수 없고 중복을 허용하지 않으며, 빈 배열은 허용합니다. "

@@ -3,6 +3,7 @@ package com.book.core.onboarding.infrastructure.persistence.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.book.core.onboarding.application.port.OnboardingBookCandidateRepositoryPort;
 import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.OnboardingQuestionRepositoryPort;
 import com.book.core.onboarding.application.port.UserConsentRepositoryPort;
@@ -10,6 +11,7 @@ import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryP
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingRepositoryPort;
 import com.book.core.onboarding.domain.ConsentType;
+import com.book.core.onboarding.domain.OnboardingBookCandidate;
 import com.book.core.onboarding.domain.OnboardingOption;
 import com.book.core.onboarding.domain.OnboardingQuestion;
 import com.book.core.onboarding.domain.UserConsent;
@@ -58,6 +60,12 @@ class OnboardingRepositoryIntegrationTest {
 
     @Autowired
     UserConsentRepositoryPort userConsentRepository;
+
+    @Autowired
+    OnboardingBookCandidateRepositoryPort candidateRepository;
+
+    @Autowired
+    OnboardingBookCandidateJpaRepository candidateJpaRepository;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -161,6 +169,20 @@ class OnboardingRepositoryIntegrationTest {
 
     @Test
     @Transactional
+    void 도서_후보_조회_결과의_bookId를_그대로_사용자_선택으로_저장할_수_있다() {
+        final Long userId = insertUser("온보딩회원7");
+        final Long bookId = insertBook("후보에서_선택된_도서");
+        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId, 1));
+
+        final Long candidateBookId = candidateRepository.findAllOrderByDisplayOrder().stream()
+            .filter(candidate -> candidate.bookId().equals(bookId)).findFirst().orElseThrow().bookId();
+        onboardingBookRepository.saveAll(List.of(UserOnboardingBook.of(userId, candidateBookId)));
+
+        assertThat(onboardingBookRepository.findByUserId(userId)).extracting(UserOnboardingBook::bookId).containsExactly(bookId);
+    }
+
+    @Test
+    @Transactional
     void 도서_선택을_저장하고_회원별로_조회하며_삭제할_수_있다() {
         final Long userId = insertUser("온보딩회원5");
         final Long bookId = insertBook("온보딩 통합 테스트 도서 1");
@@ -212,6 +234,30 @@ class OnboardingRepositoryIntegrationTest {
         assertThat(rows).hasSize(2);
         assertThat(rows.get(0).get("withdrawn_at")).isNotNull();
         assertThat(rows.get(1).get("withdrawn_at")).isNull();
+    }
+
+    @Test
+    @Transactional
+    void 도서_후보를_display_order_순으로_조회한다() {
+        final Long bookId1 = insertBook("후보 도서 1");
+        final Long bookId2 = insertBook("후보 도서 2");
+        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId2, 2));
+        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId1, 1));
+
+        final List<Long> ownBookIds = candidateRepository.findAllOrderByDisplayOrder().stream()
+            .filter(candidate -> candidate.bookId().equals(bookId1) || candidate.bookId().equals(bookId2))
+            .map(OnboardingBookCandidate::bookId).toList();
+
+        assertThat(ownBookIds).containsExactly(bookId1, bookId2);
+    }
+
+    @Test
+    void 동일_Book에_두번째_후보를_저장하면_UNIQUE_제약을_위반한다() {
+        final Long bookId = insertBook("중복 후보 도서");
+        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId, 1));
+
+        assertThatThrownBy(() -> candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId, 2)))
+            .isInstanceOf(DataAccessException.class);
     }
 
     private Long insertUser(final String nickname) {

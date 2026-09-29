@@ -24,8 +24,8 @@ import com.book.core.auth.infrastructure.token.JwtRefreshTokenVerifier;
 import com.book.core.auth.infrastructure.token.JwtTokenIssuer;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.application.usecase.AddCartItemUseCase;
-import com.book.core.user.application.port.NicknameGenerator;
-import com.book.core.user.infrastructure.nickname.RandomNicknameGenerator;
+import com.book.core.user.application.port.NicknameGeneratorPort;
+import com.book.core.user.infrastructure.nickname.generator.NicknameGenerator;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.support.AopUtils;
@@ -80,7 +80,7 @@ class BookApplicationTest {
     RefreshSessionRepository refreshSessionRepository;
 
     @Autowired
-    NicknameGenerator nicknameGenerator;
+    NicknameGeneratorPort nicknameGenerator;
 
     @Autowired
     @Qualifier("kakaoJwtDecoder")
@@ -112,7 +112,7 @@ class BookApplicationTest {
         assertThat(refreshTokenVerifier).isInstanceOf(JwtRefreshTokenVerifier.class);
         assertThat(AopUtils.getTargetClass(refreshTokenHasher).getSimpleName()).isEqualTo("Sha256RefreshTokenHasher");
         assertThat(AopUtils.getTargetClass(refreshSessionRepository).getSimpleName()).isEqualTo("RefreshSessionRepositoryAdapter");
-        assertThat(nicknameGenerator).isInstanceOf(RandomNicknameGenerator.class);
+        assertThat(nicknameGenerator).isInstanceOf(NicknameGenerator.class);
         assertThat(kakaoJwtDecoder).isNotSameAs(serviceJwtDecoder);
         assertThat(securityFilterChain).isNotNull();
     }

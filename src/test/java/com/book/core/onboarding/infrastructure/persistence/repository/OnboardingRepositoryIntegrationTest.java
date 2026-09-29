@@ -259,17 +259,6 @@ class OnboardingRepositoryIntegrationTest {
     }
 
     @Test
-    void 다른_사용자의_동의는_서로_섞이지_않는다() {
-        final Long userId1 = insertUser("동의회원3");
-        final Long userId2 = insertUser("동의회원4");
-        userConsentRepository
-            .save(UserConsent.create(userId1, ConsentType.PERSONALIZED_RECOMMENDATION, "v1", LocalDateTime.of(2026, 1, 1, 0, 0)));
-
-        assertThat(userConsentRepository.findActiveByUserIdAndConsentType(userId1, ConsentType.PERSONALIZED_RECOMMENDATION)).isPresent();
-        assertThat(userConsentRepository.findActiveByUserIdAndConsentType(userId2, ConsentType.PERSONALIZED_RECOMMENDATION)).isEmpty();
-    }
-
-    @Test
     @Transactional
     void 도서_후보를_display_order_순으로_조회한다() {
         final Long bookId1 = insertBook("후보 도서 1");

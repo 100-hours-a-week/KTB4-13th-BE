@@ -91,13 +91,14 @@ public interface OnboardingControllerSpec {
             content = @Content(schema = @Schema(implementation = PutOnboardingBooksRequest.class)))
         @Valid final PutOnboardingBooksRequest request);
 
-    @Operation(summary = "개인화 추천 동의/철회",
-        description = "요청 회원의 개인화 추천 동의 상태를 변경합니다. consented=true면 동의를, false면 철회를 기록합니다. " + "이미 동일한 상태이면 추가 변경 없이 현재 상태를 그대로 반환합니다.")
+    @Operation(summary = "개인화 추천 동의",
+        description = "요청 회원의 개인화 추천 선택 동의를 저장하고 현재 동의 상태를 반환합니다. consented=true면 활성 개인화 추천 약관에 대한 동의를 기록하며, "
+            + "이미 동의했으면 추가 기록 없이 기존 동의 시각을 반환합니다. consented=false는 기록을 남기지 않으며 V1에서는 철회를 지원하지 않으므로 " + "기존 동의도 유지됩니다.")
     @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "동의 상태 변경 성공"),
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "동의 저장 성공 또는 현재 상태 반환"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "활성화된 개인화 추천 약관이 없거나 알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
     ResponseEntity<ApiResponse<PersonalizedRecommendationConsentResponse>> updateConsent(@AuthenticationPrincipal final Jwt jwt,
         @RequestBody(description = "동의 여부", required = true,

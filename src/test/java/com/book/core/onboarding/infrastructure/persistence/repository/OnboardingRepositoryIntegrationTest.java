@@ -6,18 +6,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.core.onboarding.application.port.OnboardingBookCandidateRepositoryPort;
 import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.OnboardingQuestionRepositoryPort;
-import com.book.core.onboarding.application.port.UserConsentRepositoryPort;
+import com.book.core.onboarding.application.port.TermRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingRepositoryPort;
-import com.book.core.onboarding.domain.ConsentType;
+import com.book.core.onboarding.application.port.UserTermAgreementRepositoryPort;
 import com.book.core.onboarding.domain.OnboardingBookCandidate;
 import com.book.core.onboarding.domain.OnboardingOption;
 import com.book.core.onboarding.domain.OnboardingQuestion;
-import com.book.core.onboarding.domain.UserConsent;
+import com.book.core.onboarding.domain.TermAgreementAction;
+import com.book.core.onboarding.domain.TermType;
 import com.book.core.onboarding.domain.UserOnboarding;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
+import com.book.core.onboarding.domain.UserTermAgreement;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -59,7 +61,10 @@ class OnboardingRepositoryIntegrationTest {
     UserOnboardingBookRepositoryPort onboardingBookRepository;
 
     @Autowired
-    UserConsentRepositoryPort userConsentRepository;
+    TermRepositoryPort termRepository;
+
+    @Autowired
+    UserTermAgreementRepositoryPort agreementRepository;
 
     @Autowired
     OnboardingBookCandidateRepositoryPort candidateRepository;
@@ -207,33 +212,50 @@ class OnboardingRepositoryIntegrationTest {
     }
 
     @Test
-    void 동의를_저장하고_활성_동의를_조회한다() {
-        final Long userId = insertUser("동의회원1");
-        final LocalDateTime agreedAt = LocalDateTime.of(2026, 1, 1, 0, 0);
+    @Transactional
+    void 활성_약관만_유형으로_조회한다() {
+        insertTerm(TermType.PERSONALIZED_RECOMMENDATION, false);
+        final Long activeTermId = insertTerm(TermType.PERSONALIZED_RECOMMENDATION, true);
 
-        userConsentRepository.save(UserConsent.create(userId, ConsentType.PERSONALIZED_RECOMMENDATION, "v1", agreedAt));
-
-        assertThat(userConsentRepository.findActiveByUserIdAndConsentType(userId, ConsentType.PERSONALIZED_RECOMMENDATION))
-            .hasValueSatisfying(consent -> assertThat(consent.agreedAt()).isEqualTo(agreedAt));
+        assertThat(termRepository.findActiveByTermType(TermType.PERSONALIZED_RECOMMENDATION))
+            .hasValueSatisfying(term -> assertThat(term.id()).isEqualTo(activeTermId));
     }
 
     @Test
-    void 철회_후_재동의하면_새_행이_생성되고_기존_행은_철회_상태로_DB에_남는다() {
-        final Long userId = insertUser("동의회원2");
-        final LocalDateTime firstAgreedAt = LocalDateTime.of(2026, 1, 1, 0, 0);
-        final UserConsent first =
-            userConsentRepository.save(UserConsent.create(userId, ConsentType.PERSONALIZED_RECOMMENDATION, "v1", firstAgreedAt));
-        first.withdraw(LocalDateTime.of(2026, 1, 2, 0, 0));
-        userConsentRepository.save(first);
+    @Transactional
+    void 사용자_약관_동의를_저장하고_사용자와_약관_기준으로_조회한다() {
+        final Long userId = insertUser("동의회원1");
+        final Long otherUserId = insertUser("동의회원2");
+        final Long termId = insertTerm(TermType.PERSONALIZED_RECOMMENDATION, true);
+        final LocalDateTime agreedAt = LocalDateTime.of(2026, 1, 1, 0, 0);
 
-        final LocalDateTime secondAgreedAt = LocalDateTime.of(2026, 1, 3, 0, 0);
-        userConsentRepository.save(UserConsent.create(userId, ConsentType.PERSONALIZED_RECOMMENDATION, "v1", secondAgreedAt));
+        agreementRepository.save(UserTermAgreement.agree(userId, termId, agreedAt));
 
-        final List<java.util.Map<String, Object>> rows =
-            jdbc.queryForList("SELECT agreed_at, withdrawn_at FROM user_consents WHERE user_id = ? ORDER BY id", userId);
-        assertThat(rows).hasSize(2);
-        assertThat(rows.get(0).get("withdrawn_at")).isNotNull();
-        assertThat(rows.get(1).get("withdrawn_at")).isNull();
+        assertThat(agreementRepository.findByUserIdAndTermIdAndAction(userId, termId, TermAgreementAction.AGREE))
+            .hasValueSatisfying(agreement -> assertThat(agreement.agreedAt()).isEqualTo(agreedAt));
+        assertThat(agreementRepository.findByUserIdAndTermIdAndAction(otherUserId, termId, TermAgreementAction.AGREE)).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT action FROM user_term_agreement WHERE user_id = ?", String.class, userId))
+            .isEqualTo("AGREE");
+    }
+
+    @Test
+    @Transactional
+    void 같은_사용자가_같은_약관에_AGREE를_두번_저장하면_UNIQUE_제약을_위반한다() {
+        final Long userId = insertUser("동의회원3");
+        final Long termId = insertTerm(TermType.PERSONALIZED_RECOMMENDATION, true);
+        agreementRepository.save(UserTermAgreement.agree(userId, termId, LocalDateTime.of(2026, 1, 1, 0, 0)));
+
+        assertThatThrownBy(() -> insertAgreement(userId, termId)).isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    @Transactional
+    void 존재하지_않는_사용자나_약관을_참조하는_동의는_FK_제약을_위반한다() {
+        final Long userId = insertUser("동의회원4");
+        final Long termId = insertTerm(TermType.PERSONALIZED_RECOMMENDATION, true);
+
+        assertThatThrownBy(() -> insertAgreement(userId, Long.MAX_VALUE)).isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> insertAgreement(Long.MAX_VALUE, termId)).isInstanceOf(DataAccessException.class);
     }
 
     @Test
@@ -263,6 +285,16 @@ class OnboardingRepositoryIntegrationTest {
     private Long insertUser(final String nickname) {
         jdbc.update("INSERT INTO users (nickname) VALUES (?)", nickname);
         return jdbc.queryForObject("SELECT id FROM users WHERE nickname = ?", Long.class, nickname);
+    }
+
+    private Long insertTerm(final TermType termType, final boolean active) {
+        jdbc.update("INSERT INTO terms (term_type, title, content, version, is_required, is_active, display_order) "
+            + "VALUES (?, '테스트 약관', '테스트 약관 내용', 'test', b'0', ?, 1)", termType.name(), active);
+        return jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+    }
+
+    private void insertAgreement(final Long userId, final Long termId) {
+        jdbc.update("INSERT INTO user_term_agreement (user_id, term_id, action, agreed_at) VALUES (?, ?, 'AGREE', NOW(6))", userId, termId);
     }
 
     private Long insertBook(final String title) {

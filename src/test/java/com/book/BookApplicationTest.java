@@ -1,6 +1,7 @@
 package com.book;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -40,6 +41,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -140,5 +142,14 @@ class BookApplicationTest {
     void 인증_없이_온보딩_도서_후보를_조회하면_401을_응답한다() throws Exception {
         mvc.perform(get("/api/v1/onboarding/books")).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.code").value("E401"));
+    }
+
+    @Test
+    void actuatorHealthIsUnauthenticatedAndReturnsOnlyUpAndHidesInfo() throws Exception {
+        mvc.perform(get("/actuator/health")).andExpect(status().isOk())
+            .andExpect(content().json("{\"status\":\"UP\"}", JsonCompareMode.STRICT));
+
+        final String authorization = "Bearer " + tokenIssuer.issue(42L).accessToken();
+        mvc.perform(get("/actuator/info").header(HttpHeaders.AUTHORIZATION, authorization)).andExpect(status().isNotFound());
     }
 }

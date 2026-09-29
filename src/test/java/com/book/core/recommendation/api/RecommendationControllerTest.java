@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.book.common.config.security.CurrentUserMvcConfig;
 import com.book.core.recommendation.api.converter.RecommendationCommandConverter;
 import com.book.core.recommendation.api.converter.RecommendationResultConverter;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
@@ -24,23 +25,18 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @WebMvcTest(RecommendationController.class)
-@Import({RecommendationCommandConverter.class, RecommendationResultConverter.class,
-    RecommendationControllerTest.AuthenticationPrincipalTestConfig.class})
+@Import({RecommendationCommandConverter.class, RecommendationResultConverter.class, CurrentUserMvcConfig.class})
 @ActiveProfiles("test")
 class RecommendationControllerTest {
     private static final String SPEC_JSON = """
@@ -161,13 +157,5 @@ class RecommendationControllerTest {
         final Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "none").claim("sub", userId.toString()).issuedAt(Instant.now())
             .expiresAt(Instant.now().plusSeconds(3600)).build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
-    }
-
-    @TestConfiguration
-    static class AuthenticationPrincipalTestConfig implements WebMvcConfigurer {
-        @Override
-        public void addArgumentResolvers(final List<HandlerMethodArgumentResolver> resolvers) {
-            resolvers.add(new AuthenticationPrincipalArgumentResolver());
-        }
     }
 }

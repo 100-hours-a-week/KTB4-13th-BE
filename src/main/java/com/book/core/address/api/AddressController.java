@@ -1,5 +1,6 @@
 package com.book.core.address.api;
 
+import com.book.common.config.security.CurrentUser;
 import com.book.common.response.ApiResponse;
 import com.book.core.address.api.converter.AddressCommandConverter;
 import com.book.core.address.api.converter.AddressResultConverter;
@@ -14,8 +15,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,9 +36,8 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<Void>> registerAddress(@AuthenticationPrincipal final Jwt jwt,
+    public ResponseEntity<ApiResponse<Void>> registerAddress(@CurrentUser final Long userId,
         @Valid @RequestBody final RegisterAddressRequest request) {
-        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toRegisterAddressCommand(userId, request);
         addressService.registerAddress(command);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -47,8 +45,7 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<AddressListResponse>> getAddresses(@AuthenticationPrincipal final Jwt jwt) {
-        final Long userId = Long.parseLong(jwt.getSubject());
+    public ResponseEntity<ApiResponse<AddressListResponse>> getAddresses(@CurrentUser final Long userId) {
         final GetAddressesCommand command = commandConverter.toGetAddressesCommand(userId);
         final var response = resultConverter.toGetAddressesResponse(addressService.getAddresses(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -56,9 +53,8 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PutMapping("/{addressId}")
-    public ResponseEntity<ApiResponse<UpdateAddressResponse>> updateAddress(@AuthenticationPrincipal final Jwt jwt,
+    public ResponseEntity<ApiResponse<UpdateAddressResponse>> updateAddress(@CurrentUser final Long userId,
         @Positive @PathVariable("addressId") final Long addressId, @Valid @RequestBody final UpdateAddressRequest request) {
-        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toUpdateAddressCommand(userId, addressId, request);
         final var result = addressService.updateAddress(command);
         final var response = resultConverter.toUpdateAddressResponse(result);
@@ -67,9 +63,8 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PutMapping("/{addressId}/default")
-    public ResponseEntity<ApiResponse<UpdateAddressResponse>> setDefaultAddress(@AuthenticationPrincipal final Jwt jwt,
+    public ResponseEntity<ApiResponse<UpdateAddressResponse>> setDefaultAddress(@CurrentUser final Long userId,
         @Positive @PathVariable("addressId") final Long addressId) {
-        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toSetDefaultAddressCommand(userId, addressId);
         final var result = addressService.setDefaultAddress(command);
         final var response = resultConverter.toSetDefaultAddressResponse(result);
@@ -78,9 +73,7 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @DeleteMapping("/{addressId}")
-    public ResponseEntity<Void> deleteAddress(@AuthenticationPrincipal final Jwt jwt,
-        @Positive @PathVariable("addressId") final Long addressId) {
-        final Long userId = Long.parseLong(jwt.getSubject());
+    public ResponseEntity<Void> deleteAddress(@CurrentUser final Long userId, @Positive @PathVariable("addressId") final Long addressId) {
         final var command = commandConverter.toDeleteAddressCommand(userId, addressId);
         addressService.deleteAddress(command);
         return ResponseEntity.ok().build();

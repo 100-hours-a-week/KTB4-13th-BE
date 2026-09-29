@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.book.common.config.security.CurrentUserMvcConfig;
 import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
@@ -36,15 +37,12 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @WebMvcTest(OnboardingController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({OnboardingCommandConverter.class, OnboardingResultConverter.class, OnboardingControllerTest.TestWebMvcConfig.class})
+@Import({OnboardingCommandConverter.class, OnboardingResultConverter.class, CurrentUserMvcConfig.class})
 class OnboardingControllerTest {
     private static final Long USER_ID = 42L;
 
@@ -233,12 +231,5 @@ class OnboardingControllerTest {
             .expiresAt(Instant.now().plusSeconds(3600)).build();
         final AbstractAuthenticationToken authentication = new JwtAuthenticationToken(jwt);
         SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
-
-    static class TestWebMvcConfig implements WebMvcConfigurer {
-        @Override
-        public void addArgumentResolvers(final List<HandlerMethodArgumentResolver> resolvers) {
-            resolvers.add(new AuthenticationPrincipalArgumentResolver());
-        }
     }
 }

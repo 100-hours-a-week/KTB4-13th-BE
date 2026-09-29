@@ -1,5 +1,6 @@
 package com.book.core.auth.api;
 
+import com.book.common.config.security.CurrentUser;
 import com.book.common.response.ApiResponse;
 import com.book.core.auth.api.cookie.RefreshTokenCookieFactory;
 import com.book.core.auth.api.converter.AuthCommandConverter;
@@ -20,8 +21,6 @@ import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -61,8 +60,8 @@ class AuthController implements AuthControllerSpec {
 
     @PostMapping("/logout")
     @Override
-    public ResponseEntity<Void> logout(@AuthenticationPrincipal final Jwt jwt) {
-        authService.logout(commandConverter.toUserId(jwt));
+    public ResponseEntity<Void> logout(@CurrentUser final Long userId) {
+        authService.logout(userId);
         final String expiredRefreshCookie = refreshTokenCookieFactory.expire().toString();
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, expiredRefreshCookie).build();
     }

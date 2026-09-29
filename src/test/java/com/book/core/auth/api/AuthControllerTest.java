@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.book.common.config.security.CurrentUserMvcConfig;
 import com.book.core.auth.api.converter.AuthCommandConverter;
 import com.book.core.auth.api.cookie.AuthCookieProperties;
 import com.book.core.auth.api.cookie.RefreshTokenCookieFactory;
@@ -19,13 +20,11 @@ import com.book.core.auth.application.service.AuthService;
 import com.book.core.user.domain.ProviderType;
 import jakarta.servlet.http.Cookie;
 import java.time.Instant;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -34,17 +33,13 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({ProviderTypePathConverter.class, RefreshTokenCookieFactory.class, AuthCommandConverter.class,
-    AuthControllerTest.AuthenticationPrincipalTestConfig.class})
+@Import({ProviderTypePathConverter.class, RefreshTokenCookieFactory.class, AuthCommandConverter.class, CurrentUserMvcConfig.class})
 @EnableConfigurationProperties(AuthCookieProperties.class)
 @TestPropertySource(properties = "auth.cookie.secure=false")
 class AuthControllerTest {
@@ -157,14 +152,6 @@ class AuthControllerTest {
                 .contains("SameSite=Lax").doesNotContain("Secure");
         } finally {
             SecurityContextHolder.clearContext();
-        }
-    }
-
-    @TestConfiguration
-    static class AuthenticationPrincipalTestConfig implements WebMvcConfigurer {
-        @Override
-        public void addArgumentResolvers(final List<HandlerMethodArgumentResolver> resolvers) {
-            resolvers.add(new AuthenticationPrincipalArgumentResolver());
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.book.core.cart.api;
 
+import com.book.common.config.security.CurrentUser;
 import com.book.common.response.ApiResponse;
 import com.book.core.cart.api.converter.CartCommandConverter;
 import com.book.core.cart.api.converter.CartResultConverter;
@@ -12,8 +13,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,9 +33,8 @@ class CartController implements CartControllerSpec {
 
     @Override
     @PostMapping("/items")
-    public ResponseEntity<ApiResponse<Void>> addCartItem(@AuthenticationPrincipal final Jwt jwt,
+    public ResponseEntity<ApiResponse<Void>> addCartItem(@CurrentUser final Long userId,
         @Valid @RequestBody final AddCartItemRequest request) {
-        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toAddCartItemCommand(userId, request);
         cartService.addCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -44,9 +42,8 @@ class CartController implements CartControllerSpec {
 
     @Override
     @PutMapping("/items/{cartItemId}")
-    public ResponseEntity<ApiResponse<Void>> modifyCartItem(@AuthenticationPrincipal final Jwt jwt,
+    public ResponseEntity<ApiResponse<Void>> modifyCartItem(@CurrentUser final Long userId,
         @Positive @PathVariable("cartItemId") final Long cartItemId, @Valid @RequestBody final ModifyCartItemRequest request) {
-        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toModifyCartItemCommand(userId, cartItemId, request);
         cartService.modifyCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -54,8 +51,7 @@ class CartController implements CartControllerSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<CartResponse>> getCart(@AuthenticationPrincipal final Jwt jwt) {
-        final Long userId = Long.parseLong(jwt.getSubject());
+    public ResponseEntity<ApiResponse<CartResponse>> getCart(@CurrentUser final Long userId) {
         final var command = commandConverter.toGetCartCommand(userId);
         final var cartResponse = resultConverter.toGetCartResponse(cartService.getCart(command));
         return ResponseEntity.ok(ApiResponse.ok(cartResponse));

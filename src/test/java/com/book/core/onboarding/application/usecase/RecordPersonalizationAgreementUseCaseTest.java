@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DataIntegrityViolationException;
 
 class RecordPersonalizationAgreementUseCaseTest {
     private static final Long USER_ID = 42L;
@@ -58,25 +57,6 @@ class RecordPersonalizationAgreementUseCaseTest {
         assertThat(agreementRepository.saved).isEmpty();
     }
 
-    @Test
-    void 동시_요청이_먼저_동의를_저장해_중복_제약에_걸리면_정상_종료한다() {
-        termRepository.activeTerm = personalizationTerm();
-        agreementRepository.concurrentAgreementOnSave = true;
-
-        useCase.execute(new RecordPersonalizationAgreementCommand(USER_ID));
-
-        assertThat(agreementRepository.saved).isEmpty();
-    }
-
-    @Test
-    void 저장_중_제약_위반_뒤에도_동의가_없으면_예외를_전파한다() {
-        termRepository.activeTerm = personalizationTerm();
-        agreementRepository.failOnSave = true;
-
-        assertThatThrownBy(() -> useCase.execute(new RecordPersonalizationAgreementCommand(USER_ID)))
-            .isInstanceOf(DataIntegrityViolationException.class);
-    }
-
     private static Term personalizationTerm() {
         return new Term(TERM_ID, TermType.PERSONALIZED_RECOMMENDATION, "개인화 약관", "내용", "1.0", false, true, 1);
     }
@@ -93,8 +73,6 @@ class RecordPersonalizationAgreementUseCaseTest {
     private static class FakeUserTermAgreementRepository implements UserTermAgreementRepositoryPort {
         final List<UserTermAgreement> saved = new ArrayList<>();
         boolean agreed;
-        boolean concurrentAgreementOnSave;
-        boolean failOnSave;
 
         @Override
         public boolean existsAgreedByUserIdAndTermId(final Long userId, final Long termId) {
@@ -102,16 +80,8 @@ class RecordPersonalizationAgreementUseCaseTest {
         }
 
         @Override
-        public UserTermAgreement save(final UserTermAgreement agreement) {
-            if (concurrentAgreementOnSave) {
-                agreed = true;
-                throw new DataIntegrityViolationException("duplicate agreement");
-            }
-            if (failOnSave) {
-                throw new DataIntegrityViolationException("unexpected constraint violation");
-            }
+        public void saveIfAbsent(final UserTermAgreement agreement) {
             saved.add(agreement);
-            return agreement;
         }
     }
 }

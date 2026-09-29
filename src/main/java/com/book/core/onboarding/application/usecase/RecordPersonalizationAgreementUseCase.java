@@ -10,13 +10,12 @@ import com.book.core.onboarding.domain.Term;
 import com.book.core.onboarding.domain.TermType;
 import com.book.core.onboarding.domain.UserTermAgreement;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * 활성 개인화 약관에 대한 사용자의 동의를 한 번만 기록한다. 이미 동의했으면 저장하지 않고 성공한다.
  *
- * 외부 트랜잭션을 두지 않아 저장이 자체 트랜잭션에서 실행된다. 같은 사용자의 동시 요청이 먼저 저장해 UNIQUE 제약에 걸리면 이 저장 트랜잭션만 롤백되므로, 동의가 기록된
- * 것을 다시 확인하고 정상 종료할 수 있다.
+ * 외부 트랜잭션을 두지 않는다. 저장이 자체 트랜잭션에서 실행되어야 동시 요청의 UNIQUE 충돌이 이 흐름 전체를 rollback-only로 만들지 않고
+ * {@link UserTermAgreementRepositoryPort#saveIfAbsent}에서 흡수된다.
  */
 @UseCase
 @RequiredArgsConstructor
@@ -30,12 +29,6 @@ public class RecordPersonalizationAgreementUseCase {
         if (agreementRepository.existsAgreedByUserIdAndTermId(command.userId(), term.id())) {
             return;
         }
-        try {
-            agreementRepository.save(UserTermAgreement.agree(command.userId(), term.id()));
-        } catch (final DataIntegrityViolationException exception) {
-            if (!agreementRepository.existsAgreedByUserIdAndTermId(command.userId(), term.id())) {
-                throw exception;
-            }
-        }
+        agreementRepository.saveIfAbsent(UserTermAgreement.agree(command.userId(), term.id()));
     }
 }

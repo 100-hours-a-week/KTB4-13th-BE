@@ -62,14 +62,22 @@ class RecordPersonalizationAgreementIntegrationTest {
     }
 
     @Test
-    void 같은_사용자와_약관의_AGREE_이력을_다시_저장하면_UNIQUE_제약으로_거부한다() {
+    void 이미_저장된_동의를_다시_저장하면_UNIQUE_충돌을_흡수하고_한_건만_남긴다() {
         final Long userId = insertUser("개인화동의회원1");
-        final Long termId = termRepository.findActiveByTermType(TermType.PERSONALIZED_RECOMMENDATION).orElseThrow().id();
-        agreementRepository.save(UserTermAgreement.agree(userId, termId));
+        final Long termId = personalizationTermId();
 
-        assertThatThrownBy(() -> agreementRepository.save(UserTermAgreement.agree(userId, termId)))
-            .isInstanceOf(DataIntegrityViolationException.class);
+        agreementRepository.saveIfAbsent(UserTermAgreement.agree(userId, termId));
+        agreementRepository.saveIfAbsent(UserTermAgreement.agree(userId, termId));
+
         assertThat(agreementCount(userId)).isEqualTo(1);
+    }
+
+    @Test
+    void 중복이_아닌_제약_위반은_그대로_전파한다() {
+        final Long missingUserId = Long.MAX_VALUE;
+
+        assertThatThrownBy(() -> agreementRepository.saveIfAbsent(UserTermAgreement.agree(missingUserId, personalizationTermId())))
+            .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
@@ -93,6 +101,10 @@ class RecordPersonalizationAgreementIntegrationTest {
             executor.shutdownNow();
         }
         assertThat(agreementCount(userId)).isEqualTo(1);
+    }
+
+    private Long personalizationTermId() {
+        return termRepository.findActiveByTermType(TermType.PERSONALIZED_RECOMMENDATION).orElseThrow().id();
     }
 
     private Long insertUser(final String nickname) {

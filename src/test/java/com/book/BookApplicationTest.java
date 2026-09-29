@@ -141,4 +141,10 @@ class BookApplicationTest {
         mvc.perform(get("/api/v1/onboarding/books")).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.code").value("E401"));
     }
+
+    @Test
+    void actuatorHealthIsUnauthenticatedAndReportsUp() throws Exception {
+        mvc.perform(get("/actuator/health")).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP"))
+            .andExpect(jsonPath("$.components").doesNotExist());
+    }
 }

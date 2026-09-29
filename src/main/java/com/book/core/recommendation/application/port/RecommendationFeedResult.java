@@ -28,7 +28,6 @@ public class RecommendationFeedResult {
         return coldStart;
     }
 
-    /** rule-only 축소 응답일 때만 값이 있고, 아니면 null. 정상 개인화/cold-start 응답은 저하가 아니다. */
     public String degraded() {
         return degraded;
     }

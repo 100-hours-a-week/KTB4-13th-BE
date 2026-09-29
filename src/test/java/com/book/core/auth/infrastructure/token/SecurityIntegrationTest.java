@@ -104,6 +104,14 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void 인증된_API_응답에_캐시_저장_금지_헤더를_적용한다() throws Exception {
+        final String accessToken = tokenIssuer.issue(USER_ID).accessToken();
+
+        mvc.perform(get("/test/protected").header(HttpHeaders.AUTHORIZATION, bearer(accessToken))).andExpect(status().isOk())
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, max-age=0, must-revalidate"));
+    }
+
+    @Test
     void Refresh_Token을_Bearer로_사용하면_401을_응답한다() throws Exception {
         final String refreshToken = tokenIssuer.issue(USER_ID).refreshToken();
 

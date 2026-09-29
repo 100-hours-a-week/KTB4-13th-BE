@@ -163,16 +163,19 @@ class RecommendationControllerTest {
     }
 
     @Test
-    void 피드_조회는_인증된_userId로_Command를_전달하고_Cache_Control_헤더를_포함한다() throws Exception {
+    void 피드_조회는_인증된_userId로_Command를_전달하고_Cache_Control을_직접_설정하지_않는다() throws Exception {
         authenticateAs(42L);
         when(recommendationService.getFeed(new GetRecommendationFeedCommand(42L, 15, null))).thenReturn(new RecommendationFeedResult(
             List.of(new RecommendationFeedItem(3310L, "아무튼, 산", "장보영", new BigDecimal("9900"), "https://example.com/1.jpg", true, 84)),
             "next-page", false, null));
 
-        mvc.perform(get("/api/v1/recommend/feed")).andExpect(status().isOk())
-            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "private, no-store")).andExpect(header().doesNotExist("X-Degraded"))
-            .andExpect(jsonPath("$.data.items[0].bookId").value(3310)).andExpect(jsonPath("$.data.nextCursor").value("next-page"))
-            .andExpect(jsonPath("$.data.coldStart").value(false));
+        mvc.perform(get("/api/v1/recommend/feed")).andExpect(status().isOk()).andExpect(header().doesNotExist(HttpHeaders.CACHE_CONTROL))
+            .andExpect(header().doesNotExist("X-Degraded")).andExpect(jsonPath("$.data.items[0].bookId").value(3310))
+            .andExpect(jsonPath("$.data.items[0].title").value("아무튼, 산")).andExpect(jsonPath("$.data.items[0].author").value("장보영"))
+            .andExpect(jsonPath("$.data.items[0].price").value(9900))
+            .andExpect(jsonPath("$.data.items[0].coverUrl").value("https://example.com/1.jpg"))
+            .andExpect(jsonPath("$.data.items[0].inStock").value(true)).andExpect(jsonPath("$.data.items[0].matchScore").value(84))
+            .andExpect(jsonPath("$.data.nextCursor").value("next-page")).andExpect(jsonPath("$.data.coldStart").value(false));
 
         verify(recommendationService).getFeed(new GetRecommendationFeedCommand(42L, 15, null));
     }

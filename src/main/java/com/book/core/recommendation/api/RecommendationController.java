@@ -15,7 +15,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -70,7 +69,7 @@ class RecommendationController implements RecommendationControllerSpec {
         final RecommendationFeedResult result = recommendationService.getFeed(command);
         final var response = resultConverter.toRecommendationFeedResponse(result);
 
-        final ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "private, no-store");
+        final ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok();
         if (result.degraded() != null) {
             responseBuilder.header("X-Degraded", result.degraded());
         }

@@ -213,12 +213,11 @@ class OnboardingRepositoryIntegrationTest {
 
     @Test
     @Transactional
-    void 활성_약관만_유형으로_조회한다() {
-        insertTerm(TermType.PERSONALIZED_RECOMMENDATION, false);
-        final Long activeTermId = insertTerm(TermType.PERSONALIZED_RECOMMENDATION, true);
+    void 비활성_약관을_제외하고_시드된_활성_개인화_추천_약관을_조회한다() {
+        insertInactiveTerm(TermType.PERSONALIZED_RECOMMENDATION);
 
         assertThat(termRepository.findActiveByTermType(TermType.PERSONALIZED_RECOMMENDATION))
-            .hasValueSatisfying(term -> assertThat(term.id()).isEqualTo(activeTermId));
+            .hasValueSatisfying(term -> assertThat(term.id()).isEqualTo(personalizedRecommendationTermId()));
     }
 
     @Test
@@ -226,7 +225,7 @@ class OnboardingRepositoryIntegrationTest {
     void 사용자_약관_동의를_저장하고_사용자와_약관_기준으로_조회한다() {
         final Long userId = insertUser("동의회원1");
         final Long otherUserId = insertUser("동의회원2");
-        final Long termId = insertTerm(TermType.PERSONALIZED_RECOMMENDATION, true);
+        final Long termId = personalizedRecommendationTermId();
         final LocalDateTime agreedAt = LocalDateTime.of(2026, 1, 1, 0, 0);
 
         agreementRepository.save(UserTermAgreement.agree(userId, termId, agreedAt));
@@ -242,7 +241,7 @@ class OnboardingRepositoryIntegrationTest {
     @Transactional
     void 같은_사용자가_같은_약관에_AGREE를_두번_저장하면_UNIQUE_제약을_위반한다() {
         final Long userId = insertUser("동의회원3");
-        final Long termId = insertTerm(TermType.PERSONALIZED_RECOMMENDATION, true);
+        final Long termId = personalizedRecommendationTermId();
         agreementRepository.save(UserTermAgreement.agree(userId, termId, LocalDateTime.of(2026, 1, 1, 0, 0)));
 
         assertThatThrownBy(() -> insertAgreement(userId, termId)).isInstanceOf(DataAccessException.class);
@@ -252,7 +251,7 @@ class OnboardingRepositoryIntegrationTest {
     @Transactional
     void 존재하지_않는_사용자나_약관을_참조하는_동의는_FK_제약을_위반한다() {
         final Long userId = insertUser("동의회원4");
-        final Long termId = insertTerm(TermType.PERSONALIZED_RECOMMENDATION, true);
+        final Long termId = personalizedRecommendationTermId();
 
         assertThatThrownBy(() -> insertAgreement(userId, Long.MAX_VALUE)).isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> insertAgreement(Long.MAX_VALUE, termId)).isInstanceOf(DataAccessException.class);
@@ -287,10 +286,13 @@ class OnboardingRepositoryIntegrationTest {
         return jdbc.queryForObject("SELECT id FROM users WHERE nickname = ?", Long.class, nickname);
     }
 
-    private Long insertTerm(final TermType termType, final boolean active) {
+    private void insertInactiveTerm(final TermType termType) {
         jdbc.update("INSERT INTO terms (term_type, title, content, version, is_required, is_active, display_order) "
-            + "VALUES (?, '테스트 약관', '테스트 약관 내용', 'test', b'0', ?, 1)", termType.name(), active);
-        return jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+            + "VALUES (?, '테스트 약관', '테스트 약관 내용', 'test', b'0', b'0', 1)", termType.name());
+    }
+
+    private Long personalizedRecommendationTermId() {
+        return jdbc.queryForObject("SELECT id FROM terms WHERE term_type = 'PERSONALIZED_RECOMMENDATION' AND is_active = b'1'", Long.class);
     }
 
     private void insertAgreement(final Long userId, final Long termId) {

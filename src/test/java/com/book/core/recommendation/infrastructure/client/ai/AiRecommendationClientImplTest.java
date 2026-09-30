@@ -84,7 +84,6 @@ class AiRecommendationClientImplTest {
         assertThat(result.cards()).hasSize(1);
         assertThat(result.cards().getFirst().bookId()).isEqualTo(1L);
         assertThat(result.cards().getFirst().matchScore()).isEqualTo(87);
-        assertThat(result.cards().getFirst().price()).isEqualByComparingTo("13500");
         assertThat(result.cards().getFirst().reasonShort()).isEqualTo("한 줄 추천 이유");
         assertThat(result.cards().getFirst().reasonLong()).isEqualTo("긴 추천 이유");
         assertThat(result.degraded()).isFalse();

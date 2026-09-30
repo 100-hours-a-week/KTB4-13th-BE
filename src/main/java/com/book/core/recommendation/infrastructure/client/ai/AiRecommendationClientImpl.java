@@ -63,8 +63,15 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
                     if (status.value() == 401) {
                         throw new CoreException(ErrorCode.AI_SERVICE_UNAUTHORIZED);
                     }
-                    if (status.value() == 422 && !isRetry) {
-                        return null;
+                    if (status.value() == 422) {
+                        final AiChatEnvelope envelope = response.bodyTo(AiChatEnvelope.class);
+                        if (envelope != null && "spec_schema_violation".equals(envelope.message())) {
+                            if (!isRetry) {
+                                return null;
+                            }
+                            throw new CoreException(ErrorCode.AI_RECOMMENDATION_SPEC_VIOLATION);
+                        }
+                        throw new CoreException(ErrorCode.AI_RECOMMENDATION_FAILURE);
                     }
                     if (status.value() == 429) {
                         throw new RetryAfterException(ErrorCode.AI_RECOMMENDATION_RATE_LIMITED, retryAfterSeconds(response.getHeaders()));
@@ -74,9 +81,6 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
                     }
                     if (status.value() == 504) {
                         throw new CoreException(ErrorCode.AI_RECOMMENDATION_TIMEOUT);
-                    }
-                    if (status.value() == 422) {
-                        throw new CoreException(ErrorCode.AI_RECOMMENDATION_SPEC_VIOLATION);
                     }
                     throw new CoreException(ErrorCode.AI_RECOMMENDATION_FAILURE);
                 });

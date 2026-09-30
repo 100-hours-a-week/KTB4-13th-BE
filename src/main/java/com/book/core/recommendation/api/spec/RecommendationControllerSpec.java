@@ -25,8 +25,8 @@ import org.springframework.http.ResponseEntity;
 @Tag(name = "Recommendation", description = "대화형 도서 추천 API")
 public interface RecommendationControllerSpec {
     @Operation(summary = "대화형 도서 추천",
-        description = "Access Token의 사용자로 현재 spec, message, recentTurns, excludeBookIds를 전달해 AI 추천 서비스를 호출하고 "
-            + "최대 3개의 추천 카드를 반환합니다. 카드의 productId는 활성 상품이 없는 도서면 null입니다.")
+        description = "인증된 사용자 기준으로 현재 spec, message, recentTurns, excludeBookIds를 전달해 AI 추천 서비스를 호출하고 "
+            + "최대 3개의 추천 카드를 반환합니다. 카드의 productId와 price는 활성 상품이 없는 도서면 null입니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "추천 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),

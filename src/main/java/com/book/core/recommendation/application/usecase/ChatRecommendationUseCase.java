@@ -11,8 +11,10 @@ import com.book.core.recommendation.application.port.AiRecommendationChatResult;
 import com.book.core.recommendation.application.port.AiRecommendationClient;
 import com.book.core.recommendation.application.result.ChatRecommendationAiOutcome;
 import com.book.core.recommendation.application.result.ResolvedRecommendationCard;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -45,10 +47,11 @@ public class ChatRecommendationUseCase {
     }
 
     private ResolvedRecommendationCard toResolvedCard(final AiRecommendationCard card, final Book book) {
-        // Product detail is addressed by productId, which differs from bookId; books without an active
-        // product get null.
-        final Long productId = findProductByBookIdUseCase.execute(book.id()).map(Product::id).orElse(null);
-        return new ResolvedRecommendationCard(book.id(), productId, book.title(), book.author(), book.coverImageUrl(), card.price(),
+        // The active product owns the detail link and the price that orders charge.
+        final Optional<Product> product = findProductByBookIdUseCase.execute(book.id());
+        final Long productId = product.map(Product::id).orElse(null);
+        final BigDecimal price = product.map(Product::discountedPrice).orElse(null);
+        return new ResolvedRecommendationCard(book.id(), productId, book.title(), book.author(), book.coverImageUrl(), price,
             card.matchScore(), card.reasonShort(), card.reasonLong());
     }
 }

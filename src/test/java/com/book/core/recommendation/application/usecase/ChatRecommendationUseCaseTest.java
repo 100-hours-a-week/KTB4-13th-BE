@@ -34,11 +34,11 @@ class ChatRecommendationUseCaseTest {
         new ChatRecommendationUseCase(aiRecommendationClient, getBooksUseCase, new FindProductByBookIdUseCase(productRepository));
 
     @Test
-    void AI_응답의_카드를_Book_정보와_상품_ID로_보강하고_AI_카드_값을_보존한다() {
+    void AI_카드를_Book_정보와_활성_상품의_ID와_가격으로_보강하고_AI_추천_값을_보존한다() {
         bookRepository.books.put(1L, book(1L));
         productRepository.productsByBookId.put(1L, product(501L, 1L));
         aiRecommendationClient.result = new AiRecommendationChatResult(Map.of("intent", "semantic"), "reply",
-            List.of(new AiRecommendationCard(1L, 87, new BigDecimal("13500"), "한 줄 이유", "긴 이유")), "followup", List.of("btn"), false);
+            List.of(new AiRecommendationCard(1L, 87, "한 줄 이유", "긴 이유")), "followup", List.of("btn"), false);
 
         final var outcome = useCase.execute(command(Map.of("intent", "semantic"), List.of()));
 
@@ -56,10 +56,10 @@ class ChatRecommendationUseCaseTest {
     }
 
     @Test
-    void 활성_상품이_없는_Book의_카드는_productId와_가격_없이_반환한다() {
+    void 활성_상품이_없는_Book의_카드는_productId와_price를_null로_반환한다() {
         bookRepository.books.put(1L, book(1L));
         aiRecommendationClient.result = new AiRecommendationChatResult(Map.of(), "reply",
-            List.of(new AiRecommendationCard(1L, 70, null, "한 줄 이유", null)), null, List.of(), true);
+            List.of(new AiRecommendationCard(1L, 70, "한 줄 이유", null)), null, List.of(), true);
 
         final var outcome = useCase.execute(command(Map.of(), List.of()));
 
@@ -82,7 +82,7 @@ class ChatRecommendationUseCaseTest {
     @Test
     void 존재하지_않는_Book의_카드는_제외한다() {
         aiRecommendationClient.result = new AiRecommendationChatResult(Map.of(), "reply",
-            List.of(new AiRecommendationCard(999L, 50, null, "이유", "이유")), null, List.of(), false);
+            List.of(new AiRecommendationCard(999L, 50, "이유", "이유")), null, List.of(), false);
 
         final var outcome = useCase.execute(command(Map.of(), List.of()));
 
@@ -108,7 +108,7 @@ class ChatRecommendationUseCaseTest {
     }
 
     private AiRecommendationCard card(final long bookId) {
-        return new AiRecommendationCard(bookId, 80, null, "이유" + bookId, null);
+        return new AiRecommendationCard(bookId, 80, "이유" + bookId, null);
     }
 
     private Book book(final long id) {

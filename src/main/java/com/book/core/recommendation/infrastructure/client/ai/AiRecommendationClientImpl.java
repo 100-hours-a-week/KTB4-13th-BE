@@ -124,8 +124,7 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
 
     private AiRecommendationChatResult toResult(final AiChatResponse response) {
         final List<AiRecommendationCard> cards = response.cards().stream()
-            .map(card -> new AiRecommendationCard(card.bookId(), card.matchScore(), card.price(), card.reasonShort(), card.reasonLong()))
-            .toList();
+            .map(card -> new AiRecommendationCard(card.bookId(), card.matchScore(), card.reasonShort(), card.reasonLong())).toList();
         return new AiRecommendationChatResult(response.spec(), response.reply(), cards, response.followup(), response.buttons(),
             response.degraded());
     }

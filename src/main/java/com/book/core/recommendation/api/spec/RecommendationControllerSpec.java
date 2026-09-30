@@ -25,7 +25,8 @@ import org.springframework.http.ResponseEntity;
 @Tag(name = "Recommendation", description = "대화형 도서 추천 API")
 public interface RecommendationControllerSpec {
     @Operation(summary = "대화형 도서 추천",
-        description = "현재 spec, message, recentTurns, excludeBookIds를 전달해 AI 추천 서비스를 호출하고 최대 3개의 추천 카드를 반환합니다.")
+        description = "userId 쿼리 값은 인증된 사용자 ID와 일치해야 합니다. 현재 spec, message, recentTurns, excludeBookIds를 전달해 "
+            + "AI 추천 서비스를 호출하고 최대 3개의 추천 카드를 반환합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "추천 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
@@ -34,11 +35,12 @@ public interface RecommendationControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI 추천 서비스 일시 불가"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "504", description = "AI 추천 서비스 응답 지연")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@Parameter(hidden = true) final Long userId,
+    ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@Parameter(hidden = true) final Long authenticatedUserId,
+        @Parameter(in = ParameterIn.QUERY, name = "userId", required = true, example = "42") @Positive final Long requestedUserId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ChatRecommendationRequest.class)))
         @Valid final ChatRecommendationRequest request);
 
-    @Operation(summary = "추천 카드 상세 조회", description = "저장된 recommendationCardId의 상세 정보를 조회합니다. AI를 다시 호출하지 않습니다.")
+    @Operation(summary = "추천 카드 상세 조회", description = "인증된 사용자의 저장 카드에서 recommendationCardId, bookId, reasonLong을 조회합니다. AI를 다시 호출하지 않습니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),

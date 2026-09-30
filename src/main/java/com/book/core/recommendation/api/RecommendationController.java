@@ -38,9 +38,9 @@ class RecommendationController implements RecommendationControllerSpec {
 
     @Override
     @PostMapping("/chat")
-    public ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@UserId final Long userId,
-        @Valid @RequestBody final ChatRecommendationRequest request) {
-        final var command = commandConverter.toChatRecommendationCommand(userId, request);
+    public ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@UserId final Long authenticatedUserId,
+        @Positive @RequestParam("userId") final Long requestedUserId, @Valid @RequestBody final ChatRecommendationRequest request) {
+        final var command = commandConverter.toChatRecommendationCommand(authenticatedUserId, requestedUserId, request);
         final var result = recommendationService.chat(command);
         final var response = resultConverter.toChatRecommendationResponse(result);
         return ResponseEntity.ok(ApiResponse.ok(response));

@@ -102,6 +102,9 @@ docker stop popularity-bench
 
 ## 검증
 
+- **로컬 코드 검증:** macOS 26.6.2 arm64, Amazon Corretto OpenJDK 25.0.4.1, Gradle Wrapper 9.7.1. Docker/Testcontainers는 Colima Docker 29.5.2 (8 CPU, 10,403,426,304 bytes RAM)를 사용했고, 통합 테스트 DB 이미지는 MySQL 8.4.8이다.
+- **GitHub Actions:** `ubuntu-latest`, Eclipse Temurin 25, Gradle Wrapper 9.7.1. CI의 `Gradle check`가 Testcontainers MySQL 8.4.8을 포함해 통과했다.
+- **성능 측정:** 같은 Colima Docker 자원에서 별도 MySQL 8.4.8 컨테이너를 사용했다. DB buffer pool은 512MiB이며, 합성 데이터/주문·리뷰 조건은 위 측정 환경 절에 기록했다. 운영 API 측정과는 별개다.
 - 신규 상품의 갱신 전 제외/갱신 후 0 판매량 포함/0 판매량 ID 커서 테스트를 추가했다.
 - 기존 활성 조건, 분류, 출간일, 인기순 커서, refresh 실패 롤백 테스트를 유지했다.
 - Standards 리뷰: 기준 위반/차단 발견 0건. Spec 리뷰: 확정 결함/범위 확장 0건. 리뷰는 실행 증거와 별개다.

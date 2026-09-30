@@ -226,6 +226,7 @@ class ProductControllerTest {
             .andExpect(jsonPath("$.paths['/api/v1/products/{productId}'].get.summary").value("상품 상세 조회"))
             .andExpect(jsonPath("$.paths['/api/v1/products/{productId}'].get.parameters[0].name").value("productId"))
             .andExpect(jsonPath("$.paths['/api/v1/products/{productId}'].get.responses['200']").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/products/{productId}'].get.security").doesNotExist())
             .andExpect(jsonPath("$.paths['/api/v1/items'].get.summary").value("상품 목록 조회"))
             .andExpect(jsonPath("$.paths['/api/v1/items'].get.parameters[0].name").value("categoryId"))
             .andExpect(jsonPath("$.paths['/api/v1/items'].get.parameters[1].name").value("sort"))
@@ -233,7 +234,8 @@ class ProductControllerTest {
             .andExpect(jsonPath("$.paths['/api/v1/items'].get.parameters[3].name").value("limit"))
             .andExpect(jsonPath("$.paths['/api/v1/items'].get.parameters[4].name").value("publishedFrom"))
             .andExpect(jsonPath("$.paths['/api/v1/items'].get.parameters[5].name").value("publishedTo"))
-            .andExpect(jsonPath("$.paths['/api/v1/items'].get.responses['200']").exists());
+            .andExpect(jsonPath("$.paths['/api/v1/items'].get.responses['200']").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/items'].get.security").doesNotExist());
     }
 
     @Test

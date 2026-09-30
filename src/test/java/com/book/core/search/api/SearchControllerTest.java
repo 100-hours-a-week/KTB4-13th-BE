@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.book.common.api.config.SwaggerConfig;
 import com.book.core.search.api.converter.SearchCommandConverter;
 import com.book.core.search.application.command.BookSearchSort;
 import com.book.core.search.application.command.SearchBooksCommand;
@@ -18,7 +19,12 @@ import com.book.core.search.application.service.SearchService;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springdoc.core.configuration.SpringDocConfiguration;
+import org.springdoc.core.properties.SpringDocConfigProperties;
+import org.springdoc.webmvc.core.configuration.MultipleOpenApiSupportConfiguration;
+import org.springdoc.webmvc.core.configuration.SpringDocWebMvcConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
@@ -26,7 +32,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(SearchController.class)
-@Import(SearchCommandConverter.class)
+@Import({SearchCommandConverter.class, SwaggerConfig.class})
+@ImportAutoConfiguration({SpringDocConfiguration.class, SpringDocConfigProperties.class, SpringDocWebMvcConfiguration.class,
+    MultipleOpenApiSupportConfiguration.class})
 @ActiveProfiles("test")
 class SearchControllerTest {
     @Autowired
@@ -118,5 +126,13 @@ class SearchControllerTest {
 
     private static BookSearchResult emptyResult() {
         return new BookSearchResult(List.of(), null, null, null);
+    }
+
+    @Test
+    void 검색_명세는_비회원_공개_API로_OpenAPI에_노출된다() throws Exception {
+        mvc.perform(get("/v3/api-docs/general")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.paths['/api/v1/search'].get.summary").value("도서 검색"))
+            .andExpect(jsonPath("$.paths['/api/v1/search'].get.security").doesNotExist())
+            .andExpect(jsonPath("$.paths['/api/v1/search'].get.responses['401']").doesNotExist());
     }
 }

@@ -24,6 +24,7 @@ public class SecurityConfiguration {
             .formLogin(AbstractHttpConfigurer::disable).httpBasic(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(authorize -> authorize.requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/items", "/api/v1/categories", "/api/v1/products/*", "/api/v1/search").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/*/login", "/api/v1/auth/reissue").permitAll().anyRequest().authenticated())
             .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint)).oauth2ResourceServer(
                 oauth2 -> oauth2.jwt(jwt -> jwt.decoder(serviceJwtDecoder)).authenticationEntryPoint(authenticationEntryPoint));

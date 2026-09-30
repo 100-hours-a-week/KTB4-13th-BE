@@ -19,7 +19,9 @@ import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionException;
 
 @Slf4j
 @Service
@@ -61,7 +63,7 @@ public class OnboardingService {
     private void createPersonalizationProfile(final Long userId) {
         try {
             createPersonalizationProfileUseCase.execute(userId);
-        } catch (final CoreException exception) {
+        } catch (final CoreException | DataAccessException | TransactionException exception) {
             log.warn("AI 취향 프로필 생성에 실패했습니다. userId={}", userId, exception);
         }
     }

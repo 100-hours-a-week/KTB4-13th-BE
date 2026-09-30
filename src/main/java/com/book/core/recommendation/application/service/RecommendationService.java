@@ -47,8 +47,8 @@ public class RecommendationService {
         return IntStream.range(0, savedCards.size()).mapToObj(index -> {
             final RecommendationCard saved = savedCards.get(index);
             final var resolved = outcome.cards().get(index);
-            return new RecommendationCardResult(saved.id(), resolved.bookId(), resolved.title(), resolved.author(),
-                resolved.coverImageUrl(), resolved.reasonLong());
+            return new RecommendationCardResult(saved.id(), resolved.bookId(), resolved.productId(), resolved.title(), resolved.author(),
+                resolved.coverImageUrl(), resolved.price(), resolved.matchScore(), resolved.reasonShort(), resolved.reasonLong());
         }).toList();
     }
 }

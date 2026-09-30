@@ -25,8 +25,8 @@ import org.springframework.http.ResponseEntity;
 @Tag(name = "Recommendation", description = "대화형 도서 추천 API")
 public interface RecommendationControllerSpec {
     @Operation(summary = "대화형 도서 추천",
-        description = "userId 쿼리 값은 인증된 사용자 ID와 일치해야 합니다. 현재 spec, message, recentTurns, excludeBookIds를 전달해 "
-            + "AI 추천 서비스를 호출하고 최대 3개의 추천 카드를 반환합니다.")
+        description = "Access Token의 사용자로 현재 spec, message, recentTurns, excludeBookIds를 전달해 AI 추천 서비스를 호출하고 "
+            + "최대 3개의 추천 카드를 반환합니다. 카드의 productId는 활성 상품이 없는 도서면 null입니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "추천 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
@@ -35,8 +35,7 @@ public interface RecommendationControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI 추천 서비스 일시 불가"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "504", description = "AI 추천 서비스 응답 지연")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@Parameter(hidden = true) final Long authenticatedUserId,
-        @Parameter(in = ParameterIn.QUERY, name = "userId", required = true, example = "42") @Positive final Long requestedUserId,
+    ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@Parameter(hidden = true) final Long userId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ChatRecommendationRequest.class)))
         @Valid final ChatRecommendationRequest request);
 

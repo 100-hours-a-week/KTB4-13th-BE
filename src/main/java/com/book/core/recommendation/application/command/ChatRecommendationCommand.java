@@ -6,17 +6,15 @@ import java.util.Objects;
 
 public class ChatRecommendationCommand {
     private final Long userId;
-    private final Long requestedUserId;
     private final boolean consented;
     private final Map<String, Object> spec;
     private final String message;
     private final List<RecommendationTurn> recentTurns;
     private final List<Long> excludeBookIds;
 
-    public ChatRecommendationCommand(final Long userId, final Long requestedUserId, final boolean consented, final Map<String, Object> spec,
-        final String message, final List<RecommendationTurn> recentTurns, final List<Long> excludeBookIds) {
+    public ChatRecommendationCommand(final Long userId, final boolean consented, final Map<String, Object> spec, final String message,
+        final List<RecommendationTurn> recentTurns, final List<Long> excludeBookIds) {
         this.userId = userId;
-        this.requestedUserId = requestedUserId;
         this.consented = consented;
         this.spec = spec;
         this.message = message;
@@ -26,10 +24,6 @@ public class ChatRecommendationCommand {
 
     public Long userId() {
         return userId;
-    }
-
-    public Long requestedUserId() {
-        return requestedUserId;
     }
 
     public boolean consented() {
@@ -60,13 +54,13 @@ public class ChatRecommendationCommand {
         if (!(other instanceof final ChatRecommendationCommand that)) {
             return false;
         }
-        return consented == that.consented && Objects.equals(userId, that.userId) && Objects.equals(requestedUserId, that.requestedUserId)
-            && Objects.equals(spec, that.spec) && Objects.equals(message, that.message) && Objects.equals(recentTurns, that.recentTurns)
+        return consented == that.consented && Objects.equals(userId, that.userId) && Objects.equals(spec, that.spec)
+            && Objects.equals(message, that.message) && Objects.equals(recentTurns, that.recentTurns)
             && Objects.equals(excludeBookIds, that.excludeBookIds);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(userId, requestedUserId, consented, spec, message, recentTurns, excludeBookIds);
+        return Objects.hash(userId, consented, spec, message, recentTurns, excludeBookIds);
     }
 }

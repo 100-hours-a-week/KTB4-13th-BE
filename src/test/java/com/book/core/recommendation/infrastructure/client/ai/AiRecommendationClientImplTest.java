@@ -83,6 +83,9 @@ class AiRecommendationClientImplTest {
         assertThat(result.reply()).isEqualTo("이 책들을 추천합니다");
         assertThat(result.cards()).hasSize(1);
         assertThat(result.cards().getFirst().bookId()).isEqualTo(1L);
+        assertThat(result.cards().getFirst().matchScore()).isEqualTo(87);
+        assertThat(result.cards().getFirst().price()).isEqualByComparingTo("13500");
+        assertThat(result.cards().getFirst().reasonShort()).isEqualTo("한 줄 추천 이유");
         assertThat(result.cards().getFirst().reasonLong()).isEqualTo("긴 추천 이유");
         assertThat(result.degraded()).isFalse();
 
@@ -237,7 +240,8 @@ class AiRecommendationClientImplTest {
               "data": {
                 "spec": {"intent": "semantic"},
                 "reply": "이 책들을 추천합니다",
-                "cards": [{"book_id": 1, "reason_long": "긴 추천 이유"}],
+                "cards": [{"book_id": 1, "rank": 1, "match_score": 87, "title": "제목", "price": 13500,
+                  "reason_short": "한 줄 추천 이유", "reason_long": "긴 추천 이유", "match_basis": []}],
                 "followup": "더 알고 싶은 게 있나요?",
                 "buttons": ["다시 추천"],
                 "degraded": false

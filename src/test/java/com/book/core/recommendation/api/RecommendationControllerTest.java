@@ -1,6 +1,7 @@
 package com.book.core.recommendation.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -11,8 +12,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.config.security.UserIdMvcConfig;
-import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorCode;
 import com.book.core.recommendation.api.converter.RecommendationCommandConverter;
 import com.book.core.recommendation.api.converter.RecommendationResultConverter;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
@@ -73,10 +72,12 @@ class RecommendationControllerTest {
     @Test
     void 정상_요청이면_추천_결과를_반환하고_인증된_userId로_Command를_전달한다() throws Exception {
         authenticateAs(42L);
-        when(recommendationService.chat(any())).thenReturn(new ChatRecommendationResult(Map.of("intent", "semantic"), "이 책들을 추천합니다",
-            List.of(new RecommendationCardResult(1L, 10L, "제목", "작가", null, "긴 추천 이유")), "더 필요하신가요?", List.of("다시 추천"), false));
+        when(recommendationService.chat(any())).thenReturn(new ChatRecommendationResult(
+            Map.of("intent", "semantic"), "이 책들을 추천합니다", List.of(new RecommendationCardResult(1L, 10L, 501L, "제목", "작가",
+                "https://cdn.example.com/10.jpg", new BigDecimal("13500"), 87, "한 줄 추천 이유", "긴 추천 이유")),
+            "더 필요하신가요?", List.of("다시 추천"), false));
 
-        mvc.perform(post("/api/v1/recommend/chat").param("userId", "42").contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post("/api/v1/recommend/chat").contentType(MediaType.APPLICATION_JSON).content("""
             {
               "consented": true,
               "spec": %s,
@@ -85,7 +86,13 @@ class RecommendationControllerTest {
               "excludeBookIds": [1, 2]
             }
             """.formatted(SPEC_JSON))).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.reply").value("이 책들을 추천합니다")).andExpect(jsonPath("$.data.cards[0].recommendationCardId").value(1));
+            .andExpect(jsonPath("$.data.reply").value("이 책들을 추천합니다")).andExpect(jsonPath("$.data.cards[0].recommendationCardId").value(1))
+            .andExpect(jsonPath("$.data.cards[0].bookId").value(10)).andExpect(jsonPath("$.data.cards[0].productId").value(501))
+            .andExpect(jsonPath("$.data.cards[0].title").value("제목")).andExpect(jsonPath("$.data.cards[0].author").value("작가"))
+            .andExpect(jsonPath("$.data.cards[0].coverImageUrl").value("https://cdn.example.com/10.jpg"))
+            .andExpect(jsonPath("$.data.cards[0].price").value(13500)).andExpect(jsonPath("$.data.cards[0].matchScore").value(87))
+            .andExpect(jsonPath("$.data.cards[0].reasonShort").value("한 줄 추천 이유"))
+            .andExpect(jsonPath("$.data.cards[0].reasonLong").value("긴 추천 이유"));
 
         final var expectedSpec = new java.util.HashMap<String, Object>();
         expectedSpec.put("intent", "semantic");
@@ -96,40 +103,14 @@ class RecommendationControllerTest {
         expectedSpec.put("exclude", List.of());
 
         verify(recommendationService)
-            .chat(new ChatRecommendationCommand(42L, 42L, true, expectedSpec, "따뜻한 소설 추천해줘", List.of(), List.of(1L, 2L)));
-    }
-
-    @Test
-    void userId_query가_JWT의_ID와_다르면_403을_응답한다() throws Exception {
-        authenticateAs(42L);
-        final var expectedSpec = new java.util.HashMap<String, Object>();
-        expectedSpec.put("intent", "semantic");
-        expectedSpec.put("exact", Map.of());
-        expectedSpec.put("filters", Map.of());
-        expectedSpec.put("semantic", "따뜻한 위로가 되는 소설");
-        expectedSpec.put("anchor_book", null);
-        expectedSpec.put("exclude", List.of());
-        final var command = new ChatRecommendationCommand(42L, 43L, true, expectedSpec, "추천해줘", List.of(), List.of(1L, 2L));
-        when(recommendationService.chat(command)).thenThrow(new CoreException(ErrorCode.FORBIDDEN));
-
-        mvc.perform(post("/api/v1/recommend/chat").param("userId", "43").contentType(MediaType.APPLICATION_JSON).content("""
-            {
-              "consented": true,
-              "spec": %s,
-              "message": "추천해줘",
-              "recentTurns": [],
-              "excludeBookIds": [1, 2]
-            }
-            """.formatted(SPEC_JSON))).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("E403"));
-
-        verify(recommendationService).chat(command);
+            .chat(new ChatRecommendationCommand(42L, true, expectedSpec, "따뜻한 소설 추천해줘", List.of(), List.of(1L, 2L)));
     }
 
     @Test
     void spec에_필수_key가_없으면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
         authenticateAs(42L);
 
-        mvc.perform(post("/api/v1/recommend/chat").param("userId", "42").contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post("/api/v1/recommend/chat").contentType(MediaType.APPLICATION_JSON).content("""
             {
               "consented": true,
               "spec": {"intent": "semantic"},
@@ -146,7 +127,7 @@ class RecommendationControllerTest {
         authenticateAs(42L);
         final String tooLong = "가".repeat(201);
 
-        mvc.perform(post("/api/v1/recommend/chat").param("userId", "42").contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post("/api/v1/recommend/chat").contentType(MediaType.APPLICATION_JSON).content("""
             {
               "consented": true,
               "spec": %s,
@@ -163,7 +144,7 @@ class RecommendationControllerTest {
         authenticateAs(42L);
         final String turns = String.join(",", java.util.Collections.nCopies(21, "{\"role\": \"user\", \"text\": \"안녕\"}"));
 
-        mvc.perform(post("/api/v1/recommend/chat").param("userId", "42").contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post("/api/v1/recommend/chat").contentType(MediaType.APPLICATION_JSON).content("""
             {
               "consented": true,
               "spec": %s,
@@ -176,19 +157,21 @@ class RecommendationControllerTest {
     }
 
     @Test
-    void userId_query가_없으면_400을_응답하고_Service를_호출하지_않는다() throws Exception {
+    void 대화형_추천은_userId_query를_보내도_인증된_userId만_사용한다() throws Exception {
         authenticateAs(42L);
+        when(recommendationService.chat(any()))
+            .thenReturn(new ChatRecommendationResult(Map.of(), "reply", List.of(), null, List.of(), false));
 
-        mvc.perform(post("/api/v1/recommend/chat").contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post("/api/v1/recommend/chat").param("userId", "999").contentType(MediaType.APPLICATION_JSON).content("""
             {
               "consented": true,
               "spec": %s,
               "message": "추천해줘",
               "recentTurns": []
             }
-            """.formatted(SPEC_JSON))).andExpect(status().isBadRequest());
+            """.formatted(SPEC_JSON))).andExpect(status().isOk());
 
-        verifyNoInteractions(recommendationService);
+        verify(recommendationService).chat(argThat(command -> command.userId().equals(42L)));
     }
 
     @Test

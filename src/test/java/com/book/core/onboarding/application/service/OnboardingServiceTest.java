@@ -19,6 +19,8 @@ import com.book.core.onboarding.application.usecase.SaveOnboardingAnswersUseCase
 import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.transaction.CannotCreateTransactionException;
 
 class OnboardingServiceTest {
     private static final Long USER_ID = 42L;
@@ -51,6 +53,20 @@ class OnboardingServiceTest {
     @Test
     void AI_취향_프로필_생성이_실패해도_온보딩_완료는_성공한다() {
         doThrow(new CoreException(ErrorCode.AI_RECOMMENDATION_FAILURE)).when(createPersonalizationProfileUseCase).execute(USER_ID);
+
+        assertThatCode(() -> onboardingService.saveBooks(COMMAND)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void AI_취향_프로필_생성_중_DB_조회가_실패해도_온보딩_완료는_성공한다() {
+        doThrow(new DataAccessResourceFailureException("db down")).when(createPersonalizationProfileUseCase).execute(USER_ID);
+
+        assertThatCode(() -> onboardingService.saveBooks(COMMAND)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void AI_취향_프로필_생성_중_DB_연결을_얻지_못해도_온보딩_완료는_성공한다() {
+        doThrow(new CannotCreateTransactionException("no connection")).when(createPersonalizationProfileUseCase).execute(USER_ID);
 
         assertThatCode(() -> onboardingService.saveBooks(COMMAND)).doesNotThrowAnyException();
     }

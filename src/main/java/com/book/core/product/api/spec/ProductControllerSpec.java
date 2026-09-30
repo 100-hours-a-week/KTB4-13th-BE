@@ -27,7 +27,8 @@ public interface ProductControllerSpec {
 
     @Operation(summary = "상품 목록 조회",
         description = "활성 상품을 cursor 방식으로 조회합니다. sort=POPULARITY는 전체 기간 결제된 주문 상품 수량 합계 DESC, "
-            + "상품 ID DESC 순으로 정렬합니다. 인기 지표가 없으면 0이며 재고는 반영하지 않습니다. " + "인기 집계는 애플리케이션 시작 시와 이후 매시간 갱신되며, 갱신 실패 시 마지막 성공 집계를 사용합니다.")
+            + "상품 ID DESC 순으로 정렬합니다. 집계된 판매량이 없으면 0이며 재고는 반영하지 않습니다. " + "인기 집계는 애플리케이션 시작 시와 이후 매시간 갱신되며, 갱신 실패 시 마지막 성공 집계를 사용합니다. "
+            + "갱신 후 등록된 상품은 다음 성공 갱신부터 인기순 목록에 포함됩니다.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "상품 목록 조회 성공"),
         @ApiResponse(responseCode = "400", description = "요청이 올바르지 않음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     ResponseEntity<com.book.common.response.ApiResponse<ProductListResponse>> getProducts(

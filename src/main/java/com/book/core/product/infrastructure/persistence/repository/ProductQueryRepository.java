@@ -10,7 +10,6 @@ import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.result.ProductListItem;
 import com.book.core.product.domain.QProduct;
 import com.book.core.product.infrastructure.persistence.entity.QProductPopularitySnapshot;
-import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
@@ -19,6 +18,8 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -82,26 +83,31 @@ class ProductQueryRepository {
     private List<ProductListItem> findByCreatedAt(final Long categoryId, final BooleanExpression publishedAtPredicate,
         final ProductListCursor cursor, final int limit) {
         return queryFactory.selectFrom(product).join(product.book, book).fetchJoin()
-            .where(product.deletedAt.isNull(), book.deletedAt.isNull(), createdAtCursorPredicate(cursor), categoryPredicate(categoryId),
-                publishedAtPredicate)
+            .where(product.deletedAt.isNull(), book.deletedAt.isNull(), createdAtCursorPredicate(cursor),
+                categoryPredicate(categoryId, product.id), publishedAtPredicate)
             .orderBy(product.createdAt.desc(), product.id.desc()).limit(limit).fetch().stream()
             .map(item -> new ProductListItem(item, 0L, 0L, BigDecimal.ZERO)).toList();
     }
 
     private List<ProductListItem> findByPopularity(final Long categoryId, final BooleanExpression publishedAtPredicate,
         final ProductListCursor cursor, final int limit) {
-        final var popularity = popularityExpressions();
-        return queryFactory.select(product, popularity.salesQuantity(), popularity.reviewCount(), popularity.reviewRate()).from(product)
-            .leftJoin(popularity.snapshot()).on(popularity.snapshot().productId.eq(product.id)).join(product.book, book).fetchJoin()
-            .where(product.deletedAt.isNull(), book.deletedAt.isNull(), popularityCursorPredicate(cursor, popularity),
-                categoryPredicate(categoryId), publishedAtPredicate)
-            .orderBy(popularity.salesQuantity().desc(), product.id.desc()).limit(limit).fetch().stream()
-            .map(tuple -> toProductListItem(tuple, popularity)).toList();
-    }
-
-    private ProductListItem toProductListItem(final Tuple tuple, final PopularityExpressions popularity) {
-        return new ProductListItem(tuple.get(product), tuple.get(popularity.salesQuantity()), tuple.get(popularity.reviewCount()),
-            tuple.get(popularity.reviewRate()));
+        final var snapshot = new QProductPopularitySnapshot("productPopularitySnapshot");
+        // ponytail: scalar-subquery plan; recheck EXPLAIN if MySQL optimizer settings change.
+        final var activeProductId = JPAExpressions.select(product.id).from(product).join(product.book, book)
+            .where(product.id.eq(snapshot.productId), product.deletedAt.isNull(), book.deletedAt.isNull(), publishedAtPredicate);
+        final var ranked =
+            queryFactory.select(snapshot.productId, snapshot.salesQuantity, snapshot.reviewCount, snapshot.reviewRate).from(snapshot)
+                .where(snapshot.productId.eq(activeProductId), popularityCursorPredicate(cursor, snapshot),
+                    categoryPredicate(categoryId, snapshot.productId))
+                .orderBy(snapshot.salesQuantity.desc(), snapshot.productId.desc()).limit(limit).fetch();
+        if (ranked.isEmpty()) {
+            return List.of();
+        }
+        final var ids = ranked.stream().map((final var tuple) -> tuple.get(snapshot.productId)).toList();
+        final var products = queryFactory.selectFrom(product).join(product.book, book).fetchJoin().where(product.id.in(ids)).fetch()
+            .stream().collect(Collectors.toMap((final var item) -> item.id(), Function.identity()));
+        return ranked.stream().map((final var tuple) -> new ProductListItem(products.get(tuple.get(snapshot.productId)),
+            tuple.get(snapshot.salesQuantity), tuple.get(snapshot.reviewCount), tuple.get(snapshot.reviewRate))).toList();
     }
 
     private BooleanExpression createdAtCursorPredicate(final ProductListCursor cursor) {
@@ -114,26 +120,20 @@ class ProductQueryRepository {
         return product.createdAt.lt(cursorCreatedAt).or(product.createdAt.eq(cursorCreatedAt).and(product.id.lt(cursor.productId())));
     }
 
-    private BooleanExpression popularityCursorPredicate(final ProductListCursor cursor, final PopularityExpressions popularity) {
+    private BooleanExpression popularityCursorPredicate(final ProductListCursor cursor, final QProductPopularitySnapshot snapshot) {
         if (cursor == null) {
             return null;
         }
-        return popularity.salesQuantity().lt(cursor.salesQuantity())
-            .or(popularity.salesQuantity().eq(cursor.salesQuantity()).and(product.id.lt(cursor.productId())));
+        return snapshot.salesQuantity.lt(cursor.salesQuantity())
+            .or(snapshot.salesQuantity.eq(cursor.salesQuantity()).and(snapshot.productId.lt(cursor.productId())));
     }
 
-    private PopularityExpressions popularityExpressions() {
-        final var snapshot = new QProductPopularitySnapshot("productPopularitySnapshot");
-        return new PopularityExpressions(snapshot, snapshot.salesQuantity.coalesce(0L), snapshot.reviewCount.coalesce(0L),
-            snapshot.reviewRate.coalesce(BigDecimal.ZERO));
-    }
-
-    private BooleanExpression categoryPredicate(final Long categoryId) {
+    private BooleanExpression categoryPredicate(final Long categoryId, final NumberExpression<Long> productId) {
         if (categoryId == null) {
             return null;
         }
         return JPAExpressions.selectOne().from(productCategory).join(productCategory.category, category)
-            .where(productCategory.product.eq(product), productCategory.deletedAt.isNull(), category.id.eq(categoryId),
+            .where(productCategory.product.id.eq(productId), productCategory.deletedAt.isNull(), category.id.eq(categoryId),
                 category.deletedAt.isNull())
             .exists();
     }
@@ -144,6 +144,4 @@ class ProductQueryRepository {
         return Expressions.allOf(fromPredicate, toPredicate);
     }
 
-    private record PopularityExpressions(QProductPopularitySnapshot snapshot, NumberExpression<Long> salesQuantity,
-        NumberExpression<Long> reviewCount, NumberExpression<BigDecimal> reviewRate) {}
 }

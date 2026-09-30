@@ -281,6 +281,32 @@ class ProductRepositoryIntegrationTest {
     }
 
     @Test
+    void 갱신_후_등록된_상품은_다음_갱신부터_인기순에_포함된다() {
+        insertCategory(3504L, "스냅샷 시점", null);
+        insertBook(1531L, "기존 도서", null);
+        insertBook(1532L, "신규 도서", null);
+        insertProduct(2531L, 1531L, "기존 상품", null);
+        insertProductCategory(3531L, 3504L, 2531L, null);
+        productService.refreshProductPopularitySnapshot();
+        insertProduct(2532L, 1532L, "신규 상품", null);
+        insertProductCategory(3532L, 3504L, 2532L, null);
+
+        assertThat(productRepository.findActiveProducts(3504L, null, null, ProductListSort.POPULARITY, null, 10))
+            .extracting(item -> item.product().id()).containsExactly(2531L);
+        assertThat(productRepository.findActiveProducts(3504L, null, null, ProductListSort.CREATED_AT, null, 10))
+            .extracting(item -> item.product().id()).containsExactlyInAnyOrder(2532L, 2531L);
+
+        productService.refreshProductPopularitySnapshot();
+
+        final var firstPage = productRepository.findActiveProducts(3504L, null, null, ProductListSort.POPULARITY, null, 1);
+        assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2532L);
+        assertThat(firstPage.getFirst().salesQuantity()).isZero();
+        assertThat(
+            productRepository.findActiveProducts(3504L, null, null, ProductListSort.POPULARITY, new ProductListCursor(2532L, 0L), 10))
+            .extracting(item -> item.product().id()).containsExactly(2531L);
+    }
+
+    @Test
     void 갱신_중_오류가_발생하면_마지막_성공_스냅샷을_유지한다() {
         insertBook(1020L, "갱신 실패 검증 도서", null);
         insertProduct(5201L, 1020L, "갱신 실패 검증 상품", null);

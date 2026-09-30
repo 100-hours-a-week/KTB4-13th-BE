@@ -2,6 +2,8 @@ package com.book.core.recommendation.application.usecase;
 
 import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.book.domain.Book;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
 import com.book.core.recommendation.application.port.AiRecommendationCard;
 import com.book.core.recommendation.application.port.AiRecommendationChatRequest;
@@ -25,6 +27,10 @@ public class ChatRecommendationUseCase {
     private final GetBooksUseCase getBooksUseCase;
 
     public ChatRecommendationAiOutcome execute(final ChatRecommendationCommand command) {
+        if (!command.userId().equals(command.requestedUserId())) {
+            throw new CoreException(ErrorCode.FORBIDDEN);
+        }
+
         final AiRecommendationChatRequest aiRequest = new AiRecommendationChatRequest(command.userId(), command.consented(), command.spec(),
             command.message(), command.recentTurns(), command.excludeBookIds());
         final AiRecommendationChatResult aiResult = aiRecommendationClient.chat(aiRequest);

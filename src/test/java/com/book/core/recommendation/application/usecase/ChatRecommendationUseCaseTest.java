@@ -1,7 +1,10 @@
 package com.book.core.recommendation.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.book.application.port.BookRepositoryPort;
 import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.book.domain.Book;
@@ -63,8 +66,18 @@ class ChatRecommendationUseCaseTest {
         assertThat(outcome.cards()).hasSize(3);
     }
 
+    @Test
+    void 쿼리_userId가_인증된_userId와_다르면_AI를_호출하지_않고_403을_응답한다() {
+        final var command = new ChatRecommendationCommand(42L, 43L, true, Map.of(), "메시지", List.of(), List.of());
+
+        assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(aiRecommendationClient.called).isFalse();
+    }
+
     private ChatRecommendationCommand command(final Map<String, Object> spec, final List<Long> exclude) {
-        return new ChatRecommendationCommand(42L, true, spec, "메시지", List.of(), exclude);
+        return new ChatRecommendationCommand(42L, 42L, true, spec, "메시지", List.of(), exclude);
     }
 
     private Book book(final long id) {
@@ -73,9 +86,11 @@ class ChatRecommendationUseCaseTest {
 
     private static class FakeAiRecommendationClient implements AiRecommendationClient {
         AiRecommendationChatResult result;
+        boolean called;
 
         @Override
         public AiRecommendationChatResult chat(final AiRecommendationChatRequest request) {
+            called = true;
             return result;
         }
     }

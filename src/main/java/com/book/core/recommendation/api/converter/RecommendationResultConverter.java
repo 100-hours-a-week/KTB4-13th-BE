@@ -15,7 +15,7 @@ public class RecommendationResultConverter {
     }
 
     public RecommendationCardDetailResponse toRecommendationCardDetailResponse(final RecommendationCardDetailResult result) {
-        return RecommendationCardDetailResponse.from(result);
+        return new RecommendationCardDetailResponse(result.recommendationCardId(), result.bookId(), result.reasonLong());
     }
 
     public RecommendationFeedResponse toRecommendationFeedResponse(final RecommendationFeedResult result) {

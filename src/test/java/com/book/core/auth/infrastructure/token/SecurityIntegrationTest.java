@@ -49,6 +49,9 @@ import org.springframework.web.bind.annotation.RestController;
 class SecurityIntegrationTest {
     private static final Long USER_ID = 42L;
     private static final String FRONTEND_ORIGIN = "http://localhost:5173";
+    private static final String SWAGGER_UI_INDEX_PATH = "/swagger-ui/index.html";
+    private static final String SWAGGER_INITIALIZER_PATH = "/swagger-ui/swagger-initializer.js";
+    private static final String OPENAPI_GENERAL_PATH = "/v3/api-docs/general";
 
     @Autowired
     MockMvc mvc;
@@ -160,6 +163,18 @@ class SecurityIntegrationTest {
             .andExpect(jsonPath("$.code").value("E401"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {SWAGGER_UI_INDEX_PATH, SWAGGER_INITIALIZER_PATH, OPENAPI_GENERAL_PATH})
+    void Swagger와_OpenAPI_문서는_Token_없이_접근할_수_있다(final String path) throws Exception {
+        mvc.perform(get(path)).andExpect(status().isOk()).andExpect(jsonPath("$.result").value("PUBLIC_DOCUMENTATION"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {SWAGGER_UI_INDEX_PATH, SWAGGER_INITIALIZER_PATH, OPENAPI_GENERAL_PATH})
+    void Swagger와_OpenAPI_문서_경로는_GET_이외에는_인증이_필요하다(final String path) throws Exception {
+        mvc.perform(post(path)).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("E401"));
+    }
+
     @Test
     void 공개_조회_경로라도_GET이_아니면_Token_없이_요청할_수_없다() throws Exception {
         mvc.perform(post("/api/v1/items")).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("E401"));
@@ -200,6 +215,11 @@ class SecurityIntegrationTest {
         @GetMapping({"/api/v1/items", "/api/v1/categories", "/api/v1/products/{productId}", "/api/v1/search"})
         Map<String, String> publicReadEndpoint() {
             return Map.of("result", "PUBLIC");
+        }
+
+        @GetMapping({SWAGGER_UI_INDEX_PATH, SWAGGER_INITIALIZER_PATH, OPENAPI_GENERAL_PATH})
+        Map<String, String> publicDocumentationEndpoint() {
+            return Map.of("result", "PUBLIC_DOCUMENTATION");
         }
 
         @GetMapping("/test/protected")

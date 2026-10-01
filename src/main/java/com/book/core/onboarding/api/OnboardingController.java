@@ -13,6 +13,7 @@ import com.book.core.onboarding.api.spec.OnboardingControllerSpec;
 import com.book.core.onboarding.application.service.OnboardingService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -61,8 +63,10 @@ class OnboardingController implements OnboardingControllerSpec {
 
     @Override
     @GetMapping("/books")
-    public ResponseEntity<ApiResponse<OnboardingBookCandidatesResponse>> getBookCandidates(@UserId final Long userId) {
-        final var response = resultConverter.toOnboardingBookCandidatesResponse(onboardingService.getBookCandidates());
+    public ResponseEntity<ApiResponse<OnboardingBookCandidatesResponse>> getBookCandidates(@UserId final Long userId,
+        @RequestParam("subcategoryCodes") final List<String> subcategoryCodes) {
+        final var command = commandConverter.toGetOnboardingBookCandidatesCommand(subcategoryCodes);
+        final var response = resultConverter.toOnboardingBookCandidatesResponse(onboardingService.getBookCandidates(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

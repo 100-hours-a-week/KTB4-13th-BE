@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.HttpHeaders;
@@ -64,13 +65,17 @@ public interface OnboardingControllerSpec {
             content = @Content(schema = @Schema(implementation = PutOnboardingAnswersRequest.class)))
         @Valid final PutOnboardingAnswersRequest request);
 
-    @Operation(summary = "온보딩 도서 후보 조회", description = "Question 5에서 사용자에게 보여줄 고정 대표 도서 후보 목록을 display_order 순으로 조회합니다.")
+    @Operation(summary = "온보딩 도서 후보 조회",
+        description = "세부 카테고리 code를 중복 제거 후 1~9개 받아 해당 후보 전체를 반환합니다. 요청 카테고리 순서와 display_order, bookId 순으로 정렬하고 중복 도서는 한 번만 반환합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "도서 후보 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "세부 카테고리 개수나 code가 올바르지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<OnboardingBookCandidatesResponse>> getBookCandidates(@Parameter(hidden = true) final Long userId);
+    ResponseEntity<ApiResponse<OnboardingBookCandidatesResponse>> getBookCandidates(@Parameter(hidden = true) final Long userId,
+        @Parameter(in = ParameterIn.QUERY, required = true, description = "선택한 세부 카테고리 code 목록",
+            example = "novel-sf,science-space") final List<String> subcategoryCodes);
 
     @Operation(summary = "온보딩 도서 선택 저장 및 완료",
         description = "선택한 도서 목록을 저장합니다. bookIds는 null일 수 없고 중복을 허용하지 않으며, 빈 배열은 허용합니다. "

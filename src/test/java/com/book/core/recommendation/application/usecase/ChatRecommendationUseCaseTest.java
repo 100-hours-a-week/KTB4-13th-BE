@@ -159,6 +159,11 @@ class ChatRecommendationUseCaseTest {
         }
 
         @Override
+        public List<Product> findActiveByBookIds(final List<Long> bookIds) {
+            return List.of();
+        }
+
+        @Override
         public List<ProductListItem> findActiveProducts(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
             final ProductListSort sort, final ProductListCursor cursor, final int limit) {
             throw new UnsupportedOperationException();

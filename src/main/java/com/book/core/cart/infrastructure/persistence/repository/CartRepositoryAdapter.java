@@ -13,6 +13,11 @@ public class CartRepositoryAdapter implements CartRepositoryPort {
     private final CartJpaRepository jpaRepository;
 
     @Override
+    public Cart save(final Cart cart) {
+        return jpaRepository.save(cart);
+    }
+
+    @Override
     public Optional<Cart> findByUserIdWithLock(final Long userId) {
         return jpaRepository.findByUserIdWithLock(userId);
     }

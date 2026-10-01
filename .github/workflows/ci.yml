@@ -105,6 +105,30 @@ jobs:
           docker compose -f compose.build.yml build backend
           docker compose -f compose.build.yml push backend
 
+  notify-dev-deployment:
+    name: Notify Cloud repository for Dev deployment
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.publish-image.result == 'success'
+    needs: publish-image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Dispatch Dev deployment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.CLOUD_REPO_DISPATCH_TOKEN }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: '100-hours-a-week',
+              repo: 'KTB4-13th-Cloud',
+              event_type: 'dev-deploy',
+              client_payload: {
+                service: 'backend',
+                sha: context.sha,
+                repository: context.repo.repo,
+              },
+            });
+
   notify-failure:
     name: Notify CI failure
     if: ${{ always() && (needs.gradle-check.result == 'failure' || needs.publish-image.result == 'failure') }}

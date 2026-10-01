@@ -22,8 +22,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Container;
@@ -239,6 +242,52 @@ class OnboardingRepositoryIntegrationTest {
         assertThat(candidateRepository.findBySubcategoryCodes(List.of("novel-sf", "science-space")).stream()
             .filter((final var candidate) -> candidate.bookId().equals(bookId1) || candidate.bookId().equals(bookId2)).toList())
             .extracting(OnboardingBookCandidate::subcategoryCode).containsExactlyInAnyOrder("science-space", "novel-sf", "science-space");
+    }
+
+    @Test
+    @Transactional
+    void CSV_후보_490건은_전체_카탈로그_일치시에만_등록하고_재실행해도_중복되지_않는다() {
+        importCandidateSeed();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM onboarding_candidate_seed", Integer.class)).isEqualTo(490);
+        assertThat(jdbc.queryForObject("SELECT COUNT(DISTINCT subcategory_code) FROM onboarding_candidate_seed", Integer.class))
+            .isEqualTo(49);
+        assertThat(jdbc.queryForList("SELECT COUNT(*) FROM onboarding_candidate_seed GROUP BY subcategory_code", Integer.class))
+            .containsOnly(10);
+        assertThat(seedCandidateCount()).isZero();
+
+        jdbc.update("""
+            INSERT INTO books (id, title, author, publisher, category, published_at)
+            SELECT book_id, title, '저자', '출판사', '카테고리', '2026-01-01'
+            FROM onboarding_candidate_seed
+            """);
+        final Long firstBookId = jdbc.queryForObject("SELECT MIN(book_id) FROM onboarding_candidate_seed", Long.class);
+        jdbc.update("UPDATE books SET title = '다른 도서' WHERE id = ?", firstBookId);
+        importCandidateSeed();
+        assertThat(seedCandidateCount()).isZero();
+
+        jdbc.update("""
+            UPDATE books JOIN onboarding_candidate_seed seed ON books.id = seed.book_id
+            SET books.title = seed.title
+            """);
+        importCandidateSeed();
+        assertThat(seedCandidateCount()).isEqualTo(490);
+        importCandidateSeed();
+        assertThat(seedCandidateCount()).isEqualTo(490);
+    }
+
+    private int seedCandidateCount() {
+        return jdbc.queryForObject("""
+            SELECT COUNT(*) FROM onboarding_book_candidates candidate
+            JOIN onboarding_candidate_seed seed
+              ON candidate.subcategory_code = seed.subcategory_code AND candidate.book_id = seed.book_id
+            """, Integer.class);
+    }
+
+    private void importCandidateSeed() {
+        jdbc.execute((ConnectionCallback<Void>) (final var connection) -> {
+            ScriptUtils.executeSqlScript(connection, new FileSystemResource("scripts/onboarding/seed-book-candidates.sql"));
+            return null;
+        });
     }
 
     private Long insertUser(final String nickname) {

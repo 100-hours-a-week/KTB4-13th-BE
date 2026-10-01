@@ -19,6 +19,7 @@ class UserOnboardingAnswerRepositoryAdapter implements UserOnboardingAnswerRepos
     @Override
     public void deleteByUserIdAndOnboardingOptionIdIn(final Long userId, final List<Long> onboardingOptionIds) {
         jpaRepository.deleteByUserIdAndOnboardingOptionIdIn(userId, onboardingOptionIds);
+        jpaRepository.flush();
     }
 
     @Override

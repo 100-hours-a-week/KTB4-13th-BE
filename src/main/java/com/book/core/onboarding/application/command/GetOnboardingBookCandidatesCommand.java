@@ -4,7 +4,6 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import java.util.List;
 
-/** Selected subcategory codes for onboarding book candidates. */
 // @formatter:off
 public record GetOnboardingBookCandidatesCommand(List<String> subcategoryCodes) {
     public GetOnboardingBookCandidatesCommand {

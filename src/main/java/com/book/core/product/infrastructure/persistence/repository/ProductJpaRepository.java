@@ -35,4 +35,14 @@ interface ProductJpaRepository extends JpaRepository<Product, Long> {
               and book.deletedAt is null
             """)
     Optional<Product> findActiveByBookId(@Param("bookId") Long bookId);
+
+    @Query("""
+            select product
+            from Product product
+            join fetch product.book book
+            where book.id in :bookIds
+              and product.deletedAt is null
+              and book.deletedAt is null
+            """)
+    List<Product> findActiveByBookIdIn(@Param("bookIds") List<Long> bookIds);
 }

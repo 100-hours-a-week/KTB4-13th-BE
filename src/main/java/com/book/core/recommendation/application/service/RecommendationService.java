@@ -3,9 +3,9 @@ package com.book.core.recommendation.application.service;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
 import com.book.core.recommendation.application.command.GetRecommendationCardCommand;
 import com.book.core.recommendation.application.command.GetRecommendationFeedCommand;
-import com.book.core.recommendation.application.port.RecommendationFeedResult;
 import com.book.core.recommendation.application.result.ChatRecommendationAiOutcome;
 import com.book.core.recommendation.application.result.ChatRecommendationResult;
+import com.book.core.recommendation.application.result.GetRecommendationFeedResult;
 import com.book.core.recommendation.application.result.RecommendationCardDetailResult;
 import com.book.core.recommendation.application.result.RecommendationCardResult;
 import com.book.core.recommendation.application.usecase.ChatRecommendationUseCase;
@@ -39,7 +39,7 @@ public class RecommendationService {
         return getRecommendationCardUseCase.execute(command);
     }
 
-    public RecommendationFeedResult getFeed(final GetRecommendationFeedCommand command) {
+    public GetRecommendationFeedResult getFeed(final GetRecommendationFeedCommand command) {
         return getRecommendationFeedUseCase.execute(command);
     }
 

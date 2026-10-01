@@ -1,6 +1,6 @@
 package com.book.core.recommendation.api.response;
 
-import com.book.core.recommendation.application.port.RecommendationFeedResult;
+import com.book.core.recommendation.application.result.GetRecommendationFeedResult;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
@@ -15,7 +15,7 @@ public class RecommendationFeedResponse {
         this.coldStart = coldStart;
     }
 
-    public static RecommendationFeedResponse from(final RecommendationFeedResult result) {
+    public static RecommendationFeedResponse from(final GetRecommendationFeedResult result) {
         return new RecommendationFeedResponse(result.items().stream().map(RecommendationFeedItemResponse::from).toList(),
             result.nextCursor(), result.coldStart());
     }

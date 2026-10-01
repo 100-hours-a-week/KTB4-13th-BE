@@ -9,7 +9,7 @@ import com.book.core.recommendation.api.response.ChatRecommendationResponse;
 import com.book.core.recommendation.api.response.RecommendationCardDetailResponse;
 import com.book.core.recommendation.api.response.RecommendationFeedResponse;
 import com.book.core.recommendation.api.spec.RecommendationControllerSpec;
-import com.book.core.recommendation.application.port.RecommendationFeedResult;
+import com.book.core.recommendation.application.result.GetRecommendationFeedResult;
 import com.book.core.recommendation.application.service.RecommendationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -70,7 +70,7 @@ class RecommendationController implements RecommendationControllerSpec {
         @Min(0) @Max(100) @RequestParam(value = "matchScoreMin", required = false) final Integer matchScoreMin) {
         final var command = commandConverter.toGetRecommendationFeedCommand(userId, surface, size, cursor, sort, category, pubYearFrom,
             pubYearTo, matchScoreMin);
-        final RecommendationFeedResult result = recommendationService.getFeed(command);
+        final GetRecommendationFeedResult result = recommendationService.getFeed(command);
         final var response = resultConverter.toRecommendationFeedResponse(result);
 
         final ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok();

@@ -104,6 +104,24 @@ class ProductRepositoryIntegrationTest {
     }
 
     @Test
+    void 도서_ID_목록으로_활성_도서에_연결된_활성_상품만_조회한다() {
+        insertBook(9811L, "활성 도서", null);
+        insertBook(9812L, "삭제 도서", Timestamp.valueOf("2026-01-01 00:00:00"));
+        insertBook(9813L, "삭제 상품 도서", null);
+        insertBook(9814L, "상품 없는 도서", null);
+        insertProduct(9821L, 9811L, "활성 상품", null);
+        insertProduct(9822L, 9812L, "삭제된 도서의 상품", null);
+        insertProduct(9823L, 9813L, "삭제된 상품", Timestamp.valueOf("2026-01-01 00:00:00"));
+
+        final List<Product> found = productRepository.findActiveByBookIds(List.of(9811L, 9812L, 9813L, 9814L, 9811L));
+
+        assertThat(found).singleElement().satisfies((final var product) -> {
+            assertThat(product.id()).isEqualTo(9821L);
+            assertThat(product.book().id()).isEqualTo(9811L);
+        });
+    }
+
+    @Test
     void 서로_다른_Book에는_각각_Product를_저장할_수_있다() {
         insertBook(1401L, "북 A", null);
         insertBook(1402L, "북 B", null);

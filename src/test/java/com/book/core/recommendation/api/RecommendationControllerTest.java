@@ -1,5 +1,6 @@
 package com.book.core.recommendation.api;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -18,11 +19,11 @@ import com.book.core.recommendation.application.command.GetRecommendationCardCom
 import com.book.core.recommendation.application.command.GetRecommendationFeedCommand;
 import com.book.core.recommendation.application.command.RecommendationFeedSort;
 import com.book.core.recommendation.application.command.RecommendationFeedSurface;
-import com.book.core.recommendation.application.port.RecommendationFeedItem;
-import com.book.core.recommendation.application.port.RecommendationFeedResult;
 import com.book.core.recommendation.application.result.ChatRecommendationResult;
+import com.book.core.recommendation.application.result.GetRecommendationFeedResult;
 import com.book.core.recommendation.application.result.RecommendationCardDetailResult;
 import com.book.core.recommendation.application.result.RecommendationCardResult;
+import com.book.core.recommendation.application.result.RecommendationFeedItemResult;
 import com.book.core.recommendation.application.service.RecommendationService;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -174,12 +175,15 @@ class RecommendationControllerTest {
     @Test
     void 피드_조회는_인증된_userId로_Command를_전달하고_Cache_Control을_직접_설정하지_않는다() throws Exception {
         authenticateAs(42L);
-        when(recommendationService.getFeed(homeCommand(15, null))).thenReturn(new RecommendationFeedResult(
-            List.of(new RecommendationFeedItem(3310L, "아무튼, 산", "장보영", new BigDecimal("9900"), "https://example.com/1.jpg", true, 84)),
+        when(recommendationService.getFeed(homeCommand(15, null))).thenReturn(new GetRecommendationFeedResult(
+            List.of(new RecommendationFeedItemResult(3310L, 601L, "아무튼, 산", "장보영", new BigDecimal("9900"), "https://example.com/1.jpg",
+                true, 84), new RecommendationFeedItemResult(4400L, null, "상품 없는 책", "작가", null, null, false, 60)),
             "next-page", false, null));
 
         mvc.perform(get("/api/v1/recommend/feed")).andExpect(status().isOk()).andExpect(header().doesNotExist(HttpHeaders.CACHE_CONTROL))
             .andExpect(header().doesNotExist("X-Degraded")).andExpect(jsonPath("$.data.items[0].bookId").value(3310))
+            .andExpect(jsonPath("$.data.items[0].productId").value(601)).andExpect(jsonPath("$.data.items[1].bookId").value(4400))
+            .andExpect(jsonPath("$.data.items[1].productId").value(nullValue()))
             .andExpect(jsonPath("$.data.items[0].title").value("아무튼, 산")).andExpect(jsonPath("$.data.items[0].author").value("장보영"))
             .andExpect(jsonPath("$.data.items[0].price").value(9900))
             .andExpect(jsonPath("$.data.items[0].coverUrl").value("https://example.com/1.jpg"))
@@ -192,7 +196,7 @@ class RecommendationControllerTest {
     @Test
     void 요청에_userId_query가_있어도_인증된_userId만_사용한다() throws Exception {
         authenticateAs(42L);
-        when(recommendationService.getFeed(homeCommand(15, null))).thenReturn(new RecommendationFeedResult(List.of(), null, true, null));
+        when(recommendationService.getFeed(homeCommand(15, null))).thenReturn(new GetRecommendationFeedResult(List.of(), null, true, null));
 
         mvc.perform(get("/api/v1/recommend/feed").param("userId", "999")).andExpect(status().isOk());
 
@@ -202,7 +206,8 @@ class RecommendationControllerTest {
     @Test
     void size와_cursor를_그대로_Command에_전달한다() throws Exception {
         authenticateAs(42L);
-        when(recommendationService.getFeed(homeCommand(30, "abc"))).thenReturn(new RecommendationFeedResult(List.of(), null, false, null));
+        when(recommendationService.getFeed(homeCommand(30, "abc")))
+            .thenReturn(new GetRecommendationFeedResult(List.of(), null, false, null));
 
         mvc.perform(get("/api/v1/recommend/feed").param("size", "30").param("cursor", "abc")).andExpect(status().isOk());
 
@@ -315,7 +320,7 @@ class RecommendationControllerTest {
     void X_Degraded가_있으면_응답_헤더에_그대로_포함한다() throws Exception {
         authenticateAs(42L);
         when(recommendationService.getFeed(homeCommand(15, null)))
-            .thenReturn(new RecommendationFeedResult(List.of(), null, false, "rule-only"));
+            .thenReturn(new GetRecommendationFeedResult(List.of(), null, false, "rule-only"));
 
         mvc.perform(get("/api/v1/recommend/feed")).andExpect(status().isOk()).andExpect(header().string("X-Degraded", "rule-only"));
     }
@@ -323,7 +328,7 @@ class RecommendationControllerTest {
     @Test
     void 빈_목록도_200으로_응답한다() throws Exception {
         authenticateAs(42L);
-        when(recommendationService.getFeed(homeCommand(15, null))).thenReturn(new RecommendationFeedResult(List.of(), null, true, null));
+        when(recommendationService.getFeed(homeCommand(15, null))).thenReturn(new GetRecommendationFeedResult(List.of(), null, true, null));
 
         mvc.perform(get("/api/v1/recommend/feed")).andExpect(status().isOk()).andExpect(jsonPath("$.data.items").isEmpty())
             .andExpect(jsonPath("$.data.coldStart").value(true));
@@ -345,7 +350,7 @@ class RecommendationControllerTest {
             null);
     }
 
-    private static RecommendationFeedResult emptyFeed() {
-        return new RecommendationFeedResult(List.of(), null, false, null);
+    private static GetRecommendationFeedResult emptyFeed() {
+        return new GetRecommendationFeedResult(List.of(), null, false, null);
     }
 }

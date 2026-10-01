@@ -1,5 +1,6 @@
 package com.book.core.search.api;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -13,8 +14,8 @@ import com.book.common.api.config.SwaggerConfig;
 import com.book.core.search.api.converter.SearchCommandConverter;
 import com.book.core.search.application.command.BookSearchSort;
 import com.book.core.search.application.command.SearchBooksCommand;
-import com.book.core.search.application.port.BookSearchItem;
-import com.book.core.search.application.port.BookSearchResult;
+import com.book.core.search.application.result.SearchBookItemResult;
+import com.book.core.search.application.result.SearchBooksResult;
 import com.book.core.search.application.service.SearchService;
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,14 +46,17 @@ class SearchControllerTest {
 
     @Test
     void 검색어만_보내면_popular_정렬과_크기_12로_검색하고_결과를_응답한다() throws Exception {
-        when(searchService.searchBooks(any())).thenReturn(new BookSearchResult(
-            List.of(new BookSearchItem(2077L, "여행의 이유", "김영하", "문학동네", new BigDecimal("13500"), true, "https://example.com/2077.jpg")),
+        when(searchService.searchBooks(any())).thenReturn(new SearchBooksResult(
+            List.of(new SearchBookItemResult(2077L, 501L, "여행의 이유", "김영하", "문학동네", new BigDecimal("13500"), true,
+                "https://example.com/2077.jpg"), new SearchBookItemResult(4400L, null, "상품 없는 책", "작가", "출판사", null, false, null)),
             "next-page", null, null));
 
         mvc.perform(get("/api/v1/search").param("query", "여행")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.items[0].bookId").value(2077)).andExpect(jsonPath("$.data.items[0].title").value("여행의 이유"))
-            .andExpect(jsonPath("$.data.items[0].author").value("김영하")).andExpect(jsonPath("$.data.items[0].publisher").value("문학동네"))
-            .andExpect(jsonPath("$.data.items[0].price").value(13500)).andExpect(jsonPath("$.data.items[0].inStock").value(true))
+            .andExpect(jsonPath("$.data.items[0].bookId").value(2077)).andExpect(jsonPath("$.data.items[0].productId").value(501))
+            .andExpect(jsonPath("$.data.items[1].bookId").value(4400)).andExpect(jsonPath("$.data.items[1].productId").value(nullValue()))
+            .andExpect(jsonPath("$.data.items[0].title").value("여행의 이유")).andExpect(jsonPath("$.data.items[0].author").value("김영하"))
+            .andExpect(jsonPath("$.data.items[0].publisher").value("문학동네")).andExpect(jsonPath("$.data.items[0].price").value(13500))
+            .andExpect(jsonPath("$.data.items[0].inStock").value(true))
             .andExpect(jsonPath("$.data.items[0].coverUrl").value("https://example.com/2077.jpg"))
             .andExpect(jsonPath("$.data.nextCursor").value("next-page")).andExpect(jsonPath("$.data.fallbackMessage").doesNotExist())
             .andExpect(jsonPath("$.data.totalCount").doesNotExist()).andExpect(header().doesNotExist("X-Degraded"));
@@ -87,7 +91,7 @@ class SearchControllerTest {
     @Test
     void 결과가_없으면_AI_fallback_문구와_X_Degraded를_그대로_전달한다() throws Exception {
         when(searchService.searchBooks(any()))
-            .thenReturn(new BookSearchResult(List.of(), null, "원하는 책을 못 찾았어요. AI 추천에게 물어볼까요?", "keyword-only"));
+            .thenReturn(new SearchBooksResult(List.of(), null, "원하는 책을 못 찾았어요. AI 추천에게 물어볼까요?", "keyword-only"));
 
         mvc.perform(get("/api/v1/search").param("query", "없는 책")).andExpect(status().isOk()).andExpect(jsonPath("$.data.items").isEmpty())
             .andExpect(jsonPath("$.data.nextCursor").doesNotExist())
@@ -124,8 +128,8 @@ class SearchControllerTest {
         verifyNoInteractions(searchService);
     }
 
-    private static BookSearchResult emptyResult() {
-        return new BookSearchResult(List.of(), null, null, null);
+    private static SearchBooksResult emptyResult() {
+        return new SearchBooksResult(List.of(), null, null, null);
     }
 
     @Test

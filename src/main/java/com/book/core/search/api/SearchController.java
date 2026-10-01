@@ -4,7 +4,7 @@ import com.book.common.response.ApiResponse;
 import com.book.core.search.api.converter.SearchCommandConverter;
 import com.book.core.search.api.response.BookSearchResponse;
 import com.book.core.search.api.spec.SearchControllerSpec;
-import com.book.core.search.application.port.BookSearchResult;
+import com.book.core.search.application.result.SearchBooksResult;
 import com.book.core.search.application.service.SearchService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
@@ -42,7 +42,7 @@ class SearchController implements SearchControllerSpec {
         @Positive @Max(50) @RequestParam(value = "size", required = false, defaultValue = "12") final int size) {
         final var command =
             commandConverter.toSearchBooksCommand(query, category, priceMin, priceMax, pubYearFrom, pubYearTo, sort, cursor, size);
-        final BookSearchResult result = searchService.searchBooks(command);
+        final SearchBooksResult result = searchService.searchBooks(command);
         final var response = BookSearchResponse.from(result);
 
         final ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok();

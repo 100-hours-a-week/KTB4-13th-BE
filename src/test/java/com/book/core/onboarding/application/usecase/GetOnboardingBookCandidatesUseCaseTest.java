@@ -63,6 +63,11 @@ class GetOnboardingBookCandidatesUseCaseTest {
         final List<OnboardingBookCandidate> candidates = new java.util.ArrayList<>();
 
         @Override
+        public List<OnboardingBookCandidate> findBySubcategoryCodes(final List<String> subcategoryCodes) {
+            return candidates.stream().filter(candidate -> subcategoryCodes.contains(candidate.subcategoryCode())).toList();
+        }
+
+        @Override
         public List<OnboardingBookCandidate> findAllOrderByDisplayOrder() {
             return candidates.stream().sorted(java.util.Comparator.comparingInt(OnboardingBookCandidate::displayOrder)).toList();
         }

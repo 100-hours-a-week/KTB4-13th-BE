@@ -165,7 +165,7 @@ class OnboardingRepositoryIntegrationTest {
     void 도서_후보_조회_결과의_bookId를_그대로_사용자_선택으로_저장할_수_있다() {
         final Long userId = insertUser("온보딩회원7");
         final Long bookId = insertBook("후보에서_선택된_도서");
-        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId, 1));
+        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId, "novel-sf", 1));
 
         final Long candidateBookId = candidateRepository.findAllOrderByDisplayOrder().stream()
             .filter(candidate -> candidate.bookId().equals(bookId)).findFirst().orElseThrow().bookId();
@@ -217,10 +217,26 @@ class OnboardingRepositoryIntegrationTest {
     @Test
     void 동일_Book에_두번째_후보를_저장하면_UNIQUE_제약을_위반한다() {
         final Long bookId = insertBook("중복 후보 도서");
-        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId, 1));
+        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId, "novel-sf", 1));
 
-        assertThatThrownBy(() -> candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId, 2)))
+        assertThatThrownBy(() -> candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId, "novel-sf", 2)))
             .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    @Transactional
+    void 선택한_세부_카테고리만_조회하고_카테고리간_동일_도서는_허용한다() {
+        final Long bookId1 = insertBook("SF 후보");
+        final Long bookId2 = insertBook("우주 후보");
+        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId1, "novel-sf", 2));
+        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId1, "science-space", 1));
+        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId2, "science-space", 2));
+        candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId2, "novel-fantasy", 1));
+
+        assertThat(candidateRepository.findBySubcategoryCodes(List.of("science-space"))).extracting(OnboardingBookCandidate::bookId)
+            .containsExactly(bookId1, bookId2);
+        assertThat(candidateRepository.findBySubcategoryCodes(List.of("novel-sf", "science-space")))
+            .extracting(OnboardingBookCandidate::subcategoryCode).containsExactly("science-space", "novel-sf", "science-space");
     }
 
     private Long insertUser(final String nickname) {

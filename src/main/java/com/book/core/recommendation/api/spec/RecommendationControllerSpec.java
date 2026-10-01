@@ -51,7 +51,7 @@ public interface RecommendationControllerSpec {
     @Operation(summary = "추천 피드 조회",
         description = "인증된 회원의 취향 프로필을 기반으로 추천 목록을 조회합니다. surface=home은 정렬·필터를 받지 않고, "
             + "surface=recommend_more만 sort(match 기본, newest, price_asc)와 category, 출간연도 구간, matchScoreMin 필터를 받습니다. "
-            + "AI가 축소 응답을 반환하면 X-Degraded 헤더가 함께 옵니다.")
+            + "AI가 축소 응답을 반환하면 X-Degraded 헤더가 함께 옵니다. 항목의 productId는 활성 상품이 없는 도서면 null입니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않거나 home에 정렬·필터를 보냄"),

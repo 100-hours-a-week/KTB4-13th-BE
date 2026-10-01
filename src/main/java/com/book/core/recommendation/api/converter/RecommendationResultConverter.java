@@ -3,8 +3,8 @@ package com.book.core.recommendation.api.converter;
 import com.book.core.recommendation.api.response.ChatRecommendationResponse;
 import com.book.core.recommendation.api.response.RecommendationCardDetailResponse;
 import com.book.core.recommendation.api.response.RecommendationFeedResponse;
-import com.book.core.recommendation.application.port.RecommendationFeedResult;
 import com.book.core.recommendation.application.result.ChatRecommendationResult;
+import com.book.core.recommendation.application.result.GetRecommendationFeedResult;
 import com.book.core.recommendation.application.result.RecommendationCardDetailResult;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +18,7 @@ public class RecommendationResultConverter {
         return new RecommendationCardDetailResponse(result.recommendationCardId(), result.bookId(), result.reasonLong());
     }
 
-    public RecommendationFeedResponse toRecommendationFeedResponse(final RecommendationFeedResult result) {
+    public RecommendationFeedResponse toRecommendationFeedResponse(final GetRecommendationFeedResult result) {
         return RecommendationFeedResponse.from(result);
     }
 }

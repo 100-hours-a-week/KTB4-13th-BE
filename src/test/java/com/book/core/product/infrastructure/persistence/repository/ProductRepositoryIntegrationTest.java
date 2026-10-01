@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.book.domain.Book;
+import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.ProductRepositoryPort;
@@ -61,6 +62,23 @@ class ProductRepositoryIntegrationTest {
         assertThat(found.book().title()).isEqualTo("활성 도서");
         assertThat(productRepository.findActiveById(2002L)).isEmpty();
         assertThat(productRepository.findActiveById(2003L)).isEmpty();
+    }
+
+    @Test
+    void 상품_상세는_도서의_소개와_분류를_함께_반환하고_소개가_없으면_null로_반환한다() {
+        insertBook(9831L, "소개 있는 도서", null);
+        insertBook(9832L, "소개 없는 도서", null);
+        jdbc.update("UPDATE books SET description = ? WHERE id = ?", "마음을 다독이는 산문집", 9831L);
+        insertProduct(9841L, 9831L, "소개 있는 상품", null);
+        insertProduct(9842L, 9832L, "소개 없는 상품", null);
+
+        final var describedProduct = productService.getProductDetail(new GetProductDetailCommand(9841L));
+        final var undescribedProduct = productService.getProductDetail(new GetProductDetailCommand(9842L));
+
+        assertThat(describedProduct.description()).isEqualTo("마음을 다독이는 산문집");
+        assertThat(describedProduct.category()).isEqualTo("소설");
+        assertThat(undescribedProduct.description()).isNull();
+        assertThat(undescribedProduct.category()).isEqualTo("소설");
     }
 
     @Test

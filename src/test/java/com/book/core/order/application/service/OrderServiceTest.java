@@ -179,7 +179,7 @@ class OrderServiceTest {
     }
 
     private static GetProductDetailResult product(final int stock) {
-        return new GetProductDetailResult(701L, "상품 701", "https://example.com/book.jpg", "저자", "출판사", LocalDate.of(2026, 1, 1),
+        return new GetProductDetailResult(701L, "상품 701", "https://example.com/book.jpg", "저자", "출판사", LocalDate.of(2026, 1, 1), "소설", null,
             new BigDecimal("20.00"), new BigDecimal("17.25"), 0L, BigDecimal.ZERO, stock, List.of());
     }
 }

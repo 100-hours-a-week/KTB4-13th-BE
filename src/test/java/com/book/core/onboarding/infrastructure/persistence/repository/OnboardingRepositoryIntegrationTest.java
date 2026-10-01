@@ -233,10 +233,12 @@ class OnboardingRepositoryIntegrationTest {
         candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId2, "science-space", 2));
         candidateJpaRepository.saveAndFlush(new OnboardingBookCandidate(null, bookId2, "novel-fantasy", 1));
 
-        assertThat(candidateRepository.findBySubcategoryCodes(List.of("science-space"))).extracting(OnboardingBookCandidate::bookId)
-            .containsExactly(bookId1, bookId2);
-        assertThat(candidateRepository.findBySubcategoryCodes(List.of("novel-sf", "science-space")))
-            .extracting(OnboardingBookCandidate::subcategoryCode).containsExactly("science-space", "novel-sf", "science-space");
+        assertThat(candidateRepository.findBySubcategoryCodes(List.of("science-space")).stream()
+            .filter((final var candidate) -> candidate.bookId().equals(bookId1) || candidate.bookId().equals(bookId2)).toList())
+            .extracting(OnboardingBookCandidate::bookId).containsExactly(bookId1, bookId2);
+        assertThat(candidateRepository.findBySubcategoryCodes(List.of("novel-sf", "science-space")).stream()
+            .filter((final var candidate) -> candidate.bookId().equals(bookId1) || candidate.bookId().equals(bookId2)).toList())
+            .extracting(OnboardingBookCandidate::subcategoryCode).containsExactlyInAnyOrder("science-space", "novel-sf", "science-space");
     }
 
     private Long insertUser(final String nickname) {

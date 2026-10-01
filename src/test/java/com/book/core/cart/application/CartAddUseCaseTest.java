@@ -184,6 +184,12 @@ class CartAddUseCaseTest {
         private Cart cart;
 
         @Override
+        public Cart save(final Cart cart) {
+            this.cart = cart;
+            return cart;
+        }
+
+        @Override
         public Optional<Cart> findByUserIdWithLock(final Long userId) {
             return Optional.ofNullable(cart);
         }

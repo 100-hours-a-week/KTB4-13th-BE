@@ -30,6 +30,7 @@ public class GetOnboardingBookCandidatesUseCase {
 
     @Transactional(readOnly = true)
     public List<OnboardingBookCandidateResult> execute(final GetOnboardingBookCandidatesCommand command) {
+        // TODO: 세부 카테고리 단계의 질문 ID(4L)를 온보딩 단계를 나타내는 Enum 값으로 대체한다. 작성자: 023-dev
         final Set<String> validCodes =
             optionRepository.findByQuestionId(4L).stream().map(OnboardingOption::code).collect(Collectors.toSet());
         if (!validCodes.containsAll(command.subcategoryCodes())) {

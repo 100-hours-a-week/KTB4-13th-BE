@@ -1,6 +1,7 @@
 package com.book.core.onboarding.application.service;
 
 import com.book.common.exception.CoreException;
+import com.book.core.onboarding.application.command.GetOnboardingBookCandidatesCommand;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
@@ -52,8 +53,8 @@ public class OnboardingService {
         createPersonalizationProfile(command.userId());
     }
 
-    public List<OnboardingBookCandidateResult> getBookCandidates() {
-        return getOnboardingBookCandidatesUseCase.execute();
+    public List<OnboardingBookCandidateResult> getBookCandidates(final GetOnboardingBookCandidatesCommand command) {
+        return getOnboardingBookCandidatesUseCase.execute(command);
     }
 
     public void recordPersonalizationAgreement(final RecordPersonalizationAgreementCommand command) {

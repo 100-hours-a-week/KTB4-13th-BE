@@ -6,9 +6,11 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.onboarding.application.command.GetOnboardingBookCandidatesCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.usecase.CreatePersonalizationProfileUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingBookCandidatesUseCase;
@@ -28,10 +30,18 @@ class OnboardingServiceTest {
 
     private final SaveOnboardingBooksUseCase saveOnboardingBooksUseCase = mock(SaveOnboardingBooksUseCase.class);
     private final CreatePersonalizationProfileUseCase createPersonalizationProfileUseCase = mock(CreatePersonalizationProfileUseCase.class);
-    private final OnboardingService onboardingService =
-        new OnboardingService(mock(GetOnboardingQuestionUseCase.class), mock(GetOnboardingProgressUseCase.class),
-            mock(SaveOnboardingAnswersUseCase.class), saveOnboardingBooksUseCase, mock(GetOnboardingBookCandidatesUseCase.class),
-            mock(RecordPersonalizationAgreementUseCase.class), createPersonalizationProfileUseCase);
+    private final GetOnboardingBookCandidatesUseCase getBookCandidatesUseCase = mock(GetOnboardingBookCandidatesUseCase.class);
+    private final OnboardingService onboardingService = new OnboardingService(mock(GetOnboardingQuestionUseCase.class),
+        mock(GetOnboardingProgressUseCase.class), mock(SaveOnboardingAnswersUseCase.class), saveOnboardingBooksUseCase,
+        getBookCandidatesUseCase, mock(RecordPersonalizationAgreementUseCase.class), createPersonalizationProfileUseCase);
+
+    @Test
+    void 후보_조회_Command를_UseCase로_전달한다() {
+        final var command = new GetOnboardingBookCandidatesCommand(List.of("novel-sf"));
+        onboardingService.getBookCandidates(command);
+        verify(getBookCandidatesUseCase).execute(command);
+        verifyNoInteractions(saveOnboardingBooksUseCase, createPersonalizationProfileUseCase);
+    }
 
     @Test
     void 온보딩_도서_저장이_끝난_뒤_AI_취향_프로필_생성을_요청한다() {

@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.book.common.config.security.UserIdMvcConfig;
 import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
+import com.book.core.onboarding.application.command.GetOnboardingBookCandidatesCommand;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
@@ -208,24 +209,43 @@ class OnboardingControllerTest {
     @Test
     void 도서_후보를_조회하고_응답_계약을_반환한다() throws Exception {
         authenticateAs(USER_ID);
-        when(onboardingService.getBookCandidates())
+        when(onboardingService.getBookCandidates(new GetOnboardingBookCandidatesCommand(List.of("novel-sf", "science-space"))))
             .thenReturn(List.of(new OnboardingBookCandidateResult(10L, "제목1", "작가1", "https://example.com/1.jpg"),
                 new OnboardingBookCandidateResult(20L, "제목2", "작가2", "https://example.com/2.jpg")));
 
-        mvc.perform(get("/api/v1/onboarding/books")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.candidates[0].bookId").value(10)).andExpect(jsonPath("$.data.candidates[0].title").value("제목1"))
-            .andExpect(jsonPath("$.data.candidates[1].bookId").value(20));
+        mvc.perform(get("/api/v1/onboarding/books").param("subcategoryCodes", "novel-sf", "science-space")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data.candidates[0].bookId").value(10))
+            .andExpect(jsonPath("$.data.candidates[0].title").value("제목1")).andExpect(jsonPath("$.data.candidates[1].bookId").value(20));
 
-        verify(onboardingService).getBookCandidates();
+        verify(onboardingService).getBookCandidates(new GetOnboardingBookCandidatesCommand(List.of("novel-sf", "science-space")));
     }
 
     @Test
     void 도서_후보가_없으면_빈_배열을_반환한다() throws Exception {
         authenticateAs(USER_ID);
-        when(onboardingService.getBookCandidates()).thenReturn(List.of());
+        when(onboardingService.getBookCandidates(new GetOnboardingBookCandidatesCommand(List.of("novel-sf", "science-space"))))
+            .thenReturn(List.of());
 
-        mvc.perform(get("/api/v1/onboarding/books")).andExpect(status().isOk()).andExpect(jsonPath("$.data.candidates").isArray())
-            .andExpect(jsonPath("$.data.candidates").isEmpty());
+        mvc.perform(get("/api/v1/onboarding/books").param("subcategoryCodes", "novel-sf", "science-space")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.candidates").isArray()).andExpect(jsonPath("$.data.candidates").isEmpty());
+    }
+
+    @Test
+    void 세부_카테고리가_누락되거나_빈_값이면_400을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+        mvc.perform(get("/api/v1/onboarding/books")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/onboarding/books").param("subcategoryCodes", "")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
+    }
+
+    @Test
+    void 쉼표로_전달한_세부_카테고리는_중복_제거한_Command로_전달한다() throws Exception {
+        authenticateAs(USER_ID);
+        final var command = new GetOnboardingBookCandidatesCommand(List.of("novel-sf", "science-space"));
+        when(onboardingService.getBookCandidates(command)).thenReturn(List.of());
+        mvc.perform(get("/api/v1/onboarding/books").param("subcategoryCodes", "novel-sf,science-space,novel-sf"))
+            .andExpect(status().isOk());
+        verify(onboardingService).getBookCandidates(command);
     }
 
     @Test

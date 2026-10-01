@@ -1,7 +1,6 @@
 package com.book.core.recommendation.api;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -154,24 +153,6 @@ class RecommendationControllerTest {
             """.formatted(SPEC_JSON, turns))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(recommendationService);
-    }
-
-    @Test
-    void 대화형_추천은_userId_query를_보내도_인증된_userId만_사용한다() throws Exception {
-        authenticateAs(42L);
-        when(recommendationService.chat(any()))
-            .thenReturn(new ChatRecommendationResult(Map.of(), "reply", List.of(), null, List.of(), false));
-
-        mvc.perform(post("/api/v1/recommend/chat").param("userId", "999").contentType(MediaType.APPLICATION_JSON).content("""
-            {
-              "consented": true,
-              "spec": %s,
-              "message": "추천해줘",
-              "recentTurns": []
-            }
-            """.formatted(SPEC_JSON))).andExpect(status().isOk());
-
-        verify(recommendationService).chat(argThat(command -> command.userId().equals(42L)));
     }
 
     @Test

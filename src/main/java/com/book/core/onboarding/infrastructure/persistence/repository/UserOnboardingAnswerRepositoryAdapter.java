@@ -19,7 +19,6 @@ class UserOnboardingAnswerRepositoryAdapter implements UserOnboardingAnswerRepos
     @Override
     public void deleteByUserIdAndOnboardingOptionIdIn(final Long userId, final List<Long> onboardingOptionIds) {
         jpaRepository.deleteByUserIdAndOnboardingOptionIdIn(userId, onboardingOptionIds);
-        // IDENTITY inserts run at once, so the deletes must reach the DB before re-saving options.
         jpaRepository.flush();
     }
 

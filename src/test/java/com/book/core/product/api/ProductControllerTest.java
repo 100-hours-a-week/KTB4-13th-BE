@@ -2,6 +2,7 @@ package com.book.core.product.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -57,20 +58,31 @@ class ProductControllerTest {
     @Test
     void 상품_상세를_명세_필드로_응답한다() throws Exception {
         when(productService.getProductDetail(any())).thenReturn(new GetProductDetailResult(20L, "상품명", "thumbnail.jpg", "작가", "출판사",
-            LocalDate.of(2026, 1, 1), new BigDecimal("20000.00"), new BigDecimal("18000.00"), 3L, new BigDecimal("4.5"), 10,
-            List.of(new GetProductCouponResult(1L, "ACTIVE", "할인 쿠폰", "PERCENT", new BigDecimal("10.00"), new BigDecimal("10000.00"),
-                new BigDecimal("5000.00"), 1, 0, "2026-12-31T23:59:59"))));
+            LocalDate.of(2026, 1, 1), "소설", "마음을 다독이는 산문집", new BigDecimal("20000.00"), new BigDecimal("18000.00"), 3L,
+            new BigDecimal("4.5"), 10, List.of(new GetProductCouponResult(1L, "ACTIVE", "할인 쿠폰", "PERCENT", new BigDecimal("10.00"),
+                new BigDecimal("10000.00"), new BigDecimal("5000.00"), 1, 0, "2026-12-31T23:59:59"))));
 
         mvc.perform(get("/api/v1/products/{productId}", 20)).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.productId").value(20)).andExpect(jsonPath("$.data.itemId").doesNotExist())
             .andExpect(jsonPath("$.data.itemName").value("상품명")).andExpect(jsonPath("$.data.thumbnailUrl").value("thumbnail.jpg"))
             .andExpect(jsonPath("$.data.author").value("작가")).andExpect(jsonPath("$.data.publisher").value("출판사"))
-            .andExpect(jsonPath("$.data.publishedAt").value("2026-01-01")).andExpect(jsonPath("$.data.salePrice").value(20000.00))
+            .andExpect(jsonPath("$.data.publishedAt").value("2026-01-01")).andExpect(jsonPath("$.data.category").value("소설"))
+            .andExpect(jsonPath("$.data.description").value("마음을 다독이는 산문집")).andExpect(jsonPath("$.data.salePrice").value(20000.00))
             .andExpect(jsonPath("$.data.discountedPrice").value(18000.00)).andExpect(jsonPath("$.data.reviewCount").value(3))
             .andExpect(jsonPath("$.data.reviewRate").value(4.5)).andExpect(jsonPath("$.data.stockQuantity").value(10))
             .andExpect(jsonPath("$.data.coupons[0].id").value(1)).andExpect(jsonPath("$.data.coupons[0].name").value("할인 쿠폰"));
 
         verify(productService).getProductDetail(any());
+    }
+
+    @Test
+    void 도서_소개가_없으면_description을_null로_응답한다() throws Exception {
+        when(productService.getProductDetail(any()))
+            .thenReturn(new GetProductDetailResult(20L, "상품명", null, "작가", "출판사", LocalDate.of(2026, 1, 1), "소설", null,
+                new BigDecimal("20000.00"), new BigDecimal("18000.00"), 0L, BigDecimal.ZERO, 10, List.of()));
+
+        mvc.perform(get("/api/v1/products/{productId}", 20)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.description").value(nullValue())).andExpect(jsonPath("$.data.category").value("소설"));
     }
 
     @Test

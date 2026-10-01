@@ -27,7 +27,7 @@ class ProductServiceTest {
     @Test
     void 상품_상세_조회를_UseCase에_위임한다() {
         final var command = new GetProductDetailCommand(20L);
-        final var result = new GetProductDetailResult(20L, "상품명", null, "작가", "출판사", java.time.LocalDate.of(2026, 1, 1),
+        final var result = new GetProductDetailResult(20L, "상품명", null, "작가", "출판사", java.time.LocalDate.of(2026, 1, 1), "소설", null,
             java.math.BigDecimal.TEN, java.math.BigDecimal.ONE, 0L, java.math.BigDecimal.ZERO, 1, List.of());
         when(useCase.execute(command)).thenReturn(result);
 

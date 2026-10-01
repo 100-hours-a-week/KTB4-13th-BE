@@ -25,7 +25,7 @@ class GetProductDetailUseCaseTest {
 
     @Test
     void 활성_상품과_도서의_상세_결과를_반환한다() {
-        productRepository.product = product();
+        productRepository.product = product("마음을 다독이는 산문집");
 
         final var result = useCase.execute(new GetProductDetailCommand(20L));
 
@@ -34,12 +34,24 @@ class GetProductDetailUseCaseTest {
         assertThat(result.author()).isEqualTo("작가");
         assertThat(result.publisher()).isEqualTo("출판사");
         assertThat(result.publishedAt()).isEqualTo(LocalDate.of(2026, 1, 1));
+        assertThat(result.category()).isEqualTo("소설");
+        assertThat(result.description()).isEqualTo("마음을 다독이는 산문집");
         assertThat(result.salePrice()).isEqualByComparingTo("20000.00");
         assertThat(result.discountedPrice()).isEqualByComparingTo("18000.00");
         assertThat(result.stockQuantity()).isEqualTo(10);
         assertThat(result.reviewCount()).isZero();
         assertThat(result.reviewRate()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(result.coupons()).isEmpty();
+    }
+
+    @Test
+    void 도서_소개가_없으면_description을_null로_반환한다() {
+        productRepository.product = product(null);
+
+        final var result = useCase.execute(new GetProductDetailCommand(20L));
+
+        assertThat(result.description()).isNull();
+        assertThat(result.category()).isEqualTo("소설");
     }
 
     @Test
@@ -54,8 +66,8 @@ class GetProductDetailUseCaseTest {
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
     }
 
-    private static Product product() {
-        final var book = new Book(10L, null, null, "도서명", "작가", null, "출판사", "소설", LocalDate.of(2026, 1, 1), null);
+    private static Product product(final String description) {
+        final var book = new Book(10L, null, null, "도서명", "작가", description, "출판사", "소설", LocalDate.of(2026, 1, 1), null);
         return new Product(20L, book, "상품명", "thumbnail.jpg", new BigDecimal("20000.00"), new BigDecimal("18000.00"),
             new BigDecimal("12000.00"), 10);
     }

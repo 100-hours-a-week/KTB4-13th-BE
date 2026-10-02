@@ -1,5 +1,6 @@
 package com.book.core.auth.infrastructure.token;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -12,6 +13,7 @@ import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
 import com.book.support.config.WebCorsConfiguration;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -36,6 +38,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -189,16 +192,24 @@ class SecurityIntegrationTest {
 
     @Test
     void Token_없이_보호된_endpoint를_요청하면_401을_응답한다() throws Exception {
-        mvc.perform(get("/test/protected")).andExpect(status().isUnauthorized()).andExpect(header().exists("X-Trace-Id"))
-            .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E401"))
-            .andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다.")).andExpect(jsonPath("$.traceId").isNotEmpty());
+        final MvcResult result =
+            mvc.perform(get("/test/protected")).andExpect(status().isUnauthorized()).andExpect(header().exists("X-Trace-Id"))
+                .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E401"))
+                .andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다.")).andExpect(jsonPath("$.traceId").isNotEmpty()).andReturn();
+        assertTraceIdMatchesErrorResponse(result);
     }
 
     private void assertUnauthorized(final String token) throws Exception {
-        mvc.perform(get("/test/protected").header(HttpHeaders.AUTHORIZATION, bearer(token))).andExpect(status().isUnauthorized())
-            .andExpect(header().exists("X-Trace-Id")).andExpect(jsonPath("$.success").value(false))
+        final MvcResult result = mvc.perform(get("/test/protected").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isUnauthorized()).andExpect(header().exists("X-Trace-Id")).andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.code").value("E401")).andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다."))
-            .andExpect(jsonPath("$.traceId").isNotEmpty());
+            .andExpect(jsonPath("$.traceId").isNotEmpty()).andReturn();
+        assertTraceIdMatchesErrorResponse(result);
+    }
+
+    private void assertTraceIdMatchesErrorResponse(final MvcResult result) throws Exception {
+        final String bodyTraceId = new ObjectMapper().readTree(result.getResponse().getContentAsString()).get("traceId").asText();
+        assertThat(result.getResponse().getHeader("X-Trace-Id")).isEqualTo(bodyTraceId);
     }
 
     private String bearer(final String token) {

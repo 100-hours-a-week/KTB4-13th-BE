@@ -1,14 +1,10 @@
 package com.book.core.order.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.application.result.CreateOrderItemResult;
 import com.book.core.order.application.result.CreateOrderResult;
@@ -31,6 +27,7 @@ class CreateOrderUseCaseTest {
         final CreateOrderResult result = useCase.execute(order);
 
         assertThat(result.orderKey()).isEqualTo("order_with_address");
+        assertThat(result.canProceedToPayment()).isTrue();
         assertThat(result.totalPrice()).isEqualByComparingTo("34.50");
         assertThat(result.items()).containsExactly(new CreateOrderItemResult(701L, "상품 701", null, "저자", new BigDecimal("20.00"),
             new BigDecimal("17.25"), 2, new BigDecimal("34.50")));
@@ -38,13 +35,17 @@ class CreateOrderUseCaseTest {
     }
 
     @Test
-    void 배송지가_없는_주문은_저장하지_않는다() {
+    void 배송지가_없는_주문도_저장하고_결제_불가를_반환한다() {
         final Order order = order("order_without_address", null);
+        when(orderRepository.save(order)).thenReturn(order);
 
-        assertThatThrownBy(() -> useCase.execute(order)).isInstanceOf(CoreException.class)
-            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+        final CreateOrderResult result = useCase.execute(order);
 
-        verifyNoInteractions(orderRepository);
+        assertThat(result.orderKey()).isEqualTo("order_without_address");
+        assertThat(result.canProceedToPayment()).isFalse();
+        assertThat(result.totalPrice()).isEqualByComparingTo("34.50");
+        assertThat(result.items()).hasSize(1);
+        verify(orderRepository).save(order);
     }
 
     @Test

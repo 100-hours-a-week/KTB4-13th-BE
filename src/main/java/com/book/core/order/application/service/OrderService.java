@@ -54,10 +54,9 @@ public class OrderService {
     }
 
     public CreateOrderResult createOrder(final CreateOrderCommand command) {
-        final OrderAddress orderAddress = getAddressUseCase.execute(command.userId())
-            .map((final GetAddressItemResult address) -> OrderAddress.from(address.addressPostalCode(), address.address(),
-                address.detailAddress()))
-            .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
+        final OrderAddress orderAddress =
+            getAddressUseCase.execute(command.userId()).map((final GetAddressItemResult address) -> OrderAddress
+                .from(address.addressPostalCode(), address.address(), address.detailAddress())).orElse(null);
 
         // 주문 요청 상품이 사용자의 장바구니에 포함됐는지 확인
         final Set<Long> cartProductIds =

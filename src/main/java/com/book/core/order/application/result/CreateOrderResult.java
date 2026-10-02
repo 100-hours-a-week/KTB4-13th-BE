@@ -6,6 +6,7 @@ import java.util.List;
 // @formatter:off
 public record CreateOrderResult(
     String orderKey,
+    boolean canProceedToPayment,
     BigDecimal totalPrice,
     List<CreateOrderItemResult> items) {
     public CreateOrderResult {

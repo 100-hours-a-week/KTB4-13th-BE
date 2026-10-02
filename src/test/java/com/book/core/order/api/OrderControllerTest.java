@@ -117,13 +117,17 @@ class OrderControllerTest {
     }
 
     @Test
-    void 기본_배송지가_없으면_E400을_응답한다() throws Exception {
+    void 기본_배송지가_없어도_생성된_주문과_NO_ADDRESS를_응답한다() throws Exception {
         authenticateAs(42L);
-        when(orderService.createOrder(any())).thenThrow(new CoreException(ErrorCode.INVALID_REQUEST));
+        final CreateOrderResult created = result();
+        when(orderService.createOrder(any()))
+            .thenReturn(new CreateOrderResult(created.orderKey(), false, created.totalPrice(), created.items()));
 
         mvc.perform(post("/api/v1/orders/checkout").contentType(MediaType.APPLICATION_JSON).content("""
                                 {"items": [{"itemId": 701, "quantity": 2}]}
-                                """)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+                                """)).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.orderKey").value("order_test")).andExpect(jsonPath("$.data.status").value("NO_ADDRESS"))
+            .andExpect(jsonPath("$.data.totalPrice").value(34.50)).andExpect(jsonPath("$.data.items[0].quantity").value(2));
     }
 
     @Test
@@ -207,7 +211,7 @@ class OrderControllerTest {
     }
 
     private static CreateOrderResult result() {
-        return new CreateOrderResult("order_test", new BigDecimal("34.50"), List.of(new CreateOrderItemResult(701L, "상품 701",
+        return new CreateOrderResult("order_test", true, new BigDecimal("34.50"), List.of(new CreateOrderItemResult(701L, "상품 701",
             "thumbnail.jpg", "저자", new BigDecimal("20.00"), new BigDecimal("17.25"), 2, new BigDecimal("34.50"))));
     }
 

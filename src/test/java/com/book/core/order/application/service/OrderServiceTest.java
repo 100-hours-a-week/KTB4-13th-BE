@@ -59,7 +59,7 @@ class OrderServiceTest {
         when(getProductDetailUseCase.execute(any())).thenReturn(product(10));
         when(createOrderUseCase.execute(any(Order.class))).thenAnswer(invocation -> {
             final Order order = invocation.getArgument(0);
-            return new CreateOrderResult(order.key(), order.totalPrice(), List.of());
+            return new CreateOrderResult(order.key(), order.address() != null, order.totalPrice(), List.of());
         });
     }
 
@@ -88,12 +88,18 @@ class OrderServiceTest {
     }
 
     @Test
-    void 기본_배송지가_없으면_주문을_생성하지_않는다() {
+    void 기본_배송지가_없어도_주문_스냅샷을_생성한다() {
         when(getAddressUseCase.execute(42L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.createOrder(command(new CreateOrderItemCommand(701L, 2)))).isInstanceOf(CoreException.class)
-            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
-        verifyNoInteractions(getCartUseCase, getProductDetailUseCase, createOrderUseCase);
+        final CreateOrderResult result = service.createOrder(command(new CreateOrderItemCommand(701L, 2)));
+
+        final Order order = savedOrder();
+        assertThat(order.address()).isNull();
+        assertThat(order.totalPrice()).isEqualByComparingTo("34.50");
+        assertThat(order.items()).hasSize(1);
+        assertThat(result.canProceedToPayment()).isFalse();
+        verify(getCartUseCase).execute(42L);
+        verify(getProductDetailUseCase).execute(GetProductDetailCommand.of(701L));
     }
 
     @Test

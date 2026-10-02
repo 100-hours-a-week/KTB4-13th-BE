@@ -31,7 +31,8 @@ public class OrderResultConverter {
 
     public CreateOrderResponse toCreateOrderResponse(final CreateOrderResult result) {
         final List<CreateOrderItemResponse> items = result.items().stream().map(CreateOrderItemResponse::from).toList();
-        return CreateOrderResponse.created(result.orderKey(), result.totalPrice(), items);
+        return result.canProceedToPayment() ? CreateOrderResponse.created(result.orderKey(), result.totalPrice(), items)
+            : CreateOrderResponse.noAddress(result.orderKey(), result.totalPrice(), items);
     }
 
     private List<OrderItemResponse> toOrderItemResponses(final List<OrderItemResult> items) {

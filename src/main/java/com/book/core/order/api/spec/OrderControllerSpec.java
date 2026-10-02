@@ -54,10 +54,10 @@ public interface OrderControllerSpec {
         @PathVariable("orderKey") final String orderKey);
 
     @Operation(summary = "체크아웃 주문 생성",
-        description = "요청 회원의 장바구니 상품과 기본 활성 배송지를 확인한 뒤 주문 스냅샷을 생성합니다. 기본 배송지가 없으면 E400으로 거절하며, 재고는 확인만 하고 차감하지 않습니다.")
+        description = "요청 회원의 장바구니 상품과 기본 활성 배송지를 확인한 뒤 주문 스냅샷을 생성합니다. 기본 배송지가 없어도 주문을 생성하고 NO_ADDRESS를 반환합니다. 재고는 확인만 하고 차감하지 않습니다.")
     @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "주문 키, 상태, 총액과 상품별 주문 항목"),
-        @ApiResponse(responseCode = "400", description = "요청 형식 또는 기본 배송지 없음(E400), 장바구니 상품 불일치(E3000), 재고 부족(E8001)"),
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "주문 키, 상태(ORDER_CREATED 또는 NO_ADDRESS), 총액과 상품별 주문 항목"),
+        @ApiResponse(responseCode = "400", description = "요청 형식 오류(E400), 장바구니 상품 불일치(E3000), 재고 부족(E8001)"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @ApiResponse(responseCode = "404", description = "활성 상품을 찾을 수 없음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")

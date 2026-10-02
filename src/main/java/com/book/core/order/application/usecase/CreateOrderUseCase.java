@@ -1,6 +1,8 @@
 package com.book.core.order.application.usecase;
 
 import com.book.common.annotation.UseCase;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.application.result.CreateOrderItemResult;
 import com.book.core.order.application.result.CreateOrderResult;
@@ -17,10 +19,13 @@ public class CreateOrderUseCase {
 
     @Transactional
     public CreateOrderResult execute(final Order order) {
+        if (order.address() == null) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
         final Order savedOrder = orderRepository.save(order);
         final List<CreateOrderItemResult> items =
             savedOrder.items().stream().map((final OrderItem item) -> new CreateOrderItemResult(item.productId(), item.itemName(),
                 item.thumbnailUrl(), item.author(), item.salePrice(), item.unitPrice(), item.quantity(), item.totalPrice())).toList();
-        return new CreateOrderResult(savedOrder.key(), savedOrder.address() != null, savedOrder.totalPrice(), items);
+        return new CreateOrderResult(savedOrder.key(), savedOrder.totalPrice(), items);
     }
 }

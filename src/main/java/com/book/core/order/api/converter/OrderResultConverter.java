@@ -1,6 +1,7 @@
 package com.book.core.order.api.converter;
 
 import com.book.core.order.api.response.CreateOrderResponse;
+import com.book.core.order.api.response.CreateOrderItemResponse;
 import com.book.core.order.api.response.OrderAddressResponse;
 import com.book.core.order.api.response.OrderDetailResponse;
 import com.book.core.order.api.response.OrderItemResponse;
@@ -29,7 +30,8 @@ public class OrderResultConverter {
     }
 
     public CreateOrderResponse toCreateOrderResponse(final CreateOrderResult result) {
-        return new CreateOrderResponse(result.orderKey());
+        final List<CreateOrderItemResponse> items = result.items().stream().map(CreateOrderItemResponse::from).toList();
+        return CreateOrderResponse.created(result.orderKey(), result.totalPrice(), items);
     }
 
     private List<OrderItemResponse> toOrderItemResponses(final List<OrderItemResult> items) {

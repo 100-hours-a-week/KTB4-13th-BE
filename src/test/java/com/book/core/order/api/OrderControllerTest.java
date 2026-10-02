@@ -21,6 +21,7 @@ import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
 import com.book.core.order.application.command.GetOrderCommand;
 import com.book.core.order.application.command.GetOrdersCommand;
+import com.book.core.order.application.result.CreateOrderItemResult;
 import com.book.core.order.application.result.CreateOrderResult;
 import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
@@ -100,38 +101,37 @@ class OrderControllerTest {
     }
 
     @Test
-    void 선택한_배송지와_상품을_Command로_변환해_주문키를_반환한다() throws Exception {
+    void 인증_회원과_상품을_Command로_변환해_체크아웃_주문을_반환한다() throws Exception {
         authenticateAs(42L);
-        when(orderService.createOrder(any())).thenReturn(result(true));
+        when(orderService.createOrder(any())).thenReturn(result());
 
-        mvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content("""
-                                {
-                                  "addressId": 101,
-                                  "items": [{"itemId": 701, "quantity": 2}]
-                                }
+        mvc.perform(post("/api/v1/orders/checkout").contentType(MediaType.APPLICATION_JSON).content("""
+                                {"items": [{"itemId": 701, "quantity": 2}]}
                                 """)).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.orderKey").value("order_test")).andExpect(jsonPath("$.data.status").doesNotExist());
+            .andExpect(jsonPath("$.data.orderKey").value("order_test")).andExpect(jsonPath("$.data.status").value("ORDER_CREATED"))
+            .andExpect(jsonPath("$.data.totalPrice").value(34.50)).andExpect(jsonPath("$.data.items[0].productId").value(701))
+            .andExpect(jsonPath("$.data.items[0].discountedPrice").value(17.25)).andExpect(jsonPath("$.data.items[0].quantity").value(2))
+            .andExpect(jsonPath("$.data.items[0].totalPrice").value(34.50));
 
-        verify(orderService).createOrder(new CreateOrderCommand(42L, 101L, List.of(new CreateOrderItemCommand(701L, 2))));
+        verify(orderService).createOrder(new CreateOrderCommand(42L, List.of(new CreateOrderItemCommand(701L, 2))));
     }
 
     @Test
-    void 배송지_ID가_없으면_서비스를_호출하지_않고_E400을_응답한다() throws Exception {
+    void 기본_배송지가_없으면_E400을_응답한다() throws Exception {
         authenticateAs(42L);
+        when(orderService.createOrder(any())).thenThrow(new CoreException(ErrorCode.INVALID_REQUEST));
 
-        mvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post("/api/v1/orders/checkout").contentType(MediaType.APPLICATION_JSON).content("""
                                 {"items": [{"itemId": 701, "quantity": 2}]}
                                 """)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
-
-        verify(orderService, never()).createOrder(any());
     }
 
     @Test
     void 주문_수량이_허용_범위를_벗어나면_서비스를_호출하지_않고_E400을_응답한다() throws Exception {
         authenticateAs(42L);
 
-        mvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content("""
-                                {"addressId": 101, "items": [{"itemId": 701, "quantity": 501}]}
+        mvc.perform(post("/api/v1/orders/checkout").contentType(MediaType.APPLICATION_JSON).content("""
+                                {"items": [{"itemId": 701, "quantity": 501}]}
                                 """)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verify(orderService, never()).createOrder(any());
@@ -142,8 +142,8 @@ class OrderControllerTest {
         authenticateAs(42L);
         when(orderService.createOrder(any())).thenThrow(new CoreException(ErrorCode.PRODUCT_MISMATCH_IN_ORDER));
 
-        mvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content("""
-                                {"addressId": 101, "items": [{"itemId": 999, "quantity": 1}]}
+        mvc.perform(post("/api/v1/orders/checkout").contentType(MediaType.APPLICATION_JSON).content("""
+                                {"items": [{"itemId": 999, "quantity": 1}]}
                                 """)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.code").value("E3000")).andExpect(jsonPath("$.message").value("요청한 상품 정보와 일치하지 않습니다."));
     }
@@ -152,7 +152,7 @@ class OrderControllerTest {
     void 주문상품이_없으면_E400으로_응답한다() throws Exception {
         authenticateAs(42L);
 
-        mvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content("{\"addressId\": 101, \"items\": []}"))
+        mvc.perform(post("/api/v1/orders/checkout").contentType(MediaType.APPLICATION_JSON).content("{\"items\": []}"))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verify(orderService, never()).createOrder(any());
@@ -206,8 +206,9 @@ class OrderControllerTest {
             .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("ORDER_CANNOT_BE_CANCELED"));
     }
 
-    private static CreateOrderResult result(final boolean canProceedToPayment) {
-        return new CreateOrderResult("order_test", canProceedToPayment, new BigDecimal("34.50"), List.of());
+    private static CreateOrderResult result() {
+        return new CreateOrderResult("order_test", new BigDecimal("34.50"), List.of(new CreateOrderItemResult(701L, "상품 701",
+            "thumbnail.jpg", "저자", new BigDecimal("20.00"), new BigDecimal("17.25"), 2, new BigDecimal("34.50"))));
     }
 
     private static GetOrderResult orderResult() {

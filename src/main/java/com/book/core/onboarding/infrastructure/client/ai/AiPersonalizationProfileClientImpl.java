@@ -2,7 +2,7 @@ package com.book.core.onboarding.infrastructure.client.ai;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.common.logging.RequestMdcFilter;
+import com.book.common.logging.filter.RequestMdcFilter;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileClient;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import java.util.UUID;

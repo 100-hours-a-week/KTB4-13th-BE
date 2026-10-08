@@ -12,7 +12,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
-import com.book.common.logging.TraceIdFilter;
+import com.book.common.logging.RequestMdcFilter;
 import com.book.core.recommendation.application.command.RecommendationTurn;
 import com.book.core.recommendation.application.port.AiRecommendationChatRequest;
 import com.book.core.recommendation.application.port.AiRecommendationChatResult;
@@ -35,12 +35,12 @@ class AiRecommendationClientImplTest {
 
     @AfterEach
     void clearMdc() {
-        MDC.remove(TraceIdFilter.TRACE_ID_MDC_KEY);
+        MDC.remove(RequestMdcFilter.REQUEST_ID_MDC_KEY);
     }
 
     @Test
     void Authorization_Bearer와_X_Request_Id를_요청_header에_포함한다() {
-        MDC.put(TraceIdFilter.TRACE_ID_MDC_KEY, "trace-abc-123");
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "trace-abc-123");
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         final AiRecommendationClientImpl client = new AiRecommendationClientImpl(builder.build());

@@ -3,7 +3,7 @@ package com.book.core.recommendation.infrastructure.client.ai;
 import com.book.common.config.ai.AiRestClientConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.common.logging.TraceIdFilter;
+import com.book.common.logging.RequestMdcFilter;
 import com.book.core.recommendation.application.port.RecommendationFeedClient;
 import com.book.core.recommendation.application.port.RecommendationFeedItem;
 import com.book.core.recommendation.application.port.RecommendationFeedRequest;
@@ -77,8 +77,8 @@ public class RecommendationFeedClientImpl implements RecommendationFeedClient {
     }
 
     private String currentRequestId() {
-        final String traceId = MDC.get(TraceIdFilter.TRACE_ID_MDC_KEY);
-        return traceId != null ? traceId : UUID.randomUUID().toString();
+        final String requestId = MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY);
+        return requestId != null ? requestId : UUID.randomUUID().toString();
     }
 
     private RecommendationFeedResult toResult(final AiFeedResponse response, final String degraded) {

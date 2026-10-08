@@ -12,7 +12,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.common.logging.TraceIdFilter;
+import com.book.common.logging.RequestMdcFilter;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import java.net.SocketTimeoutException;
 import java.util.List;
@@ -40,12 +40,12 @@ class AiPersonalizationProfileClientImplTest {
 
     @AfterEach
     void clearMdc() {
-        MDC.remove(TraceIdFilter.TRACE_ID_MDC_KEY);
+        MDC.remove(RequestMdcFilter.REQUEST_ID_MDC_KEY);
     }
 
     @Test
     void POST_preferences_profile에_Bearer_토큰과_X_Request_Id를_담아_요청한다() {
-        MDC.put(TraceIdFilter.TRACE_ID_MDC_KEY, "trace-abc-123");
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "trace-abc-123");
         server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.POST))
             .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "trace-abc-123"))
             .andRespond(withSuccess());

@@ -1,5 +1,5 @@
 package com.book.core.user.application.port;
 
-public interface NicknameGenerator {
+public interface NicknameGeneratorPort {
     String generate();
 }

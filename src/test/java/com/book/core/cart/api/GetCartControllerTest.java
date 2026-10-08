@@ -6,34 +6,33 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.nullValue;
 
+import com.book.common.config.security.UserIdMvcConfig;
 import com.book.core.cart.api.converter.CartCommandConverter;
 import com.book.core.cart.api.converter.CartResultConverter;
 import com.book.core.cart.application.command.GetCartCommand;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.service.CartService;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @WebMvcTest(CartController.class)
-@Import({CartCommandConverter.class, CartResultConverter.class, GetCartControllerTest.AuthenticationPrincipalTestConfig.class})
+@Import({CartCommandConverter.class, CartResultConverter.class, UserIdMvcConfig.class})
 @ActiveProfiles("test")
 class GetCartControllerTest {
     @Autowired
@@ -51,11 +50,26 @@ class GetCartControllerTest {
     void 인증된_userId로_장바구니를_조회한다() throws Exception {
         authenticateAs(42L);
         final GetCartCommand command = new GetCartCommand(42L);
-        when(cartService.getCart(command)).thenReturn(new GetCartResult(List.of(new GetCartItemResult(11L, 200L, 2))));
+        when(cartService.getCart(command)).thenReturn(new GetCartResult(
+            List.of(new GetCartItemResult(11L, 200L, "상품명", null, new BigDecimal("20000.00"), new BigDecimal("18000.00"), 2, true),
+                new GetCartItemResult(12L, 201L, null, null, null, null, 1, false))));
 
         mvc.perform(get("/api/v1/cart")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.items[0].cartItemId").value(11)).andExpect(jsonPath("$.data.items[0].productId").value(200))
-            .andExpect(jsonPath("$.data.items[0].quantity").value(2));
+            .andExpect(jsonPath("$.data.items[0].itemName").value("상품명"))
+            .andExpect(jsonPath("$.data.items[0].thumbnailUrl").value(nullValue()))
+            .andExpect(jsonPath("$.data.items[0].salePrice").value(20000.00))
+            .andExpect(jsonPath("$.data.items[0].discountedPrice").value(18000.00)).andExpect(jsonPath("$.data.items[0].quantity").value(2))
+            .andExpect(jsonPath("$.data.items[0].isAvailableForPurchase").value(true))
+            .andExpect(jsonPath("$.data.items[1].cartItemId").value(12)).andExpect(jsonPath("$.data.items[1].productId").value(201))
+            .andExpect(jsonPath("$.data.items[1].itemName").value(nullValue()))
+            .andExpect(jsonPath("$.data.items[1].thumbnailUrl").value(nullValue()))
+            .andExpect(jsonPath("$.data.items[1].salePrice").value(nullValue()))
+            .andExpect(jsonPath("$.data.items[1].discountedPrice").value(nullValue()))
+            .andExpect(jsonPath("$.data.items[1].quantity").value(1))
+            .andExpect(jsonPath("$.data.items[1].isAvailableForPurchase").value(false))
+            .andExpect(jsonPath("$.data.totalPrice").doesNotExist()).andExpect(jsonPath("$.data.items[0].author").doesNotExist())
+            .andExpect(jsonPath("$.data.items[0].publisher").doesNotExist());
 
         verify(cartService).getCart(command);
     }
@@ -82,13 +96,5 @@ class GetCartControllerTest {
         final Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "none").claim("sub", userId.toString()).issuedAt(Instant.now())
             .expiresAt(Instant.now().plusSeconds(3600)).build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
-    }
-
-    @TestConfiguration
-    static class AuthenticationPrincipalTestConfig implements WebMvcConfigurer {
-        @Override
-        public void addArgumentResolvers(final List<HandlerMethodArgumentResolver> resolvers) {
-            resolvers.add(new AuthenticationPrincipalArgumentResolver());
-        }
     }
 }

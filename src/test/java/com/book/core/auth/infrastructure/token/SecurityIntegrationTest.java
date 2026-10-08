@@ -23,6 +23,8 @@ import java.util.Map;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -50,6 +52,9 @@ import org.springframework.web.bind.annotation.RestController;
 class SecurityIntegrationTest {
     private static final Long USER_ID = 42L;
     private static final String FRONTEND_ORIGIN = "http://localhost:5173";
+    private static final String SWAGGER_UI_INDEX_PATH = "/swagger-ui/index.html";
+    private static final String SWAGGER_INITIALIZER_PATH = "/swagger-ui/swagger-initializer.js";
+    private static final String OPENAPI_GENERAL_PATH = "/v3/api-docs/general";
 
     @Autowired
     MockMvc mvc;
@@ -107,6 +112,14 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void 인증된_API_응답에_캐시_저장_금지_헤더를_적용한다() throws Exception {
+        final String accessToken = tokenIssuer.issue(USER_ID).accessToken();
+
+        mvc.perform(get("/test/protected").header(HttpHeaders.AUTHORIZATION, bearer(accessToken))).andExpect(status().isOk())
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, max-age=0, must-revalidate"));
+    }
+
+    @Test
     void Refresh_Token을_Bearer로_사용하면_401을_응답한다() throws Exception {
         final String refreshToken = tokenIssuer.issue(USER_ID).refreshToken();
 
@@ -130,6 +143,51 @@ class SecurityIntegrationTest {
         final var otherIssuer = new JwtTokenIssuer(otherEncoder, properties, Clock.systemUTC());
 
         assertUnauthorized(otherIssuer.issue(USER_ID).accessToken());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행"})
+    void 공개_조회_API는_Token_없이_Controller까지_도달한다(final String path) throws Exception {
+        mvc.perform(get(path)).andExpect(status().isOk()).andExpect(jsonPath("$.result").value("PUBLIC"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행"})
+    void 공개_조회_API는_유효한_Access_Token으로도_요청할_수_있다(final String path) throws Exception {
+        final String accessToken = tokenIssuer.issue(USER_ID).accessToken();
+
+        mvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, bearer(accessToken))).andExpect(status().isOk())
+            .andExpect(jsonPath("$.result").value("PUBLIC"));
+    }
+
+    @Test
+    void 공개_조회_API에_유효하지_않은_Access_Token을_보내면_기존처럼_401을_응답한다() throws Exception {
+        mvc.perform(get("/api/v1/items").header(HttpHeaders.AUTHORIZATION, bearer("invalid-token"))).andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("E401"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {SWAGGER_UI_INDEX_PATH, SWAGGER_INITIALIZER_PATH, OPENAPI_GENERAL_PATH})
+    void Swagger와_OpenAPI_문서는_Token_없이_접근할_수_있다(final String path) throws Exception {
+        mvc.perform(get(path)).andExpect(status().isOk()).andExpect(jsonPath("$.result").value("PUBLIC_DOCUMENTATION"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {SWAGGER_UI_INDEX_PATH, SWAGGER_INITIALIZER_PATH, OPENAPI_GENERAL_PATH})
+    void Swagger와_OpenAPI_문서_경로는_GET_이외에는_인증이_필요하다(final String path) throws Exception {
+        mvc.perform(post(path)).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("E401"));
+    }
+
+    @Test
+    void 공개_조회_경로라도_GET이_아니면_Token_없이_요청할_수_없다() throws Exception {
+        mvc.perform(post("/api/v1/items")).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("E401"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = {"/api/v1/recommend/feed?surface=home", "/api/v1/cart", "/api/v1/orders", "/api/v1/user-addresses", "/api/v1/onboarding"})
+    void 개인화와_사용자_데이터_API는_Token_없이_요청하면_401을_응답한다(final String path) throws Exception {
+        mvc.perform(get(path)).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("E401"));
     }
 
     @Test
@@ -163,6 +221,16 @@ class SecurityIntegrationTest {
         @PostMapping("/api/v1/auth/{providerType}/login")
         Map<String, String> loginEndpoint() {
             return Map.of("result", "SUCCESS");
+        }
+
+        @GetMapping({"/api/v1/items", "/api/v1/categories", "/api/v1/products/{productId}", "/api/v1/search"})
+        Map<String, String> publicReadEndpoint() {
+            return Map.of("result", "PUBLIC");
+        }
+
+        @GetMapping({SWAGGER_UI_INDEX_PATH, SWAGGER_INITIALIZER_PATH, OPENAPI_GENERAL_PATH})
+        Map<String, String> publicDocumentationEndpoint() {
+            return Map.of("result", "PUBLIC_DOCUMENTATION");
         }
 
         @GetMapping("/test/protected")

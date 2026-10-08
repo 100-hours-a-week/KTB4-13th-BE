@@ -5,4 +5,6 @@ import java.util.List;
 
 public interface OnboardingBookCandidateRepositoryPort {
     List<OnboardingBookCandidate> findAllOrderByDisplayOrder();
+
+    List<OnboardingBookCandidate> findBySubcategoryCodes(final List<String> subcategoryCodes);
 }

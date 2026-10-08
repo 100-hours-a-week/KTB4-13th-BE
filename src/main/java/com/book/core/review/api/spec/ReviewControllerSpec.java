@@ -13,8 +13,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -28,7 +26,7 @@ public interface ReviewControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "주문상품을 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Void>> createReview(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<ApiResponse<Void>> createReview(@Parameter(hidden = true) final Long userId,
         @RequestBody @Valid final CreateReviewRequest request);
 
     @Operation(summary = "리뷰 수정", description = "전달한 필드만 리뷰를 수정합니다.")
@@ -40,7 +38,7 @@ public interface ReviewControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "리뷰를 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Void>> updateReview(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<ApiResponse<Void>> updateReview(@Parameter(hidden = true) final Long userId,
         @Positive @PathVariable("reviewId") final Long reviewId, @RequestBody @Valid final UpdateReviewRequest request);
 
     @Operation(summary = "리뷰 삭제", description = "리뷰를 소프트 삭제합니다.")
@@ -51,6 +49,6 @@ public interface ReviewControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "리뷰를 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Void>> deleteReview(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<ApiResponse<Void>> deleteReview(@Parameter(hidden = true) final Long userId,
         @Positive @PathVariable("reviewId") final Long reviewId);
 }

@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+// @formatter:off
 public record GetProductDetailResult(
         Long productId,
         String itemName,
@@ -12,6 +13,8 @@ public record GetProductDetailResult(
         String author,
         String publisher,
         LocalDate publishedAt,
+        String category,
+        String description,
         BigDecimal salePrice,
         BigDecimal discountedPrice,
         Long reviewCount,
@@ -27,6 +30,8 @@ public record GetProductDetailResult(
                 book.author(),
                 book.publisher(),
                 book.publishedAt(),
+                book.category(),
+                book.description(),
                 product.salePrice(),
                 product.discountedPrice(),
                 // ponytail: review/coupon persistence is deferred until their public ownership rules are defined.
@@ -36,3 +41,4 @@ public record GetProductDetailResult(
                 List.of());
     }
 }
+// @formatter:on

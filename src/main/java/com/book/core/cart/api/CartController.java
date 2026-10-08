@@ -1,9 +1,11 @@
 package com.book.core.cart.api;
 
+import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.cart.api.converter.CartCommandConverter;
 import com.book.core.cart.api.converter.CartResultConverter;
 import com.book.core.cart.api.request.AddCartItemRequest;
+import com.book.core.cart.api.request.DeleteCartItemsRequest;
 import com.book.core.cart.api.request.ModifyCartItemRequest;
 import com.book.core.cart.api.response.CartResponse;
 import com.book.core.cart.api.spec.CartControllerSpec;
@@ -12,10 +14,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -34,9 +35,7 @@ class CartController implements CartControllerSpec {
 
     @Override
     @PostMapping("/items")
-    public ResponseEntity<ApiResponse<Void>> addCartItem(@AuthenticationPrincipal final Jwt jwt,
-        @Valid @RequestBody final AddCartItemRequest request) {
-        final Long userId = Long.parseLong(jwt.getSubject());
+    public ResponseEntity<ApiResponse<Void>> addCartItem(@UserId final Long userId, @Valid @RequestBody final AddCartItemRequest request) {
         final var command = commandConverter.toAddCartItemCommand(userId, request);
         cartService.addCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -44,18 +43,34 @@ class CartController implements CartControllerSpec {
 
     @Override
     @PutMapping("/items/{cartItemId}")
-    public ResponseEntity<ApiResponse<Void>> modifyCartItem(@AuthenticationPrincipal final Jwt jwt,
+    public ResponseEntity<ApiResponse<Void>> modifyCartItem(@UserId final Long userId,
         @Positive @PathVariable("cartItemId") final Long cartItemId, @Valid @RequestBody final ModifyCartItemRequest request) {
-        final Long userId = Long.parseLong(jwt.getSubject());
         final var command = commandConverter.toModifyCartItemCommand(userId, cartItemId, request);
         cartService.modifyCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
     @Override
+    @DeleteMapping("/items/{cartItemId}")
+    public ResponseEntity<ApiResponse<Void>> deleteCartItem(@UserId final Long userId,
+        @Positive @PathVariable("cartItemId") final Long cartItemId) {
+        final var command = commandConverter.toDeleteCartItemCommand(userId, cartItemId);
+        cartService.deleteCartItem(command);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @DeleteMapping("/items")
+    public ResponseEntity<ApiResponse<Void>> deleteCartItems(@UserId final Long userId,
+        @Valid @RequestBody final DeleteCartItemsRequest request) {
+        final var command = commandConverter.toDeleteCartItemsCommand(userId, request);
+        cartService.deleteCartItems(command);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<CartResponse>> getCart(@AuthenticationPrincipal final Jwt jwt) {
-        final Long userId = Long.parseLong(jwt.getSubject());
+    public ResponseEntity<ApiResponse<CartResponse>> getCart(@UserId final Long userId) {
         final var command = commandConverter.toGetCartCommand(userId);
         final var cartResponse = resultConverter.toGetCartResponse(cartService.getCart(command));
         return ResponseEntity.ok(ApiResponse.ok(cartResponse));

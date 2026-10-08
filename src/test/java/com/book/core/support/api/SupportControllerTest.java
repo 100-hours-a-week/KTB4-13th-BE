@@ -30,7 +30,7 @@ class SupportControllerTest {
 
     @Test
     void 상태_확인_API는_인증_없이_공통_성공_응답을_반환한다() throws Exception {
-        mvc.perform(get("/api/v1/support/health")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+        mvc.perform(get("/api/v1/health")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data").doesNotExist());
     }
 }

@@ -1,12 +1,21 @@
 package com.book.core.product.infrastructure.persistence.repository;
 
 import com.book.core.product.domain.Product;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 interface ProductJpaRepository extends JpaRepository<Product, Long> {
+    @Query("""
+            select product
+            from Product product
+            join fetch product.book
+            where product.id in :productIds
+            """)
+    List<Product> findByIdInWithBook(@Param("productIds") List<Long> productIds);
+
     @Query("""
             select product
             from Product product
@@ -26,4 +35,14 @@ interface ProductJpaRepository extends JpaRepository<Product, Long> {
               and book.deletedAt is null
             """)
     Optional<Product> findActiveByBookId(@Param("bookId") Long bookId);
+
+    @Query("""
+            select product
+            from Product product
+            join fetch product.book book
+            where book.id in :bookIds
+              and product.deletedAt is null
+              and book.deletedAt is null
+            """)
+    List<Product> findActiveByBookIdIn(@Param("bookIds") List<Long> bookIds);
 }

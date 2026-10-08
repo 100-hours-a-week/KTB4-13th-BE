@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.book.domain.Book;
+import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.ProductRepositoryPort;
@@ -12,6 +13,7 @@ import com.book.core.product.domain.Product;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
@@ -63,6 +65,63 @@ class ProductRepositoryIntegrationTest {
     }
 
     @Test
+    void 상품_상세는_도서의_소개와_분류를_함께_반환하고_소개가_없으면_null로_반환한다() {
+        insertBook(9831L, "소개 있는 도서", null);
+        insertBook(9832L, "소개 없는 도서", null);
+        jdbc.update("UPDATE books SET description = ? WHERE id = ?", "마음을 다독이는 산문집", 9831L);
+        insertProduct(9841L, 9831L, "소개 있는 상품", null);
+        insertProduct(9842L, 9832L, "소개 없는 상품", null);
+
+        final var describedProduct = productService.getProductDetail(new GetProductDetailCommand(9841L));
+        final var undescribedProduct = productService.getProductDetail(new GetProductDetailCommand(9842L));
+
+        assertThat(describedProduct.description()).isEqualTo("마음을 다독이는 산문집");
+        assertThat(describedProduct.category()).isEqualTo("소설");
+        assertThat(undescribedProduct.description()).isNull();
+        assertThat(undescribedProduct.category()).isEqualTo("소설");
+    }
+
+    @Test
+    void 상품_ID_목록을_조회하면_삭제된_상품과_도서도_함께_반환한다() {
+        insertBook(9801L, "활성 도서", null);
+        insertBook(9802L, "삭제 도서", Timestamp.valueOf("2026-01-01 00:00:00"));
+        insertBook(9803L, "삭제 상품 도서", null);
+        insertProduct(9801L, 9801L, "활성 상품", null);
+        insertProduct(9802L, 9802L, "삭제된 도서의 상품", null);
+        insertProduct(9803L, 9803L, "삭제된 상품", Timestamp.valueOf("2026-01-01 00:00:00"));
+
+        final List<Product> found = productRepository.findByIds(List.of(9801L, 9802L, 9803L, 9804L));
+
+        assertThat(found).extracting(Product::id).containsExactlyInAnyOrder(9801L, 9802L, 9803L);
+        assertThat(found).filteredOn((final var product) -> product.id().equals(9802L)).singleElement().satisfies((final var product) -> {
+            assertThat(product.isActive()).isTrue();
+            assertThat(product.book().isActive()).isFalse();
+        });
+        assertThat(found).filteredOn((final var product) -> product.id().equals(9803L)).singleElement().satisfies((final var product) -> {
+            assertThat(product.isActive()).isFalse();
+            assertThat(product.book().isActive()).isTrue();
+        });
+    }
+
+    @Test
+    void 도서_ID_목록으로_활성_도서에_연결된_활성_상품만_조회한다() {
+        insertBook(9811L, "활성 도서", null);
+        insertBook(9812L, "삭제 도서", Timestamp.valueOf("2026-01-01 00:00:00"));
+        insertBook(9813L, "삭제 상품 도서", null);
+        insertBook(9814L, "상품 없는 도서", null);
+        insertProduct(9821L, 9811L, "활성 상품", null);
+        insertProduct(9822L, 9812L, "삭제된 도서의 상품", null);
+        insertProduct(9823L, 9813L, "삭제된 상품", Timestamp.valueOf("2026-01-01 00:00:00"));
+
+        final List<Product> found = productRepository.findActiveByBookIds(List.of(9811L, 9812L, 9813L, 9814L, 9811L));
+
+        assertThat(found).singleElement().satisfies((final var product) -> {
+            assertThat(product.id()).isEqualTo(9821L);
+            assertThat(product.book().id()).isEqualTo(9811L);
+        });
+    }
+
+    @Test
     void 서로_다른_Book에는_각각_Product를_저장할_수_있다() {
         insertBook(1401L, "북 A", null);
         insertBook(1402L, "북 B", null);
@@ -103,9 +162,9 @@ class ProductRepositoryIntegrationTest {
         insertProductCategory(3105L, 3002L, 2101L, null);
         insertProductCategory(3106L, 3001L, 2105L, Timestamp.valueOf("2026-01-01 00:00:00"));
 
-        final var firstPage = productRepository.findActiveProducts(3001L, ProductListSort.CREATED_AT, null, 1);
+        final var firstPage = productRepository.findActiveProducts(3001L, null, null, ProductListSort.CREATED_AT, null, 1);
         final var secondPage =
-            productRepository.findActiveProducts(3001L, ProductListSort.CREATED_AT, new ProductListCursor(2101L, null), 2);
+            productRepository.findActiveProducts(3001L, null, null, ProductListSort.CREATED_AT, new ProductListCursor(2101L, null), 2);
 
         assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2101L);
         assertThat(secondPage).extracting(item -> item.product().id()).containsExactly(2103L, 2102L);
@@ -162,10 +221,10 @@ class ProductRepositoryIntegrationTest {
 
         productService.refreshProductPopularitySnapshot();
 
-        final var firstPage = productRepository.findActiveProducts(3003L, ProductListSort.POPULARITY, null, 3);
+        final var firstPage = productRepository.findActiveProducts(3003L, null, null, ProductListSort.POPULARITY, null, 3);
         final var last = firstPage.getLast();
         final var cursor = new ProductListCursor(last.product().id(), last.salesQuantity());
-        final var secondPage = productRepository.findActiveProducts(3003L, ProductListSort.POPULARITY, cursor, 10);
+        final var secondPage = productRepository.findActiveProducts(3003L, null, null, ProductListSort.POPULARITY, cursor, 10);
 
         assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2203L, 2205L, 2204L);
         assertThat(secondPage).extracting(item -> item.product().id()).containsExactly(2202L, 2201L, 2209L, 2206L);
@@ -180,9 +239,107 @@ class ProductRepositoryIntegrationTest {
         productService.refreshProductPopularitySnapshot();
         productService.refreshProductPopularitySnapshot();
 
-        final var refreshed = productRepository.findActiveProducts(3003L, ProductListSort.POPULARITY, null, 10).stream()
+        final var refreshed = productRepository.findActiveProducts(3003L, null, null, ProductListSort.POPULARITY, null, 10).stream()
             .filter(item -> item.product().id() == 2203L).findFirst().orElseThrow();
         assertThat(refreshed.salesQuantity()).isEqualTo(9L);
+    }
+
+    @Test
+    void 출간일_범위는_시작일과_종료일을_포함하고_범위_밖_도서를_제외한다() {
+        insertCategory(3501L, "출간일 필터", null);
+        insertBook(1501L, "범위 전 도서", null, "2024-12-31");
+        insertBook(1502L, "시작일 도서", null, "2025-01-01");
+        insertBook(1503L, "중간 도서", null, "2025-06-15");
+        insertBook(1504L, "종료일 도서", null, "2025-12-31");
+        insertBook(1505L, "범위 후 도서", null, "2026-01-01");
+        for (final long bookId : new long[] {1501L, 1502L, 1503L, 1504L, 1505L}) {
+            insertProduct(bookId + 1000L, bookId, "출간일 상품 " + bookId, null);
+            insertProductCategory(bookId + 2000L, 3501L, bookId + 1000L, null);
+        }
+
+        assertThat(publishedProductIds(LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31))).containsExactlyInAnyOrder(2502L, 2503L,
+            2504L);
+        assertThat(publishedProductIds(LocalDate.of(2025, 6, 15), LocalDate.of(2025, 6, 15))).containsExactly(2503L);
+        assertThat(publishedProductIds(LocalDate.of(2025, 12, 31), null)).containsExactlyInAnyOrder(2504L, 2505L);
+        assertThat(publishedProductIds(null, LocalDate.of(2025, 1, 1))).containsExactlyInAnyOrder(2501L, 2502L);
+    }
+
+    @Test
+    void 출간일_필터는_카테고리_생성일_커서와_함께_다음_페이지를_이어서_조회한다() {
+        insertCategory(3502L, "출간일 커서", null);
+        insertBook(1511L, "범위 안 1", null, "2025-03-01");
+        insertBook(1512L, "범위 밖", null, "2023-03-01");
+        insertBook(1513L, "범위 안 2", null, "2025-04-01");
+        insertBook(1514L, "범위 안 3", null, "2025-05-01");
+        insertProduct(2511L, 1511L, "상품 1", null, Timestamp.valueOf("2026-02-01 00:00:00"));
+        insertProduct(2512L, 1512L, "상품 2", null, Timestamp.valueOf("2026-02-02 00:00:00"));
+        insertProduct(2513L, 1513L, "상품 3", null, Timestamp.valueOf("2026-02-03 00:00:00"));
+        insertProduct(2514L, 1514L, "상품 4", null, Timestamp.valueOf("2026-02-04 00:00:00"));
+        for (final long productId : new long[] {2511L, 2512L, 2513L, 2514L}) {
+            insertProductCategory(productId + 1000L, 3502L, productId, null);
+        }
+        final LocalDate from = LocalDate.of(2025, 1, 1);
+
+        final var firstPage = productRepository.findActiveProducts(3502L, from, null, ProductListSort.CREATED_AT, null, 2);
+        final var secondPage = productRepository.findActiveProducts(3502L, from, null, ProductListSort.CREATED_AT,
+            new ProductListCursor(firstPage.getLast().product().id(), null), 2);
+
+        assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2514L, 2513L);
+        assertThat(secondPage).extracting(item -> item.product().id()).containsExactly(2511L);
+    }
+
+    @Test
+    void 출간일_필터는_인기순_정렬과_커서에_함께_적용된다() {
+        insertCategory(3503L, "출간일 인기순", null);
+        insertBook(1521L, "인기 범위 안 1", null, "2025-02-01");
+        insertBook(1522L, "인기 범위 밖", null, "2020-02-01");
+        insertBook(1523L, "인기 범위 안 2", null, "2025-03-01");
+        insertBook(1524L, "인기 범위 안 3", null, "2025-04-01");
+        for (final long bookId : new long[] {1521L, 1522L, 1523L, 1524L}) {
+            insertProduct(bookId + 1000L, bookId, "인기 출간일 상품 " + bookId, null);
+            insertProductCategory(bookId + 2000L, 3503L, bookId + 1000L, null);
+        }
+        insertOrderAddress(4500L);
+        insertPaidItem(4521L, 2521L, 3, null, null, null, 4500L);
+        insertPaidItem(4522L, 2522L, 99, null, null, null, 4500L);
+        insertPaidItem(4523L, 2523L, 7, null, null, null, 4500L);
+        insertPaidItem(4524L, 2524L, 5, null, null, null, 4500L);
+        productService.refreshProductPopularitySnapshot();
+        final LocalDate from = LocalDate.of(2025, 1, 1);
+
+        final var firstPage = productRepository.findActiveProducts(3503L, from, null, ProductListSort.POPULARITY, null, 2);
+        final var last = firstPage.getLast();
+        final var secondPage = productRepository.findActiveProducts(3503L, from, null, ProductListSort.POPULARITY,
+            new ProductListCursor(last.product().id(), last.salesQuantity()), 2);
+
+        assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2523L, 2524L);
+        assertThat(secondPage).extracting(item -> item.product().id()).containsExactly(2521L);
+    }
+
+    @Test
+    void 갱신_후_등록된_상품은_다음_갱신부터_인기순에_포함된다() {
+        insertCategory(3504L, "스냅샷 시점", null);
+        insertBook(1531L, "기존 도서", null);
+        insertBook(1532L, "신규 도서", null);
+        insertProduct(2531L, 1531L, "기존 상품", null);
+        insertProductCategory(3531L, 3504L, 2531L, null);
+        productService.refreshProductPopularitySnapshot();
+        insertProduct(2532L, 1532L, "신규 상품", null);
+        insertProductCategory(3532L, 3504L, 2532L, null);
+
+        assertThat(productRepository.findActiveProducts(3504L, null, null, ProductListSort.POPULARITY, null, 10))
+            .extracting(item -> item.product().id()).containsExactly(2531L);
+        assertThat(productRepository.findActiveProducts(3504L, null, null, ProductListSort.CREATED_AT, null, 10))
+            .extracting(item -> item.product().id()).containsExactlyInAnyOrder(2532L, 2531L);
+
+        productService.refreshProductPopularitySnapshot();
+
+        final var firstPage = productRepository.findActiveProducts(3504L, null, null, ProductListSort.POPULARITY, null, 1);
+        assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2532L);
+        assertThat(firstPage.getFirst().salesQuantity()).isZero();
+        assertThat(
+            productRepository.findActiveProducts(3504L, null, null, ProductListSort.POPULARITY, new ProductListCursor(2532L, 0L), 10))
+            .extracting(item -> item.product().id()).containsExactly(2531L);
     }
 
     @Test
@@ -257,12 +414,21 @@ class ProductRepositoryIntegrationTest {
         return new Product(null, book, name, null, new BigDecimal("20000.00"), new BigDecimal("18000.00"), new BigDecimal("12000.00"), 10);
     }
 
+    private List<Long> publishedProductIds(final LocalDate publishedFrom, final LocalDate publishedTo) {
+        return productRepository.findActiveProducts(3501L, publishedFrom, publishedTo, ProductListSort.CREATED_AT, null, 10).stream()
+            .map(item -> item.product().id()).toList();
+    }
+
     private void insertBook(final long id, final String title, final Timestamp deletedAt) {
+        insertBook(id, title, deletedAt, "2026-01-01");
+    }
+
+    private void insertBook(final long id, final String title, final Timestamp deletedAt, final String publishedAt) {
         jdbc.update("""
                 INSERT INTO books (
                     id, title, author, publisher, category, published_at, deleted_at, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
-                """, id, title, "작가", "출판사", "소설", "2026-01-01", deletedAt);
+                """, id, title, "작가", "출판사", "소설", publishedAt, deletedAt);
     }
 
     private void insertProduct(final long id, final long bookId, final String name, final Timestamp deletedAt) {

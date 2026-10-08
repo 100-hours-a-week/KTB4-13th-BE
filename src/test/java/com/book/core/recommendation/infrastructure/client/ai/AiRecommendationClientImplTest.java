@@ -18,6 +18,7 @@ import com.book.core.recommendation.application.port.AiRecommendationChatRequest
 import com.book.core.recommendation.application.port.AiRecommendationChatResult;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -82,6 +83,8 @@ class AiRecommendationClientImplTest {
         assertThat(result.reply()).isEqualTo("이 책들을 추천합니다");
         assertThat(result.cards()).hasSize(1);
         assertThat(result.cards().getFirst().bookId()).isEqualTo(1L);
+        assertThat(result.cards().getFirst().matchScore()).isEqualTo(87);
+        assertThat(result.cards().getFirst().reasonShort()).isEqualTo("한 줄 추천 이유");
         assertThat(result.cards().getFirst().reasonLong()).isEqualTo("긴 추천 이유");
         assertThat(result.degraded()).isFalse();
 
@@ -94,8 +97,8 @@ class AiRecommendationClientImplTest {
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         final AiRecommendationClientImpl client = new AiRecommendationClientImpl(builder.build());
 
-        server.expect(requestTo(BASE_URL + "/recommendations/chat")).andExpect(jsonPath("$.spec.intent").value("keyword"))
-            .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY));
+        server.expect(requestTo(BASE_URL + "/recommendations/chat")).andExpect(jsonPath("$.spec.intent").value("keyword")).andRespond(
+            withStatus(HttpStatus.UNPROCESSABLE_ENTITY).contentType(MediaType.APPLICATION_JSON).body(errorBody("spec_schema_violation")));
         server.expect(requestTo(BASE_URL + "/recommendations/chat")).andExpect(jsonPath("$.spec.intent").value("semantic"))
             .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
 
@@ -111,12 +114,34 @@ class AiRecommendationClientImplTest {
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         final AiRecommendationClientImpl client = new AiRecommendationClientImpl(builder.build());
 
-        server.expect(requestTo(BASE_URL + "/recommendations/chat")).andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY));
-        server.expect(requestTo(BASE_URL + "/recommendations/chat")).andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY));
+        server.expect(requestTo(BASE_URL + "/recommendations/chat")).andRespond(
+            withStatus(HttpStatus.UNPROCESSABLE_ENTITY).contentType(MediaType.APPLICATION_JSON).body(errorBody("spec_schema_violation")));
+        server.expect(requestTo(BASE_URL + "/recommendations/chat")).andRespond(
+            withStatus(HttpStatus.UNPROCESSABLE_ENTITY).contentType(MediaType.APPLICATION_JSON).body(errorBody("spec_schema_violation")));
 
         assertThatThrownBy(() -> client.chat(chatRequest())).isInstanceOf(CoreException.class).satisfies(
             exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_RECOMMENDATION_SPEC_VIOLATION));
 
+        server.verify();
+    }
+
+    @Test
+    void 다른_422_오류는_초기_spec으로_재시도하지_않고_일반_오류로_변환한다() {
+        final AtomicInteger requestCount = new AtomicInteger();
+        final RestClient.Builder builder = restClientBuilder().requestInterceptor((request, body, execution) -> {
+            requestCount.incrementAndGet();
+            return execution.execute(request, body);
+        });
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        final AiRecommendationClientImpl client = new AiRecommendationClientImpl(builder.build());
+
+        server.expect(requestTo(BASE_URL + "/recommendations/chat")).andRespond(
+            withStatus(HttpStatus.UNPROCESSABLE_ENTITY).contentType(MediaType.APPLICATION_JSON).body(errorBody("invalid_request")));
+
+        assertThatThrownBy(() -> client.chat(chatRequest())).isInstanceOf(CoreException.class)
+            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_RECOMMENDATION_FAILURE));
+
+        assertThat(requestCount.get()).isEqualTo(1);
         server.verify();
     }
 
@@ -214,12 +239,19 @@ class AiRecommendationClientImplTest {
               "data": {
                 "spec": {"intent": "semantic"},
                 "reply": "이 책들을 추천합니다",
-                "cards": [{"book_id": 1, "reason_long": "긴 추천 이유"}],
+                "cards": [{"book_id": 1, "rank": 1, "match_score": 87, "title": "제목", "price": 13500,
+                  "reason_short": "한 줄 추천 이유", "reason_long": "긴 추천 이유", "match_basis": []}],
                 "followup": "더 알고 싶은 게 있나요?",
                 "buttons": ["다시 추천"],
                 "degraded": false
               }
             }
             """;
+    }
+
+    private String errorBody(final String code) {
+        return """
+            {"message":"%s","data":null}
+            """.formatted(code);
     }
 }

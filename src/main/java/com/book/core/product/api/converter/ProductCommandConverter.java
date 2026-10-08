@@ -7,6 +7,7 @@ import com.book.core.product.application.command.GetProductsCommand;
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.Base64;
 import org.springframework.stereotype.Component;
 
@@ -16,9 +17,10 @@ public class ProductCommandConverter {
         return GetProductDetailCommand.of(productId);
     }
 
-    public GetProductsCommand toGetProductsCommand(final Long categoryId, final String sort, final String cursor, final Integer limit) {
+    public GetProductsCommand toGetProductsCommand(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
+        final String sort, final String cursor, final Integer limit) {
         final ProductListSort parsedSort = parseSort(sort);
-        return new GetProductsCommand(categoryId, parsedSort, parseCursor(parsedSort, cursor), limit);
+        return new GetProductsCommand(categoryId, publishedFrom, publishedTo, parsedSort, parseCursor(parsedSort, cursor), limit);
     }
 
     private ProductListSort parseSort(final String sort) {

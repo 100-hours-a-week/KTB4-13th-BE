@@ -4,6 +4,7 @@ import com.book.core.product.application.result.GetProductDetailResult;
 import java.math.BigDecimal;
 import java.util.List;
 
+// @formatter:off
 public record ProductDetailResponse(
         Long productId,
         String itemName,
@@ -11,6 +12,8 @@ public record ProductDetailResponse(
         String author,
         String publisher,
         String publishedAt,
+        String category,
+        String description,
         BigDecimal salePrice,
         BigDecimal discountedPrice,
         Long reviewCount,
@@ -27,6 +30,8 @@ public record ProductDetailResponse(
                 result.author(),
                 result.publisher(),
                 result.publishedAt().toString(),
+                result.category(),
+                result.description(),
                 result.salePrice(),
                 result.discountedPrice(),
                 result.reviewCount(),
@@ -35,3 +40,4 @@ public record ProductDetailResponse(
                 coupons);
     }
 }
+// @formatter:on

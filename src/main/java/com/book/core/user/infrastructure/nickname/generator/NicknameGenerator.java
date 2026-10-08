@@ -1,12 +1,12 @@
-package com.book.core.user.infrastructure.nickname;
+package com.book.core.user.infrastructure.nickname.generator;
 
-import com.book.core.user.application.port.NicknameGenerator;
+import com.book.core.user.application.port.NicknameGeneratorPort;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.stereotype.Component;
 
 @Component
-public final class RandomNicknameGenerator implements NicknameGenerator {
+public final class NicknameGenerator implements NicknameGeneratorPort {
     private static final List<String> ADJECTIVES =
         List.of("고요한", "다정한", "따뜻한", "맑은", "반가운", "빛나는", "신나는", "씩씩한", "용감한", "즐거운", "총명한", "푸른", "포근한", "행복한");
     private static final List<String> NOUNS =

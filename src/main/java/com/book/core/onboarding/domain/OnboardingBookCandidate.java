@@ -24,11 +24,19 @@ public class OnboardingBookCandidate {
     @Column(name = "book_id", nullable = false)
     private Long bookId;
 
+    @Column(name = "subcategory_code", length = 30)
+    private String subcategoryCode;
+
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
     public OnboardingBookCandidate(final Long id, final Long bookId, final int displayOrder) {
+        this(id, bookId, null, displayOrder);
+    }
+
+    public OnboardingBookCandidate(final Long id, final Long bookId, final String subcategoryCode, final int displayOrder) {
         this.id = id;
+        this.subcategoryCode = subcategoryCode;
         this.bookId = bookId;
         this.displayOrder = displayOrder;
     }

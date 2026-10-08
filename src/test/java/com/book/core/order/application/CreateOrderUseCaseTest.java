@@ -20,7 +20,7 @@ class CreateOrderUseCaseTest {
     private final CreateOrderUseCase useCase = new CreateOrderUseCase(orderRepository);
 
     @Test
-    void 주문을_저장하고_주문상품_스냅샷과_결제_가능_여부를_반환한다() {
+    void 주문을_저장하고_주문상품_스냅샷을_반환한다() {
         final Order order = order("order_with_address", OrderAddress.from("06236", "서울 주소", "101호"));
         when(orderRepository.save(order)).thenReturn(order);
 
@@ -35,7 +35,7 @@ class CreateOrderUseCaseTest {
     }
 
     @Test
-    void 배송지가_없는_주문을_저장하고_결제_불가로_표시한다() {
+    void 배송지가_없는_주문도_저장하고_결제_불가를_반환한다() {
         final Order order = order("order_without_address", null);
         when(orderRepository.save(order)).thenReturn(order);
 
@@ -44,6 +44,7 @@ class CreateOrderUseCaseTest {
         assertThat(result.orderKey()).isEqualTo("order_without_address");
         assertThat(result.canProceedToPayment()).isFalse();
         assertThat(result.totalPrice()).isEqualByComparingTo("34.50");
+        assertThat(result.items()).hasSize(1);
         verify(orderRepository).save(order);
     }
 

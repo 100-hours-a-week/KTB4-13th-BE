@@ -17,6 +17,8 @@
             <appender-ref ref="CONSOLE"/>
         </root>
         <logger name="com.book" level="DEBUG"/>
+        <logger name="org.springframework.web" level="DEBUG"/>
+        <logger name="org.springframework.security" level="DEBUG"/>
     </springProfile>
 
     <springProfile name="!local &amp; !test">
@@ -24,5 +26,7 @@
             <appender-ref ref="CONSOLE"/>
         </root>
         <logger name="com.book" level="INFO"/>
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
     </springProfile>
 </configuration>

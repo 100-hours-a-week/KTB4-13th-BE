@@ -1,0 +1,178 @@
+{
+  "phase": "after",
+  "mysql": "8.4.8",
+  "counts": "2610000\t2610000",
+  "method": "1 warm-up + 3 timed mysql CLI runs per case; includes CLI/IPC; synthetic rows; LIMIT 21",
+  "cases": {
+    "first": {
+      "milliseconds": [
+        11871.42145800317,
+        11900.453833000938,
+        11750.926084001549
+      ],
+      "median_ms": 11871.42145800317,
+      "ids": [
+        2607000,
+        2590000,
+        2573000,
+        2556000,
+        2539000,
+        2522000,
+        2505000,
+        2488000,
+        2471000,
+        2454000,
+        2437000,
+        2420000,
+        2403000,
+        2386000,
+        2369000,
+        2352000,
+        2335000,
+        2318000,
+        2301000,
+        2284000,
+        2267000
+      ],
+      "sql": "SELECT p.*,b.*,s.sales_quantity,s.review_count,s.review_rate\n        FROM product_popularity_snapshots s JOIN products p ON p.id=s.product_id JOIN books b ON b.id=p.book_id\n        WHERE p.deleted_at IS NULL AND b.deleted_at IS NULL \n        ORDER BY s.sales_quantity DESC,s.product_id DESC LIMIT 21",
+      "explain": "1\tSIMPLE\tb\tNULL\tALL\tPRIMARY\tNULL\tNULL\tNULL\t2594643\t10.00\tUsing where; Using temporary; Using filesort\n1\tSIMPLE\tp\tNULL\teq_ref\tPRIMARY,uk_products_book_id,idx_products_deleted_created_id\tuk_products_book_id\t8\tpopularity_bench.b.id\t1\t50.00\tUsing where\n1\tSIMPLE\ts\tNULL\teq_ref\tPRIMARY\tPRIMARY\t8\tpopularity_bench.p.id\t1\t100.00\tNULL",
+      "analyze": "-> Limit: 21 row(s)  (actual time=13934..13934 rows=21 loops=1)\\n    -> Sort: s.sales_quantity DESC, s.product_id DESC, limit input to 21 row(s) per chunk  (actual time=13934..13934 rows=21 loops=1)\\n        -> Stream results  (cost=496553 rows=129732) (actual time=0.41..13303 rows=2.61e+6 loops=1)\\n            -> Nested loop inner join  (cost=496553 rows=129732) (actual time=0.401..11013 rows=2.61e+6 loops=1)\\n                -> Nested loop inner join  (cost=430971 rows=129732) (actual time=0.374..7848 rows=2.61e+6 loops=1)\\n                    -> Filter: (b.deleted_at is null)  (cost=268010 rows=259464) (actual time=0.222..1731 rows=2.61e+6 loops=1)\\n                        -> Table scan on b  (cost=268010 rows=2.59e+6) (actual time=0.221..1562 rows=2.61e+6 loops=1)\\n                    -> Filter: (p.deleted_at is null)  (cost=0.528 rows=0.5) (actual time=0.00213..0.00221 rows=1 loops=2.61e+6)\\n                        -> Single-row index lookup on p using uk_products_book_id (book_id=b.id)  (cost=0.528 rows=1) (actual time=0.00203..0.00205 rows=1 loops=2.61e+6)\\n                -> Single-row index lookup on s using PRIMARY (product_id=p.id)  (cost=0.406 rows=1) (actual time=0.00105..0.00107 rows=1 loops=2.61e+6)\\n"
+    },
+    "second": {
+      "milliseconds": [
+        11532.892333998461,
+        12070.530709002924,
+        11666.96079099711
+      ],
+      "median_ms": 11666.96079099711,
+      "ids": [
+        2267000,
+        2250000,
+        2233000,
+        2216000,
+        2199000,
+        2182000,
+        2165000,
+        2148000,
+        2131000,
+        2114000,
+        2097000,
+        2080000,
+        2063000,
+        2046000,
+        2029000,
+        2012000,
+        1995000,
+        1978000,
+        1961000,
+        1944000,
+        1927000
+      ],
+      "sql": "SELECT p.*,b.*,s.sales_quantity,s.review_count,s.review_rate\n        FROM product_popularity_snapshots s JOIN products p ON p.id=s.product_id JOIN books b ON b.id=p.book_id\n        WHERE p.deleted_at IS NULL AND b.deleted_at IS NULL AND (s.sales_quantity < 17 OR (s.sales_quantity = 17 AND s.product_id < 2284000))\n        ORDER BY s.sales_quantity DESC,s.product_id DESC LIMIT 21",
+      "explain": "1\tSIMPLE\tb\tNULL\tALL\tPRIMARY\tNULL\tNULL\tNULL\t2594643\t10.00\tUsing where; Using temporary; Using filesort\n1\tSIMPLE\tp\tNULL\teq_ref\tPRIMARY,uk_products_book_id,idx_products_deleted_created_id\tuk_products_book_id\t8\tpopularity_bench.b.id\t1\t50.00\tUsing where\n1\tSIMPLE\ts\tNULL\teq_ref\tPRIMARY,idx_product_popularity_snapshots_order\tPRIMARY\t8\tpopularity_bench.p.id\t1\t37.25\tUsing where",
+      "analyze": "-> Limit: 21 row(s)  (actual time=14366..14366 rows=21 loops=1)\\n    -> Sort: s.sales_quantity DESC, s.product_id DESC, limit input to 21 row(s) per chunk  (actual time=14366..14366 rows=21 loops=1)\\n        -> Stream results  (cost=499281 rows=48328) (actual time=0.358..13751 rows=2.61e+6 loops=1)\\n            -> Nested loop inner join  (cost=499281 rows=48328) (actual time=0.348..11421 rows=2.61e+6 loops=1)\\n                -> Nested loop inner join  (cost=432815 rows=129732) (actual time=0.328..7782 rows=2.61e+6 loops=1)\\n                    -> Filter: (b.deleted_at is null)  (cost=268106 rows=259464) (actual time=0.211..1703 rows=2.61e+6 loops=1)\\n                        -> Table scan on b  (cost=268106 rows=2.59e+6) (actual time=0.21..1535 rows=2.61e+6 loops=1)\\n                    -> Filter: (p.deleted_at is null)  (cost=0.535 rows=0.5) (actual time=0.00212..0.00219 rows=1 loops=2.61e+6)\\n                        -> Single-row index lookup on p using uk_products_book_id (book_id=b.id)  (cost=0.535 rows=1) (actual time=0.00201..0.00203 rows=1 loops=2.61e+6)\\n                -> Filter: ((s.sales_quantity < 17) or ((s.sales_quantity = 17) and (p.id < 2284000)))  (cost=0.412 rows=0.373) (actual time=0.00117..0.00126 rows=1 loops=2.61e+6)\\n                    -> Single-row index lookup on s using PRIMARY (product_id=p.id)  (cost=0.412 rows=1) (actual time=0.00105..0.00107 rows=1 loops=2.61e+6)\\n"
+    },
+    "broad_category": {
+      "milliseconds": [
+        1871.1620419999235,
+        1876.9293750010547,
+        1769.490250000672
+      ],
+      "median_ms": 1871.1620419999235,
+      "ids": [
+        2607000,
+        2590000,
+        2573000,
+        2556000,
+        2539000,
+        2522000,
+        2505000,
+        2488000,
+        2471000,
+        2454000,
+        2437000,
+        2420000,
+        2403000,
+        2386000,
+        2369000,
+        2352000,
+        2335000,
+        2318000,
+        2301000,
+        2284000,
+        2267000
+      ],
+      "sql": "SELECT p.*,b.*,s.sales_quantity,s.review_count,s.review_rate\n        FROM product_popularity_snapshots s JOIN products p ON p.id=s.product_id JOIN books b ON b.id=p.book_id\n        WHERE p.deleted_at IS NULL AND b.deleted_at IS NULL AND EXISTS (SELECT 1 FROM product_category pc JOIN book_category c ON c.id=pc.category_id\n        WHERE pc.product_id=p.id AND pc.deleted_at IS NULL AND c.deleted_at IS NULL AND c.id=9001)\n        ORDER BY s.sales_quantity DESC,s.product_id DESC LIMIT 21",
+      "explain": "1\tSIMPLE\tc\tNULL\tconst\tPRIMARY\tPRIMARY\t8\tconst\t1\t100.00\tUsing temporary; Using filesort\n1\tSIMPLE\tpc\tNULL\tref\tuk_product_category_category_product_active,fk_product_category_product,idx_product_category_category_deleted_product\tidx_product_category_category_deleted_product\t17\tconst,const\t130125\t100.00\tUsing where; Using index; LooseScan\n1\tSIMPLE\tp\tNULL\teq_ref\tPRIMARY,uk_products_book_id,idx_products_deleted_created_id\tPRIMARY\t8\tpopularity_bench.pc.product_id\t1\t50.00\tUsing where\n1\tSIMPLE\tb\tNULL\teq_ref\tPRIMARY\tPRIMARY\t8\tpopularity_bench.p.book_id\t1\t10.00\tUsing where\n1\tSIMPLE\ts\tNULL\teq_ref\tPRIMARY\tPRIMARY\t8\tpopularity_bench.pc.product_id\t1\t100.00\tNULL",
+      "analyze": "-> Limit: 21 row(s)  (actual time=2242..2242 rows=21 loops=1)\\n    -> Sort: s.sales_quantity DESC, s.product_id DESC, limit input to 21 row(s) per chunk  (actual time=2242..2242 rows=21 loops=1)\\n        -> Stream results  (cost=139511 rows=6506) (actual time=0.771..2165 rows=261000 loops=1)\\n            -> Nested loop inner join  (cost=139511 rows=6506) (actual time=0.761..1922 rows=261000 loops=1)\\n                -> Nested loop inner join  (cost=136211 rows=6506) (actual time=0.735..1457 rows=261000 loops=1)\\n                    -> Nested loop inner join  (cost=95286 rows=65062) (actual time=0.536..808 rows=261000 loops=1)\\n                        -> Remove duplicates from input sorted on idx_product_category_category_deleted_product  (cost=13312 rows=130125) (actual time=0.512..109 rows=261000 loops=1)\\n                            -> Filter: (pc.deleted_at is null)  (cost=13312 rows=130125) (actual time=0.51..82.7 rows=261000 loops=1)\\n                                -> Covering index lookup on pc using idx_product_category_category_deleted_product (category_id=9001, deleted_at=NULL)  (cost=13312 rows=130125) (actual time=0.503..65.1 rows=261000 loops=1)\\n                        -> Filter: (p.deleted_at is null)  (cost=68962 rows=0.5) (actual time=0.00245..0.00253 rows=1 loops=261000)\\n                            -> Single-row index lookup on p using PRIMARY (id=pc.product_id)  (cost=68962 rows=1) (actual time=0.00234..0.00236 rows=1 loops=261000)\\n                    -> Filter: (b.deleted_at is null)  (cost=68838 rows=0.1) (actual time=0.00226..0.00234 rows=1 loops=261000)\\n                        -> Single-row index lookup on b using PRIMARY (id=p.book_id)  (cost=68838 rows=1) (actual time=0.00215..0.00217 rows=1 loops=261000)\\n                -> Single-row index lookup on s using PRIMARY (product_id=pc.product_id)  (cost=52989 rows=1) (actual time=0.00161..0.00163 rows=1 loops=261000)\\n"
+    },
+    "sparse_category": {
+      "milliseconds": [
+        84.2657089997374,
+        76.11741700020502,
+        78.36379199943622
+      ],
+      "median_ms": 78.36379199943622,
+      "ids": [
+        1400000,
+        1100000,
+        2500000,
+        800000,
+        2200000,
+        500000,
+        1900000,
+        200000,
+        1600000,
+        1300000,
+        1000000,
+        2400000,
+        700000,
+        2100000,
+        400000,
+        1800000,
+        100000,
+        1500000,
+        1200000,
+        2600000,
+        900000
+      ],
+      "sql": "SELECT p.*,b.*,s.sales_quantity,s.review_count,s.review_rate\n        FROM product_popularity_snapshots s JOIN products p ON p.id=s.product_id JOIN books b ON b.id=p.book_id\n        WHERE p.deleted_at IS NULL AND b.deleted_at IS NULL AND EXISTS (SELECT 1 FROM product_category pc JOIN book_category c ON c.id=pc.category_id\n        WHERE pc.product_id=p.id AND pc.deleted_at IS NULL AND c.deleted_at IS NULL AND c.id=9002)\n        ORDER BY s.sales_quantity DESC,s.product_id DESC LIMIT 21",
+      "explain": "1\tSIMPLE\tc\tNULL\tconst\tPRIMARY\tPRIMARY\t8\tconst\t1\t100.00\tUsing temporary; Using filesort\n1\tSIMPLE\tpc\tNULL\tref\tuk_product_category_category_product_active,fk_product_category_product,idx_product_category_category_deleted_product\tidx_product_category_category_deleted_product\t17\tconst,const\t26\t100.00\tUsing where; Using index; LooseScan\n1\tSIMPLE\tp\tNULL\teq_ref\tPRIMARY,uk_products_book_id,idx_products_deleted_created_id\tPRIMARY\t8\tpopularity_bench.pc.product_id\t1\t50.00\tUsing where\n1\tSIMPLE\tb\tNULL\teq_ref\tPRIMARY\tPRIMARY\t8\tpopularity_bench.p.book_id\t1\t10.00\tUsing where\n1\tSIMPLE\ts\tNULL\teq_ref\tPRIMARY\tPRIMARY\t8\tpopularity_bench.pc.product_id\t1\t100.00\tNULL",
+      "analyze": "-> Limit: 21 row(s)  (actual time=0.659..0.664 rows=21 loops=1)\\n    -> Sort: s.sales_quantity DESC, s.product_id DESC, limit input to 21 row(s) per chunk  (actual time=0.658..0.662 rows=21 loops=1)\\n        -> Stream results  (cost=28.4 rows=1.3) (actual time=0.117..0.632 rows=26 loops=1)\\n            -> Nested loop inner join  (cost=28.4 rows=1.3) (actual time=0.104..0.58 rows=26 loops=1)\\n                -> Nested loop inner join  (cost=27.8 rows=1.3) (actual time=0.0899..0.432 rows=26 loops=1)\\n                    -> Nested loop inner join  (cost=19.6 rows=13) (actual time=0.0591..0.242 rows=26 loops=1)\\n                        -> Remove duplicates from input sorted on idx_product_category_category_deleted_product  (cost=3.25 rows=26) (actual time=0.0253..0.0382 rows=26 loops=1)\\n                            -> Filter: (pc.deleted_at is null)  (cost=3.25 rows=26) (actual time=0.023..0.033 rows=26 loops=1)\\n                                -> Covering index lookup on pc using idx_product_category_category_deleted_product (category_id=9002, deleted_at=NULL)  (cost=3.25 rows=26) (actual time=0.0212..0.0291 rows=26 loops=1)\\n                        -> Filter: (p.deleted_at is null)  (cost=13.8 rows=0.5) (actual time=0.00752..0.00759 rows=1 loops=26)\\n                            -> Single-row index lookup on p using PRIMARY (id=pc.product_id)  (cost=13.8 rows=1) (actual time=0.00737..0.00739 rows=1 loops=26)\\n                    -> Filter: (b.deleted_at is null)  (cost=13.8 rows=0.1) (actual time=0.00706..0.00714 rows=1 loops=26)\\n                        -> Single-row index lookup on b using PRIMARY (id=p.book_id)  (cost=13.8 rows=1) (actual time=0.00694..0.00697 rows=1 loops=26)\\n                -> Single-row index lookup on s using PRIMARY (product_id=pc.product_id)  (cost=12.6 rows=1) (actual time=0.00548..0.0055 rows=1 loops=26)\\n"
+    },
+    "published_range": {
+      "milliseconds": [
+        7739.649291001115,
+        7146.373832998506,
+        7202.848582997831
+      ],
+      "median_ms": 7202.848582997831,
+      "ids": [
+        2607000,
+        2590000,
+        2573000,
+        2556000,
+        2539000,
+        2522000,
+        2505000,
+        2488000,
+        2471000,
+        2454000,
+        2437000,
+        2420000,
+        2403000,
+        2386000,
+        2369000,
+        2352000,
+        2335000,
+        2318000,
+        2301000,
+        2284000,
+        2267000
+      ],
+      "sql": "SELECT p.*,b.*,s.sales_quantity,s.review_count,s.review_rate\n        FROM product_popularity_snapshots s JOIN products p ON p.id=s.product_id JOIN books b ON b.id=p.book_id\n        WHERE p.deleted_at IS NULL AND b.deleted_at IS NULL AND b.published_at BETWEEN '2026-01-01' AND '2026-12-31'\n        ORDER BY s.sales_quantity DESC,s.product_id DESC LIMIT 21",
+      "explain": "1\tSIMPLE\tb\tNULL\tALL\tPRIMARY\tNULL\tNULL\tNULL\t2594643\t1.11\tUsing where; Using temporary; Using filesort\n1\tSIMPLE\tp\tNULL\teq_ref\tPRIMARY,uk_products_book_id,idx_products_deleted_created_id\tuk_products_book_id\t8\tpopularity_bench.b.id\t1\t50.00\tUsing where\n1\tSIMPLE\ts\tNULL\teq_ref\tPRIMARY\tPRIMARY\t8\tpopularity_bench.p.id\t1\t100.00\tNULL",
+      "analyze": "-> Limit: 21 row(s)  (actual time=8043..8043 rows=21 loops=1)\\n    -> Sort: s.sales_quantity DESC, s.product_id DESC, limit input to 21 row(s) per chunk  (actual time=8043..8043 rows=21 loops=1)\\n        -> Stream results  (cost=293381 rows=14413) (actual time=0.364..7738 rows=1.3e+6 loops=1)\\n            -> Nested loop inner join  (cost=293381 rows=14413) (actual time=0.355..6612 rows=1.3e+6 loops=1)\\n                -> Nested loop inner join  (cost=286110 rows=14413) (actual time=0.34..5058 rows=1.3e+6 loops=1)\\n                    -> Filter: ((b.deleted_at is null) and (b.published_at between '2026-01-01' and '2026-12-31'))  (cost=268009 rows=28826) (actual time=0.199..1965 rows=1.3e+6 loops=1)\\n                        -> Table scan on b  (cost=268009 rows=2.59e+6) (actual time=0.19..1399 rows=2.61e+6 loops=1)\\n                    -> Filter: (p.deleted_at is null)  (cost=0.528 rows=0.5) (actual time=0.00216..0.00223 rows=1 loops=1.3e+6)\\n                        -> Single-row index lookup on p using uk_products_book_id (book_id=b.id)  (cost=0.528 rows=1) (actual time=0.00204..0.00207 rows=1 loops=1.3e+6)\\n                -> Single-row index lookup on s using PRIMARY (product_id=p.id)  (cost=0.404 rows=1) (actual time=0.00103..0.00105 rows=1 loops=1.3e+6)\\n"
+    }
+  }
+}

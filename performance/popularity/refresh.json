@@ -1,0 +1,13 @@
+{
+  "method": "one committed DELETE + actual repository INSERT SELECT per index; orders/reviews empty; CLI/IPC included",
+  "cases": {
+    "before": {
+      "milliseconds": 25527.680584000336,
+      "rows": "2610000"
+    },
+    "after": {
+      "milliseconds": 25140.957915999024,
+      "rows": "2610000"
+    }
+  }
+}

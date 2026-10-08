@@ -6,6 +6,16 @@ spring:
   config:
     import: classpath:persistence.yml,classpath:ai.yml
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-components: never
+      show-details: never
+
 sentry:
   dsn: ${SENTRY_DSN:}
   environment: ${SENTRY_ENVIRONMENT:local}

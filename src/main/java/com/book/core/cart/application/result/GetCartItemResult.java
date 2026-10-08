@@ -1,9 +1,15 @@
 package com.book.core.cart.application.result;
 
-import com.book.core.cart.domain.CartItem;
+import java.math.BigDecimal;
 
-public record GetCartItemResult(Long cartItemId, Long productId, Integer quantity) {
-    public static GetCartItemResult from(final CartItem item) {
-        return new GetCartItemResult(item.id(), item.productId(), item.quantity());
-    }
-}
+// @formatter:off
+public record GetCartItemResult(
+        Long cartItemId,
+        Long productId,
+        String itemName,
+        String thumbnailUrl,
+        BigDecimal salePrice,
+        BigDecimal discountedPrice,
+        Integer quantity,
+        boolean isAvailableForPurchase) {}
+// @formatter:on

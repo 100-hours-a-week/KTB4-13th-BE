@@ -22,8 +22,6 @@ import java.time.LocalDateTime;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -35,7 +33,7 @@ public interface OrderControllerSpec {
     @ApiResponses({@ApiResponse(responseCode = "200", description = "주문 목록 조회 성공"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<OrderListResponse>> getOrders(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<com.book.common.response.ApiResponse<OrderListResponse>> getOrders(@Parameter(hidden = true) final Long userId,
         @RequestParam(value = "status", required = false) final OrderStatus status,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "from", required = false) final LocalDateTime from,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "to", required = false) final LocalDateTime to,
@@ -51,19 +49,20 @@ public interface OrderControllerSpec {
         @ApiResponse(responseCode = "404", description = "주문 없음(ORDER_NOT_FOUND)"),
         @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<OrderDetailResponse>> getOrder(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<com.book.common.response.ApiResponse<OrderDetailResponse>> getOrder(@Parameter(hidden = true) final Long userId,
         @Parameter(in = ParameterIn.PATH, required = true, description = "주문 키") @NotBlank @Size(max = 255)
         @PathVariable("orderKey") final String orderKey);
 
-    @Operation(summary = "주문 생성", description = "본인의 활성 배송지와 장바구니 상품을 검증한 뒤 주문 시점 스냅샷을 생성합니다. 재고는 검증만 하며 차감하지 않습니다.")
+    @Operation(summary = "체크아웃 주문 생성",
+        description = "요청 회원의 장바구니 상품과 기본 활성 배송지를 확인한 뒤 주문 스냅샷을 생성합니다. 기본 배송지가 없어도 주문을 생성하고 NO_ADDRESS를 반환합니다. 재고는 확인만 하고 차감하지 않습니다.")
     @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "생성된 주문 키"),
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "주문 키, 상태(ORDER_CREATED 또는 NO_ADDRESS), 총액과 상품별 주문 항목"),
         @ApiResponse(responseCode = "400", description = "요청 형식 오류(E400), 장바구니 상품 불일치(E3000), 재고 부족(E8001)"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @ApiResponse(responseCode = "404", description = "활성 상품을 찾을 수 없음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<CreateOrderResponse>> createOrder(@AuthenticationPrincipal final Jwt jwt,
-        @RequestBody(description = "선택한 배송지와 주문할 장바구니 상품", required = true,
+    ResponseEntity<com.book.common.response.ApiResponse<CreateOrderResponse>> createOrder(@Parameter(hidden = true) final Long userId,
+        @RequestBody(description = "주문할 장바구니 상품. 기본 활성 배송지는 서버가 선택합니다.", required = true,
             content = @Content(schema = @Schema(implementation = CreateOrderRequest.class)))
         @Valid final CreateOrderRequest request);
 
@@ -77,7 +76,7 @@ public interface OrderControllerSpec {
         @ApiResponse(responseCode = "409", description = "취소할 수 없는 주문 상태(ORDER_CANNOT_BE_CANCELED)"),
         @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<Void>> cancelOrder(@AuthenticationPrincipal final Jwt jwt,
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> cancelOrder(@Parameter(hidden = true) final Long userId,
         @Parameter(in = ParameterIn.PATH, required = true, description = "주문 키") @NotBlank @Size(max = 255)
         @PathVariable("orderKey") final String orderKey);
 }

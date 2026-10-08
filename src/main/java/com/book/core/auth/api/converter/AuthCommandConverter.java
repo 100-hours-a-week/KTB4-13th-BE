@@ -9,7 +9,6 @@ import com.book.core.auth.application.command.AuthReissueCommand;
 import com.book.core.user.domain.ProviderType;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -20,10 +19,6 @@ public class AuthCommandConverter {
 
     public AuthReissueCommand toAuthReissueCommand(final HttpServletRequest request) {
         return new AuthReissueCommand(extractRefreshToken(request));
-    }
-
-    public Long toUserId(final Jwt jwt) {
-        return Long.valueOf(jwt.getSubject());
     }
 
     private String extractRefreshToken(final HttpServletRequest request) {

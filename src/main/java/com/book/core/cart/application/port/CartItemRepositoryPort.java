@@ -7,6 +7,8 @@ import java.util.Optional;
 public interface CartItemRepositoryPort {
     Optional<CartItem> findActiveByUserIdAndId(final Long userId, final Long cartItemId);
 
+    List<CartItem> findActiveByUserIdAndIds(final Long userId, final List<Long> cartItemIds);
+
     Optional<CartItem> findByCartIdAndProductId(final Long cartId, final Long productId);
 
     CartItem save(final CartItem cartItem);

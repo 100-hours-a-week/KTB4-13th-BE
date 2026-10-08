@@ -47,6 +47,11 @@ class FindProductByBookIdUseCaseTest {
         final Map<Long, Product> products = new HashMap<>();
 
         @Override
+        public List<Product> findByIds(final List<Long> productIds) {
+            return List.of();
+        }
+
+        @Override
         public Optional<Product> findActiveById(final Long productId) {
             throw new UnsupportedOperationException();
         }
@@ -57,8 +62,13 @@ class FindProductByBookIdUseCaseTest {
         }
 
         @Override
-        public List<ProductListItem> findActiveProducts(final Long categoryId, final ProductListSort sort, final ProductListCursor cursor,
-            final int limit) {
+        public List<Product> findActiveByBookIds(final List<Long> bookIds) {
+            return List.of();
+        }
+
+        @Override
+        public List<ProductListItem> findActiveProducts(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
+            final ProductListSort sort, final ProductListCursor cursor, final int limit) {
             throw new UnsupportedOperationException();
         }
     }

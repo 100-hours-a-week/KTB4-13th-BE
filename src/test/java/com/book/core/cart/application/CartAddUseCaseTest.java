@@ -154,6 +154,11 @@ class CartAddUseCaseTest {
         private Product product = product(500);
 
         @Override
+        public List<Product> findByIds(final List<Long> productIds) {
+            return List.of();
+        }
+
+        @Override
         public Optional<Product> findActiveById(final Long productId) {
             return Optional.ofNullable(product).filter(Product::isActive);
         }
@@ -164,14 +169,25 @@ class CartAddUseCaseTest {
         }
 
         @Override
-        public List<ProductListItem> findActiveProducts(final Long categoryId, final ProductListSort sort, final ProductListCursor cursor,
-            final int limit) {
+        public List<Product> findActiveByBookIds(final List<Long> bookIds) {
+            return List.of();
+        }
+
+        @Override
+        public List<ProductListItem> findActiveProducts(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
+            final ProductListSort sort, final ProductListCursor cursor, final int limit) {
             return List.of();
         }
     }
 
     private static final class FakeCartRepository implements CartRepositoryPort {
         private Cart cart;
+
+        @Override
+        public Cart save(final Cart cart) {
+            this.cart = cart;
+            return cart;
+        }
 
         @Override
         public Optional<Cart> findByUserIdWithLock(final Long userId) {
@@ -192,6 +208,11 @@ class CartAddUseCaseTest {
         @Override
         public Optional<CartItem> findActiveByUserIdAndId(final Long userId, final Long cartItemId) {
             return Optional.empty();
+        }
+
+        @Override
+        public List<CartItem> findActiveByUserIdAndIds(final Long userId, final List<Long> cartItemIds) {
+            return List.of();
         }
 
         @Override

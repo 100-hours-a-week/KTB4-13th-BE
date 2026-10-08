@@ -16,8 +16,8 @@ class SaveRecommendationCardsUseCaseTest {
 
     @Test
     void 사용자와_카드_목록으로_RecommendationCard를_생성해_저장한다() {
-        final var resolved = List.of(new ResolvedRecommendationCard(1L, "제목1", "작가1", null, "이유1"),
-            new ResolvedRecommendationCard(2L, "제목2", "작가2", null, "이유2"));
+        final var resolved = List.of(new ResolvedRecommendationCard(1L, null, "제목1", "작가1", null, null, 80, "짧은 이유1", "이유1"),
+            new ResolvedRecommendationCard(2L, null, "제목2", "작가2", null, null, 70, "짧은 이유2", "이유2"));
 
         final List<RecommendationCard> saved = useCase.execute(42L, resolved);
 

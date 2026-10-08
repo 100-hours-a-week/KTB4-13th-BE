@@ -129,7 +129,8 @@ Refresh Token 재발급(refreshToken):
 - Spring Security Resource Server가 Authorization header의 Bearer Access Token을 검증합니다.
 - Access Token은 HS512 서명, 만료 시간, `tokenType=ACCESS`와 subject를 검증합니다.
 - subject는 공백이 아니고 양수인 `Long` 형식이어야 하며 인증된 요청의 `userId`로 사용합니다.
-- 로그인 API와 Refresh Token 재발급 API를 제외한 요청은 인증이 필요합니다.
+- 로그인 API, Refresh Token 재발급 API와 Swagger UI·OpenAPI 문서의 GET 요청은 인증 없이 접근할 수 있습니다.
+- 그 외 요청은 인증이 필요합니다.
 - 서버는 HTTP Session을 만들지 않는 stateless 방식이며 form login과 HTTP Basic 인증을 사용하지 않습니다.
 - 현재 Bearer Access Token 기반 요청을 기준으로 CSRF를 비활성화합니다.
 - 인증에 성공한 요청은 Access Token을 `JwtAuthenticationToken`으로 감싸 `SecurityContext`에 저장하며, Controller는 `@AuthenticationPrincipal Jwt`로 인증된 Access Token의 claim에 접근합니다.

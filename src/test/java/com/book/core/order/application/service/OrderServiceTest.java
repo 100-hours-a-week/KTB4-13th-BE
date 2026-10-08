@@ -53,8 +53,9 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(getAddressUseCase.execute(42L, 101L)).thenReturn(Optional.of(address()));
-        when(getCartUseCase.execute(42L)).thenReturn(new GetCartResult(List.of(new GetCartItemResult(17L, 701L, 4))));
+        when(getAddressUseCase.execute(42L)).thenReturn(Optional.of(address()));
+        when(getCartUseCase.execute(42L)).thenReturn(new GetCartResult(List
+            .of(new GetCartItemResult(17L, 701L, "장바구니 상품", "thumbnail.jpg", new BigDecimal("20.00"), new BigDecimal("17.25"), 4, true))));
         when(getProductDetailUseCase.execute(any())).thenReturn(product(10));
         when(createOrderUseCase.execute(any(Order.class))).thenAnswer(invocation -> {
             final Order order = invocation.getArgument(0);
@@ -63,10 +64,9 @@ class OrderServiceTest {
     }
 
     @Test
-    void 회원이_선택한_배송지와_장바구니_상품의_서버_가격으로_주문_스냅샷을_생성한다() {
+    void 회원의_기본_배송지와_장바구니_상품의_서버_가격으로_주문_스냅샷을_생성한다() {
         final CreateOrderResult result = service.createOrder(command(new CreateOrderItemCommand(701L, 2)));
 
-        assertThat(result.canProceedToPayment()).isTrue();
         final Order order = savedOrder();
         assertThat(order.userId()).isEqualTo(42L);
         assertThat(order.address().postalCode()).isEqualTo("06236");
@@ -82,18 +82,24 @@ class OrderServiceTest {
             assertThat(item.quantity()).isEqualTo(2);
             assertThat(item.totalPrice()).isEqualByComparingTo("34.50");
         });
-        verify(getAddressUseCase).execute(42L, 101L);
+        verify(getAddressUseCase).execute(42L);
         verify(getCartUseCase).execute(42L);
         verify(getProductDetailUseCase).execute(GetProductDetailCommand.of(701L));
     }
 
     @Test
-    void 본인의_활성_배송지가_아니면_주문을_생성하지_않는다() {
-        when(getAddressUseCase.execute(42L, 101L)).thenReturn(Optional.empty());
+    void 기본_배송지가_없어도_주문_스냅샷을_생성한다() {
+        when(getAddressUseCase.execute(42L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.createOrder(command(new CreateOrderItemCommand(701L, 2)))).isInstanceOf(CoreException.class)
-            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.FORBIDDEN);
-        verifyNoInteractions(getCartUseCase, getProductDetailUseCase, createOrderUseCase);
+        final CreateOrderResult result = service.createOrder(command(new CreateOrderItemCommand(701L, 2)));
+
+        final Order order = savedOrder();
+        assertThat(order.address()).isNull();
+        assertThat(order.totalPrice()).isEqualByComparingTo("34.50");
+        assertThat(order.items()).hasSize(1);
+        assertThat(result.canProceedToPayment()).isFalse();
+        verify(getCartUseCase).execute(42L);
+        verify(getProductDetailUseCase).execute(GetProductDetailCommand.of(701L));
     }
 
     @Test
@@ -170,7 +176,7 @@ class OrderServiceTest {
     }
 
     private static CreateOrderCommand command(final CreateOrderItemCommand... items) {
-        return new CreateOrderCommand(42L, 101L, List.of(items));
+        return new CreateOrderCommand(42L, List.of(items));
     }
 
     private static GetAddressItemResult address() {
@@ -178,7 +184,7 @@ class OrderServiceTest {
     }
 
     private static GetProductDetailResult product(final int stock) {
-        return new GetProductDetailResult(701L, "상품 701", "https://example.com/book.jpg", "저자", "출판사", LocalDate.of(2026, 1, 1),
+        return new GetProductDetailResult(701L, "상품 701", "https://example.com/book.jpg", "저자", "출판사", LocalDate.of(2026, 1, 1), "소설", null,
             new BigDecimal("20.00"), new BigDecimal("17.25"), 0L, BigDecimal.ZERO, stock, List.of());
     }
 }

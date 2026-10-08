@@ -93,7 +93,11 @@ Repository·Client는 외부 기술을 격리하고 단위 테스트에서 대�
 
 필수 의존성은 `private final`과 `@RequiredArgsConstructor`를 기본으로 주입합니다.
 검증·추가 초기화·매개변수 어노테이션 등 예외는 [코드 스타일](.conventions/CODE_STYLE_CONVETIONS.md)을 따릅니다.
-쓰기 트랜잭션은 UseCase의 public 메서드에 두며 조회는 필요한 경우 readOnly를 사용합니다.
+쓰기 UseCase의 public 메서드는 `@Transactional`로 트랜잭션 경계를 선언합니다. 기본 `REQUIRED` 전파에 따라 기존 트랜잭션이 없으면 시작하고, 있으면 참여합니다.
+
+조회 UseCase의 public 메서드는 독립 호출에서도 애플리케이션 조회 트랜잭션을 명시하도록 `@Transactional(readOnly = true)`를 사용합니다. 이 기준은 상속 CRUD 조회 메서드가 repository 수준에서 기본 read-only 트랜잭션을 제공하더라도 적용하며, repository 기본값이 UseCase 경계를 대체하지 않습니다. `readOnly`는 최적화를 위한 힌트이며 쓰기 차단을 보장하지 않습니다.
+
+조회 UseCase가 기존 `REQUIRED` 트랜잭션에 참여하면 호출자의 트랜잭션 속성을 따릅니다. 내부의 read-only 선언은 기존 쓰기 트랜잭션을 read-only로 바꾸지 않습니다. ([Spring `@Transactional`](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/transaction/annotation/Transactional.html), [Spring transaction propagation](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html), [Spring Data JPA transactionality](https://docs.spring.io/spring-data/jpa/reference/jpa/transactions.html))
 Controller와 Domain에는 트랜잭션을 두지 않습니다.
 
 ## 4. 데이터와 변환

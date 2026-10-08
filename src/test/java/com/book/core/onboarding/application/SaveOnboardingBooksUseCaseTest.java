@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.book.application.port.BookRepositoryPort;
-import com.book.core.book.application.usecase.FindBooksByIdsUseCase;
+import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.book.domain.Book;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
@@ -32,9 +32,9 @@ class SaveOnboardingBooksUseCaseTest {
     private final FakeUserOnboardingRepository userOnboardingRepository = new FakeUserOnboardingRepository();
     private final FakeUserOnboardingBookRepository onboardingBookRepository = new FakeUserOnboardingBookRepository();
     private final FakeBookRepository bookRepository = new FakeBookRepository();
-    private final FindBooksByIdsUseCase findBooksByIdsUseCase = new FindBooksByIdsUseCase(bookRepository);
+    private final GetBooksUseCase getBooksUseCase = new GetBooksUseCase(bookRepository);
     private final SaveOnboardingBooksUseCase useCase =
-        new SaveOnboardingBooksUseCase(userOnboardingRepository, onboardingBookRepository, findBooksByIdsUseCase, FIXED_CLOCK);
+        new SaveOnboardingBooksUseCase(userOnboardingRepository, onboardingBookRepository, getBooksUseCase, FIXED_CLOCK);
 
     @Test
     void 존재하는_도서를_선택하면_저장한다() {

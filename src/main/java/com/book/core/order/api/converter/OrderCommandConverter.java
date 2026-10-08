@@ -34,6 +34,6 @@ public class OrderCommandConverter {
     public CreateOrderCommand toCreateOrderCommand(final Long userId, final CreateOrderRequest request) {
         final List<CreateOrderItemCommand> items =
             request.items().stream().map(item -> new CreateOrderItemCommand(item.itemId(), item.quantity())).toList();
-        return new CreateOrderCommand(userId, request.addressId(), items);
+        return new CreateOrderCommand(userId, items);
     }
 }

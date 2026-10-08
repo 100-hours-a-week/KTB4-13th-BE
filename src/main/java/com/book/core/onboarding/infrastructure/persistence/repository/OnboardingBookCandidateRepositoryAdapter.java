@@ -15,4 +15,9 @@ class OnboardingBookCandidateRepositoryAdapter implements OnboardingBookCandidat
     public List<OnboardingBookCandidate> findAllOrderByDisplayOrder() {
         return jpaRepository.findAllByOrderByDisplayOrderAsc();
     }
+
+    @Override
+    public List<OnboardingBookCandidate> findBySubcategoryCodes(final List<String> subcategoryCodes) {
+        return jpaRepository.findBySubcategoryCodeInOrderByDisplayOrderAscBookIdAsc(subcategoryCodes);
+    }
 }

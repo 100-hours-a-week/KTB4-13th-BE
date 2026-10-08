@@ -193,7 +193,7 @@ class SecurityIntegrationTest {
     @Test
     void Token_없이_보호된_endpoint를_요청하면_401을_응답한다() throws Exception {
         final MvcResult result =
-            mvc.perform(get("/test/protected")).andExpect(status().isUnauthorized()).andExpect(header().exists("X-Trace-Id"))
+            mvc.perform(get("/test/protected")).andExpect(status().isUnauthorized()).andExpect(header().exists("X-Request-Id"))
                 .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E401"))
                 .andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다.")).andExpect(jsonPath("$.traceId").isNotEmpty()).andReturn();
         assertTraceIdMatchesErrorResponse(result);
@@ -201,7 +201,7 @@ class SecurityIntegrationTest {
 
     private void assertUnauthorized(final String token) throws Exception {
         final MvcResult result = mvc.perform(get("/test/protected").header(HttpHeaders.AUTHORIZATION, bearer(token)))
-            .andExpect(status().isUnauthorized()).andExpect(header().exists("X-Trace-Id")).andExpect(jsonPath("$.success").value(false))
+            .andExpect(status().isUnauthorized()).andExpect(header().exists("X-Request-Id")).andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.code").value("E401")).andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다."))
             .andExpect(jsonPath("$.traceId").isNotEmpty()).andReturn();
         assertTraceIdMatchesErrorResponse(result);
@@ -209,7 +209,7 @@ class SecurityIntegrationTest {
 
     private void assertTraceIdMatchesErrorResponse(final MvcResult result) throws Exception {
         final String bodyTraceId = new ObjectMapper().readTree(result.getResponse().getContentAsString()).get("traceId").asText();
-        assertThat(result.getResponse().getHeader("X-Trace-Id")).isEqualTo(bodyTraceId);
+        assertThat(result.getResponse().getHeader("X-Request-Id")).isEqualTo(bodyTraceId);
     }
 
     private String bearer(final String token) {

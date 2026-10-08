@@ -1,7 +1,7 @@
 package com.book.common.response;
 
 import com.book.common.exception.ErrorCode;
-import com.book.common.logging.filter.RequestMdcFilter;
+import com.book.common.filter.RequestMdcFilter;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.slf4j.MDC;
 

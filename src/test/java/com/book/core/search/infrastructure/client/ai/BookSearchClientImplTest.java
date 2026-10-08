@@ -13,7 +13,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
-import com.book.common.logging.filter.RequestMdcFilter;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.search.application.command.BookSearchSort;
 import com.book.core.search.application.port.BookSearchItem;
 import com.book.core.search.application.port.BookSearchRequest;

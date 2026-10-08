@@ -12,7 +12,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.common.logging.RequestMdcFilter;
+import com.book.common.logging.filter.RequestMdcFilter;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import java.net.SocketTimeoutException;
 import java.util.List;

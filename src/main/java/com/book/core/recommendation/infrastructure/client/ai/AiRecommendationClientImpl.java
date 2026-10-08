@@ -4,7 +4,7 @@ import com.book.common.config.ai.AiRestClientConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
-import com.book.common.logging.RequestMdcFilter;
+import com.book.common.logging.filter.RequestMdcFilter;
 import com.book.core.recommendation.application.command.RecommendationTurn;
 import com.book.core.recommendation.application.port.AiRecommendationCard;
 import com.book.core.recommendation.application.port.AiRecommendationChatRequest;

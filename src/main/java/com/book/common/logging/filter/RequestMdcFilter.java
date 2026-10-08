@@ -11,6 +11,10 @@ import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * API 요청에 대한 MDC(Mapped Diagnostic Context)를 설정하는 필터입니다.
+ * 이 필터는 요청 ID, HTTP 메서드, 요청 URI, 클라이언트 IP 주소를 MDC에 추가하여 로깅에 활용할 수 있도록 합니다.
+ */
 @Component
 public class RequestMdcFilter extends OncePerRequestFilter {
     public static final String REQUEST_ID_HEADER = "X-Request-Id";

@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * API 요청에 대한 MDC(Mapped Diagnostic Context)를 설정하는 필터입니다.
- * 이 필터는 요청 ID, HTTP 메서드, 요청 URI, 클라이언트 IP 주소를 MDC에 추가하여 로깅에 활용할 수 있도록 합니다.
+ * API 요청에 대한 MDC(Mapped Diagnostic Context)를 설정하는 필터입니다. 이 필터는 요청 ID, HTTP 메서드, 요청 URI, 클라이언트 IP
+ * 주소를 MDC에 추가하여 로깅에 활용할 수 있도록 합니다.
  */
 @Component
 public class RequestMdcFilter extends OncePerRequestFilter {
@@ -27,7 +27,7 @@ public class RequestMdcFilter extends OncePerRequestFilter {
     protected void doFilterInternal(final HttpServletRequest request, final HttpServletResponse response, final FilterChain filterChain)
         throws ServletException, IOException {
         final String requestId = Optional.ofNullable(request.getHeader(REQUEST_ID_HEADER)).filter(value -> !value.isBlank())
-            .orElseGet(() -> UUID.randomUUID().toString());
+            .orElseGet(() -> UUID.randomUUID().toString().replace("-", ""));
         MDC.put(REQUEST_ID_MDC_KEY, requestId);
         MDC.put(REQUEST_METHOD_MDC_KEY, request.getMethod());
         MDC.put(REQUEST_URI_MDC_KEY, request.getRequestURI());

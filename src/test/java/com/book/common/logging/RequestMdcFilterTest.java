@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.common.filter.RequestMdcFilter;
 import jakarta.servlet.ServletException;
 import java.io.IOException;
-import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -39,7 +38,7 @@ class RequestMdcFilterTest {
         });
 
         final String requestId = response.getHeader(RequestMdcFilter.REQUEST_ID_HEADER);
-        assertThat(UUID.fromString(requestId)).isNotNull();
+        assertThat(requestId).matches("[0-9a-f]{32}");
         assertMdcIsCleared();
     }
 

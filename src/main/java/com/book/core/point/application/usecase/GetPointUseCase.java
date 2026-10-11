@@ -9,16 +9,20 @@ import com.book.core.point.application.port.PointHistoryRepositoryPort;
 import com.book.core.point.application.result.GetPointResult;
 import com.book.core.point.application.result.PointHistoryResult;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.transaction.annotation.Transactional;
 
 @UseCase
 @RequiredArgsConstructor
+@Slf4j
 public class GetPointUseCase {
     private final PointBalanceRepositoryPort pointBalanceRepository;
     private final PointHistoryRepositoryPort pointHistoryRepository;
 
     @Transactional(readOnly = true)
     public GetPointResult execute(final GetPointCommand command) {
+        log.debug("포인트 조회를 시작합니다. traceId={}", MDC.get("traceId"));
         final var balance =
             pointBalanceRepository.findByUserId(command.userId()).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
         final var histories =

@@ -17,4 +17,9 @@ public class PointBalanceRepositoryAdapter implements PointBalanceRepositoryPort
     public Optional<PointBalance> findByUserId(final Long userId) {
         return jpaRepository.findByUserId(userId);
     }
+
+    @Override
+    public void save(final PointBalance balance) {
+        jpaRepository.save(balance);
+    }
 }

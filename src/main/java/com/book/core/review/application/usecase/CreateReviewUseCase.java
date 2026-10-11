@@ -27,7 +27,7 @@ public class CreateReviewUseCase {
         if (reviewRepository.existsActiveByUserIdAndOrderItemId(command.userId(), command.orderItemId())) {
             throw new CoreException(ErrorCode.REVIEW_ALREADY_REVIEWED);
         }
-        reviewRepository
-            .save(Review.create(command.userId(), command.orderItemId(), command.rating(), command.content(), command.isSpoiler()));
+        reviewRepository.save(Review.create(command.userId(), command.orderItemId(), orderItem.productId(), command.rating(),
+            command.content(), command.isSpoiler()));
     }
 }

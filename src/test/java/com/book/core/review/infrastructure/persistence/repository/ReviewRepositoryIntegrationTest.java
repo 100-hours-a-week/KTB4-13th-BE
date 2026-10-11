@@ -50,7 +50,7 @@ class ReviewRepositoryIntegrationTest {
         order.addItem(9401L, "리뷰 테스트 상품", null, "저자", new BigDecimal("20.00"), new BigDecimal("17.25"), 1);
         final Order savedOrder = orderRepository.save(order);
         final Long orderItemId = jdbc.queryForObject("SELECT id FROM order_item WHERE order_id = ?", Long.class, savedOrder.id());
-        final Review review = reviewRepository.save(Review.create(42L, orderItemId, new BigDecimal("4.5"), "리뷰 본문", true));
+        final Review review = reviewRepository.save(Review.create(42L, orderItemId, 9401L, new BigDecimal("4.5"), "리뷰 본문", true));
 
         assertThat(reviewRepository.findActiveById(review.id())).isPresent();
         assertThat(jdbc.queryForMap("SELECT user_id, order_item_id, rating, content, is_spoiler, active_flag FROM reviews WHERE id = ?",
@@ -58,11 +58,12 @@ class ReviewRepositoryIntegrationTest {
             .containsEntry("rating", new BigDecimal("4.5")).containsEntry("content", "리뷰 본문").containsEntry("is_spoiler", true)
             .containsEntry("active_flag", 1);
         assertThat(reviewRepository.existsActiveByUserIdAndOrderItemId(42L, orderItemId)).isTrue();
-        assertThatThrownBy(() -> reviewRepository.save(Review.create(42L, orderItemId, new BigDecimal("5.0"), "중복", false)))
+        assertThatThrownBy(() -> reviewRepository.save(Review.create(42L, orderItemId, 9401L, new BigDecimal("5.0"), "중복", false)))
             .isInstanceOf(DataIntegrityViolationException.class);
-        assertThatThrownBy(
-            () -> jdbc.update("INSERT INTO reviews (user_id, order_item_id, rating, content, is_spoiler) VALUES (?, ?, ?, ?, ?)", 43L,
-                orderItemId, new BigDecimal("10.1"), "범위 초과", false))
+        assertThatThrownBy(() -> jdbc.update(
+            "INSERT INTO reviews (user_id, order_item_id, review_key, target_type, target_id, rating, content, is_spoiler) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            43L, orderItemId, "ORDER_ITEM_" + orderItemId, "PRODUCT", 9401L, new BigDecimal("10.1"), "범위 초과", false))
             .isInstanceOf(DataAccessException.class).satisfies(exception -> {
                 assertThat(exception.getCause()).isInstanceOf(SQLException.class);
                 assertThat(((SQLException) exception.getCause()).getErrorCode()).isEqualTo(MYSQL_CHECK_CONSTRAINT_VIOLATED);

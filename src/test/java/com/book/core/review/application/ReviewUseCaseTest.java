@@ -87,20 +87,20 @@ class ReviewUseCaseTest {
 
     @Test
     void 리뷰_수정은_입력된_필드만_적용한다() {
-        final Review review = Review.create(42L, 701L, new BigDecimal("4.5"), "기존", false);
+        final Review review = Review.create(42L, 701L, 701L, new BigDecimal("4.5"), "기존", false);
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
         updateReview.execute(new UpdateReviewCommand(42L, 801L, null, "수정", true));
 
         assertThat(review.content()).isEqualTo("수정");
-        assertThat(review.rating()).isEqualByComparingTo("4.5");
+        assertThat(review.rate()).isEqualByComparingTo("4.5");
         assertThat(review.isSpoiler()).isTrue();
         verify(reviewRepository).save(review);
     }
 
     @Test
     void 소유자가_아닌_사용자의_리뷰_수정은_FORBIDDEN으로_거부한다() {
-        final Review review = Review.create(42L, 701L, new BigDecimal("4.5"), "기존", false);
+        final Review review = Review.create(42L, 701L, 701L, new BigDecimal("4.5"), "기존", false);
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
         assertThatThrownBy(() -> updateReview.execute(new UpdateReviewCommand(999L, 801L, null, "수정", true)))
@@ -112,7 +112,7 @@ class ReviewUseCaseTest {
 
     @Test
     void 삭제는_활성_리뷰를_소프트_삭제한다() {
-        final Review review = Review.create(42L, 701L, new BigDecimal("4.5"), "본문", false);
+        final Review review = Review.create(42L, 701L, 701L, new BigDecimal("4.5"), "본문", false);
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
         deleteReview.execute(new DeleteReviewCommand(42L, 801L));
@@ -123,7 +123,7 @@ class ReviewUseCaseTest {
 
     @Test
     void 소유자가_아닌_사용자의_리뷰_삭제는_FORBIDDEN으로_거부한다() {
-        final Review review = Review.create(42L, 701L, new BigDecimal("4.5"), "본문", false);
+        final Review review = Review.create(42L, 701L, 701L, new BigDecimal("4.5"), "본문", false);
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
         assertThatThrownBy(() -> deleteReview.execute(new DeleteReviewCommand(999L, 801L))).isInstanceOfSatisfying(CoreException.class,
@@ -149,6 +149,7 @@ class ReviewUseCaseTest {
         when(orderItem.order()).thenReturn(order);
         when(order.userId()).thenReturn(userId);
         when(orderItem.status()).thenReturn(status);
+        when(orderItem.productId()).thenReturn(701L);
         return orderItem;
     }
 }

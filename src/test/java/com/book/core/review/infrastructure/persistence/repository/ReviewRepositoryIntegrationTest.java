@@ -8,6 +8,10 @@ import com.book.core.order.domain.Order;
 import com.book.core.review.application.port.ReviewRepositoryPort;
 import com.book.core.review.domain.Review;
 import java.math.BigDecimal;
+import com.book.common.paging.OffsetLimit;
+import com.book.core.review.domain.enums.ReviewTargetType;
+import java.util.ArrayList;
+import java.util.List;
 import java.sql.SQLException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -75,6 +79,42 @@ class ReviewRepositoryIntegrationTest {
         assertThat(reviewRepository.findActiveById(review.id())).isEmpty();
         assertThat(jdbc.queryForObject("SELECT active_flag FROM reviews WHERE id = ?", Integer.class, review.id())).isNull();
         assertThat(reviewRepository.existsActiveByUserIdAndOrderItemId(42L, orderItemId)).isFalse();
+    }
+
+    @Test
+    void querydsl_filters_target_and_deleted_reviews_and_uses_exact_offset() {
+        insertBook(9501L);
+        insertProduct(9601L, 9501L);
+        insertProduct(9602L, 9501L);
+        final List<Long> activeIds = new ArrayList<>();
+        for (int index = 0; index < 6; index++) {
+            activeIds.add(saveReview(9601L, "활성 " + index).id());
+        }
+        final var deleted = saveReview(9601L, "삭제");
+        deleted.delete();
+        reviewRepository.save(deleted);
+        saveReview(9602L, "다른 상품");
+
+        final var page = reviewRepository.findActiveReviews(ReviewTargetType.PRODUCT, 9601L, new OffsetLimit(3, 2));
+        assertThat(page.content()).extracting(item -> item.id()).containsExactly(activeIds.get(2), activeIds.get(1));
+        assertThat(page.content()).allSatisfy(item -> {
+            assertThat(item.targetType()).isEqualTo(ReviewTargetType.PRODUCT);
+            assertThat(item.targetId()).isEqualTo(9601L);
+        });
+        assertThat(page.hasNext()).isTrue();
+
+        final var last = reviewRepository.findActiveReviews(ReviewTargetType.PRODUCT, 9601L, new OffsetLimit(5, 2));
+        assertThat(last.content()).extracting(item -> item.id()).containsExactly(activeIds.getFirst());
+        assertThat(last.hasNext()).isFalse();
+        assertThat(reviewRepository.findActiveReviews(ReviewTargetType.PRODUCT, 9601L, new OffsetLimit(6, 2)).content()).isEmpty();
+    }
+
+    private Review saveReview(final Long productId, final String content) {
+        final Order order = Order.create(42L, "review_query_" + content, null);
+        order.addItem(productId, "리뷰 테스트 상품", null, "저자", new BigDecimal("20.00"), new BigDecimal("17.25"), 1);
+        final var saved = orderRepository.save(order);
+        final var itemId = jdbc.queryForObject("SELECT id FROM order_item WHERE order_id = ?", Long.class, saved.id());
+        return reviewRepository.save(Review.create(42L, itemId, productId, new BigDecimal("4.5"), content, false));
     }
 
     private void insertBook(final long id) {

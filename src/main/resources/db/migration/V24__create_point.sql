@@ -22,4 +22,3 @@ CREATE TABLE point_history
     balance_after DECIMAL NULL,
     CONSTRAINT pk_point_history PRIMARY KEY (id)
 );
-

@@ -7,6 +7,7 @@ import com.book.common.paging.Page;
 import com.book.core.review.application.result.ReviewItemResult;
 import com.book.core.review.domain.enums.ReviewTargetType;
 import java.util.Optional;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -19,6 +20,11 @@ public class ReviewRepositoryAdapter implements ReviewRepositoryPort {
     @Override
     public Page<ReviewItemResult> findActiveReviews(final ReviewTargetType targetType, final Long targetId, final OffsetLimit offsetLimit) {
         return queryRepository.findActiveReviews(targetType, targetId, offsetLimit);
+    }
+
+    @Override
+    public List<String> findUsedReviewKeys(final Long userId, final List<String> reviewKeys) {
+        return jpaRepository.findByUserIdAndReviewKeyIn(userId, reviewKeys).stream().map(Review::reviewKey).toList();
     }
 
     @Override

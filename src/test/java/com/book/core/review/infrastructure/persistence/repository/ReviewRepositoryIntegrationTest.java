@@ -6,12 +6,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.domain.Order;
 import com.book.core.review.application.port.ReviewRepositoryPort;
+import com.book.core.review.application.port.ReviewOrderRepositoryPort;
+import java.time.LocalDateTime;
 import com.book.core.review.domain.Review;
-import java.math.BigDecimal;
 import com.book.common.paging.OffsetLimit;
 import com.book.core.review.domain.enums.ReviewTargetType;
 import java.util.ArrayList;
 import java.util.List;
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -46,6 +48,9 @@ class ReviewRepositoryIntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    @Autowired
+    ReviewOrderRepositoryPort reviewOrders;
+
     @Test
     void review_mapping_soft_delete_and_active_uniqueness_match_the_migration() {
         insertBook(9301L);
@@ -79,6 +84,8 @@ class ReviewRepositoryIntegrationTest {
         assertThat(reviewRepository.findActiveById(review.id())).isEmpty();
         assertThat(jdbc.queryForObject("SELECT active_flag FROM reviews WHERE id = ?", Integer.class, review.id())).isNull();
         assertThat(reviewRepository.existsActiveByUserIdAndOrderItemId(42L, orderItemId)).isFalse();
+        assertThat(reviewRepository.findUsedReviewKeys(42L, List.of("ORDER_ITEM_" + orderItemId)))
+            .containsExactly("ORDER_ITEM_" + orderItemId);
     }
 
     @Test
@@ -107,6 +114,32 @@ class ReviewRepositoryIntegrationTest {
         assertThat(last.content()).extracting(item -> item.id()).containsExactly(activeIds.getFirst());
         assertThat(last.hasNext()).isFalse();
         assertThat(reviewRepository.findActiveReviews(ReviewTargetType.PRODUCT, 9601L, new OffsetLimit(6, 2)).content()).isEmpty();
+    }
+
+    @Test
+    void recent_purchase_query_includes_the_14_day_boundary_and_excludes_old_other_and_deleted_items() {
+        insertBook(9701L);
+        insertProduct(9801L, 9701L);
+        insertProduct(9802L, 9701L);
+        final var cutoff = LocalDateTime.of(2026, 10, 12, 9, 0).minusDays(14);
+        final var eligible = saveReview(9801L, "기간 경계");
+        final var old = saveReview(9801L, "기간 초과");
+        final var other = saveReview(9802L, "다른 대상");
+        final var deleted = saveReview(9801L, "삭제 주문상품");
+        markPaid(eligible.orderItemId(), cutoff);
+        markPaid(old.orderItemId(), cutoff.minusSeconds(1));
+        markPaid(other.orderItemId(), cutoff);
+        markPaid(deleted.orderItemId(), cutoff);
+        jdbc.update("UPDATE order_item SET deleted_at = ? WHERE id = ?", cutoff, deleted.orderItemId());
+
+        assertThat(reviewOrders.findRecentPaidOrderItemIds(42L, 9801L, cutoff)).containsExactly(eligible.orderItemId());
+        assertThat(reviewOrders.findRecentPaidOrderItemIds(99L, 9801L, cutoff)).isEmpty();
+    }
+
+    private void markPaid(final Long orderItemId, final LocalDateTime createdAt) {
+        jdbc.update("UPDATE orders SET status = 'PAID', created_at = ? WHERE id = (SELECT order_id FROM order_item WHERE id = ?)",
+            createdAt, orderItemId);
+        jdbc.update("UPDATE order_item SET status = 'PAID' WHERE id = ?", orderItemId);
     }
 
     private Review saveReview(final Long productId, final String content) {

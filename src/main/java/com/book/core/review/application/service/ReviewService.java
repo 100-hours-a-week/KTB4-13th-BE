@@ -9,6 +9,7 @@ import com.book.core.review.application.usecase.CreateReviewUseCase;
 import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.GetReviewsUseCase;
 import com.book.core.review.application.usecase.UpdateReviewUseCase;
+import com.book.core.review.application.usecase.ValidateReviewPolicyUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +20,7 @@ public class ReviewService {
     private final UpdateReviewUseCase updateReviewUseCase;
     private final DeleteReviewUseCase deleteReviewUseCase;
     private final GetReviewsUseCase getReviewsUseCase;
+    private final ValidateReviewPolicyUseCase validateReviewPolicyUseCase;
 
     public GetReviewsResult findReviews(final GetReviewsCommand command) {
         return getReviewsUseCase.execute(command);

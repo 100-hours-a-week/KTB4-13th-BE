@@ -6,6 +6,7 @@ import com.book.core.onboarding.application.command.GetOnboardingProgressCommand
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
+import com.book.core.onboarding.application.command.PutOnboardingPreferencesCommand;
 import com.book.core.onboarding.application.command.RecordPersonalizationAgreementCommand;
 import com.book.core.onboarding.application.result.OnboardingBookCandidateResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
@@ -17,6 +18,7 @@ import com.book.core.onboarding.application.usecase.GetOnboardingQuestionUseCase
 import com.book.core.onboarding.application.usecase.RecordPersonalizationAgreementUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingAnswersUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
+import com.book.core.onboarding.application.usecase.UpdateOnboardingPreferencesUseCase;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,7 @@ public class OnboardingService {
     private final GetOnboardingBookCandidatesUseCase getOnboardingBookCandidatesUseCase;
     private final RecordPersonalizationAgreementUseCase recordPersonalizationAgreementUseCase;
     private final CreatePersonalizationProfileUseCase createPersonalizationProfileUseCase;
+    private final UpdateOnboardingPreferencesUseCase updateOnboardingPreferencesUseCase;
 
     public OnboardingQuestionResult getQuestion(final GetOnboardingQuestionCommand command) {
         return getOnboardingQuestionUseCase.execute(command);
@@ -51,6 +54,10 @@ public class OnboardingService {
     public void saveBooks(final PutOnboardingBooksCommand command) {
         saveOnboardingBooksUseCase.execute(command);
         createPersonalizationProfile(command.userId());
+    }
+
+    public void updatePreferences(final PutOnboardingPreferencesCommand command) {
+        updateOnboardingPreferencesUseCase.execute(command);
     }
 
     public List<OnboardingBookCandidateResult> getBookCandidates(final GetOnboardingBookCandidatesCommand command) {

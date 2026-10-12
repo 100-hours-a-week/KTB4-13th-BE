@@ -6,6 +6,7 @@ import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
 import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
+import com.book.core.onboarding.api.request.PutOnboardingPreferencesRequest;
 import com.book.core.onboarding.api.response.OnboardingBookCandidatesResponse;
 import com.book.core.onboarding.api.response.OnboardingProgressResponse;
 import com.book.core.onboarding.api.response.OnboardingQuestionResponse;
@@ -76,6 +77,15 @@ class OnboardingController implements OnboardingControllerSpec {
         @Valid @RequestBody final PutOnboardingBooksRequest request) {
         final var command = commandConverter.toPutOnboardingBooksCommand(userId, request);
         onboardingService.saveBooks(command);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @PutMapping("/preferences")
+    public ResponseEntity<ApiResponse<Void>> updatePreferences(@UserId final Long userId,
+        @Valid @RequestBody final PutOnboardingPreferencesRequest request) {
+        final var command = commandConverter.toPutOnboardingPreferencesCommand(userId, request);
+        onboardingService.updatePreferences(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 

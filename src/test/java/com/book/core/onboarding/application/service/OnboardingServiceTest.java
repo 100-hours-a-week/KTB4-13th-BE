@@ -11,7 +11,9 @@ import static org.mockito.Mockito.verify;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.onboarding.application.command.GetOnboardingBookCandidatesCommand;
+import com.book.core.onboarding.application.command.OnboardingPreferenceAnswerCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
+import com.book.core.onboarding.application.command.PutOnboardingPreferencesCommand;
 import com.book.core.onboarding.application.usecase.CreatePersonalizationProfileUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingBookCandidatesUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
@@ -19,6 +21,7 @@ import com.book.core.onboarding.application.usecase.GetOnboardingQuestionUseCase
 import com.book.core.onboarding.application.usecase.RecordPersonalizationAgreementUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingAnswersUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
+import com.book.core.onboarding.application.usecase.UpdateOnboardingPreferencesUseCase;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -31,15 +34,28 @@ class OnboardingServiceTest {
     private final SaveOnboardingBooksUseCase saveOnboardingBooksUseCase = mock(SaveOnboardingBooksUseCase.class);
     private final CreatePersonalizationProfileUseCase createPersonalizationProfileUseCase = mock(CreatePersonalizationProfileUseCase.class);
     private final GetOnboardingBookCandidatesUseCase getBookCandidatesUseCase = mock(GetOnboardingBookCandidatesUseCase.class);
-    private final OnboardingService onboardingService = new OnboardingService(mock(GetOnboardingQuestionUseCase.class),
-        mock(GetOnboardingProgressUseCase.class), mock(SaveOnboardingAnswersUseCase.class), saveOnboardingBooksUseCase,
-        getBookCandidatesUseCase, mock(RecordPersonalizationAgreementUseCase.class), createPersonalizationProfileUseCase);
+    private final UpdateOnboardingPreferencesUseCase updateOnboardingPreferencesUseCase = mock(UpdateOnboardingPreferencesUseCase.class);
+    private final OnboardingService onboardingService =
+        new OnboardingService(mock(GetOnboardingQuestionUseCase.class), mock(GetOnboardingProgressUseCase.class),
+            mock(SaveOnboardingAnswersUseCase.class), saveOnboardingBooksUseCase, getBookCandidatesUseCase,
+            mock(RecordPersonalizationAgreementUseCase.class), createPersonalizationProfileUseCase, updateOnboardingPreferencesUseCase);
 
     @Test
     void 후보_조회_Command를_UseCase로_전달한다() {
         final var command = new GetOnboardingBookCandidatesCommand(List.of("novel-sf"));
         onboardingService.getBookCandidates(command);
         verify(getBookCandidatesUseCase).execute(command);
+        verifyNoInteractions(saveOnboardingBooksUseCase, createPersonalizationProfileUseCase);
+    }
+
+    @Test
+    void 취향_정보_전체_수정_Command를_UseCase로_전달하고_AI_프로필은_요청하지_않는다() {
+        final var command =
+            new PutOnboardingPreferencesCommand(USER_ID, List.of(new OnboardingPreferenceAnswerCommand(1L, List.of(1L))), List.of(10L));
+
+        onboardingService.updatePreferences(command);
+
+        verify(updateOnboardingPreferencesUseCase).execute(command);
         verifyNoInteractions(saveOnboardingBooksUseCase, createPersonalizationProfileUseCase);
     }
 

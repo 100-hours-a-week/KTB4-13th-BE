@@ -148,6 +148,11 @@ class GetOnboardingQuestionUseCaseTest {
         }
 
         @Override
+        public List<OnboardingQuestion> findAll() {
+            return List.copyOf(questions.values());
+        }
+
+        @Override
         public Optional<OnboardingQuestion> findFirstByDisplayOrderGreaterThan(final int displayOrder) {
             return nextByDisplayOrder.getOrDefault(displayOrder, Optional.empty());
         }

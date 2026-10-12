@@ -48,7 +48,7 @@ class ReviewTest {
         final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
             new ReviewContent(new BigDecimal("4.0"), "기존 내용"), false);
 
-        review.update(new ReviewContent(new BigDecimal("4.5"), "수정 내용"), true);
+        review.updateContent(new ReviewContent(new BigDecimal("4.5"), "수정 내용"), true);
 
         assertThat(review.rate()).isEqualByComparingTo("4.5");
         assertThat(review.content()).isEqualTo("수정 내용");
@@ -60,7 +60,7 @@ class ReviewTest {
         final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
             new ReviewContent(new BigDecimal("4.0"), "기존 내용"), false);
 
-        assertThatThrownBy(() -> review.update(new ReviewContent(new BigDecimal("4.5"), "x".repeat(256)), true))
+        assertThatThrownBy(() -> review.updateContent(new ReviewContent(new BigDecimal("4.5"), "x".repeat(256)), true))
             .isInstanceOf(CoreException.class);
 
         assertThat(review.rate()).isEqualByComparingTo("4.0");

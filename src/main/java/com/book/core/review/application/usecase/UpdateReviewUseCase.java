@@ -24,7 +24,7 @@ public class UpdateReviewUseCase {
         if (!review.userId().equals(userId)) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
-        review.update(content, isSpoiler);
+        review.updateContent(content, isSpoiler);
         reviewRepository.save(review);
         log.info("리뷰 수정 처리를 마쳤습니다. reviewId={}, traceId={}", reviewId, MDC.get("traceId"));
         return review.id();

@@ -72,9 +72,9 @@ class ReviewUseCaseLoggingTest {
     @Test
     void 조회_파라미터와_결과_요약을_INFO로_기록한다() {
         final var paging = new OffsetLimit(3, 2);
-        when(repository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging)).thenReturn(new Page<>(List.of(
-            new ReviewItemResult(801L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "private-review-content")),
-            true));
+        when(repository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging))
+            .thenReturn(new Page<>(List.of(new ReviewItemResult(801L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L),
+                new BigDecimal("4.5"), "private-review-content", true)), true));
 
         new GetReviewsUseCase(repository).execute(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging);
 

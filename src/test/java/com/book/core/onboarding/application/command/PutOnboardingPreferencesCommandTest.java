@@ -15,16 +15,12 @@ class PutOnboardingPreferencesCommandTest {
         List.of(new OnboardingPreferenceAnswerCommand(1L, List.of(1L)), new OnboardingPreferenceAnswerCommand(2L, List.of(6L)));
 
     @Test
-    void 사용자_ID와_질문별_답변과_도서_목록으로_생성한다() {
+    void 사용자_ID와_질문별_답변과_도서_목록으로_생성하고_빈_도서_목록을_허용한다() {
         final var command = new PutOnboardingPreferencesCommand(1L, ANSWERS, List.of(10L, 20L));
 
         assertThat(command.userId()).isEqualTo(1L);
         assertThat(command.answers()).containsExactlyElementsOf(ANSWERS);
         assertThat(command.bookIds()).containsExactly(10L, 20L);
-    }
-
-    @Test
-    void 빈_도서_목록을_허용한다() {
         assertThat(new PutOnboardingPreferencesCommand(1L, ANSWERS, List.of()).bookIds()).isEmpty();
     }
 
@@ -54,17 +50,11 @@ class PutOnboardingPreferencesCommandTest {
     }
 
     @Test
-    void 도서_목록이_null이거나_유효하지_않은_ID를_포함하면_예외를_던진다() {
-        for (final List<Long> bookIds : Arrays.asList(null, Arrays.asList(1L, null), List.of(0L), List.of(-1L))) {
+    void 도서_목록이_null이거나_유효하지_않거나_중복된_ID를_포함하면_예외를_던진다() {
+        for (final List<Long> bookIds : Arrays.asList(null, Arrays.asList(1L, null), List.of(0L), List.of(-1L), List.of(3L, 3L))) {
             assertThatThrownBy(() -> new PutOnboardingPreferencesCommand(1L, ANSWERS, bookIds)).isInstanceOf(CoreException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_ONBOARDING_BOOK_SELECTION);
         }
-    }
-
-    @Test
-    void 도서_ID가_중복되면_예외를_던진다() {
-        assertThatThrownBy(() -> new PutOnboardingPreferencesCommand(1L, ANSWERS, List.of(3L, 3L))).isInstanceOf(CoreException.class)
-            .extracting("errorCode").isEqualTo(ErrorCode.INVALID_ONBOARDING_BOOK_SELECTION);
     }
 
     @Test

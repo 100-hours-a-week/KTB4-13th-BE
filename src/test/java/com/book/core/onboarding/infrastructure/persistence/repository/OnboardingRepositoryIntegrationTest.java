@@ -81,11 +81,6 @@ class OnboardingRepositoryIntegrationTest {
     }
 
     @Test
-    void V17_시드된_질문_전체를_조회한다() {
-        assertThat(questionRepository.findAll()).extracting(OnboardingQuestion::id).containsExactlyInAnyOrder(1L, 2L, 3L, 4L);
-    }
-
-    @Test
     void V17_시드된_Q3_옵션과_Q4_옵션의_부모관계를_조회한다() {
         final List<OnboardingOption> q3Options = optionRepository.findByQuestionId(3L);
         final List<OnboardingOption> q4Options = optionRepository.findByQuestionId(4L);

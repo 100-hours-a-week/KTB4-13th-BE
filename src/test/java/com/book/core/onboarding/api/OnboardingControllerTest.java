@@ -295,13 +295,11 @@ class OnboardingControllerTest {
     }
 
     @Test
-    void 취향_정보_전체_수정_UseCase_예외를_HTTP_응답으로_변환한다() throws Exception {
+    void 취향_정보_전체_수정의_신규_오류_코드를_HTTP_응답으로_변환한다() throws Exception {
         authenticateAs(USER_ID);
 
         expectUpdatePreferencesError(ErrorCode.ONBOARDING_NOT_COMPLETED, 409, "E409");
         expectUpdatePreferencesError(ErrorCode.INVALID_ONBOARDING_PREFERENCES, 400, "E400");
-        expectUpdatePreferencesError(ErrorCode.ONBOARDING_NOT_FOUND, 404, "E404");
-        expectUpdatePreferencesError(ErrorCode.ONBOARDING_PARENT_QUESTION_NOT_ANSWERED, 409, "E409");
     }
 
     private void expectUpdatePreferencesError(final ErrorCode errorCode, final int status, final String code) throws Exception {

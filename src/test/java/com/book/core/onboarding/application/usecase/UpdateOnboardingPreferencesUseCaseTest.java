@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.LongStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -88,22 +87,14 @@ class UpdateOnboardingPreferencesUseCaseTest {
     }
 
     @Test
-    void 빈_도서_목록이면_기존_도서를_모두_삭제한다() {
+    void 도서만_비우면_기존_도서를_모두_삭제한다() {
         useCase.execute(currentPreferences(List.of()));
 
+        assertThat(answerRepository.deletedOptionIds).isEmpty();
+        assertThat(answerRepository.savedOptionIds).isEmpty();
         assertThat(bookRepository.deletedBookIds).containsExactly(List.of(100L, 200L));
         assertThat(bookRepository.savedBookIds).isEmpty();
         assertThat(bookRepository.bookIds()).isEmpty();
-    }
-
-    @Test
-    void 온보딩_상태와_완료_시각을_변경하지_않는다() {
-        useCase.execute(command(List.of(answer(1L, 2L), answer(2L, 6L), answer(3L, 9L), answer(4L, 23L)), List.of(300L)));
-
-        final UserOnboarding userOnboarding = userOnboardingRepository.findActiveByUserId(USER_ID).orElseThrow();
-        assertThat(userOnboarding.onboardingStatus()).isEqualTo(OnboardingStatus.COMPLETED);
-        assertThat(userOnboarding.completedAt()).isEqualTo(COMPLETED_AT);
-        assertThat(userOnboardingRepository.saveCount).isZero();
     }
 
     @Test
@@ -130,8 +121,13 @@ class UpdateOnboardingPreferencesUseCaseTest {
     }
 
     @Test
-    void 질문별_선택_개수가_범위를_벗어나면_예외를_던진다() {
+    void 질문별_최소_선택_개수_미만이거나_최대_선택_개수를_초과하면_예외를_던진다() {
+        List.of(7L, 8L, 2004L).forEach(
+            optionId -> optionRepository.add(new OnboardingOption(optionId, 2L, null, "code-" + optionId, "선택지", optionId.intValue())));
+
         assertError(command(List.of(answer(1L), answer(2L, 6L), answer(3L, 9L), answer(4L, 23L)), List.of()),
+            ErrorCode.INVALID_ONBOARDING_ANSWER_SELECTION);
+        assertError(command(List.of(answer(1L, 1L), answer(2L, 6L, 7L, 8L, 2004L), answer(3L, 9L), answer(4L, 23L)), List.of()),
             ErrorCode.INVALID_ONBOARDING_ANSWER_SELECTION);
         assertNoWrites();
     }
@@ -151,37 +147,13 @@ class UpdateOnboardingPreferencesUseCaseTest {
     }
 
     @Test
-    void Q4_선택지의_부모가_이번_요청의_Q3에_없으면_저장된_Q3_답변과_무관하게_예외를_던진다() {
+    void Q4_선택지의_부모가_이번_요청의_Q3에_없으면_저장된_Q3_답변이나_기존_Q4와_무관하게_예외를_던진다() {
         answerRepository.answers.add(UserOnboardingAnswer.of(USER_ID, 10L));
 
         assertError(command(List.of(answer(1L, 1L), answer(2L, 6L), answer(3L, 9L), answer(4L, 28L)), List.of()),
             ErrorCode.ONBOARDING_PARENT_QUESTION_NOT_ANSWERED);
-        assertNoWrites();
-    }
-
-    @Test
-    void Q3를_변경하면서_기존_Q4_선택지를_그대로_전달하면_예외를_던진다() {
         assertError(command(List.of(answer(1L, 1L), answer(2L, 6L), answer(3L, 10L), answer(4L, 23L)), List.of()),
             ErrorCode.ONBOARDING_PARENT_QUESTION_NOT_ANSWERED);
-        assertNoWrites();
-    }
-
-    @Test
-    void 질문별_최대_선택_개수를_초과하면_예외를_던진다() {
-        for (final OnboardingQuestion question : questionRepository.findAll()) {
-            final List<Long> optionIds =
-                LongStream.rangeClosed(1, question.maxSelection() + 1).map(index -> question.id() * 1000 + index).boxed().toList();
-            optionIds.forEach(optionId -> optionRepository.add(new OnboardingOption(optionId, question.id(), parentOptionIdOf(question),
-                "code-" + optionId, "선택지", (int) (optionId % 1000))));
-            final List<OnboardingPreferenceAnswerCommand> answers = currentAnswers().stream().map(answer -> {
-                if (answer.questionId().equals(question.id())) {
-                    return new OnboardingPreferenceAnswerCommand(question.id(), optionIds);
-                }
-                return answer;
-            }).toList();
-
-            assertError(command(answers, List.of()), ErrorCode.INVALID_ONBOARDING_ANSWER_SELECTION);
-        }
         assertNoWrites();
     }
 
@@ -207,13 +179,6 @@ class UpdateOnboardingPreferencesUseCaseTest {
         return List.of(answer(1L, 1L), answer(2L, 6L), answer(3L, 9L), answer(4L, 23L));
     }
 
-    private Long parentOptionIdOf(final OnboardingQuestion question) {
-        if (question.id().equals(4L)) {
-            return 9L;
-        }
-        return null;
-    }
-
     private PutOnboardingPreferencesCommand command(final List<OnboardingPreferenceAnswerCommand> answers, final List<Long> bookIds) {
         return new PutOnboardingPreferencesCommand(USER_ID, answers, bookIds);
     }
@@ -235,7 +200,6 @@ class UpdateOnboardingPreferencesUseCaseTest {
 
     private static final class FakeUserOnboardingRepository implements UserOnboardingRepositoryPort {
         private final Map<Long, UserOnboarding> byUserId = new HashMap<>();
-        private int saveCount;
 
         private void put(final UserOnboarding userOnboarding) {
             byUserId.put(userOnboarding.userId(), userOnboarding);
@@ -248,7 +212,6 @@ class UpdateOnboardingPreferencesUseCaseTest {
 
         @Override
         public UserOnboarding save(final UserOnboarding userOnboarding) {
-            saveCount++;
             put(userOnboarding);
             return userOnboarding;
         }

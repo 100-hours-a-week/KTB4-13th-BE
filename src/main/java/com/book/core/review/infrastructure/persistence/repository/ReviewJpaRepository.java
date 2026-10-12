@@ -10,5 +10,7 @@ interface ReviewJpaRepository extends JpaRepository<Review, Long> {
 
     Optional<Review> findByIdAndDeletedAtIsNull(final Long id);
 
-    boolean existsByUserIdAndOrderItemIdAndDeletedAtIsNull(final Long userId, final Long orderItemId);
+    boolean existsByUserIdAndReviewKey(final Long userId, final String reviewKey);
+
+    Optional<Review> findByIdAndUserIdAndDeletedAtIsNull(final Long reviewId, final Long userId);
 }

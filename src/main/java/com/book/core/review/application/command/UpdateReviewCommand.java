@@ -1,5 +1,6 @@
 package com.book.core.review.application.command;
 
-import java.math.BigDecimal;
+import com.book.core.review.domain.ReviewContent;
 
-public record UpdateReviewCommand(Long userId,Long reviewId,BigDecimal rating,String content,Boolean isSpoiler){}
+public record UpdateReviewCommand(Long userId, Long reviewId, ReviewContent content, Boolean isSpoiler) {
+}

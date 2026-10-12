@@ -2,7 +2,10 @@ package com.book.core.onboarding.api;
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,13 +14,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.config.security.UserIdMvcConfig;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.onboarding.api.converter.OnboardingCommandConverter;
 import com.book.core.onboarding.api.converter.OnboardingResultConverter;
 import com.book.core.onboarding.application.command.GetOnboardingBookCandidatesCommand;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
+import com.book.core.onboarding.application.command.OnboardingPreferenceAnswerCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
+import com.book.core.onboarding.application.command.PutOnboardingPreferencesCommand;
 import com.book.core.onboarding.application.command.RecordPersonalizationAgreementCommand;
 import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
 import com.book.core.onboarding.application.result.OnboardingBookCandidateResult;
@@ -256,6 +263,91 @@ class OnboardingControllerTest {
             .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
 
         verify(onboardingService).recordPersonalizationAgreement(new RecordPersonalizationAgreementCommand(USER_ID));
+    }
+
+    @Test
+    void 부모_선택지_ID를_전달하면_Command에_담아_Q4_선택지를_조회한다() throws Exception {
+        authenticateAs(USER_ID);
+        final GetOnboardingQuestionCommand command = new GetOnboardingQuestionCommand(USER_ID, 4L, List.of(9L, 10L));
+        when(onboardingService.getQuestion(command)).thenReturn(new OnboardingQuestionResult(4L, "subcategory", "세부 카테고리", 1, 9,
+            List.of(new OnboardingOptionResult(23L, 9L, "novel-thriller", "추리/스릴러"),
+                new OnboardingOptionResult(28L, 10L, "humanities-psychology", "심리학")),
+            null));
+
+        mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 4L).param("parentOptionIds", "9,10")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.options[0].optionId").value(23)).andExpect(jsonPath("$.data.options[1].parentOptionId").value(10));
+        mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 4L).param("parentOptionIds", "9", "10")).andExpect(status().isOk());
+
+        verify(onboardingService, times(2)).getQuestion(command);
+    }
+
+    @Test
+    void 부모_선택지_ID가_빈_값이거나_유효하지_않으면_400을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+
+        for (final String parentOptionIds : List.of("", "0", "-1", "9,9", "abc")) {
+            mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 4L).param("parentOptionIds", parentOptionIds))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+        }
+        verifyNoInteractions(onboardingService);
+    }
+
+    @Test
+    void Q4가_아닌_질문에_부모_선택지를_전달해_UseCase가_거부하면_400을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+        when(onboardingService.getQuestion(new GetOnboardingQuestionCommand(USER_ID, 1L, List.of(9L))))
+            .thenThrow(new CoreException(ErrorCode.INVALID_REQUEST));
+
+        mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 1L).param("parentOptionIds", "9")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
+    }
+
+    @Test
+    void 취향_정보_전체_수정_요청을_Command로_전달하고_200을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+
+        mvc.perform(put("/api/v1/onboarding/preferences").contentType(MediaType.APPLICATION_JSON).content("""
+            {"answers":[{"questionId":1,"optionIds":[1,2]},{"questionId":2,"optionIds":[6]},
+            {"questionId":3,"optionIds":[9]},{"questionId":4,"optionIds":[23]}],"bookIds":[10,20]}
+            """)).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(onboardingService).updatePreferences(new PutOnboardingPreferencesCommand(USER_ID,
+            List.of(new OnboardingPreferenceAnswerCommand(1L, List.of(1L, 2L)), new OnboardingPreferenceAnswerCommand(2L, List.of(6L)),
+                new OnboardingPreferenceAnswerCommand(3L, List.of(9L)), new OnboardingPreferenceAnswerCommand(4L, List.of(23L))),
+            List.of(10L, 20L)));
+    }
+
+    @Test
+    void 취향_정보_전체_수정_요청_형식이_잘못되면_400을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+
+        for (final String body : List.of("{\"bookIds\":[]}", "{\"answers\":[]}", "{\"answers\":[null],\"bookIds\":[]}",
+            "{\"answers\":[{\"questionId\":0,\"optionIds\":[1]}],\"bookIds\":[]}",
+            "{\"answers\":[{\"questionId\":1,\"optionIds\":[null]}],\"bookIds\":[]}",
+            "{\"answers\":[{\"questionId\":1,\"optionIds\":[1]}],\"bookIds\":[0]}",
+            "{\"answers\":[{\"questionId\":1,\"optionIds\":[1]},{\"questionId\":1,\"optionIds\":[2]}],\"bookIds\":[]}")) {
+            mvc.perform(put("/api/v1/onboarding/preferences").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+        }
+        verifyNoInteractions(onboardingService);
+    }
+
+    @Test
+    void 취향_정보_전체_수정_UseCase_예외를_HTTP_응답으로_변환한다() throws Exception {
+        authenticateAs(USER_ID);
+
+        expectUpdatePreferencesError(ErrorCode.ONBOARDING_NOT_COMPLETED, 409, "E409");
+        expectUpdatePreferencesError(ErrorCode.INVALID_ONBOARDING_PREFERENCES, 400, "E400");
+        expectUpdatePreferencesError(ErrorCode.ONBOARDING_NOT_FOUND, 404, "E404");
+        expectUpdatePreferencesError(ErrorCode.ONBOARDING_PARENT_QUESTION_NOT_ANSWERED, 409, "E409");
+    }
+
+    private void expectUpdatePreferencesError(final ErrorCode errorCode, final int status, final String code) throws Exception {
+        doThrow(new CoreException(errorCode)).when(onboardingService).updatePreferences(any(PutOnboardingPreferencesCommand.class));
+
+        mvc.perform(put("/api/v1/onboarding/preferences").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"answers\":[{\"questionId\":1,\"optionIds\":[1]}],\"bookIds\":[]}")).andExpect(status().is(status))
+            .andExpect(jsonPath("$.code").value(code)).andExpect(jsonPath("$.message").value(errorCode.message()));
     }
 
     private void authenticateAs(final Long userId) {

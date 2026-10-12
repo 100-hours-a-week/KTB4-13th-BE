@@ -3,6 +3,7 @@ package com.book.core.onboarding.api.spec;
 import com.book.common.response.ApiResponse;
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
 import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
+import com.book.core.onboarding.api.request.PutOnboardingPreferencesRequest;
 import com.book.core.onboarding.api.response.OnboardingBookCandidatesResponse;
 import com.book.core.onboarding.api.response.OnboardingProgressResponse;
 import com.book.core.onboarding.api.response.OnboardingQuestionResponse;
@@ -25,17 +26,24 @@ import org.springframework.web.bind.annotation.PathVariable;
 @Tag(name = "Onboarding", description = "온보딩 질문/응답 API")
 public interface OnboardingControllerSpec {
     @Operation(summary = "온보딩 질문 조회",
-        description = "questionId에 해당하는 온보딩 질문과 선택지를 조회합니다. " + "선행 질문(Question 3) 답변에 의존하는 질문(Question 4)은 선행 답변이 있는 대분류의 선택지만 반환합니다.")
+        description = "questionId에 해당하는 온보딩 질문과 선택지를 조회합니다. " + "선행 질문(Question 3) 답변에 의존하는 질문(Question 4)은 선행 답변이 있는 대분류의 선택지만 반환합니다. "
+            + "parentOptionIds를 전달하면 저장된 답변 대신 전달한 대분류 선택지 기준으로 Question 4 선택지를 반환합니다. "
+            + "parentOptionIds는 Question 4에만 전달할 수 있으며, 전달할 때는 1개 이상의 중복 없는 양수 ID여야 합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "온보딩 질문 조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 questionId"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",
+            description = "questionId가 양수가 아니거나, parentOptionIds가 비었거나 중복·0 이하 값을 포함하거나, Question 4가 아닌 질문에 전달됨"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "존재하지 않는 questionId 또는 존재하지 않는 parentOptionIds"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
-            description = "선행 질문(Question 3)에 대한 답변이 아직 없어 조회할 수 없음"),
+            description = "선행 질문(Question 3)에 대한 답변이 아직 없어 조회할 수 없거나, parentOptionIds가 Question 3 선택지가 아님"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
     ResponseEntity<ApiResponse<OnboardingQuestionResponse>> getQuestion(@Parameter(hidden = true) final Long userId,
-        @Parameter(in = ParameterIn.PATH, required = true, example = "1") @Positive @PathVariable("questionId") final Long questionId);
+        @Parameter(in = ParameterIn.PATH, required = true, example = "1") @Positive @PathVariable("questionId") final Long questionId,
+        @Parameter(in = ParameterIn.QUERY, required = false, description = "Question 4 선택지를 필터링할 Question 3 선택지 ID 목록. 생략하면 저장된 답변 기준으로 조회",
+            example = "9,10") final List<Long> parentOptionIds);
 
     @Operation(summary = "온보딩 진행 정보 조회", description = "요청 회원의 활성 온보딩 진행 상태, 질문별 응답, 선택 도서 목록을 조회합니다.")
     @SecurityRequirement(name = "bearerAuth")
@@ -91,6 +99,25 @@ public interface OnboardingControllerSpec {
         @RequestBody(description = "선택한 도서 ID 목록", required = true,
             content = @Content(schema = @Schema(implementation = PutOnboardingBooksRequest.class)))
         @Valid final PutOnboardingBooksRequest request);
+
+    @Operation(summary = "온보딩 취향 정보 전체 수정",
+        description = "온보딩을 완료(COMPLETED)한 회원의 Question 1~4 답변과 선택 도서 목록을 한 번에 수정합니다. "
+            + "answers에는 모든 질문을 한 번씩 포함해야 하며, Question 4 선택지의 부모는 같은 요청의 Question 3 선택지에 있어야 합니다. "
+            + "bookIds는 빈 배열을 허용합니다. 기존 데이터와 비교해 변경된 답변과 도서만 반영하고, 온보딩 상태·완료 시각·개인화 동의는 변경하지 않습니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "온보딩 취향 정보 수정 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",
+            description = "요청 형식이 올바르지 않거나, 질문 구성이 누락·중복되었거나, 선택지 개수나 목록 형식이 올바르지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "온보딩 기록이 없거나 존재하지 않는 선택지·도서가 포함됨"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+            description = "온보딩이 완료되지 않았거나, 선택지가 해당 질문에 속하지 않거나, Question 4 선택지의 부모가 요청의 Question 3에 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<ApiResponse<Void>> updatePreferences(@Parameter(hidden = true) final Long userId,
+        @RequestBody(description = "Question 1~4 답변과 선택 도서 ID 목록", required = true,
+            content = @Content(schema = @Schema(implementation = PutOnboardingPreferencesRequest.class)))
+        @Valid final PutOnboardingPreferencesRequest request);
 
     @Operation(summary = "개인화 추천 동의 기록",
         description = "요청 회원의 개인화 추천 동의를 활성 개인화 약관에 기록합니다. 요청 본문은 없으며, 동의하지 않는 회원은 호출하지 않습니다. " + "이미 동의한 회원이 다시 호출해도 새 기록 없이 성공합니다.")

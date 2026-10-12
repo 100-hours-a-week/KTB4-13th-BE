@@ -3,9 +3,10 @@ package com.book.core.review.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.core.review.application.command.DeleteReviewCommand;
 import com.book.core.review.application.port.ReviewRepositoryPort;
 import com.book.core.review.domain.Review;
+import com.book.core.review.domain.ReviewFormat;
+import com.book.core.review.application.result.ReviewProcessResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,13 +16,13 @@ public class DeleteReviewUseCase {
     private final ReviewRepositoryPort reviewRepository;
 
     @Transactional
-    public void execute(final DeleteReviewCommand command) {
-        final Review review =
-            reviewRepository.findActiveById(command.reviewId()).orElseThrow(() -> new CoreException(ErrorCode.REVIEW_NOT_FOUND));
-        if (!review.userId().equals(command.userId())) {
+    public ReviewProcessResult execute(final Long userId, final Long reviewId) {
+        final Review review = reviewRepository.findActiveById(reviewId).orElseThrow(() -> new CoreException(ErrorCode.REVIEW_NOT_FOUND));
+        if (!review.userId().equals(userId)) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         review.delete();
         reviewRepository.save(review);
+        return new ReviewProcessResult(review.id(), ReviewFormat.TEXT);
     }
 }

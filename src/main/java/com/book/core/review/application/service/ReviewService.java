@@ -1,12 +1,14 @@
 package com.book.core.review.application.service;
 
-import com.book.core.review.application.command.CreateReviewCommand;
+import com.book.core.review.application.command.AddReviewCommand;
 import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.common.paging.Page;
 import com.book.core.review.application.result.ReviewItemResult;
-import com.book.core.review.application.command.DeleteReviewCommand;
+import com.book.core.review.application.result.ReviewProcessResult;
+import com.book.core.review.domain.ReviewKey;
+import com.book.core.review.application.command.RemoveReviewCommand;
 import com.book.core.review.application.command.UpdateReviewCommand;
-import com.book.core.review.application.usecase.CreateReviewUseCase;
+import com.book.core.review.application.usecase.AddReviewUseCase;
 import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.GetReviewsUseCase;
 import com.book.core.review.application.usecase.UpdateReviewUseCase;
@@ -17,7 +19,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class ReviewService {
-    private final CreateReviewUseCase createReviewUseCase;
+    private final AddReviewUseCase addReviewUseCase;
     private final UpdateReviewUseCase updateReviewUseCase;
     private final DeleteReviewUseCase deleteReviewUseCase;
     private final GetReviewsUseCase getReviewsUseCase;
@@ -27,15 +29,19 @@ public class ReviewService {
         return getReviewsUseCase.execute(command.target(), command.offsetLimit());
     }
 
-    public void createReview(final CreateReviewCommand command) {
-        createReviewUseCase.execute(command);
+    public Long addReview(final AddReviewCommand command) {
+        final ReviewKey reviewKey = validateReviewPolicyUseCase.validateNew(command.userId(), command.target());
+        final ReviewProcessResult result = addReviewUseCase.execute(command.target(), reviewKey, command.content(), command.isSpoiler());
+        return result.id();
     }
 
-    public void updateReview(final UpdateReviewCommand command) {
-        updateReviewUseCase.execute(command);
+    public Long updateReview(final UpdateReviewCommand command) {
+        validateReviewPolicyUseCase.validateUpdate(command.userId(), command.reviewId());
+        return updateReviewUseCase.execute(command.userId(), command.reviewId(), command.content(), command.isSpoiler());
     }
 
-    public void deleteReview(final DeleteReviewCommand command) {
-        deleteReviewUseCase.execute(command);
+    public Long removeReview(final RemoveReviewCommand command) {
+        final ReviewProcessResult result = deleteReviewUseCase.execute(command.userId(), command.reviewId());
+        return result.id();
     }
 }

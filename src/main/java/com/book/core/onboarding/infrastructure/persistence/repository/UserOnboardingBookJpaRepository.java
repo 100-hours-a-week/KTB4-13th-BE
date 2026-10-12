@@ -8,6 +8,4 @@ interface UserOnboardingBookJpaRepository extends JpaRepository<UserOnboardingBo
     List<UserOnboardingBook> findByUserId(final Long userId);
 
     void deleteByUserId(final Long userId);
-
-    void deleteByUserIdAndBookIdIn(final Long userId, final List<Long> bookIds);
 }

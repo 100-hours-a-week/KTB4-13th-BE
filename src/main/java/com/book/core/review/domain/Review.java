@@ -35,7 +35,7 @@ public class Review extends BaseEntity {
     @Column(name = "target_id", nullable = false)
     private Long targetId;
 
-    @Column(name = "rating", nullable = false, precision = 3, scale = 1)
+    @Column(name = "rate", nullable = false, precision = 3, scale = 1)
     private BigDecimal rate;
 
     @Column(nullable = false, length = MAX_CONTENT_LENGTH)
@@ -61,16 +61,12 @@ public class Review extends BaseEntity {
         return new Review(null, key.userId(), key.key(), target.type(), target.id(), content.rate(), content.content(), isSpoiler);
     }
 
-    public void update(final ReviewContent content, final Boolean isSpoiler) {
+    public void updateContent(final ReviewContent content, final Boolean isSpoiler) {
         this.rate = content.rate();
         this.content = content.content();
         if (isSpoiler != null) {
             this.isSpoiler = isSpoiler;
         }
-    }
-
-    public void updateContent(final BigDecimal rate, final String content) {
-        update(new ReviewContent(rate, content), null);
     }
 
 }

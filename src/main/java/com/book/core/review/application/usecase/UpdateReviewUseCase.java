@@ -31,7 +31,7 @@ public class UpdateReviewUseCase {
         if (command.content() != null) {
             content = command.content();
         }
-        review.update(new ReviewContent(rate, content), command.isSpoiler());
+        review.updateContent(new ReviewContent(rate, content), command.isSpoiler());
         reviewRepository.save(review);
     }
 }

@@ -9,6 +9,8 @@ import com.book.core.review.api.request.UpdateReviewRequest;
 import com.book.core.review.api.response.ReviewResponse;
 import com.book.core.review.api.spec.ReviewControllerSpec;
 import com.book.core.review.application.service.ReviewService;
+import com.book.core.review.application.command.UpdateReviewCommand;
+import com.book.core.review.application.command.RemoveReviewCommand;
 import com.book.core.review.domain.enums.ReviewTargetType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -52,16 +54,18 @@ class ReviewController implements ReviewControllerSpec {
 
     @Override
     @PatchMapping("/{reviewId}")
-    public ResponseEntity<ApiResponse<Void>> updateReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId,
+    public ResponseEntity<ApiResponse<Long>> updateReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId,
         @RequestBody final UpdateReviewRequest request) {
-        reviewService.updateReview(commandConverter.toUpdateReviewCommand(userId, reviewId, request));
-        return ResponseEntity.ok(ApiResponse.ok());
+        final UpdateReviewCommand command = commandConverter.toUpdateReviewCommand(userId, reviewId, request);
+        final Long result = reviewService.updateReview(command);
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     @Override
     @DeleteMapping("/{reviewId}")
-    public ResponseEntity<ApiResponse<Void>> deleteReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId) {
-        reviewService.deleteReview(commandConverter.toDeleteReviewCommand(userId, reviewId));
-        return ResponseEntity.ok(ApiResponse.ok());
+    public ResponseEntity<ApiResponse<Long>> removeReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId) {
+        final RemoveReviewCommand command = commandConverter.toRemoveReviewCommand(userId, reviewId);
+        final Long result = reviewService.removeReview(command);
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 }

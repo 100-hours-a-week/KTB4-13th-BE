@@ -3,7 +3,8 @@ package com.book.core.review.api.converter;
 import com.book.core.review.api.request.CreateReviewRequest;
 import com.book.core.review.api.request.UpdateReviewRequest;
 import com.book.core.review.application.command.CreateReviewCommand;
-import com.book.core.review.application.command.DeleteReviewCommand;
+import com.book.core.review.application.command.RemoveReviewCommand;
+import com.book.core.review.domain.ReviewContent;
 import com.book.core.review.application.command.UpdateReviewCommand;
 import org.springframework.stereotype.Component;
 import com.book.common.paging.OffsetLimit;
@@ -23,10 +24,10 @@ public class ReviewCommandConverter {
     }
 
     public UpdateReviewCommand toUpdateReviewCommand(final Long userId, final Long reviewId, final UpdateReviewRequest request) {
-        return new UpdateReviewCommand(userId, reviewId, request.rating(), request.content(), request.isSpoiler());
+        return new UpdateReviewCommand(userId, reviewId, new ReviewContent(request.rate(), request.content()), request.isSpoiler());
     }
 
-    public DeleteReviewCommand toDeleteReviewCommand(final Long userId, final Long reviewId) {
-        return new DeleteReviewCommand(userId, reviewId);
+    public RemoveReviewCommand toRemoveReviewCommand(final Long userId, final Long reviewId) {
+        return new RemoveReviewCommand(userId, reviewId);
     }
 }

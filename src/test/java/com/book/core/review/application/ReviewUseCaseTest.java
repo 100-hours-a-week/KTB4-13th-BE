@@ -11,19 +11,16 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.usecase.GetOrderItemUseCase;
-import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderItem;
+import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderItemStatus;
 import com.book.core.review.application.command.CreateReviewCommand;
-import com.book.core.review.application.command.DeleteReviewCommand;
-import com.book.core.review.application.command.UpdateReviewCommand;
+import com.book.core.review.domain.ReviewFormat;
 import com.book.core.review.application.port.ReviewRepositoryPort;
 import com.book.core.review.application.usecase.CreateReviewUseCase;
 import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.UpdateReviewUseCase;
 import com.book.core.review.domain.Review;
-import com.book.core.review.domain.ReviewKey;
-import com.book.core.review.domain.ReviewTarget;
 import com.book.core.review.domain.ReviewContent;
 import com.book.core.review.domain.enums.ReviewTargetType;
 import java.math.BigDecimal;
@@ -90,12 +87,11 @@ class ReviewUseCaseTest {
     }
 
     @Test
-    void 리뷰_수정은_입력된_필드만_적용한다() {
-        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
-            new ReviewContent(new BigDecimal("4.5"), "기존"), false);
+    void 리뷰_수정은_별점과_본문_VO를_적용한다() {
+        final var review = review();
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
-        updateReview.execute(new UpdateReviewCommand(42L, 801L, null, "수정", true));
+        assertThat(updateReview.execute(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정"), true)).isEqualTo(801L);
 
         assertThat(review.content()).isEqualTo("수정");
         assertThat(review.rate()).isEqualByComparingTo("4.5");
@@ -104,51 +100,44 @@ class ReviewUseCaseTest {
     }
 
     @Test
-    void 소유자가_아닌_사용자의_리뷰_수정은_FORBIDDEN으로_거부한다() {
-        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
-            new ReviewContent(new BigDecimal("4.5"), "기존"), false);
+    void 소유자가_아니면_수정과_삭제를_거부한다() {
+        final var review = review();
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
-        assertThatThrownBy(() -> updateReview.execute(new UpdateReviewCommand(999L, 801L, null, "수정", true)))
+        assertThatThrownBy(() -> updateReview.execute(999L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정"), true))
             .isInstanceOfSatisfying(CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.FORBIDDEN));
-
-        assertThat(review.content()).isEqualTo("기존");
+        assertThatThrownBy(() -> deleteReview.execute(999L, 801L)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+        assertThat(review.isDeleted()).isFalse();
+        assertThat(review.content()).isEqualTo("본문");
         verify(reviewRepository, never()).save(review);
     }
 
     @Test
     void 삭제는_활성_리뷰를_소프트_삭제한다() {
-        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
-            new ReviewContent(new BigDecimal("4.5"), "본문"), false);
+        final var review = review();
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
-        deleteReview.execute(new DeleteReviewCommand(42L, 801L));
+        final var result = deleteReview.execute(42L, 801L);
 
+        assertThat(result.id()).isEqualTo(801L);
+        assertThat(result.format()).isEqualTo(ReviewFormat.TEXT);
         assertThat(review.isDeleted()).isTrue();
         verify(reviewRepository).save(review);
     }
 
     @Test
-    void 소유자가_아닌_사용자의_리뷰_삭제는_FORBIDDEN으로_거부한다() {
-        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
-            new ReviewContent(new BigDecimal("4.5"), "본문"), false);
-        when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
-
-        assertThatThrownBy(() -> deleteReview.execute(new DeleteReviewCommand(999L, 801L))).isInstanceOfSatisfying(CoreException.class,
-            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.FORBIDDEN));
-
-        assertThat(review.isDeleted()).isFalse();
-        verify(reviewRepository, never()).save(review);
-    }
-
-    @Test
     void 존재하지_않거나_삭제된_리뷰를_수정하거나_삭제할_수_없다() {
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> updateReview.execute(new UpdateReviewCommand(42L, 801L, null, "수정", null))).isInstanceOfSatisfying(
-            CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_NOT_FOUND));
-        assertThatThrownBy(() -> deleteReview.execute(new DeleteReviewCommand(42L, 801L))).isInstanceOfSatisfying(CoreException.class,
+        assertThatThrownBy(() -> updateReview.execute(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정"), null))
+            .isInstanceOfSatisfying(CoreException.class,
+                exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_NOT_FOUND));
+        assertThatThrownBy(() -> deleteReview.execute(42L, 801L)).isInstanceOfSatisfying(CoreException.class,
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_NOT_FOUND));
+    }
+
+    private Review review() {
+        return new Review(801L, 42L, "ORDER_ITEM_701", ReviewTargetType.PRODUCT, 10L, new BigDecimal("4.5"), "본문", false);
     }
 
     private static OrderItem orderItem(final Long userId, final OrderItemStatus status) {

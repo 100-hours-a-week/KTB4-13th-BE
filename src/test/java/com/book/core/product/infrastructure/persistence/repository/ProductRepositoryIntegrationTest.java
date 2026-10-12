@@ -215,7 +215,10 @@ class ProductRepositoryIntegrationTest {
         insertPaidItem(4208L, 2206L, 100, "PAID", Timestamp.valueOf("2026-01-01 00:00:00"));
         insertPaidItem(4209L, 2206L, 100, "PAID", null, Timestamp.valueOf("2026-01-01 00:00:00"));
         insertReview(4308L, 4208L, "10.0", null);
+        insertReview(4310L, 4209L, "10.0", null);
         insertReview(4309L, 4205L, "0.0", Timestamp.valueOf("2026-01-01 00:00:00"));
+        insertReview(4311L, 4205L, "0.0", null);
+        jdbc.update("UPDATE reviews SET target_type = 'OTHER' WHERE id = 4311");
         insertPaidItem(4210L, 2290L, 1000, null, null);
         insertPaidItem(4211L, 2291L, 1000, null, null);
 
@@ -395,11 +398,12 @@ class ProductRepositoryIntegrationTest {
                 """, id, id, productId, BigDecimal.valueOf(100L), BigDecimal.valueOf(quantity * 100L), quantity, itemStatus, deletedItemAt);
     }
 
-    private void insertReview(final long id, final long orderItemId, final String rating, final Timestamp deletedAt) {
+    private void insertReview(final long id, final long orderItemId, final String rate, final Timestamp deletedAt) {
+        final Long productId = jdbc.queryForObject("SELECT product_id FROM order_item WHERE id = ?", Long.class, orderItemId);
         jdbc.update("""
-                INSERT INTO reviews (id, user_id, order_item_id, rating, content, deleted_at)
-                VALUES (?, ?, ?, ?, 'review', ?)
-                """, id, id, orderItemId, new BigDecimal(rating), deletedAt);
+                INSERT INTO reviews (id, user_id, review_key, target_type, target_id, rate, content, deleted_at)
+                VALUES (?, ?, ?, 'PRODUCT', ?, ?, 'review', ?)
+                """, id, id, "ORDER_ITEM_" + orderItemId, productId, new BigDecimal(rate), deletedAt);
     }
 
     private void insertOrderAddress(final long id) {

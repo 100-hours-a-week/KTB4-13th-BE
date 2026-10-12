@@ -6,13 +6,20 @@ import com.book.common.paging.Page;
 import com.book.core.review.application.result.ReviewItemResult;
 import com.book.core.review.domain.enums.ReviewTargetType;
 import java.util.Optional;
+import java.util.List;
 
 public interface ReviewRepositoryPort {
     Page<ReviewItemResult> findActiveReviews(final ReviewTargetType targetType, final Long targetId, final OffsetLimit offsetLimit);
+
+    List<String> findUsedReviewKeys(final Long userId, final List<String> reviewKeys);
 
     Review save(final Review review);
 
     Optional<Review> findActiveById(final Long reviewId);
 
-    boolean existsActiveByUserIdAndOrderItemId(final Long userId, final Long orderItemId);
+    boolean existsByUserIdAndReviewKey(final Long userId, final String reviewKey);
+
+    List<Review> findByUserIdAndReviewKeyIn(final Long userId, final List<String> reviewKeys);
+
+    Optional<Review> findByIdAndUserId(Long reviewId, Long userId);
 }

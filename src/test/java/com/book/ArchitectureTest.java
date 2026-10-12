@@ -11,6 +11,8 @@ import com.book.core.category.domain.Category;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
+import com.book.core.point.domain.PointBalance;
+import com.book.core.point.domain.PointHistory;
 import com.book.core.product.domain.Product;
 import com.book.core.product.domain.ProductCategory;
 import com.book.core.review.domain.Review;
@@ -59,6 +61,8 @@ class ArchitectureTest {
         assertThat(Address.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Cart.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(CartItem.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(PointBalance.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(PointHistory.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Category.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Book.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Product.class.isAnnotationPresent(Entity.class)).isTrue();

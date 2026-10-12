@@ -7,6 +7,10 @@ import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.domain.Order;
 import com.book.core.review.application.port.ReviewRepositoryPort;
 import com.book.core.review.domain.Review;
+import com.book.core.review.domain.ReviewKey;
+import com.book.core.review.domain.ReviewTarget;
+import com.book.core.review.domain.ReviewContent;
+import com.book.core.review.domain.enums.ReviewTargetType;
 import java.math.BigDecimal;
 import com.book.common.paging.OffsetLimit;
 import com.book.core.review.domain.enums.ReviewTargetType;
@@ -54,20 +58,23 @@ class ReviewRepositoryIntegrationTest {
         order.addItem(9401L, "리뷰 테스트 상품", null, "저자", new BigDecimal("20.00"), new BigDecimal("17.25"), 1);
         final Order savedOrder = orderRepository.save(order);
         final Long orderItemId = jdbc.queryForObject("SELECT id FROM order_item WHERE order_id = ?", Long.class, savedOrder.id());
-        final Review review = reviewRepository.save(Review.create(42L, orderItemId, 9401L, new BigDecimal("4.5"), "리뷰 본문", true));
+        final Review review = reviewRepository.save(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + orderItemId),
+            new ReviewTarget(ReviewTargetType.PRODUCT, 9401L), new ReviewContent(new BigDecimal("4.5"), "리뷰 본문"), true));
 
         assertThat(reviewRepository.findActiveById(review.id())).isPresent();
-        assertThat(jdbc.queryForMap("SELECT user_id, order_item_id, rating, content, is_spoiler, active_flag FROM reviews WHERE id = ?",
-            review.id())).containsEntry("user_id", 42L).containsEntry("order_item_id", orderItemId)
+        assertThat(
+            jdbc.queryForMap("SELECT user_id, review_key, rating, content, is_spoiler, active_flag FROM reviews WHERE id = ?", review.id()))
+            .containsEntry("user_id", 42L).containsEntry("review_key", "ORDER_ITEM_" + orderItemId)
             .containsEntry("rating", new BigDecimal("4.5")).containsEntry("content", "리뷰 본문").containsEntry("is_spoiler", true)
             .containsEntry("active_flag", 1);
-        assertThat(reviewRepository.existsActiveByUserIdAndOrderItemId(42L, orderItemId)).isTrue();
-        assertThatThrownBy(() -> reviewRepository.save(Review.create(42L, orderItemId, 9401L, new BigDecimal("5.0"), "중복", false)))
+        assertThat(reviewRepository.existsByUserIdAndReviewKey(42L, "ORDER_ITEM_" + orderItemId)).isTrue();
+        assertThatThrownBy(() -> reviewRepository.save(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + orderItemId),
+            new ReviewTarget(ReviewTargetType.PRODUCT, 9401L), new ReviewContent(new BigDecimal("5.0"), "중복"), false)))
             .isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> jdbc.update(
-            "INSERT INTO reviews (user_id, order_item_id, review_key, target_type, target_id, rating, content, is_spoiler) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            43L, orderItemId, "ORDER_ITEM_" + orderItemId, "PRODUCT", 9401L, new BigDecimal("10.1"), "범위 초과", false))
+            "INSERT INTO reviews (user_id, review_key, target_type, target_id, rating, content, is_spoiler) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            43L, "ORDER_ITEM_" + orderItemId, "PRODUCT", 9401L, new BigDecimal("10.1"), "범위 초과", false))
             .isInstanceOf(DataAccessException.class).satisfies(exception -> {
                 assertThat(exception.getCause()).isInstanceOf(SQLException.class);
                 assertThat(((SQLException) exception.getCause()).getErrorCode()).isEqualTo(MYSQL_CHECK_CONSTRAINT_VIOLATED);
@@ -78,7 +85,7 @@ class ReviewRepositoryIntegrationTest {
 
         assertThat(reviewRepository.findActiveById(review.id())).isEmpty();
         assertThat(jdbc.queryForObject("SELECT active_flag FROM reviews WHERE id = ?", Integer.class, review.id())).isNull();
-        assertThat(reviewRepository.existsActiveByUserIdAndOrderItemId(42L, orderItemId)).isFalse();
+        assertThat(reviewRepository.existsByUserIdAndReviewKey(42L, "ORDER_ITEM_" + orderItemId)).isTrue();
     }
 
     @Test
@@ -114,7 +121,8 @@ class ReviewRepositoryIntegrationTest {
         order.addItem(productId, "리뷰 테스트 상품", null, "저자", new BigDecimal("20.00"), new BigDecimal("17.25"), 1);
         final var saved = orderRepository.save(order);
         final var itemId = jdbc.queryForObject("SELECT id FROM order_item WHERE order_id = ?", Long.class, saved.id());
-        return reviewRepository.save(Review.create(42L, itemId, productId, new BigDecimal("4.5"), content, false));
+        return reviewRepository.save(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + itemId),
+            new ReviewTarget(ReviewTargetType.PRODUCT, productId), new ReviewContent(new BigDecimal("4.5"), content), false));
     }
 
     private void insertBook(final long id) {

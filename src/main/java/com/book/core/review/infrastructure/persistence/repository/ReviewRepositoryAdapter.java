@@ -7,6 +7,7 @@ import com.book.common.paging.Page;
 import com.book.core.review.application.result.ReviewItemResult;
 import com.book.core.review.domain.enums.ReviewTargetType;
 import java.util.Optional;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -21,6 +22,17 @@ public class ReviewRepositoryAdapter implements ReviewRepositoryPort {
         return queryRepository.findActiveReviews(targetType, targetId, offsetLimit);
     }
 
+
+    @Override
+    public List<String> findUsedReviewKeys(final Long userId, final List<String> reviewKeys) {
+        return jpaRepository.findByUserIdAndReviewKeyIn(userId, reviewKeys).stream().map(Review::reviewKey).toList();
+    }
+
+    @Override
+    public List<Review> findByUserIdAndReviewKeyIn(final Long userId, final List<String> reviewKeys) {
+        return jpaRepository.findByUserIdAndReviewKeyIn(userId, reviewKeys);
+    }
+
     @Override
     public Review save(final Review review) {
         return jpaRepository.save(review);
@@ -32,7 +44,12 @@ public class ReviewRepositoryAdapter implements ReviewRepositoryPort {
     }
 
     @Override
-    public boolean existsActiveByUserIdAndOrderItemId(final Long userId, final Long orderItemId) {
-        return jpaRepository.existsByUserIdAndOrderItemIdAndDeletedAtIsNull(userId, orderItemId);
+    public boolean existsByUserIdAndReviewKey(final Long userId, final String reviewKey) {
+        return jpaRepository.existsByUserIdAndReviewKey(userId, reviewKey);
+    }
+
+    @Override
+    public Optional<Review> findByIdAndUserId(final Long reviewId, final Long userId) {
+        return jpaRepository.findByIdAndUserIdAndDeletedAtIsNull(reviewId, userId);
     }
 }

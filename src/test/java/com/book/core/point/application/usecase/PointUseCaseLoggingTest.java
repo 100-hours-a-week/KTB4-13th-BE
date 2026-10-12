@@ -11,8 +11,6 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.book.common.exception.CoreException;
-import com.book.core.point.application.command.DeductPointCommand;
-import com.book.core.point.application.command.EarnPointCommand;
 import com.book.core.point.application.command.GetPointCommand;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.application.port.PointHistoryRepositoryPort;
@@ -143,9 +141,9 @@ class PointUseCaseLoggingTest {
 
     private void executeChange(final boolean earn, final BigDecimal amount) {
         if (earn) {
-            new EarnPointUseCase(balances, histories).execute(new EarnPointCommand(42L, PointType.REVIEW, 10L, amount));
+            new EarnPointUseCase(balances, histories).execute(42L, PointType.REVIEW, 10L, amount);
             return;
         }
-        new DeductPointUseCase(balances, histories).execute(new DeductPointCommand(42L, PointType.REVIEW, 10L, amount));
+        new DeductPointUseCase(balances, histories).execute(42L, PointType.REVIEW, 10L, amount);
     }
 }

@@ -81,6 +81,11 @@ class OnboardingRepositoryIntegrationTest {
     }
 
     @Test
+    void V17_시드된_질문_전체를_조회한다() {
+        assertThat(questionRepository.findAll()).extracting(OnboardingQuestion::id).containsExactlyInAnyOrder(1L, 2L, 3L, 4L);
+    }
+
+    @Test
     void V17_시드된_Q3_옵션과_Q4_옵션의_부모관계를_조회한다() {
         final List<OnboardingOption> q3Options = optionRepository.findByQuestionId(3L);
         final List<OnboardingOption> q4Options = optionRepository.findByQuestionId(4L);
@@ -190,6 +195,24 @@ class OnboardingRepositoryIntegrationTest {
         onboardingBookRepository.deleteByUserId(userId);
 
         assertThat(onboardingBookRepository.findByUserId(userId)).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    void 도서_선택_중_지정한_도서만_삭제하고_다른_회원의_선택은_유지한다() {
+        final Long userId = insertUser("온보딩부분삭제회원1");
+        final Long otherUserId = insertUser("온보딩부분삭제회원2");
+        final Long removedBookId = insertBook("온보딩 부분 삭제 도서 1");
+        final Long keptBookId = insertBook("온보딩 부분 삭제 도서 2");
+        onboardingBookRepository.saveAll(List.of(UserOnboardingBook.of(userId, removedBookId), UserOnboardingBook.of(userId, keptBookId),
+            UserOnboardingBook.of(otherUserId, removedBookId)));
+
+        onboardingBookRepository.deleteByUserIdAndBookIdIn(userId, List.of(removedBookId));
+
+        assertThat(jdbc.queryForList("SELECT book_id FROM user_onboarding_books WHERE user_id = ?", Long.class, userId))
+            .containsExactly(keptBookId);
+        assertThat(jdbc.queryForList("SELECT book_id FROM user_onboarding_books WHERE user_id = ?", Long.class, otherUserId))
+            .containsExactly(removedBookId);
     }
 
     @Test

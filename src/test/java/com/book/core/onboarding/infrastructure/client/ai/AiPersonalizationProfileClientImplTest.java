@@ -86,6 +86,23 @@ class AiPersonalizationProfileClientImplTest {
             .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
     }
 
+    @Test
+    void 갱신은_생성과_같은_인증_헤더와_요청_본문으로_PUT_preferences_profile을_요청한다() {
+        MDC.put(TraceIdFilter.TRACE_ID_MDC_KEY, "trace-put-456");
+        final AiPersonalizationProfileRequest request = profileRequest();
+        server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT))
+            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "trace-put-456"))
+            .andExpect(jsonPath("$.user_id").value(42))
+            .andExpect(jsonPath("$.idempotency_key").value(idempotencyKeyGenerator.generate(request)))
+            .andExpect(jsonPath("$.onboarding.reading_times[0]").value("잠들기 전"))
+            .andExpect(jsonPath("$.onboarding.liked_book_ids[1]").value(300)).andExpect(jsonPath("$.memories").isEmpty())
+            .andRespond(withSuccess());
+
+        client.updateProfile(request);
+
+        server.verify();
+    }
+
     private static AiPersonalizationProfileRequest profileRequest() {
         return new AiPersonalizationProfileRequest(42L, List.of("잠들기 전"), List.of("베스트셀러"), List.of("소설"), List.of("SF"),
             List.of(100L, 300L));

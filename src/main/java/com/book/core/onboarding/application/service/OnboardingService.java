@@ -57,7 +57,9 @@ public class OnboardingService {
     }
 
     public void updatePreferences(final PutOnboardingPreferencesCommand command) {
-        updateOnboardingPreferencesUseCase.execute(command);
+        if (updateOnboardingPreferencesUseCase.execute(command)) {
+            updatePersonalizationProfile(command.userId());
+        }
     }
 
     public List<OnboardingBookCandidateResult> getBookCandidates(final GetOnboardingBookCandidatesCommand command) {
@@ -73,6 +75,14 @@ public class OnboardingService {
             createPersonalizationProfileUseCase.execute(userId);
         } catch (final CoreException | DataAccessException | TransactionException exception) {
             log.warn("AI 취향 프로필 생성에 실패했습니다. userId={}", userId, exception);
+        }
+    }
+
+    private void updatePersonalizationProfile(final Long userId) {
+        try {
+            createPersonalizationProfileUseCase.executeUpdate(userId);
+        } catch (final CoreException | DataAccessException | TransactionException exception) {
+            log.warn("AI 취향 프로필 갱신에 실패했습니다. userId={}", userId, exception);
         }
     }
 }

@@ -41,6 +41,32 @@ class CreatePersonalizationProfileUseCaseTest {
         useCase.execute(USER_ID);
 
         assertThat(profileClient.requests).singleElement().satisfies(request -> assertThat(request.userId()).isEqualTo(USER_ID));
+        assertThat(profileClient.updateRequests).isEmpty();
+    }
+
+    @Test
+    void 개인화_추천에_동의했으면_같은_요청_데이터로_AI_취향_프로필_갱신을_요청한다() {
+        termRepository.activeTerm = personalizationTerm();
+        agreementRepository.agreed = true;
+        optionRepository.options.add(new OnboardingOption(1L, 1L, null, "morning", "아침, 하루를 시작할 때", 1));
+        answerRepository.answers.add(UserOnboardingAnswer.of(USER_ID, 1L));
+        bookRepository.books.add(UserOnboardingBook.of(USER_ID, 100L));
+
+        useCase.executeUpdate(USER_ID);
+
+        assertThat(profileClient.updateRequests).singleElement().isEqualTo(
+            new AiPersonalizationProfileRequest(USER_ID, List.of("아침, 하루를 시작할 때"), List.of(), List.of(), List.of(), List.of(100L)));
+        assertThat(profileClient.requests).isEmpty();
+    }
+
+    @Test
+    void 개인화_추천에_동의하지_않았으면_AI_취향_프로필_갱신도_요청하지_않는다() {
+        termRepository.activeTerm = personalizationTerm();
+
+        useCase.executeUpdate(USER_ID);
+
+        assertThat(profileClient.requests).isEmpty();
+        assertThat(profileClient.updateRequests).isEmpty();
     }
 
     @Test
@@ -164,10 +190,16 @@ class CreatePersonalizationProfileUseCaseTest {
 
     private static class FakeProfileClient implements AiPersonalizationProfileClient {
         final List<AiPersonalizationProfileRequest> requests = new ArrayList<>();
+        final List<AiPersonalizationProfileRequest> updateRequests = new ArrayList<>();
 
         @Override
         public void createProfile(final AiPersonalizationProfileRequest request) {
             requests.add(request);
+        }
+
+        @Override
+        public void updateProfile(final AiPersonalizationProfileRequest request) {
+            updateRequests.add(request);
         }
     }
 }

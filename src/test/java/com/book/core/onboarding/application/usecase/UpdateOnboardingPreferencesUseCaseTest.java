@@ -67,8 +67,10 @@ class UpdateOnboardingPreferencesUseCaseTest {
 
     @Test
     void 기존_답변과_도서에서_변경된_항목만_삭제하고_추가한다() {
-        useCase.execute(command(List.of(answer(1L, 2L), answer(2L, 6L), answer(3L, 9L, 10L), answer(4L, 23L, 28L)), List.of(200L, 300L)));
+        final boolean changed = useCase
+            .execute(command(List.of(answer(1L, 2L), answer(2L, 6L), answer(3L, 9L, 10L), answer(4L, 23L, 28L)), List.of(200L, 300L)));
 
+        assertThat(changed).isTrue();
         assertThat(answerRepository.deletedOptionIds).containsExactly(List.of(1L));
         assertThat(answerRepository.savedOptionIds).containsExactly(List.of(2L, 10L, 28L));
         assertThat(answerRepository.optionIds()).containsExactlyInAnyOrder(2L, 6L, 9L, 10L, 23L, 28L);
@@ -79,12 +81,35 @@ class UpdateOnboardingPreferencesUseCaseTest {
 
     @Test
     void 변경이_없으면_성공하고_저장소_쓰기를_생략한다() {
-        useCase.execute(currentPreferences(List.of(100L, 200L)));
+        final boolean changed = useCase.execute(currentPreferences(List.of(100L, 200L)));
 
+        assertThat(changed).isFalse();
         assertThat(answerRepository.deletedOptionIds).isEmpty();
         assertThat(answerRepository.savedOptionIds).isEmpty();
         assertThat(bookRepository.deletedBookIds).isEmpty();
         assertThat(bookRepository.savedBookIds).isEmpty();
+    }
+
+    @Test
+    void 답변만_변경하면_변경됨을_반환한다() {
+        final boolean changed =
+            useCase.execute(command(List.of(answer(1L, 2L), answer(2L, 6L), answer(3L, 9L), answer(4L, 23L)), List.of(100L, 200L)));
+
+        assertThat(changed).isTrue();
+        assertThat(answerRepository.savedOptionIds).containsExactly(List.of(2L));
+        assertThat(bookRepository.deletedBookIds).isEmpty();
+        assertThat(bookRepository.savedBookIds).isEmpty();
+    }
+
+    @Test
+    void 도서만_변경하면_변경됨을_반환한다() {
+        final boolean changed = useCase.execute(currentPreferences(List.of(100L, 300L)));
+
+        assertThat(changed).isTrue();
+        assertThat(answerRepository.deletedOptionIds).isEmpty();
+        assertThat(answerRepository.savedOptionIds).isEmpty();
+        assertThat(bookRepository.deletedBookIds).containsExactly(List.of(200L));
+        assertThat(bookRepository.savedBookIds).containsExactly(List.of(300L));
     }
 
     @Test

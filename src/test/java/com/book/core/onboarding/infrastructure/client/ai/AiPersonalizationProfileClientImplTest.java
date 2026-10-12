@@ -86,6 +86,46 @@ class AiPersonalizationProfileClientImplTest {
             .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
     }
 
+    @Test
+    void 갱신은_PUT_preferences_profile에_같은_인증_헤더와_X_Request_Id를_담아_요청한다() {
+        MDC.put(TraceIdFilter.TRACE_ID_MDC_KEY, "trace-put-456");
+        server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT))
+            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "trace-put-456"))
+            .andRespond(withSuccess());
+
+        client.updateProfile(profileRequest());
+
+        server.verify();
+    }
+
+    @Test
+    void 갱신_요청_본문과_멱등_키는_생성_요청과_같은_계약을_사용한다() {
+        final AiPersonalizationProfileRequest request = profileRequest();
+        server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT)).andExpect(jsonPath("$.user_id").value(42))
+            .andExpect(jsonPath("$.idempotency_key").value(idempotencyKeyGenerator.generate(request)))
+            .andExpect(jsonPath("$.onboarding.reading_times[0]").value("잠들기 전"))
+            .andExpect(jsonPath("$.onboarding.criteria[0]").value("베스트셀러")).andExpect(jsonPath("$.onboarding.categories[0]").value("소설"))
+            .andExpect(jsonPath("$.onboarding.tags[0]").value("SF")).andExpect(jsonPath("$.onboarding.liked_book_ids[1]").value(300))
+            .andExpect(jsonPath("$.memories").isEmpty()).andRespond(withSuccess());
+
+        client.updateProfile(request);
+
+        server.verify();
+    }
+
+    @Test
+    void 갱신_요청이_오류_상태나_연결_실패로_끝나면_AI_서비스_호출_실패로_변환한다() {
+        server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT)).andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+        assertThatThrownBy(() -> client.updateProfile(profileRequest())).isInstanceOf(CoreException.class)
+            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
+
+        server.reset();
+        server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT))
+            .andRespond(withException(new SocketTimeoutException("read timed out")));
+        assertThatThrownBy(() -> client.updateProfile(profileRequest())).isInstanceOf(CoreException.class)
+            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
+    }
+
     private static AiPersonalizationProfileRequest profileRequest() {
         return new AiPersonalizationProfileRequest(42L, List.of("잠들기 전"), List.of("베스트셀러"), List.of("소설"), List.of("SF"),
             List.of(100L, 300L));

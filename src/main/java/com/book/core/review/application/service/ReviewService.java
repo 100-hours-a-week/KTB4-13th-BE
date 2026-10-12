@@ -1,24 +1,25 @@
 package com.book.core.review.application.service;
 
-import com.book.core.review.application.command.CreateReviewCommand;
+import com.book.core.review.application.command.AddReviewCommand;
 import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.common.paging.Page;
 import com.book.core.review.application.result.ReviewItemResult;
-import com.book.core.review.application.command.RemoveReviewCommand;
 import com.book.core.review.application.result.ReviewProcessResult;
-import com.book.core.review.application.usecase.ValidateReviewPolicyUseCase;
+import com.book.core.review.domain.ReviewKey;
+import com.book.core.review.application.command.RemoveReviewCommand;
 import com.book.core.review.application.command.UpdateReviewCommand;
-import com.book.core.review.application.usecase.CreateReviewUseCase;
+import com.book.core.review.application.usecase.AddReviewUseCase;
 import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.GetReviewsUseCase;
 import com.book.core.review.application.usecase.UpdateReviewUseCase;
+import com.book.core.review.application.usecase.ValidateReviewPolicyUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class ReviewService {
-    private final CreateReviewUseCase createReviewUseCase;
+    private final AddReviewUseCase addReviewUseCase;
     private final UpdateReviewUseCase updateReviewUseCase;
     private final DeleteReviewUseCase deleteReviewUseCase;
     private final GetReviewsUseCase getReviewsUseCase;
@@ -28,8 +29,10 @@ public class ReviewService {
         return getReviewsUseCase.execute(command.target(), command.offsetLimit());
     }
 
-    public void createReview(final CreateReviewCommand command) {
-        createReviewUseCase.execute(command);
+    public Long addReview(final AddReviewCommand command) {
+        final ReviewKey reviewKey = validateReviewPolicyUseCase.validateNew(command.userId(), command.target());
+        final ReviewProcessResult result = addReviewUseCase.execute(command.target(), reviewKey, command.content(), command.isSpoiler());
+        return result.id();
     }
 
     public Long updateReview(final UpdateReviewCommand command) {

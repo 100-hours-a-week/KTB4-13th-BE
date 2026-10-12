@@ -2,7 +2,6 @@ package com.book.core.onboarding.infrastructure.persistence.repository;
 
 import com.book.core.onboarding.application.port.OnboardingQuestionRepositoryPort;
 import com.book.core.onboarding.domain.OnboardingQuestion;
-import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -15,11 +14,6 @@ class OnboardingQuestionRepositoryAdapter implements OnboardingQuestionRepositor
     @Override
     public Optional<OnboardingQuestion> findById(final Long id) {
         return jpaRepository.findById(id);
-    }
-
-    @Override
-    public List<OnboardingQuestion> findAll() {
-        return jpaRepository.findAll();
     }
 
     @Override

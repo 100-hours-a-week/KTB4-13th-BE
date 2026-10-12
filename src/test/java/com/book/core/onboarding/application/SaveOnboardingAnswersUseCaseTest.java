@@ -123,11 +123,6 @@ class SaveOnboardingAnswersUseCaseTest {
         }
 
         @Override
-        public List<OnboardingQuestion> findAll() {
-            return List.copyOf(questions.values());
-        }
-
-        @Override
         public Optional<OnboardingQuestion> findFirstByDisplayOrderGreaterThan(final int displayOrder) {
             return Optional.empty();
         }

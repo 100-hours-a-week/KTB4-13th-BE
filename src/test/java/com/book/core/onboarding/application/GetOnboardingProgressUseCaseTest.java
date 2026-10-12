@@ -145,11 +145,6 @@ class GetOnboardingProgressUseCaseTest {
         public void deleteByUserId(final Long userId) {}
 
         @Override
-        public void deleteByUserIdAndBookIdIn(final Long userId, final List<Long> bookIds) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
         public List<UserOnboardingBook> saveAll(final List<UserOnboardingBook> books) {
             return books;
         }

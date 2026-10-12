@@ -193,24 +193,6 @@ class OnboardingRepositoryIntegrationTest {
     }
 
     @Test
-    @Transactional
-    void 도서_선택_중_지정한_도서만_삭제하고_다른_회원의_선택은_유지한다() {
-        final Long userId = insertUser("온보딩부분삭제회원1");
-        final Long otherUserId = insertUser("온보딩부분삭제회원2");
-        final Long removedBookId = insertBook("온보딩 부분 삭제 도서 1");
-        final Long keptBookId = insertBook("온보딩 부분 삭제 도서 2");
-        onboardingBookRepository.saveAll(List.of(UserOnboardingBook.of(userId, removedBookId), UserOnboardingBook.of(userId, keptBookId),
-            UserOnboardingBook.of(otherUserId, removedBookId)));
-
-        onboardingBookRepository.deleteByUserIdAndBookIdIn(userId, List.of(removedBookId));
-
-        assertThat(jdbc.queryForList("SELECT book_id FROM user_onboarding_books WHERE user_id = ?", Long.class, userId))
-            .containsExactly(keptBookId);
-        assertThat(jdbc.queryForList("SELECT book_id FROM user_onboarding_books WHERE user_id = ?", Long.class, otherUserId))
-            .containsExactly(removedBookId);
-    }
-
-    @Test
     void 동일_회원의_동일_도서_중복_선택은_제약_예외를_던진다() {
         final Long userId = insertUser("온보딩회원6");
         final Long bookId = insertBook("온보딩 통합 테스트 도서 2");

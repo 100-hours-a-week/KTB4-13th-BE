@@ -34,35 +34,38 @@ public interface ReviewControllerSpec {
 
     @Operation(summary = "리뷰 작성", description = "결제 완료한 주문상품에 리뷰를 작성합니다. 별점은 0.5~5.0 사이의 0.5 단위이며 본문은 최대 255자입니다.")
     @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "리뷰 작성 성공"),
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "리뷰 작성 성공. data에 생성된 리뷰 ID를 반환합니다."),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식 오류, 리뷰 작성 가능한 주문이 없거나 이미 작성됨"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "주문상품을 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Void>> addReview(@Parameter(hidden = true) final Long userId,
+    ResponseEntity<ApiResponse<Long>> addReview(@Parameter(hidden = true) final Long userId,
         @RequestBody @Valid final AddReviewRequest request);
 
     @Operation(summary = "리뷰 수정", description = "별점과 본문을 함께 수정합니다. 별점은 0.5~5.0 사이의 0.5 단위이며 본문은 공백을 제외한 내용이 필요합니다.")
     @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "리뷰 수정 성공"),
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "리뷰 수정 성공. data에 수정된 리뷰 ID를 반환합니다."),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식 오류"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "리뷰 작성자가 아님"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "리뷰를 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Void>> updateReview(@Parameter(hidden = true) final Long userId,
+    ResponseEntity<ApiResponse<Long>> updateReview(@Parameter(hidden = true) final Long userId,
         @Positive @PathVariable("reviewId") final Long reviewId, @RequestBody @Valid final UpdateReviewRequest request);
 
     @Operation(summary = "리뷰 삭제", description = "리뷰를 소프트 삭제합니다.")
     @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "리뷰 삭제 성공"),
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "리뷰 삭제 성공. data에 삭제된 리뷰 ID를 반환합니다."),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "리뷰 작성자가 아님"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "리뷰를 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Void>> removeReview(@Parameter(hidden = true) final Long userId,
+    ResponseEntity<ApiResponse<Long>> removeReview(@Parameter(hidden = true) final Long userId,
         @Positive @PathVariable("reviewId") final Long reviewId);
 }

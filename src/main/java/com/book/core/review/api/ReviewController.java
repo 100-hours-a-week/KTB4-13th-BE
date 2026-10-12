@@ -53,26 +53,26 @@ class ReviewController implements ReviewControllerSpec {
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<Void>> addReview(@UserId final Long userId, @RequestBody final AddReviewRequest request) {
+    public ResponseEntity<ApiResponse<Long>> addReview(@UserId final Long userId, @RequestBody final AddReviewRequest request) {
         final AddReviewCommand command = commandConverter.toAddReviewCommand(userId, request);
-        reviewService.addReview(command);
-        return ResponseEntity.ok(ApiResponse.ok());
+        final Long result = reviewService.addReview(command);
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     @Override
     @PatchMapping("/{reviewId}")
-    public ResponseEntity<ApiResponse<Void>> updateReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId,
+    public ResponseEntity<ApiResponse<Long>> updateReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId,
         @RequestBody final UpdateReviewRequest request) {
         final UpdateReviewCommand command = commandConverter.toUpdateReviewCommand(userId, reviewId, request);
-        reviewService.updateReview(command);
-        return ResponseEntity.ok(ApiResponse.ok());
+        final Long result = reviewService.updateReview(command);
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     @Override
     @DeleteMapping("/{reviewId}")
-    public ResponseEntity<ApiResponse<Void>> removeReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId) {
+    public ResponseEntity<ApiResponse<Long>> removeReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId) {
         final RemoveReviewCommand command = commandConverter.toRemoveReviewCommand(userId, reviewId);
-        reviewService.removeReview(command);
-        return ResponseEntity.ok(ApiResponse.ok());
+        final Long result = reviewService.removeReview(command);
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 }

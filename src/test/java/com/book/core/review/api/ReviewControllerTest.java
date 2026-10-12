@@ -66,7 +66,7 @@ class ReviewControllerTest {
 
         mvc.perform(post("/api/v1/reviews").contentType(MediaType.APPLICATION_JSON)
             .content("{\"targetType\":\"PRODUCT\",\"targetId\":701,\"rate\":4.5,\"content\":\"본문\",\"isSpoiler\":false}"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").value(801));
 
         verify(reviewService).addReview(new AddReviewCommand(42L, new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
             new ReviewContent(new BigDecimal("4.5"), "본문"), false));
@@ -106,7 +106,7 @@ class ReviewControllerTest {
             .thenReturn(801L);
 
         mvc.perform(patch("/api/v1/reviews/801").contentType(MediaType.APPLICATION_JSON).content("{\"rate\":4.5,\"content\":\"수정\"}"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").value(801));
 
         verify(reviewService).updateReview(new UpdateReviewCommand(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정"), null));
     }
@@ -149,7 +149,8 @@ class ReviewControllerTest {
 
         when(reviewService.removeReview(new RemoveReviewCommand(42L, 801L))).thenReturn(801L);
 
-        mvc.perform(delete("/api/v1/reviews/801")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
+        mvc.perform(delete("/api/v1/reviews/801")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data").value(801));
 
         verify(reviewService).removeReview(new RemoveReviewCommand(42L, 801L));
     }

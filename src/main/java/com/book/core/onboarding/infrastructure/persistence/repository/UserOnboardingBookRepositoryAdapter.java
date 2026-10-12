@@ -22,12 +22,6 @@ class UserOnboardingBookRepositoryAdapter implements UserOnboardingBookRepositor
     }
 
     @Override
-    public void deleteByUserIdAndBookIdIn(final Long userId, final List<Long> bookIds) {
-        jpaRepository.deleteByUserIdAndBookIdIn(userId, bookIds);
-        jpaRepository.flush();
-    }
-
-    @Override
     public List<UserOnboardingBook> saveAll(final List<UserOnboardingBook> books) {
         return jpaRepository.saveAll(books);
     }

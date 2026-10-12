@@ -6,14 +6,16 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 public record ReviewContent(BigDecimal rate, String content) {
+    private static final BigDecimal RATE_UNIT = new BigDecimal("0.5");
+
     public ReviewContent {
-        if (rate == null || rate.signum() < 0 || rate.compareTo(BigDecimal.TEN) > 0 || content == null || content.length() > 255) {
+        if (rate == null || rate.compareTo(RATE_UNIT) < 0 || rate.compareTo(BigDecimal.valueOf(5)) > 0
+            || rate.remainder(RATE_UNIT).compareTo(BigDecimal.ZERO) != 0) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        try {
-            rate = rate.setScale(1, RoundingMode.UNNECESSARY);
-        } catch (final ArithmeticException exception) {
+        if (content == null || content.isBlank() || content.length() > 255) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
+        rate = rate.setScale(1, RoundingMode.UNNECESSARY);
     }
 }

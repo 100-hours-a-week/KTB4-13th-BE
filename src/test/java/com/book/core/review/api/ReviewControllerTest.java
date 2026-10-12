@@ -187,15 +187,15 @@ class ReviewControllerTest {
     void 리뷰_조회는_단일_경로와_실제_offset을_사용하고_DTO를_반환한다() throws Exception {
         final var target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
         final var paging = new OffsetLimit(3, 2);
-        final var item = new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문");
+        final var item = new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문", true);
         when(reviewService.findReviews(new GetReviewsCommand(target, paging))).thenReturn(new Page<>(List.of(item), true));
 
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("offset", "3").param("limit", "2"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[0].id").value(8))
             .andExpect(jsonPath("$.data.content[0].targetType").value("PRODUCT"))
             .andExpect(jsonPath("$.data.content[0].targetId").value(10)).andExpect(jsonPath("$.data.content[0].rate").value(4.5))
-            .andExpect(jsonPath("$.data.content[0].content").value("본문")).andExpect(jsonPath("$.data.content[0].userId").doesNotExist())
-            .andExpect(jsonPath("$.data.hasNext").value(true));
+            .andExpect(jsonPath("$.data.content[0].isSpoiler").value(true)).andExpect(jsonPath("$.data.content[0].content").value("본문"))
+            .andExpect(jsonPath("$.data.content[0].userId").doesNotExist()).andExpect(jsonPath("$.data.hasNext").value(true));
 
         verify(reviewService).findReviews(new GetReviewsCommand(target, paging));
     }
@@ -217,6 +217,8 @@ class ReviewControllerTest {
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("offset", "-1"))
             .andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("limit", "0"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("limit", "101"))
             .andExpect(status().isBadRequest());
         verifyNoInteractions(reviewService);
     }

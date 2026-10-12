@@ -20,7 +20,7 @@ public class UpdateReviewUseCase {
         if (!review.userId().equals(userId)) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
-        review.update(content, isSpoiler);
+        review.updateContent(content, isSpoiler);
         reviewRepository.save(review);
         return review.id();
     }

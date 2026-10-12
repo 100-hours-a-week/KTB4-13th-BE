@@ -3,8 +3,10 @@ package com.book.core.onboarding.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
+import com.book.core.library.application.usecase.AddLibraryBooksUseCase;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.port.TermRepositoryPort;
 import java.util.List;
@@ -14,9 +16,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -36,6 +40,9 @@ class OnboardingProfileFailureIsolationIntegrationTest {
     @MockitoBean
     TermRepositoryPort termRepository;
 
+    @MockitoSpyBean
+    AddLibraryBooksUseCase addLibraryBooksUseCase;
+
     @Autowired
     JdbcTemplate jdbc;
 
@@ -49,6 +56,52 @@ class OnboardingProfileFailureIsolationIntegrationTest {
 
         assertThat(jdbc.queryForObject("SELECT onboarding_status FROM user_onboardings WHERE user_id = ? AND deleted_at IS NULL",
             String.class, userId)).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void 최초_완료한_도서만_도서관에_추가하고_완료_후_재요청은_도서관을_변경하지_않는다() {
+        final Long userId = startOnboarding("도서관연동회원");
+        final Long firstBookId = insertBook(920001L);
+
+        onboardingService.saveBooks(new PutOnboardingBooksCommand(userId, List.of(firstBookId)));
+        assertThat(activeLibraryBookIds(userId)).containsExactly(firstBookId);
+
+        jdbc.update("UPDATE user_library_books SET deleted_at = NOW(6) WHERE user_id = ?", userId);
+        onboardingService.saveBooks(new PutOnboardingBooksCommand(userId, List.of(insertBook(920002L))));
+        assertThat(activeLibraryBookIds(userId)).isEmpty();
+    }
+
+    @Test
+    void 도서관_추가가_최종_실패해도_커밋된_온보딩_완료와_도서는_유지된다() {
+        final Long userId = startOnboarding("도서관실패격리회원");
+        final Long bookId = insertBook(920101L);
+        doThrow(new QueryTimeoutException("timeout")).when(addLibraryBooksUseCase).execute(any());
+
+        assertThatCode(() -> onboardingService.saveBooks(new PutOnboardingBooksCommand(userId, List.of(bookId))))
+            .doesNotThrowAnyException();
+
+        assertThat(jdbc.queryForObject("SELECT onboarding_status FROM user_onboardings WHERE user_id = ? AND deleted_at IS NULL",
+            String.class, userId)).isEqualTo("COMPLETED");
+        assertThat(jdbc.queryForList("SELECT book_id FROM user_onboarding_books WHERE user_id = ?", Long.class, userId))
+            .containsExactly(bookId);
+        assertThat(activeLibraryBookIds(userId)).isEmpty();
+    }
+
+    private Long startOnboarding(final String nickname) {
+        final Long userId = insertUser(nickname);
+        jdbc.update("INSERT INTO user_onboardings (user_id, onboarding_status) VALUES (?, 'IN_PROGRESS')", userId);
+        return userId;
+    }
+
+    private Long insertBook(final Long bookId) {
+        jdbc.update(
+            "INSERT INTO books (id, title, author, publisher, category, published_at) VALUES (?, '제목', '저자', '출판사', '소설', '2026-01-01')",
+            bookId);
+        return bookId;
+    }
+
+    private List<Long> activeLibraryBookIds(final Long userId) {
+        return jdbc.queryForList("SELECT book_id FROM user_library_books WHERE user_id = ? AND deleted_at IS NULL", Long.class, userId);
     }
 
     private Long insertUser(final String nickname) {

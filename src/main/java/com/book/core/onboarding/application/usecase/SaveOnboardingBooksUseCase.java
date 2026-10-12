@@ -6,6 +6,7 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
+import com.book.core.onboarding.application.result.SaveOnboardingBooksResult;
 import com.book.core.onboarding.application.port.UserOnboardingRepositoryPort;
 import com.book.core.onboarding.domain.UserOnboarding;
 import com.book.core.onboarding.domain.UserOnboardingBook;
@@ -24,7 +25,7 @@ public class SaveOnboardingBooksUseCase {
     private final Clock clock;
 
     @Transactional
-    public void execute(final PutOnboardingBooksCommand command) {
+    public SaveOnboardingBooksResult execute(final PutOnboardingBooksCommand command) {
         final UserOnboarding userOnboarding = userOnboardingRepository.findActiveByUserId(command.userId())
             .orElseThrow(() -> new CoreException(ErrorCode.ONBOARDING_NOT_FOUND));
 
@@ -40,8 +41,10 @@ public class SaveOnboardingBooksUseCase {
             command.bookIds().stream().map(bookId -> UserOnboardingBook.of(command.userId(), bookId)).toList();
         onboardingBookRepository.saveAll(newBooks);
 
+        final boolean firstCompleted = userOnboarding.completedAt() == null;
         final LocalDateTime now = LocalDateTime.now(clock);
         userOnboarding.complete(now);
         userOnboardingRepository.save(userOnboarding);
+        return new SaveOnboardingBooksResult(firstCompleted);
     }
 }

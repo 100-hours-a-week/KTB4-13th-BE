@@ -97,6 +97,7 @@ public enum ErrorCode {
     AI_SEARCH_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "E429", "AI 검색 서비스 요청이 많아 잠시 후 다시 시도해야 합니다.", LogLevel.INFO),
     AI_SEARCH_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "E504", "AI 검색 서비스 응답이 시간 내에 도착하지 않았습니다.", LogLevel.INFO),
     AI_SEARCH_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "AI 검색 결과 조회에 실패했습니다.", LogLevel.INFO),
+    NOT_FOUND_DATA(HttpStatus.NOT_FOUND, "E404", "데이터를 찾을 수 없습니다.", LogLevel.ERROR),
     REVIEW_UPDATE_EXPIRED(HttpStatus.BAD_REQUEST, "E7002", "리뷰 수정 가능 기간이 지났습니다.", LogLevel.INFO);
     // spotless:on
 

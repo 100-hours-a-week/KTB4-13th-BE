@@ -18,9 +18,10 @@ import com.book.core.review.api.converter.ReviewCommandConverter;
 import com.book.core.review.api.converter.ReviewResultConverter;
 import com.book.common.paging.OffsetLimit;
 import com.book.core.review.application.command.GetReviewsCommand;
-import com.book.core.review.application.result.GetReviewsResult;
+import com.book.common.paging.Page;
 import com.book.core.review.application.result.ReviewItemResult;
 import com.book.core.review.domain.enums.ReviewTargetType;
+import com.book.core.review.domain.ReviewTarget;
 import java.util.List;
 import com.book.core.review.application.command.CreateReviewCommand;
 import com.book.core.review.application.command.DeleteReviewCommand;
@@ -151,9 +152,9 @@ class ReviewControllerTest {
 
     @Test
     void 리뷰_조회는_단일_경로와_실제_offset을_사용하고_DTO를_반환한다() throws Exception {
-        final var command = new GetReviewsCommand(ReviewTargetType.PRODUCT, 10L, new OffsetLimit(3, 2));
-        final var item = new ReviewItemResult(8L, ReviewTargetType.PRODUCT, 10L, new BigDecimal("4.5"), "본문");
-        when(reviewService.findReviews(command)).thenReturn(new GetReviewsResult(List.of(item), true));
+        final var command = new GetReviewsCommand(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new OffsetLimit(3, 2));
+        final var item = new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문");
+        when(reviewService.findReviews(command)).thenReturn(new Page<>(List.of(item), true));
 
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("offset", "3").param("limit", "2"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[0].id").value(8))
@@ -167,8 +168,8 @@ class ReviewControllerTest {
 
     @Test
     void 기본_페이징으로_빈_목록을_반환한다() throws Exception {
-        final var command = new GetReviewsCommand(ReviewTargetType.PRODUCT, 10L, new OffsetLimit(0, 20));
-        when(reviewService.findReviews(command)).thenReturn(new GetReviewsResult(List.of(), false));
+        final var command = new GetReviewsCommand(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new OffsetLimit(0, 20));
+        when(reviewService.findReviews(command)).thenReturn(new Page<>(List.of(), false));
 
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10")).andExpect(status().isOk())
             .andExpect(jsonPath("$.data.content").isEmpty()).andExpect(jsonPath("$.data.hasNext").value(false));

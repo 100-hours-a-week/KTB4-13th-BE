@@ -3,6 +3,7 @@ package com.book.core.onboarding.api;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -124,6 +125,33 @@ class OnboardingControllerTest {
 
         mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 4L)).andExpect(status().isConflict())
             .andExpect(jsonPath("$.code").value("E409"));
+    }
+
+    @Test
+    void 부모_선택지_ID를_전달하면_Command에_담아_Q4_선택지를_조회한다() throws Exception {
+        authenticateAs(USER_ID);
+        final GetOnboardingQuestionCommand command = new GetOnboardingQuestionCommand(USER_ID, 4L, List.of(9L, 10L));
+        when(onboardingService.getQuestion(command)).thenReturn(new OnboardingQuestionResult(4L, "subcategory", "세부 카테고리", 1, 9,
+            List.of(new OnboardingOptionResult(23L, 9L, "novel-thriller", "추리/스릴러"),
+                new OnboardingOptionResult(28L, 10L, "humanities-psychology", "심리학")),
+            null));
+
+        mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 4L).param("parentOptionIds", "9,10")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.options[0].optionId").value(23)).andExpect(jsonPath("$.data.options[1].parentOptionId").value(10));
+        mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 4L).param("parentOptionIds", "9", "10")).andExpect(status().isOk());
+
+        verify(onboardingService, times(2)).getQuestion(command);
+    }
+
+    @Test
+    void 부모_선택지_ID가_빈_값이거나_유효하지_않으면_400을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+
+        for (final String parentOptionIds : List.of("", "0", "-1", "9,9", "abc")) {
+            mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 4L).param("parentOptionIds", parentOptionIds))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+        }
+        verifyNoInteractions(onboardingService);
     }
 
     @Test

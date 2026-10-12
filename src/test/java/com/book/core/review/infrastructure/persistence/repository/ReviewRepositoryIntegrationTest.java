@@ -103,8 +103,9 @@ class ReviewRepositoryIntegrationTest {
     @Test
     void querydsl_filters_target_and_deleted_reviews_and_uses_exact_offset() {
         insertBook(9501L);
+        insertBook(9502L);
         insertProduct(9601L, 9501L);
-        insertProduct(9602L, 9501L);
+        insertProduct(9602L, 9502L);
         final List<Long> activeIds = new ArrayList<>();
         for (int index = 0; index < 6; index++) {
             activeIds.add(saveReview(9601L, "활성 " + index).id());
@@ -133,8 +134,9 @@ class ReviewRepositoryIntegrationTest {
     @Test
     void recent_purchase_query_uses_paid_at_and_includes_the_7_day_boundary() {
         insertBook(9701L);
+        insertBook(9702L);
         insertProduct(9801L, 9701L);
-        insertProduct(9802L, 9701L);
+        insertProduct(9802L, 9702L);
         final var cutoff = LocalDateTime.of(2026, 10, 12, 9, 0).minusDays(7);
         final var eligible = saveOrderItem(9801L, "기간 경계");
         final var old = saveOrderItem(9801L, "기간 초과");

@@ -110,6 +110,7 @@ class ReviewRepositoryIntegrationTest {
         assertThat(page.content()).allSatisfy(item -> {
             assertThat(item.target().type()).isEqualTo(ReviewTargetType.PRODUCT);
             assertThat(item.target().id()).isEqualTo(9601L);
+            assertThat(item.isSpoiler()).isTrue();
         });
         assertThat(page.hasNext()).isTrue();
 
@@ -126,7 +127,7 @@ class ReviewRepositoryIntegrationTest {
         final var saved = orderRepository.save(order);
         final var itemId = jdbc.queryForObject("SELECT id FROM order_item WHERE order_id = ?", Long.class, saved.id());
         return reviewRepository.save(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + itemId),
-            new ReviewTarget(ReviewTargetType.PRODUCT, productId), new ReviewContent(new BigDecimal("4.5"), content), false));
+            new ReviewTarget(ReviewTargetType.PRODUCT, productId), new ReviewContent(new BigDecimal("4.5"), content), true));
     }
 
     private void insertBook(final long id) {

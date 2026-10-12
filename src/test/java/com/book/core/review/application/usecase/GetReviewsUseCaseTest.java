@@ -22,7 +22,7 @@ class GetReviewsUseCaseTest {
     @Test
     void 대상과_offset을_조회하고_목록과_다음_페이지_여부를_반환한다() {
         final var paging = new OffsetLimit(3, 2);
-        final var item = new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문");
+        final var item = new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문", true);
         when(repository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging))
             .thenReturn(new Page<>(List.of(item), true));
 

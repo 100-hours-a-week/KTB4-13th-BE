@@ -153,7 +153,7 @@ class ReviewControllerTest {
     @Test
     void 리뷰_조회는_단일_경로와_실제_offset을_사용하고_DTO를_반환한다() throws Exception {
         final var command = new GetReviewsCommand(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new OffsetLimit(3, 2));
-        final var item = new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문");
+        final var item = new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문", true);
         when(reviewService.findReviews(command)).thenReturn(new Page<>(List.of(item), true));
 
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("offset", "3").param("limit", "2"))

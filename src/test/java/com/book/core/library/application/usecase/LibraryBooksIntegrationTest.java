@@ -56,14 +56,6 @@ class LibraryBooksIntegrationTest {
     }
 
     @Test
-    void 존재하지_않는_도서를_저장하면_FK_제약_위반은_DuplicateKeyException이_아니다() {
-        final Long userId = insertUser("도서관FK회원");
-
-        assertThatThrownBy(() -> libraryBookRepository.saveAll(List.of(UserLibraryBook.add(userId, 999999999L, ADDED_AT))))
-            .isInstanceOf(DataIntegrityViolationException.class).isNotInstanceOf(DuplicateKeyException.class);
-    }
-
-    @Test
     void 도서를_추가하면_신규는_저장하고_활성_항목은_유지하며_삭제된_항목은_추가_시각을_갱신해_복구한다() {
         final Long userId = insertUser("도서관추가회원");
         final Long activeBookId = insertBook(910101L);
@@ -80,14 +72,14 @@ class LibraryBooksIntegrationTest {
     }
 
     @Test
-    void 추가_중_하나라도_실패하면_복구와_신규_저장을_모두_롤백한다() {
+    void 추가_중_FK_위반이_발생하면_복구와_신규_저장을_모두_롤백한다() {
         final Long userId = insertUser("도서관추가롤백회원");
         final Long deletedBookId = insertBook(910201L);
         final Long newBookId = insertBook(910202L);
         insertLibraryBook(userId, deletedBookId, true);
 
         assertThatThrownBy(() -> addUseCase.execute(new AddLibraryBooksCommand(userId, List.of(deletedBookId, newBookId, 999999999L))))
-            .isInstanceOf(DataIntegrityViolationException.class);
+            .isInstanceOf(DataIntegrityViolationException.class).isNotInstanceOf(DuplicateKeyException.class);
 
         assertThat(jdbc.queryForList("SELECT CONCAT(book_id, ':', deleted_at IS NULL) FROM user_library_books WHERE user_id = ?",
             String.class, userId)).containsExactly(deletedBookId + ":0");

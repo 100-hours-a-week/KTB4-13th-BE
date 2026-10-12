@@ -37,7 +37,7 @@ public class UpdateOnboardingPreferencesUseCase {
     private final GetBooksUseCase getBooksUseCase;
 
     @Transactional
-    public void execute(final PutOnboardingPreferencesCommand command) {
+    public boolean execute(final PutOnboardingPreferencesCommand command) {
         validateCompleted(command.userId());
         validateAnswers(command.answers());
         validateBooks(command.bookIds());
@@ -45,10 +45,11 @@ public class UpdateOnboardingPreferencesUseCase {
         final List<Long> requestedOptionIds = command.answers().stream().flatMap(answer -> answer.optionIds().stream()).toList();
         final List<Long> currentOptionIds =
             answerRepository.findByUserId(command.userId()).stream().map(UserOnboardingAnswer::onboardingOptionId).toList();
-        replaceAnswers(command.userId(), currentOptionIds, requestedOptionIds);
+        final boolean answersChanged = replaceAnswers(command.userId(), currentOptionIds, requestedOptionIds);
 
         final List<Long> currentBookIds = bookRepository.findByUserId(command.userId()).stream().map(UserOnboardingBook::bookId).toList();
-        replaceBooks(command.userId(), currentBookIds, command.bookIds());
+        final boolean booksChanged = replaceBooks(command.userId(), currentBookIds, command.bookIds());
+        return answersChanged || booksChanged;
     }
 
     private void validateCompleted(final Long userId) {
@@ -109,7 +110,7 @@ public class UpdateOnboardingPreferencesUseCase {
         }
     }
 
-    private void replaceAnswers(final Long userId, final List<Long> currentOptionIds, final List<Long> requestedOptionIds) {
+    private boolean replaceAnswers(final Long userId, final List<Long> currentOptionIds, final List<Long> requestedOptionIds) {
         final List<Long> removedOptionIds = difference(currentOptionIds, requestedOptionIds);
         if (!removedOptionIds.isEmpty()) {
             answerRepository.deleteByUserIdAndOnboardingOptionIdIn(userId, removedOptionIds);
@@ -118,9 +119,10 @@ public class UpdateOnboardingPreferencesUseCase {
         if (!addedOptionIds.isEmpty()) {
             answerRepository.saveAll(addedOptionIds.stream().map(optionId -> UserOnboardingAnswer.of(userId, optionId)).toList());
         }
+        return !removedOptionIds.isEmpty() || !addedOptionIds.isEmpty();
     }
 
-    private void replaceBooks(final Long userId, final List<Long> currentBookIds, final List<Long> requestedBookIds) {
+    private boolean replaceBooks(final Long userId, final List<Long> currentBookIds, final List<Long> requestedBookIds) {
         final List<Long> removedBookIds = difference(currentBookIds, requestedBookIds);
         if (!removedBookIds.isEmpty()) {
             bookRepository.deleteByUserIdAndBookIdIn(userId, removedBookIds);
@@ -129,6 +131,7 @@ public class UpdateOnboardingPreferencesUseCase {
         if (!addedBookIds.isEmpty()) {
             bookRepository.saveAll(addedBookIds.stream().map(bookId -> UserOnboardingBook.of(userId, bookId)).toList());
         }
+        return !removedBookIds.isEmpty() || !addedBookIds.isEmpty();
     }
 
     private static List<Long> difference(final List<Long> source, final List<Long> excluded) {

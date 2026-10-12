@@ -22,6 +22,10 @@ import com.book.core.review.application.usecase.CreateReviewUseCase;
 import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.UpdateReviewUseCase;
 import com.book.core.review.domain.Review;
+import com.book.core.review.domain.ReviewKey;
+import com.book.core.review.domain.ReviewTarget;
+import com.book.core.review.domain.ReviewContent;
+import com.book.core.review.domain.enums.ReviewTargetType;
 import java.math.BigDecimal;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -38,7 +42,7 @@ class ReviewUseCaseTest {
         final CreateReviewCommand command = new CreateReviewCommand(42L, 701L, new BigDecimal("4.5"), "본문", false);
         final OrderItem orderItem = orderItem(42L, OrderItemStatus.PAID);
         when(getOrderItem.execute(701L)).thenReturn(orderItem);
-        when(reviewRepository.existsActiveByUserIdAndOrderItemId(42L, 701L)).thenReturn(false);
+        when(reviewRepository.existsByUserIdAndReviewKey(42L, "ORDER_ITEM_" + 701L)).thenReturn(false);
 
         createReview.execute(command);
 
@@ -55,7 +59,7 @@ class ReviewUseCaseTest {
         assertThatThrownBy(() -> createReview.execute(command)).isInstanceOfSatisfying(CoreException.class,
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_HAS_NOT_ORDER));
 
-        verify(reviewRepository, never()).existsActiveByUserIdAndOrderItemId(42L, 701L);
+        verify(reviewRepository, never()).existsByUserIdAndReviewKey(42L, "ORDER_ITEM_" + 701L);
         verify(reviewRepository, never()).save(any(Review.class));
     }
 
@@ -68,7 +72,7 @@ class ReviewUseCaseTest {
         assertThatThrownBy(() -> createReview.execute(command)).isInstanceOfSatisfying(CoreException.class,
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_HAS_NOT_ORDER));
 
-        verify(reviewRepository, never()).existsActiveByUserIdAndOrderItemId(42L, 701L);
+        verify(reviewRepository, never()).existsByUserIdAndReviewKey(42L, "ORDER_ITEM_" + 701L);
         verify(reviewRepository, never()).save(any(Review.class));
     }
 
@@ -77,7 +81,7 @@ class ReviewUseCaseTest {
         final CreateReviewCommand command = new CreateReviewCommand(42L, 701L, new BigDecimal("4.5"), "본문", false);
         final OrderItem orderItem = orderItem(42L, OrderItemStatus.PAID);
         when(getOrderItem.execute(701L)).thenReturn(orderItem);
-        when(reviewRepository.existsActiveByUserIdAndOrderItemId(42L, 701L)).thenReturn(true);
+        when(reviewRepository.existsByUserIdAndReviewKey(42L, "ORDER_ITEM_" + 701L)).thenReturn(true);
 
         assertThatThrownBy(() -> createReview.execute(command)).isInstanceOfSatisfying(CoreException.class,
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_ALREADY_REVIEWED));
@@ -87,7 +91,8 @@ class ReviewUseCaseTest {
 
     @Test
     void 리뷰_수정은_입력된_필드만_적용한다() {
-        final Review review = Review.create(42L, 701L, 701L, new BigDecimal("4.5"), "기존", false);
+        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
+            new ReviewContent(new BigDecimal("4.5"), "기존"), false);
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
         updateReview.execute(new UpdateReviewCommand(42L, 801L, null, "수정", true));
@@ -100,7 +105,8 @@ class ReviewUseCaseTest {
 
     @Test
     void 소유자가_아닌_사용자의_리뷰_수정은_FORBIDDEN으로_거부한다() {
-        final Review review = Review.create(42L, 701L, 701L, new BigDecimal("4.5"), "기존", false);
+        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
+            new ReviewContent(new BigDecimal("4.5"), "기존"), false);
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
         assertThatThrownBy(() -> updateReview.execute(new UpdateReviewCommand(999L, 801L, null, "수정", true)))
@@ -112,7 +118,8 @@ class ReviewUseCaseTest {
 
     @Test
     void 삭제는_활성_리뷰를_소프트_삭제한다() {
-        final Review review = Review.create(42L, 701L, 701L, new BigDecimal("4.5"), "본문", false);
+        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
+            new ReviewContent(new BigDecimal("4.5"), "본문"), false);
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
         deleteReview.execute(new DeleteReviewCommand(42L, 801L));
@@ -123,7 +130,8 @@ class ReviewUseCaseTest {
 
     @Test
     void 소유자가_아닌_사용자의_리뷰_삭제는_FORBIDDEN으로_거부한다() {
-        final Review review = Review.create(42L, 701L, 701L, new BigDecimal("4.5"), "본문", false);
+        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
+            new ReviewContent(new BigDecimal("4.5"), "본문"), false);
         when(reviewRepository.findActiveById(801L)).thenReturn(Optional.of(review));
 
         assertThatThrownBy(() -> deleteReview.execute(new DeleteReviewCommand(999L, 801L))).isInstanceOfSatisfying(CoreException.class,

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.point.domain.enums.PointType;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
@@ -23,5 +24,6 @@ class PointCommandTest {
     @Test
     void 필수값이_없는_쓰기_Command를_생성하지_않는다() {
         assertThatThrownBy(() -> new EarnPointCommand(42L, PointType.REVIEW, 10L, null)).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> new DeductPointCommand(42L, null, 10L, BigDecimal.TEN)).isInstanceOf(CoreException.class);
     }
 }

@@ -11,6 +11,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.book.common.exception.CoreException;
+import com.book.core.point.application.command.DeductPointCommand;
 import com.book.core.point.application.command.EarnPointCommand;
 import com.book.core.point.application.command.GetPointCommand;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
@@ -24,14 +25,16 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 class PointUseCaseLoggingTest {
     private final PointBalanceRepositoryPort balances = mock(PointBalanceRepositoryPort.class);
     private final PointHistoryRepositoryPort histories = mock(PointHistoryRepositoryPort.class);
-    private final List<Logger> loggers =
-        List.of((Logger) LoggerFactory.getLogger(GetPointUseCase.class), (Logger) LoggerFactory.getLogger(EarnPointUseCase.class));
+    private final List<Logger> loggers = List.of((Logger) LoggerFactory.getLogger(GetPointUseCase.class),
+        (Logger) LoggerFactory.getLogger(EarnPointUseCase.class), (Logger) LoggerFactory.getLogger(DeductPointUseCase.class));
     private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
     private List<Level> previousLevels;
     private List<Boolean> previousAdditives;
@@ -79,11 +82,12 @@ class PointUseCaseLoggingTest {
         });
     }
 
-    @Test
-    void 변경은_시작과_처리_종료를_기록하고_금액을_노출하지_않는다() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 변경은_시작과_처리_종료를_기록하고_금액을_노출하지_않는다(final boolean earn) {
         when(balances.findByUserId(42L)).thenReturn(Optional.of(new PointBalance(42L)));
 
-        executeChange(new BigDecimal("123.45"));
+        executeChange(earn, new BigDecimal("123.45"));
 
         assertThat(appender.list).extracting(ILoggingEvent::getLevel).containsExactly(Level.DEBUG, Level.INFO);
         assertThat(appender.list.getFirst().getFormattedMessage()).contains("처리를 시작합니다.");
@@ -93,9 +97,10 @@ class PointUseCaseLoggingTest {
             .doesNotContain("123.45", "amount=", "balanceAfter=", "userId="));
     }
 
-    @Test
-    void 금액이_0이면_생략_로그_하나만_남기고_저장소를_호출하지_않는다() {
-        executeChange(new BigDecimal("0.00"));
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 금액이_0이면_생략_로그_하나만_남기고_저장소를_호출하지_않는다(final boolean earn) {
+        executeChange(earn, new BigDecimal("0.00"));
 
         verifyNoInteractions(balances, histories);
         assertThat(appender.list).singleElement().satisfies((final var event) -> {
@@ -104,11 +109,12 @@ class PointUseCaseLoggingTest {
         });
     }
 
-    @Test
-    void 하위_계층은_업무_오류를_다시_기록하지_않는다() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 하위_계층은_업무_오류를_다시_기록하지_않는다(final boolean earn) {
         when(balances.findByUserId(42L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> executeChange(BigDecimal.TEN)).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> executeChange(earn, BigDecimal.TEN)).isInstanceOf(CoreException.class);
 
         assertThat(appender.list).singleElement().satisfies((final var event) -> {
             assertThat(event.getLevel()).isEqualTo(Level.DEBUG);
@@ -126,8 +132,8 @@ class PointUseCaseLoggingTest {
         when(histories.findByUserId(42L)).thenReturn(List.of());
 
         new GetPointUseCase(balances, histories).execute(new GetPointCommand(42L));
-        executeChange(BigDecimal.TEN);
-        executeChange(BigDecimal.ZERO);
+        executeChange(true, BigDecimal.TEN);
+        executeChange(false, BigDecimal.ZERO);
 
         assertThat(appender.list).singleElement().satisfies((final var event) -> {
             assertThat(event.getLevel()).isEqualTo(Level.INFO);
@@ -135,7 +141,11 @@ class PointUseCaseLoggingTest {
         });
     }
 
-    private void executeChange(final BigDecimal amount) {
-        new EarnPointUseCase(balances, histories).execute(new EarnPointCommand(42L, PointType.REVIEW, 10L, amount));
+    private void executeChange(final boolean earn, final BigDecimal amount) {
+        if (earn) {
+            new EarnPointUseCase(balances, histories).execute(new EarnPointCommand(42L, PointType.REVIEW, 10L, amount));
+            return;
+        }
+        new DeductPointUseCase(balances, histories).execute(new DeductPointCommand(42L, PointType.REVIEW, 10L, amount));
     }
 }

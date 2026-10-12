@@ -5,7 +5,7 @@ import com.book.core.review.domain.Review;
 import com.book.common.paging.OffsetLimit;
 import com.book.common.paging.Page;
 import com.book.core.review.application.result.ReviewItemResult;
-import com.book.core.review.domain.enums.ReviewTargetType;
+import com.book.core.review.domain.ReviewTarget;
 import java.util.Optional;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -18,10 +18,9 @@ public class ReviewRepositoryAdapter implements ReviewRepositoryPort {
     private final ReviewQueryRepository queryRepository;
 
     @Override
-    public Page<ReviewItemResult> findActiveReviews(final ReviewTargetType targetType, final Long targetId, final OffsetLimit offsetLimit) {
-        return queryRepository.findActiveReviews(targetType, targetId, offsetLimit);
+    public Page<ReviewItemResult> findActiveReviews(final ReviewTarget target, final OffsetLimit offsetLimit) {
+        return queryRepository.findActiveReviews(target, offsetLimit);
     }
-
 
     @Override
     public List<String> findUsedReviewKeys(final Long userId, final List<String> reviewKeys) {

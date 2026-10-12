@@ -7,12 +7,14 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.paging.OffsetLimit;
 import com.book.core.review.application.command.GetReviewsCommand;
-import com.book.core.review.application.result.GetReviewsResult;
+import com.book.common.paging.Page;
+import com.book.core.review.application.result.ReviewItemResult;
 import com.book.core.review.application.usecase.CreateReviewUseCase;
 import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.GetReviewsUseCase;
 import com.book.core.review.application.usecase.UpdateReviewUseCase;
 import com.book.core.review.domain.enums.ReviewTargetType;
+import com.book.core.review.domain.ReviewTarget;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -22,11 +24,11 @@ class ReviewServiceTest {
         final var getReviews = mock(GetReviewsUseCase.class);
         final var service = new ReviewService(mock(CreateReviewUseCase.class), mock(UpdateReviewUseCase.class),
             mock(DeleteReviewUseCase.class), getReviews);
-        final var command = new GetReviewsCommand(ReviewTargetType.PRODUCT, 10L, new OffsetLimit(0, 20));
-        final var result = new GetReviewsResult(List.of(), false);
-        when(getReviews.execute(command)).thenReturn(result);
+        final var command = new GetReviewsCommand(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new OffsetLimit(0, 20));
+        final Page<ReviewItemResult> result = new Page<>(List.of(), false);
+        when(getReviews.execute(command.target(), command.offsetLimit())).thenReturn(result);
 
         assertThat(service.findReviews(command)).isSameAs(result);
-        verify(getReviews).execute(command);
+        verify(getReviews).execute(command.target(), command.offsetLimit());
     }
 }

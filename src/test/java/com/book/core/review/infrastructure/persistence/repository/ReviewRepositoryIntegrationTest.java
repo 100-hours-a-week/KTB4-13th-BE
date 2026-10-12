@@ -102,18 +102,19 @@ class ReviewRepositoryIntegrationTest {
         reviewRepository.save(deleted);
         saveReview(9602L, "다른 상품");
 
-        final var page = reviewRepository.findActiveReviews(ReviewTargetType.PRODUCT, 9601L, new OffsetLimit(3, 2));
+        final var page = reviewRepository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 9601L), new OffsetLimit(3, 2));
         assertThat(page.content()).extracting(item -> item.id()).containsExactly(activeIds.get(2), activeIds.get(1));
         assertThat(page.content()).allSatisfy(item -> {
-            assertThat(item.targetType()).isEqualTo(ReviewTargetType.PRODUCT);
-            assertThat(item.targetId()).isEqualTo(9601L);
+            assertThat(item.target().type()).isEqualTo(ReviewTargetType.PRODUCT);
+            assertThat(item.target().id()).isEqualTo(9601L);
         });
         assertThat(page.hasNext()).isTrue();
 
-        final var last = reviewRepository.findActiveReviews(ReviewTargetType.PRODUCT, 9601L, new OffsetLimit(5, 2));
+        final var last = reviewRepository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 9601L), new OffsetLimit(5, 2));
         assertThat(last.content()).extracting(item -> item.id()).containsExactly(activeIds.getFirst());
         assertThat(last.hasNext()).isFalse();
-        assertThat(reviewRepository.findActiveReviews(ReviewTargetType.PRODUCT, 9601L, new OffsetLimit(6, 2)).content()).isEmpty();
+        assertThat(reviewRepository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 9601L), new OffsetLimit(6, 2)).content())
+            .isEmpty();
     }
 
     private Review saveReview(final Long productId, final String content) {

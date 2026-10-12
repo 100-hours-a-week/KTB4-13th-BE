@@ -2,7 +2,8 @@ package com.book.core.review.application.service;
 
 import com.book.core.review.application.command.CreateReviewCommand;
 import com.book.core.review.application.command.GetReviewsCommand;
-import com.book.core.review.application.result.GetReviewsResult;
+import com.book.common.paging.Page;
+import com.book.core.review.application.result.ReviewItemResult;
 import com.book.core.review.application.command.DeleteReviewCommand;
 import com.book.core.review.application.command.UpdateReviewCommand;
 import com.book.core.review.application.usecase.CreateReviewUseCase;
@@ -20,8 +21,8 @@ public class ReviewService {
     private final DeleteReviewUseCase deleteReviewUseCase;
     private final GetReviewsUseCase getReviewsUseCase;
 
-    public GetReviewsResult findReviews(final GetReviewsCommand command) {
-        return getReviewsUseCase.execute(command);
+    public Page<ReviewItemResult> findReviews(final GetReviewsCommand command) {
+        return getReviewsUseCase.execute(command.target(), command.offsetLimit());
     }
 
     public void createReview(final CreateReviewCommand command) {

@@ -9,12 +9,13 @@ import org.springframework.stereotype.Component;
 import com.book.common.paging.OffsetLimit;
 import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.core.review.domain.enums.ReviewTargetType;
+import com.book.core.review.domain.ReviewTarget;
 
 @Component
 public class ReviewCommandConverter {
     public GetReviewsCommand toGetReviewsCommand(final ReviewTargetType targetType, final Long targetId, final int offset,
         final int limit) {
-        return new GetReviewsCommand(targetType, targetId, new OffsetLimit(offset, limit));
+        return new GetReviewsCommand(new ReviewTarget(targetType, targetId), new OffsetLimit(offset, limit));
     }
 
     public CreateReviewCommand toCreateReviewCommand(final Long userId, final CreateReviewRequest request) {

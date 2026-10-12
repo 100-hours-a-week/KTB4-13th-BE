@@ -50,7 +50,7 @@ class OnboardingPreferencesApiIntegrationTest {
     }
 
     @Test
-    void 최초_온보딩을_완료한_뒤_Q3와_Q4를_함께_전체_수정한다() throws Exception {
+    void 최초_온보딩을_완료한_뒤_Q3_변경에_맞춘_Q4를_조회하고_전체_수정한다() throws Exception {
         authenticateAs(insertUser("전체수정API회원1"));
         saveAnswers(1, "[1]");
         saveAnswers(2, "[6]");
@@ -61,6 +61,9 @@ class OnboardingPreferencesApiIntegrationTest {
         mvc.perform(put("/api/v1/onboarding/books").contentType(MediaType.APPLICATION_JSON).content("{\"bookIds\":[]}"))
             .andExpect(status().isOk());
 
+        mvc.perform(get("/api/v1/onboarding/questions/{questionId}", 4).param("parentOptionIds", "10")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.options[*].optionId", contains(28, 29, 30, 31)))
+            .andExpect(jsonPath("$.data.options[*].parentOptionId", everyItem(is(10))));
         mvc.perform(put("/api/v1/onboarding/preferences").contentType(MediaType.APPLICATION_JSON).content("""
             {"answers":[{"questionId":1,"optionIds":[1]},{"questionId":2,"optionIds":[6]},
             {"questionId":3,"optionIds":[10]},{"questionId":4,"optionIds":[28]}],"bookIds":[]}

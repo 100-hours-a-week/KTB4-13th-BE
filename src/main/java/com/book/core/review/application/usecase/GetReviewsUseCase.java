@@ -19,9 +19,9 @@ public class GetReviewsUseCase {
 
     @Transactional(readOnly = true)
     public Page<ReviewItemResult> execute(final ReviewTarget target, final OffsetLimit offsetLimit) {
-        log.debug("리뷰 조회 처리를 시작합니다. targetType={}, targetId={}, offset={}, limit={}, traceId={}", target.type(), target.id(),
-            offsetLimit.offset(), offsetLimit.limit(), MDC.get("traceId"));
         final Page<ReviewItemResult> result = reviewRepository.findActiveReviews(target, offsetLimit);
+        log.info("리뷰를 조회했습니다. targetType={}, targetId={}, offset={}, limit={}, count={}, hasNext={}, traceId={}", target.type(),
+            target.id(), offsetLimit.offset(), offsetLimit.limit(), result.content().size(), result.hasNext(), MDC.get("traceId"));
         return result;
     }
 }

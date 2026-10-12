@@ -70,7 +70,7 @@ class ReviewUseCaseLoggingTest {
     }
 
     @Test
-    void 조회_파라미터를_DEBUG로_기록한다() {
+    void 조회_파라미터와_결과_요약을_INFO로_기록한다() {
         final var paging = new OffsetLimit(3, 2);
         when(repository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging)).thenReturn(new Page<>(List.of(
             new ReviewItemResult(801L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "private-review-content")),
@@ -78,9 +78,9 @@ class ReviewUseCaseLoggingTest {
 
         new GetReviewsUseCase(repository).execute(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging);
 
-        assertThat(appender.list).extracting(ILoggingEvent::getLevel).containsExactly(Level.DEBUG);
+        assertThat(appender.list).extracting(ILoggingEvent::getLevel).containsExactly(Level.INFO);
         assertThat(appender.list.getFirst().getFormattedMessage())
-            .contains("targetType=PRODUCT", "targetId=10", "offset=3", "limit=2", "traceId=review-test-trace")
+            .contains("targetType=PRODUCT", "targetId=10", "offset=3", "limit=2", "count=1", "hasNext=true", "traceId=review-test-trace")
             .doesNotContain("private-review-content", "rate=", "userId=");
     }
 

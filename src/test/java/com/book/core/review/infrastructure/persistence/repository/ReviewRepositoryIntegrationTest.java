@@ -82,6 +82,9 @@ class ReviewRepositoryIntegrationTest {
         assertThat(reviewRepository.findActiveById(review.id())).isEmpty();
         assertThat(jdbc.queryForObject("SELECT active_flag FROM reviews WHERE id = ?", Integer.class, review.id())).isNull();
         assertThat(reviewRepository.existsByUserIdAndReviewKey(42L, "ORDER_ITEM_" + orderItemId)).isTrue();
+        assertThatThrownBy(() -> reviewRepository.save(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + orderItemId),
+            new ReviewTarget(ReviewTargetType.PRODUCT, 9401L), new ReviewContent(new BigDecimal("5.0"), "삭제 후 재작성"), false)))
+            .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private void insertBook(final long id) {

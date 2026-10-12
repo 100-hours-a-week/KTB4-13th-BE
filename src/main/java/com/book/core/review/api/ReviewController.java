@@ -10,8 +10,6 @@ import com.book.core.review.api.response.ReviewResponse;
 import com.book.core.review.api.spec.ReviewControllerSpec;
 import com.book.core.review.application.service.ReviewService;
 import com.book.core.review.domain.enums.ReviewTargetType;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -24,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import jakarta.validation.constraints.Min;
 import com.book.core.review.api.converter.ReviewResultConverter;
 
 @Validated
@@ -39,33 +36,31 @@ class ReviewController implements ReviewControllerSpec {
     @Override
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(
-        @RequestParam("targetType") final ReviewTargetType targetType, @Positive @RequestParam("targetId") final Long targetId,
-        @Min(0) @RequestParam(value = "offset", defaultValue = "0") final int offset,
-        @Positive @RequestParam(value = "limit", defaultValue = "20") final int limit) {
+        @RequestParam("targetType") final ReviewTargetType targetType, @RequestParam("targetId") final Long targetId,
+        @RequestParam(value = "offset", defaultValue = "0") final int offset,
+        @RequestParam(value = "limit", defaultValue = "20") final int limit) {
         final var command = commandConverter.toGetReviewsCommand(targetType, targetId, offset, limit);
         return ResponseEntity.ok(ApiResponse.ok(resultConverter.toResponse(reviewService.findReviews(command))));
     }
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<Void>> createReview(@UserId final Long userId,
-        @Valid @RequestBody final CreateReviewRequest request) {
+    public ResponseEntity<ApiResponse<Void>> createReview(@UserId final Long userId, @RequestBody final CreateReviewRequest request) {
         reviewService.createReview(commandConverter.toCreateReviewCommand(userId, request));
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
     @Override
     @PatchMapping("/{reviewId}")
-    public ResponseEntity<ApiResponse<Void>> updateReview(@UserId final Long userId,
-        @Positive @PathVariable("reviewId") final Long reviewId, @Valid @RequestBody final UpdateReviewRequest request) {
+    public ResponseEntity<ApiResponse<Void>> updateReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId,
+        @RequestBody final UpdateReviewRequest request) {
         reviewService.updateReview(commandConverter.toUpdateReviewCommand(userId, reviewId, request));
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
     @Override
     @DeleteMapping("/{reviewId}")
-    public ResponseEntity<ApiResponse<Void>> deleteReview(@UserId final Long userId,
-        @Positive @PathVariable("reviewId") final Long reviewId) {
+    public ResponseEntity<ApiResponse<Void>> deleteReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId) {
         reviewService.deleteReview(commandConverter.toDeleteReviewCommand(userId, reviewId));
         return ResponseEntity.ok(ApiResponse.ok());
     }

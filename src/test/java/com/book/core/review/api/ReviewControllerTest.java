@@ -160,8 +160,8 @@ class ReviewControllerTest {
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[0].id").value(8))
             .andExpect(jsonPath("$.data.content[0].targetType").value("PRODUCT"))
             .andExpect(jsonPath("$.data.content[0].targetId").value(10)).andExpect(jsonPath("$.data.content[0].rate").value(4.5))
-            .andExpect(jsonPath("$.data.content[0].content").value("본문")).andExpect(jsonPath("$.data.content[0].userId").doesNotExist())
-            .andExpect(jsonPath("$.data.hasNext").value(true));
+            .andExpect(jsonPath("$.data.content[0].isSpoiler").value(true)).andExpect(jsonPath("$.data.content[0].content").value("본문"))
+            .andExpect(jsonPath("$.data.content[0].userId").doesNotExist()).andExpect(jsonPath("$.data.hasNext").value(true));
 
         verify(reviewService).findReviews(command);
     }
@@ -182,6 +182,8 @@ class ReviewControllerTest {
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("offset", "-1"))
             .andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("limit", "0"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("limit", "101"))
             .andExpect(status().isBadRequest());
         verifyNoInteractions(reviewService);
     }

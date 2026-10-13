@@ -6,6 +6,8 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.review.application.command.UpdateReviewCommand;
 import com.book.core.review.application.port.ReviewRepositoryPort;
 import com.book.core.review.domain.Review;
+import com.book.core.review.domain.ReviewContent;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +23,15 @@ public class UpdateReviewUseCase {
         if (!review.userId().equals(command.userId())) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
-        review.update(command.rating(), command.content(), command.isSpoiler());
+        BigDecimal rate = review.rate();
+        if (command.rating() != null) {
+            rate = command.rating();
+        }
+        String content = review.content();
+        if (command.content() != null) {
+            content = command.content();
+        }
+        review.updateContent(new ReviewContent(rate, content), command.isSpoiler());
         reviewRepository.save(review);
     }
 }

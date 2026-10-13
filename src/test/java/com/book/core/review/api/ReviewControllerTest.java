@@ -24,7 +24,8 @@ import com.book.core.review.domain.enums.ReviewTargetType;
 import com.book.core.review.domain.ReviewTarget;
 import java.util.List;
 import com.book.core.review.application.command.CreateReviewCommand;
-import com.book.core.review.application.command.DeleteReviewCommand;
+import com.book.core.review.application.command.RemoveReviewCommand;
+import com.book.core.review.domain.ReviewContent;
 import com.book.core.review.application.command.UpdateReviewCommand;
 import com.book.core.review.application.service.ReviewService;
 import java.math.BigDecimal;
@@ -96,20 +97,22 @@ class ReviewControllerTest {
     @Test
     void 리뷰_수정은_인증된_userId와_reviewId를_Command로_전달한다() throws Exception {
         authenticateAs(42L);
+        when(reviewService.updateReview(new UpdateReviewCommand(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정"), null)))
+            .thenReturn(801L);
 
-        mvc.perform(patch("/api/v1/reviews/801").contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"수정\"}"))
-            .andExpect(status().isOk());
+        mvc.perform(patch("/api/v1/reviews/801").contentType(MediaType.APPLICATION_JSON).content("{\"rate\":4.5,\"content\":\"수정\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").value(801));
 
-        verify(reviewService).updateReview(new UpdateReviewCommand(42L, 801L, null, "수정", null));
+        verify(reviewService).updateReview(new UpdateReviewCommand(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정"), null));
     }
 
     @Test
     void 다른_사용자의_리뷰_수정_시도는_403을_응답한다() throws Exception {
         authenticateAs(999L);
         doThrow(new CoreException(ErrorCode.FORBIDDEN)).when(reviewService)
-            .updateReview(new UpdateReviewCommand(999L, 801L, null, "수정", null));
+            .updateReview(new UpdateReviewCommand(999L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정"), null));
 
-        mvc.perform(patch("/api/v1/reviews/801").contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"수정\"}"))
+        mvc.perform(patch("/api/v1/reviews/801").contentType(MediaType.APPLICATION_JSON).content("{\"rate\":4.5,\"content\":\"수정\"}"))
             .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("E403"));
     }
 
@@ -117,15 +120,18 @@ class ReviewControllerTest {
     void 리뷰_삭제는_인증된_userId와_reviewId를_Service에_전달한다() throws Exception {
         authenticateAs(42L);
 
-        mvc.perform(delete("/api/v1/reviews/801")).andExpect(status().isOk());
+        when(reviewService.removeReview(new RemoveReviewCommand(42L, 801L))).thenReturn(801L);
 
-        verify(reviewService).deleteReview(new DeleteReviewCommand(42L, 801L));
+        mvc.perform(delete("/api/v1/reviews/801")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data").value(801));
+
+        verify(reviewService).removeReview(new RemoveReviewCommand(42L, 801L));
     }
 
     @Test
     void 다른_사용자의_리뷰_삭제_시도는_403을_응답한다() throws Exception {
         authenticateAs(999L);
-        doThrow(new CoreException(ErrorCode.FORBIDDEN)).when(reviewService).deleteReview(new DeleteReviewCommand(999L, 801L));
+        doThrow(new CoreException(ErrorCode.FORBIDDEN)).when(reviewService).removeReview(new RemoveReviewCommand(999L, 801L));
 
         mvc.perform(delete("/api/v1/reviews/801")).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("E403"));
     }

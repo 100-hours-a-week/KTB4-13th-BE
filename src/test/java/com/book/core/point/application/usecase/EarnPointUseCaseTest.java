@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.core.point.application.command.EarnPointCommand;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.application.port.PointHistoryRepositoryPort;
 import com.book.core.point.domain.PointBalance;
@@ -34,7 +33,7 @@ class EarnPointUseCaseTest {
         final PointBalance balance = new PointBalance(1L, 42L, new BigDecimal("1000"));
         when(balances.findByUserId(42L)).thenReturn(Optional.of(balance));
 
-        useCase.execute(new EarnPointCommand(42L, PointType.REVIEW, 10L, amount));
+        useCase.execute(42L, PointType.REVIEW, 10L, amount);
 
         final ArgumentCaptor<PointHistory> captured = ArgumentCaptor.forClass(PointHistory.class);
         verify(histories).save(captured.capture());
@@ -51,7 +50,7 @@ class EarnPointUseCaseTest {
     @ParameterizedTest
     @ValueSource(strings = {"0", "0.0", "0.00"})
     void 자릿수가_달라도_0이면_조회하거나_이력을_저장하지_않는다(final String amount) {
-        useCase.execute(new EarnPointCommand(42L, PointType.REVIEW, 10L, new BigDecimal(amount)));
+        useCase.execute(42L, PointType.REVIEW, 10L, new BigDecimal(amount));
 
         verifyNoInteractions(balances, histories);
     }
@@ -60,8 +59,24 @@ class EarnPointUseCaseTest {
     void 잔액이_없으면_오류를_반환하고_이력을_저장하지_않는다() {
         when(balances.findByUserId(42L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.execute(new EarnPointCommand(42L, PointType.REVIEW, 10L, BigDecimal.TEN))).isInstanceOfSatisfying(
-            CoreException.class, (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
+        assertThatThrownBy(() -> useCase.execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN)).isInstanceOfSatisfying(CoreException.class,
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
         verifyNoInteractions(histories);
+    }
+
+    @Test
+    void 잘못된_인자는_저장소_호출_전에_거절한다() {
+        assertInvalidArguments(null, PointType.REVIEW, 10L, BigDecimal.TEN);
+        assertInvalidArguments(0L, PointType.REVIEW, 10L, BigDecimal.TEN);
+        assertInvalidArguments(-1L, PointType.REVIEW, 10L, BigDecimal.TEN);
+        assertInvalidArguments(42L, null, 10L, BigDecimal.TEN);
+        assertInvalidArguments(42L, PointType.REVIEW, null, BigDecimal.TEN);
+        assertInvalidArguments(42L, PointType.REVIEW, 10L, null);
+        verifyNoInteractions(balances, histories);
+    }
+
+    private void assertInvalidArguments(final Long userId, final PointType type, final Long referenceId, final BigDecimal amount) {
+        assertThatThrownBy(() -> useCase.execute(userId, type, referenceId, amount)).isInstanceOfSatisfying(CoreException.class,
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
     }
 }

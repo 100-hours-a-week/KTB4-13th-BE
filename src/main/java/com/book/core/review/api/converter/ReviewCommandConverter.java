@@ -1,16 +1,16 @@
 package com.book.core.review.api.converter;
 
-import com.book.core.review.api.request.CreateReviewRequest;
+import com.book.core.review.api.request.AddReviewRequest;
 import com.book.core.review.api.request.UpdateReviewRequest;
-import com.book.core.review.application.command.CreateReviewCommand;
+import com.book.core.review.application.command.AddReviewCommand;
+import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.core.review.application.command.RemoveReviewCommand;
-import com.book.core.review.domain.ReviewContent;
 import com.book.core.review.application.command.UpdateReviewCommand;
+import com.book.core.review.domain.ReviewTarget;
+import com.book.core.review.domain.ReviewContent;
 import org.springframework.stereotype.Component;
 import com.book.common.paging.OffsetLimit;
-import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.core.review.domain.enums.ReviewTargetType;
-import com.book.core.review.domain.ReviewTarget;
 
 @Component
 public class ReviewCommandConverter {
@@ -19,8 +19,9 @@ public class ReviewCommandConverter {
         return new GetReviewsCommand(new ReviewTarget(targetType, targetId), new OffsetLimit(offset, limit));
     }
 
-    public CreateReviewCommand toCreateReviewCommand(final Long userId, final CreateReviewRequest request) {
-        return new CreateReviewCommand(userId, request.targetId(), request.rate(), request.content(), request.isSpoiler());
+    public AddReviewCommand toAddReviewCommand(final Long userId, final AddReviewRequest request) {
+        return new AddReviewCommand(userId, new ReviewTarget(request.targetType(), request.targetId()),
+            new ReviewContent(request.rate(), request.content()), request.isSpoiler());
     }
 
     public UpdateReviewCommand toUpdateReviewCommand(final Long userId, final Long reviewId, final UpdateReviewRequest request) {

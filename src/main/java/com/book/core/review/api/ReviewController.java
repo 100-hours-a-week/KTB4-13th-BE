@@ -4,13 +4,17 @@ import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.common.response.PageResponse;
 import com.book.core.review.api.converter.ReviewCommandConverter;
-import com.book.core.review.api.request.CreateReviewRequest;
+import com.book.core.review.api.request.AddReviewRequest;
 import com.book.core.review.api.request.UpdateReviewRequest;
 import com.book.core.review.api.response.ReviewResponse;
 import com.book.core.review.api.spec.ReviewControllerSpec;
-import com.book.core.review.application.service.ReviewService;
-import com.book.core.review.application.command.UpdateReviewCommand;
+import com.book.common.paging.Page;
+import com.book.core.review.application.command.AddReviewCommand;
 import com.book.core.review.application.command.RemoveReviewCommand;
+import com.book.core.review.application.command.GetReviewsCommand;
+import com.book.core.review.application.command.UpdateReviewCommand;
+import com.book.core.review.application.result.ReviewItemResult;
+import com.book.core.review.application.service.ReviewService;
 import com.book.core.review.domain.enums.ReviewTargetType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -41,15 +45,18 @@ class ReviewController implements ReviewControllerSpec {
         @RequestParam("targetType") final ReviewTargetType targetType, @RequestParam("targetId") final Long targetId,
         @RequestParam(value = "offset", defaultValue = "0") final int offset,
         @RequestParam(value = "limit", defaultValue = "20") final int limit) {
-        final var command = commandConverter.toGetReviewsCommand(targetType, targetId, offset, limit);
-        return ResponseEntity.ok(ApiResponse.ok(resultConverter.toResponse(reviewService.findReviews(command))));
+        final GetReviewsCommand command = commandConverter.toGetReviewsCommand(targetType, targetId, offset, limit);
+        final Page<ReviewItemResult> result = reviewService.findReviews(command);
+        final PageResponse<ReviewResponse> response = resultConverter.toResponse(result);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<Void>> createReview(@UserId final Long userId, @RequestBody final CreateReviewRequest request) {
-        reviewService.createReview(commandConverter.toCreateReviewCommand(userId, request));
-        return ResponseEntity.ok(ApiResponse.ok());
+    public ResponseEntity<ApiResponse<Long>> addReview(@UserId final Long userId, @RequestBody final AddReviewRequest request) {
+        final AddReviewCommand command = commandConverter.toAddReviewCommand(userId, request);
+        final Long result = reviewService.addReview(command);
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     @Override

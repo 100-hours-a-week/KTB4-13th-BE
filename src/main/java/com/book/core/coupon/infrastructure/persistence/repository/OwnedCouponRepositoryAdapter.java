@@ -5,6 +5,7 @@ import com.book.core.coupon.domain.OwnedCoupon;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -15,6 +16,16 @@ public class OwnedCouponRepositoryAdapter implements OwnedCouponRepositoryPort {
     @Override
     public Optional<OwnedCoupon> findByUserIdAndCouponId(final Long userId, final Long couponId) {
         return ownedCouponRepository.findByUserIdAndCouponId(userId, couponId);
+    }
+
+    @Override
+    public List<OwnedCoupon> findActiveByUserId(final Long userId) {
+        return ownedCouponRepository.findByUserIdAndDeletedAtIsNull(userId);
+    }
+
+    @Override
+    public Optional<OwnedCoupon> findById(final Long ownedCouponId) {
+        return ownedCouponRepository.findById(ownedCouponId);
     }
 
 

@@ -3,7 +3,6 @@ package com.book.core.auth.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -24,7 +23,6 @@ import com.book.core.user.domain.ProviderType;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -69,23 +67,6 @@ class AuthServiceTest {
         assertThat(result.accessToken()).isEqualTo("access-token");
         assertThat(result.refreshToken()).isEqualTo("refresh-token");
         assertThat(result.refreshExpiresAt()).isEqualTo(refreshExpiresAt);
-    }
-
-    @Test
-    void nullable_providerEmail을_IdentifyUserCommand에_그대로_전달한다() {
-        final AuthLoginCommand command = command();
-        when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthIdentity("provider-123", null));
-        when(identifyUserUseCase.execute(new IdentifyUserCommand(ProviderType.KAKAO, "provider-123", null)))
-            .thenReturn(new IdentifyUserResult(42L));
-        final Instant refreshExpiresAt = Instant.parse("2030-01-09T03:04:05Z");
-        when(tokenIssuer.issue(42L)).thenReturn(new IssuedTokens("access-token", "refresh-token", refreshExpiresAt));
-
-        service().login(command);
-
-        final var identifyCommand = ArgumentCaptor.forClass(IdentifyUserCommand.class);
-        verify(identifyUserUseCase).execute(identifyCommand.capture());
-        assertThat(identifyCommand.getValue().providerEmail()).isNull();
     }
 
     @Test

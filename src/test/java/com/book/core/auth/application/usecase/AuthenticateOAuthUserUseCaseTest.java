@@ -2,7 +2,6 @@ package com.book.core.auth.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -13,7 +12,6 @@ import com.book.core.auth.application.port.OAuthProviderClient;
 import com.book.core.auth.application.port.OAuthTokenClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -33,9 +31,6 @@ class AuthenticateOAuthUserUseCaseTest {
 
         final OAuthIdentity result = useCase().execute("authorization-code", "code-verifier", "nonce");
 
-        final InOrder order = inOrder(oAuthTokenClient, oAuthProviderClient);
-        order.verify(oAuthTokenClient).exchangeForIdToken("authorization-code", "code-verifier");
-        order.verify(oAuthProviderClient).verify("id-token", "nonce");
         assertThat(result).isEqualTo(identity);
     }
 

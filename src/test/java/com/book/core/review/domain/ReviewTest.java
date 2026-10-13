@@ -1,9 +1,9 @@
 package com.book.core.review.domain;
 
+import com.book.core.review.domain.enums.ReviewTargetType;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.book.core.review.domain.enums.ReviewTargetType;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import java.math.BigDecimal;
@@ -22,15 +22,15 @@ class ReviewTest {
     }
 
     @Test
-    void accepts_rating_bounds_in_tenth_steps() {
+    void accepts_rating_bounds_in_half_steps() {
         assertThat(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
-            new ReviewContent(new BigDecimal("0.0"), "평점 0"), false).rate()).isEqualByComparingTo("0.0");
+            new ReviewContent(new BigDecimal("0.5"), "평점 0.5"), false).rate()).isEqualByComparingTo("0.5");
         assertThat(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 702L), new ReviewTarget(ReviewTargetType.PRODUCT, 702L),
-            new ReviewContent(new BigDecimal("10.0"), "평점 10"), false).rate()).isEqualByComparingTo("10.0");
+            new ReviewContent(new BigDecimal("5.0"), "평점 5"), false).rate()).isEqualByComparingTo("5.0");
     }
 
     @Test
-    void rejects_rating_outside_bounds_or_between_tenth_steps() {
+    void rejects_rating_outside_bounds_or_between_half_steps() {
         assertInvalidReview(new BigDecimal("-0.1"), "내용");
         assertInvalidReview(new BigDecimal("10.1"), "내용");
         assertInvalidReview(new BigDecimal("4.05"), "내용");
@@ -38,26 +38,25 @@ class ReviewTest {
 
     @Test
     void rejects_content_over_255_characters() {
-
         assertThatThrownBy(() -> Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
             new ReviewContent(BigDecimal.ONE, "x".repeat(256)), false)).isInstanceOf(CoreException.class)
             .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
     }
 
     @Test
-    void updates_only_fields_that_were_provided() {
+    void updates_rating_and_content_together() {
         final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
             new ReviewContent(new BigDecimal("4.0"), "기존 내용"), false);
 
-        review.updateContent(new ReviewContent(new BigDecimal("8.7"), review.content()), true);
+        review.updateContent(new ReviewContent(new BigDecimal("4.5"), "수정 내용"), true);
 
-        assertThat(review.rate()).isEqualByComparingTo("8.7");
-        assertThat(review.content()).isEqualTo("기존 내용");
+        assertThat(review.rate()).isEqualByComparingTo("4.5");
+        assertThat(review.content()).isEqualTo("수정 내용");
         assertThat(review.isSpoiler()).isTrue();
     }
 
     @Test
-    void rejects_invalid_partial_update_without_mutating_other_fields() {
+    void rejects_invalid_content_without_mutating_other_fields() {
         final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
             new ReviewContent(new BigDecimal("4.0"), "기존 내용"), false);
 
@@ -67,6 +66,16 @@ class ReviewTest {
         assertThat(review.rate()).isEqualByComparingTo("4.0");
         assertThat(review.content()).isEqualTo("기존 내용");
         assertThat(review.isSpoiler()).isFalse();
+    }
+
+    @Test
+    void stores_purchase_key_without_parsing_an_order_item_id() {
+        final Review review = Review.create(new ReviewKey(42L, "PURCHASE_REFERENCE_ABC"), new ReviewTarget(ReviewTargetType.PRODUCT, 10L),
+            new ReviewContent(new BigDecimal("4.5"), "본문"), false);
+
+        assertThat(review.userId()).isEqualTo(42L);
+        assertThat(review.reviewKey()).isEqualTo("PURCHASE_REFERENCE_ABC");
+        assertThat(review.targetId()).isEqualTo(10L);
     }
 
     private static void assertInvalidReview(final BigDecimal rating, final String content) {

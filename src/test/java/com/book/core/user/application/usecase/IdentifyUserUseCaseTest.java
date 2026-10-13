@@ -85,7 +85,7 @@ class IdentifyUserUseCaseTest {
     }
 
     @Test
-    void 가입_중_발생한_예외는_재시도하지_않고_그대로_전달한다() {
+    void 가입_실패_예외를_그대로_전달한다() {
         final IdentifyUserCommand command = new IdentifyUserCommand(ProviderType.KAKAO, "conflict-provider", null);
         when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "conflict-provider"))
             .thenReturn(Optional.empty());

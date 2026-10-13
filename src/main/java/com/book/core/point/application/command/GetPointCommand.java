@@ -3,7 +3,6 @@ package com.book.core.point.application.command;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 
-// @formatter:off
 public record GetPointCommand(Long userId) {
     public GetPointCommand {
         if (userId == null || userId <= 0) {
@@ -11,4 +10,3 @@ public record GetPointCommand(Long userId) {
         }
     }
 }
-// @formatter:on

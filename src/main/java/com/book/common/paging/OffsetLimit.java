@@ -3,7 +3,6 @@ package com.book.common.paging;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 
-// @formatter:off
 public record OffsetLimit(int offset, int limit) {
     public static final int MAX_LIMIT = 100;
 
@@ -13,4 +12,3 @@ public record OffsetLimit(int offset, int limit) {
         }
     }
 }
-// @formatter:on

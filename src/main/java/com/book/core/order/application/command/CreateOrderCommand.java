@@ -4,7 +4,6 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import java.util.List;
 
-// @formatter:off
 public record CreateOrderCommand(Long userId, List<CreateOrderItemCommand> items) {
     public CreateOrderCommand {
         if (userId == null || userId <= 0 || items == null || items.isEmpty()) {
@@ -16,4 +15,3 @@ public record CreateOrderCommand(Long userId, List<CreateOrderItemCommand> items
         items = List.copyOf(items);
     }
 }
-// @formatter:on

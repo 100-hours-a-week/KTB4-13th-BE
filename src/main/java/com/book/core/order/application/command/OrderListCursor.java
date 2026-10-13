@@ -8,7 +8,6 @@ import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.util.Base64;
 
-// @formatter:off
 public record OrderListCursor(LocalDateTime createdAt, Long orderId) {
     public OrderListCursor {
         if (createdAt == null || orderId == null || orderId <= 0) {
@@ -16,8 +15,7 @@ public record OrderListCursor(LocalDateTime createdAt, Long orderId) {
         }
     }
 
-    public static OrderListCursor parse(
-            final String token, final OrderStatus status, final LocalDateTime from, final LocalDateTime to) {
+    public static OrderListCursor parse(final String token, final OrderStatus status, final LocalDateTime from, final LocalDateTime to) {
         if (token == null) {
             return null;
         }
@@ -34,8 +32,7 @@ public record OrderListCursor(LocalDateTime createdAt, Long orderId) {
         }
 
         final String expectedStatus = status == null ? "" : status.name();
-        if (parts.length != 5 || !parts[2].equals(expectedStatus) || !parts[3].equals(from.toString())
-                || !parts[4].equals(to.toString())) {
+        if (parts.length != 5 || !parts[2].equals(expectedStatus) || !parts[3].equals(from.toString()) || !parts[4].equals(to.toString())) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
@@ -52,4 +49,3 @@ public record OrderListCursor(LocalDateTime createdAt, Long orderId) {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 }
-// @formatter:on

@@ -4,14 +4,8 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import java.time.LocalDate;
 
-// @formatter:off
-public record GetProductsCommand(
-        Long categoryId,
-        LocalDate publishedFrom,
-        LocalDate publishedTo,
-        ProductListSort sort,
-        ProductListCursor cursor,
-        Integer limit) {
+public record GetProductsCommand(Long categoryId, LocalDate publishedFrom, LocalDate publishedTo, ProductListSort sort,
+    ProductListCursor cursor, Integer limit) {
     public static final int DEFAULT_LIMIT = 20;
 
     public GetProductsCommand {
@@ -47,4 +41,3 @@ public record GetProductsCommand(
         return limit;
     }
 }
-// @formatter:on

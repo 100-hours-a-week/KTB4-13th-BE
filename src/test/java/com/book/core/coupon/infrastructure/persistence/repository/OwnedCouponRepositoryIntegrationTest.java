@@ -1,5 +1,6 @@
 package com.book.core.coupon.infrastructure.persistence.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.CoreException;
@@ -12,6 +13,7 @@ import com.book.core.coupon.domain.enums.CouponType;
 import com.book.core.coupon.domain.enums.OwnedCouponStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +43,31 @@ class OwnedCouponRepositoryIntegrationTest {
     @Autowired
     IssueCouponUseCase issueCoupon;
 
-
+    @Test
+    void 체크아웃은_회원과_상태와_만료만_필터하고_금액이나_횟수는_필터하지_않는다() {
+        final var now = LocalDateTime.of(2026, 10, 13, 9, 0);
+        final var valid = saveCoupon(now.plusDays(1));
+        final var expired = saveCoupon(now);
+        final var inactive = saveCoupon(now.plusDays(1));
+        inactive.delete();
+        couponJpaRepository.saveAndFlush(inactive);
+        final var used = saveCoupon(now.plusDays(1));
+        final var deleted = saveCoupon(now.plusDays(1));
+        final var owned = ownedCouponJpaRepository.saveAndFlush(new OwnedCoupon(100L, valid.id(), OwnedCouponStatus.ISSUED, 2L, 2L));
+        ownedCouponJpaRepository.saveAndFlush(new OwnedCoupon(100L, expired.id(), OwnedCouponStatus.ISSUED, 2L, 0L));
+        ownedCouponJpaRepository.saveAndFlush(new OwnedCoupon(100L, inactive.id(), OwnedCouponStatus.ISSUED, 2L, 0L));
+        ownedCouponJpaRepository.saveAndFlush(new OwnedCoupon(100L, used.id(), OwnedCouponStatus.USED, 2L, 2L));
+        ownedCouponJpaRepository.saveAndFlush(new OwnedCoupon(200L, valid.id(), OwnedCouponStatus.ISSUED, 2L, 0L));
+        final var deletedOwned =
+            ownedCouponJpaRepository.saveAndFlush(new OwnedCoupon(100L, deleted.id(), OwnedCouponStatus.ISSUED, 2L, 0L));
+        deletedOwned.delete();
+        ownedCouponJpaRepository.saveAndFlush(deletedOwned);
+        assertThat(
+            ownedCouponRepository.findOwnedCouponIds(100L, List.of(valid.id(), expired.id(), inactive.id(), used.id(), deleted.id()), now))
+            .extracting(OwnedCoupon::id).containsExactly(owned.id());
+        assertThat(ownedCouponRepository.findActiveByUserId(100L)).extracting(OwnedCoupon::couponId).containsExactlyInAnyOrder(valid.id(),
+            expired.id(), inactive.id(), used.id());
+    }
 
     @Test
     void 발급과_삭제_후에도_유지되는_중복_제약을_검증한다() {

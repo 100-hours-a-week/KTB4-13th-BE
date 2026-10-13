@@ -5,6 +5,8 @@ import com.book.core.coupon.domain.OwnedCoupon;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,7 +30,10 @@ public class OwnedCouponRepositoryAdapter implements OwnedCouponRepositoryPort {
         return ownedCouponRepository.findById(ownedCouponId);
     }
 
-
+    @Override
+    public List<OwnedCoupon> findOwnedCouponIds(final Long userId, final Collection<Long> couponIds, final LocalDateTime expiredAtAfter) {
+        return ownedCouponRepository.findOwnedCouponIds(userId, couponIds, expiredAtAfter);
+    }
 
     @Override
     public OwnedCoupon save(final OwnedCoupon ownedCoupon) {

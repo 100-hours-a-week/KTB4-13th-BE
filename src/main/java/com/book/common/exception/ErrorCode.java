@@ -41,14 +41,7 @@ public enum ErrorCode {
                                                                                         LogLevel.INFO), INVALID_PROVIDER_EMAIL(
                                                                                             HttpStatus.BAD_REQUEST,
                                                                                             "INVALID_PROVIDER_EMAIL",
-                                                                                            "소셜 로그인 이메일은 254자 이하여야 합니다.",
-                                                                                            LogLevel.INFO), NICKNAME_CONFLICT(
-                                                                                                HttpStatus.CONFLICT, "NICKNAME_CONFLICT",
-                                                                                                "동일한 활성 닉네임이 이미 존재합니다.",
-                                                                                                LogLevel.INFO), NICKNAME_GENERATION_FAILED(
-                                                                                                    HttpStatus.INTERNAL_SERVER_ERROR,
-                                                                                                    "NICKNAME_GENERATION_FAILED",
-                                                                                                    "닉네임을 생성하지 못했습니다.", LogLevel.ERROR),
+                                                                                            "소셜 로그인 이메일은 254자 이하여야 합니다.", LogLevel.INFO),
     // spotless:off
     PROVIDER_IDENTITY_CONFLICT(
         HttpStatus.CONFLICT,

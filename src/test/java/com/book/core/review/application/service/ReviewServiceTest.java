@@ -20,6 +20,9 @@ import com.book.core.review.application.command.RemoveReviewCommand;
 import com.book.core.review.application.result.ReviewItemResult;
 import com.book.core.review.application.result.ReviewProcessResult;
 import com.book.core.review.domain.ReviewFormat;
+import com.book.core.point.application.usecase.EarnPointUseCase;
+import com.book.core.point.application.usecase.DeductPointUseCase;
+import com.book.core.point.domain.enums.PointType;
 import com.book.core.review.application.usecase.AddReviewUseCase;
 import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.GetReviewsUseCase;
@@ -39,7 +42,9 @@ class ReviewServiceTest {
     private final DeleteReviewUseCase delete = mock(DeleteReviewUseCase.class);
     private final GetReviewsUseCase get = mock(GetReviewsUseCase.class);
     private final ValidateReviewPolicyUseCase policy = mock(ValidateReviewPolicyUseCase.class);
-    private final ReviewService service = new ReviewService(create, update, delete, get, policy);
+    private final EarnPointUseCase earn = mock(EarnPointUseCase.class);
+    private final DeductPointUseCase deduct = mock(DeductPointUseCase.class);
+    private final ReviewService service = new ReviewService(create, update, delete, get, policy, earn, deduct);
     private final ReviewTarget target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
 
     @Test
@@ -62,9 +67,11 @@ class ReviewServiceTest {
 
         assertThat(service.addReview(new AddReviewCommand(42L, target, new ReviewContent(rate, "본문"), false))).isEqualTo(801L);
 
-        final var order = inOrder(policy, create);
+        final var order = inOrder(policy, create, earn);
         order.verify(policy).validateNew(42L, target);
         order.verify(create).execute(target, key, new ReviewContent(rate, "본문"), false);
+        order.verify(earn).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
+        verifyNoInteractions(deduct);
     }
 
     @Test
@@ -74,7 +81,7 @@ class ReviewServiceTest {
         assertThatThrownBy(
             () -> service.addReview(new AddReviewCommand(42L, target, new ReviewContent(new BigDecimal("4.5"), "본문"), false)))
             .isInstanceOf(CoreException.class);
-        verifyNoInteractions(create);
+        verifyNoInteractions(create, earn, deduct);
     }
 
     @Test
@@ -88,7 +95,7 @@ class ReviewServiceTest {
         final var order = inOrder(policy, update);
         order.verify(policy).validateUpdate(42L, 801L);
         order.verify(update).execute(42L, 801L, new ReviewContent(rate, "수정 본문"), true);
-        verifyNoInteractions(create, delete, get);
+        verifyNoInteractions(create, delete, get, earn, deduct);
     }
 
     @Test
@@ -97,9 +104,60 @@ class ReviewServiceTest {
 
         assertThat(service.removeReview(new RemoveReviewCommand(42L, 801L))).isEqualTo(801L);
 
-        final var order = inOrder(delete);
+        final var order = inOrder(delete, deduct);
         order.verify(delete).execute(42L, 801L);
+        order.verify(deduct).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
+        verifyNoInteractions(earn);
         verifyNoInteractions(create, update, get, policy);
+    }
+
+
+    @Test
+    void 리뷰_저장이_실패하면_적립하지_않는다() {
+        final var key = new ReviewKey(42L, "ORDER_ITEM_702");
+        final var content = new ReviewContent(new BigDecimal("4.5"), "본문");
+        when(policy.validateNew(42L, target)).thenReturn(key);
+        when(create.execute(target, key, content, false)).thenThrow(new CoreException(ErrorCode.REVIEW_ALREADY_REVIEWED));
+
+        assertThatThrownBy(() -> service.addReview(new AddReviewCommand(42L, target, content, false))).isInstanceOf(CoreException.class);
+        verifyNoInteractions(earn, deduct);
+    }
+
+    @Test
+    void 리뷰_삭제가_실패하면_차감하지_않는다() {
+        when(delete.execute(42L, 801L)).thenThrow(new CoreException(ErrorCode.REVIEW_NOT_FOUND));
+
+        assertThatThrownBy(() -> service.removeReview(new RemoveReviewCommand(42L, 801L))).isInstanceOf(CoreException.class);
+        verifyNoInteractions(earn, deduct);
+    }
+
+    @Test
+    void 리뷰_저장_후_적립_실패는_호출자에게_전파한다() {
+        final var key = new ReviewKey(42L, "ORDER_ITEM_702");
+        final var content = new ReviewContent(new BigDecimal("4.5"), "본문");
+        when(policy.validateNew(42L, target)).thenReturn(key);
+        when(create.execute(target, key, content, false)).thenReturn(new ReviewProcessResult(801L, ReviewFormat.TEXT));
+        final var failure = new CoreException(ErrorCode.NOT_FOUND_DATA);
+        doThrow(failure).when(earn).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
+
+        assertThatThrownBy(() -> service.addReview(new AddReviewCommand(42L, target, content, false))).isSameAs(failure);
+        final var order = inOrder(create, earn);
+        order.verify(create).execute(target, key, content, false);
+        order.verify(earn).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
+        verifyNoInteractions(delete, deduct);
+    }
+
+    @Test
+    void 리뷰_삭제_후_차감_실패는_호출자에게_전파한다() {
+        when(delete.execute(42L, 801L)).thenReturn(new ReviewProcessResult(801L, ReviewFormat.TEXT));
+        final var failure = new CoreException(ErrorCode.NOT_FOUND_DATA);
+        doThrow(failure).when(deduct).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
+
+        assertThatThrownBy(() -> service.removeReview(new RemoveReviewCommand(42L, 801L))).isSameAs(failure);
+        final var order = inOrder(delete, deduct);
+        order.verify(delete).execute(42L, 801L);
+        order.verify(deduct).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
+        verifyNoInteractions(create, earn);
     }
 
     @Test
@@ -109,6 +167,6 @@ class ReviewServiceTest {
         assertThatThrownBy(
             () -> service.updateReview(new UpdateReviewCommand(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정 본문"), true)))
             .isInstanceOf(CoreException.class);
-        verifyNoInteractions(update);
+        verifyNoInteractions(update, earn, deduct);
     }
 }

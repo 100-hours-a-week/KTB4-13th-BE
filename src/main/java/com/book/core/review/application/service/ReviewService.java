@@ -1,5 +1,8 @@
 package com.book.core.review.application.service;
 
+import com.book.core.point.application.usecase.EarnPointUseCase;
+import com.book.core.point.application.usecase.DeductPointUseCase;
+import com.book.core.point.domain.enums.PointType;
 import com.book.core.review.application.command.AddReviewCommand;
 import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.common.paging.Page;
@@ -24,6 +27,8 @@ public class ReviewService {
     private final DeleteReviewUseCase deleteReviewUseCase;
     private final GetReviewsUseCase getReviewsUseCase;
     private final ValidateReviewPolicyUseCase validateReviewPolicyUseCase;
+    private final EarnPointUseCase earnPointUseCase;
+    private final DeductPointUseCase deductPointUseCase;
 
     public Page<ReviewItemResult> findReviews(final GetReviewsCommand command) {
         return getReviewsUseCase.execute(command.target(), command.offsetLimit());
@@ -32,6 +37,7 @@ public class ReviewService {
     public Long addReview(final AddReviewCommand command) {
         final ReviewKey reviewKey = validateReviewPolicyUseCase.validateNew(command.userId(), command.target());
         final ReviewProcessResult result = addReviewUseCase.execute(command.target(), reviewKey, command.content(), command.isSpoiler());
+        earnPointUseCase.execute(command.userId(), PointType.REVIEW, result.id(), result.pointAmount());
         return result.id();
     }
 
@@ -42,6 +48,7 @@ public class ReviewService {
 
     public Long removeReview(final RemoveReviewCommand command) {
         final ReviewProcessResult result = deleteReviewUseCase.execute(command.userId(), command.reviewId());
+        deductPointUseCase.execute(command.userId(), PointType.REVIEW, result.id(), result.pointAmount());
         return result.id();
     }
 }

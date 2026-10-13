@@ -47,6 +47,7 @@ class ReviewUseCaseTest {
 
         assertThat(result.id()).isEqualTo(801L);
         assertThat(result.format()).isEqualTo(ReviewFormat.TEXT);
+        assertThat(result.pointAmount()).isEqualByComparingTo("1000");
 
         final var capture = ArgumentCaptor.forClass(Review.class);
         verify(repository).save(capture.capture());
@@ -102,6 +103,7 @@ class ReviewUseCaseTest {
 
         assertThat(result.id()).isEqualTo(801L);
         assertThat(result.format()).isEqualTo(ReviewFormat.TEXT);
+        assertThat(result.pointAmount()).isEqualByComparingTo("1000");
         assertThat(review.isDeleted()).isTrue();
         verify(repository).save(review);
     }

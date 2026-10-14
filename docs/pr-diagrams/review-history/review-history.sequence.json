@@ -21,19 +21,19 @@
       "id": "review_service",
       "type": "backend",
       "label": "ReviewService",
-      "sublabel": "기존 정책 · 실행 순서"
+      "sublabel": "트랜잭션 · 이력 · 포인트 조율"
     },
     {
       "id": "write_usecase",
       "type": "backend",
       "label": "쓰기 UseCase",
-      "sublabel": "리뷰와 이력의 트랜잭션"
+      "sublabel": "리뷰 상태 변경"
     },
     {
       "id": "review_store",
       "type": "database",
       "label": "리뷰 저장소",
-      "sublabel": "Repository Port → JPA"
+      "sublabel": "Port → QueryDSL / JPA"
     },
     {
       "id": "history_store",
@@ -80,34 +80,34 @@
       "label": "상태 변경 · 저장"
     },
     {
-      "id": "append_snapshot",
-      "from": "write_usecase",
-      "to": "history_store",
-      "y": 325,
-      "label": "이전 기록 시각 확인 · 전체 상태 추가"
-    },
-    {
-      "id": "write_complete",
+      "id": "return_changed_review",
       "from": "write_usecase",
       "to": "review_service",
-      "y": 358,
-      "label": "리뷰와 이력 함께 커밋 / 실패 시 롤백",
+      "y": 325,
+      "label": "변경한 리뷰 반환",
       "variant": "return"
+    },
+    {
+      "id": "append_snapshot",
+      "from": "review_service",
+      "to": "history_store",
+      "y": 358,
+      "label": "직전 시각 확인 · 전체 상태 추가"
     },
     {
       "id": "return_result",
       "from": "review_service",
       "to": "review_api",
       "y": 391,
-      "label": "기존 응답 계약 유지",
+      "label": "커밋 후 포인트 · 응답",
       "variant": "return"
     }
   ],
   "activations": [
     {
-      "participant": "write_usecase",
-      "from": 193,
-      "to": 362,
+      "participant": "review_service",
+      "from": 170,
+      "to": 395,
       "type": "backend"
     }
   ]

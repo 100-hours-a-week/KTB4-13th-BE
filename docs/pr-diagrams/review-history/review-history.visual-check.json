@@ -6,9 +6,9 @@
   "status": "pass",
   "visualReview": "pending",
   "artifact": {
-    "path": "/tmp/book-review-history-diagram-noip/review-history.html",
-    "sha256": "b935c64b1f382cbdded81df8d9b0bda3b2bd960975fe1c075deb39fe94d4ec94",
-    "bytes": 803749
+    "path": "/tmp/book-review-history-diagram-service/review-history.html",
+    "sha256": "1568e73a5b78031d3d158f28157bc51064456fa0a6f9688c3f3ed02ea0ef2ca7",
+    "bytes": 803703
   },
   "state": {
     "detail": "read",

@@ -5166,8 +5166,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <path d="M 956.5 142 L 956.5 415" class="a-default" stroke-width="0.8" stroke-dasharray="3,7"/>
 
         <!-- Activations -->
-        <rect x="546" y="193" width="10" height="169" rx="3" class="c-mask"/>
-        <rect x="546" y="193" width="10" height="169" rx="3" class="c-backend" stroke-width="1"/>
+        <rect x="343.25" y="170" width="10" height="225" rx="3" class="c-mask"/>
+        <rect x="343.25" y="170" width="10" height="225" rx="3" class="c-backend" stroke-width="1"/>
 
         <!-- Messages -->
         <g data-edge-from="review_api" data-edge-to="review_service" data-edge-label="인증 사용자 · 리뷰 입력" data-edge-key="0" data-edge-id="convert_request">
@@ -5210,27 +5210,27 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </g>
         </g>
 
-        <g data-edge-from="write_usecase" data-edge-to="history_store" data-edge-label="이전 기록 시각 확인 · 전체 상태 추가" data-edge-key="5" data-edge-id="append_snapshot">
-          <path data-composition-edge-from="write_usecase" data-composition-edge-to="history_store" data-composition-edge-id="append_snapshot" data-composition-points="558,325;949.5,325" d="M 558 325 L 949.5 325" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <g data-edge-from="write_usecase" data-edge-to="review_service" data-edge-label="변경한 리뷰 반환" data-edge-key="5" data-edge-id="return_changed_review">
+          <path data-composition-edge-from="write_usecase" data-composition-edge-to="review_service" data-composition-edge-id="return_changed_review" data-composition-points="544,325;355.25,325" d="M 544 325 L 355.25 325" class="a-default" stroke-width="1.4" stroke-dasharray="3,5" marker-end="url(#arrowhead)"/>
         <g data-detail="context">
-          <rect x="654.15" y="305" width="199.20000000000002" height="16" rx="3" class="c-mask"/>
-          <text x="753.75" y="315" class="t-backend" font-size="9" text-anchor="middle">이전 기록 시각 확인 · 전체 상태 추가</text>
+          <rect x="402.025" y="305" width="95.2" height="16" rx="3" class="c-mask"/>
+          <text x="449.625" y="315" class="t-muted" font-size="9" text-anchor="middle">변경한 리뷰 반환</text>
         </g>
         </g>
 
-        <g data-edge-from="write_usecase" data-edge-to="review_service" data-edge-label="리뷰와 이력 함께 커밋 / 실패 시 롤백" data-edge-key="6" data-edge-id="write_complete">
-          <path data-composition-edge-from="write_usecase" data-composition-edge-to="review_service" data-composition-edge-id="write_complete" data-composition-points="544,358;355.25,358" d="M 544 358 L 355.25 358" class="a-default" stroke-width="1.4" stroke-dasharray="3,5" marker-end="url(#arrowhead)"/>
+        <g data-edge-from="review_service" data-edge-to="history_store" data-edge-label="직전 시각 확인 · 전체 상태 추가" data-edge-key="6" data-edge-id="append_snapshot">
+          <path data-composition-edge-from="review_service" data-composition-edge-to="history_store" data-composition-edge-id="append_snapshot" data-composition-points="355.25,358;949.5,358" d="M 355.25 358 L 949.5 358" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <g data-detail="context">
-          <rect x="350.025" y="338" width="199.20000000000002" height="16" rx="3" class="c-mask"/>
-          <text x="449.625" y="348" class="t-muted" font-size="9" text-anchor="middle">리뷰와 이력 함께 커밋 / 실패 시 롤백</text>
+          <rect x="565.775" y="338" width="173.20000000000002" height="16" rx="3" class="c-mask"/>
+          <text x="652.375" y="348" class="t-backend" font-size="9" text-anchor="middle">직전 시각 확인 · 전체 상태 추가</text>
         </g>
         </g>
 
-        <g data-edge-from="review_service" data-edge-to="review_api" data-edge-label="기존 응답 계약 유지" data-edge-key="7" data-edge-id="return_result">
+        <g data-edge-from="review_service" data-edge-to="review_api" data-edge-label="커밋 후 포인트 · 응답" data-edge-key="7" data-edge-id="return_result">
           <path data-composition-edge-from="review_service" data-composition-edge-to="review_api" data-composition-edge-id="return_result" data-composition-points="341.25,391;152.5,391" d="M 341.25 391 L 152.5 391" class="a-default" stroke-width="1.4" stroke-dasharray="3,5" marker-end="url(#arrowhead)"/>
         <g data-detail="context">
-          <rect x="191.475" y="371" width="110.8" height="16" rx="3" class="c-mask"/>
-          <text x="246.875" y="381" class="t-muted" font-size="9" text-anchor="middle">기존 응답 계약 유지</text>
+          <rect x="186.275" y="371" width="121.2" height="16" rx="3" class="c-mask"/>
+          <text x="246.875" y="381" class="t-muted" font-size="9" text-anchor="middle">커밋 후 포인트 · 응답</text>
         </g>
         </g>
 
@@ -5249,30 +5249,30 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text data-detail="context" x="145.5" y="111" class="t-muted" font-size="7" text-anchor="middle">Command 변환</text>
         </g>
 
-        <g id="node-review_service" data-node-id="review_service" data-node-label="ReviewService" tabindex="0" role="button" aria-label="Focus ReviewService, 기존 정책 · 실행 순서, Sequence participant" aria-pressed="false" data-node-kind="backend" data-node-sublabel="기존 정책 · 실행 순서" data-node-context="Sequence participant">
-          <title>ReviewService · 기존 정책 · 실행 순서 · Sequence participant</title>
+        <g id="node-review_service" data-node-id="review_service" data-node-label="ReviewService" tabindex="0" role="button" aria-label="Focus ReviewService, 트랜잭션 · 이력 · 포인트 조율, Sequence participant" aria-pressed="false" data-node-kind="backend" data-node-sublabel="트랜잭션 · 이력 · 포인트 조율" data-node-context="Sequence participant">
+          <title>ReviewService · 트랜잭션 · 이력 · 포인트 조율 · Sequence participant</title>
           <rect x="264.75" y="72" width="167" height="54" rx="6" class="c-mask"/>
           <rect x="264.75" y="72" width="167" height="54" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(270.75 78) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="348.25" y="94" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">ReviewService</text>
-          <text data-detail="context" x="348.25" y="111" class="t-muted" font-size="7" text-anchor="middle">기존 정책 · 실행 순서</text>
+          <text data-detail="context" x="348.25" y="111" class="t-muted" font-size="7" text-anchor="middle">트랜잭션 · 이력 · 포인트 조율</text>
         </g>
 
-        <g id="node-write_usecase" data-node-id="write_usecase" data-node-label="쓰기 UseCase" tabindex="0" role="button" aria-label="Focus 쓰기 UseCase, 리뷰와 이력의 트랜잭션, Sequence participant" aria-pressed="false" data-node-kind="backend" data-node-sublabel="리뷰와 이력의 트랜잭션" data-node-context="Sequence participant">
-          <title>쓰기 UseCase · 리뷰와 이력의 트랜잭션 · Sequence participant</title>
+        <g id="node-write_usecase" data-node-id="write_usecase" data-node-label="쓰기 UseCase" tabindex="0" role="button" aria-label="Focus 쓰기 UseCase, 리뷰 상태 변경, Sequence participant" aria-pressed="false" data-node-kind="backend" data-node-sublabel="리뷰 상태 변경" data-node-context="Sequence participant">
+          <title>쓰기 UseCase · 리뷰 상태 변경 · Sequence participant</title>
           <rect x="467.5" y="72" width="167" height="54" rx="6" class="c-mask"/>
           <rect x="467.5" y="72" width="167" height="54" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(473.5 78) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="551" y="94" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">쓰기 UseCase</text>
-          <text data-detail="context" x="551" y="111" class="t-muted" font-size="7" text-anchor="middle">리뷰와 이력의 트랜잭션</text>
+          <text data-detail="context" x="551" y="111" class="t-muted" font-size="7" text-anchor="middle">리뷰 상태 변경</text>
         </g>
 
-        <g id="node-review_store" data-node-id="review_store" data-node-label="리뷰 저장소" tabindex="0" role="button" aria-label="Focus 리뷰 저장소, Repository Port → JPA, Sequence participant" aria-pressed="false" data-node-kind="database" data-node-sublabel="Repository Port → JPA" data-node-context="Sequence participant">
-          <title>리뷰 저장소 · Repository Port → JPA · Sequence participant</title>
+        <g id="node-review_store" data-node-id="review_store" data-node-label="리뷰 저장소" tabindex="0" role="button" aria-label="Focus 리뷰 저장소, Port → QueryDSL / JPA, Sequence participant" aria-pressed="false" data-node-kind="database" data-node-sublabel="Port → QueryDSL / JPA" data-node-context="Sequence participant">
+          <title>리뷰 저장소 · Port → QueryDSL / JPA · Sequence participant</title>
           <rect x="670.25" y="72" width="167" height="54" rx="6" class="c-mask"/>
           <rect x="670.25" y="72" width="167" height="54" rx="6" class="c-database" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(676.25 78) scale(0.6875)">
@@ -5280,7 +5280,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="753.75" y="94" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">리뷰 저장소</text>
-          <text data-detail="context" x="753.75" y="111" class="t-muted" font-size="7" text-anchor="middle">Repository Port → JPA</text>
+          <text data-detail="context" x="753.75" y="111" class="t-muted" font-size="7" text-anchor="middle">Port → QueryDSL / JPA</text>
         </g>
 
         <g id="node-history_store" data-node-id="history_store" data-node-label="이력 저장소" tabindex="0" role="button" aria-label="Focus 이력 저장소, Recorder → Port → JPA, Sequence participant" aria-pressed="false" data-node-kind="database" data-node-sublabel="Recorder → Port → JPA" data-node-context="Sequence participant">

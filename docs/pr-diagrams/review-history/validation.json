@@ -3,7 +3,7 @@
   "ok": true,
   "command": "validate",
   "type": "sequence",
-  "input": "/tmp/book-review-history-diagram-noip/review-history.sequence.json",
+  "input": "/tmp/book-review-history-diagram-service/review-history.sequence.json",
   "checks": [
     {
       "name": "single_svg",

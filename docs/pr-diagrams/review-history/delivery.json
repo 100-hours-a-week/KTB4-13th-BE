@@ -3,15 +3,15 @@
   "ok": true,
   "command": "deliver",
   "type": "sequence",
-  "input": "/tmp/book-review-history-diagram/review-history.sequence.json",
-  "output": "/tmp/book-review-history-diagram/review-history.html",
+  "input": "/tmp/book-review-history-diagram-noip/review-history.sequence.json",
+  "output": "/tmp/book-review-history-diagram-noip/review-history.html",
   "specification": {
-    "sha256": "01df6f274a4f7d9aa1d544c6d49b89cb6e503fb3d01eaee749f96cfcef879eb9",
-    "bytes": 2623
+    "sha256": "94d11ea6001f3b77645991d721f7b3d2dda118dca737a1756b119b7502c1b0e0",
+    "bytes": 2597
   },
   "artifact": {
-    "sha256": "67e5be29e0b9f210e1c2b34840dd11a27bc8d722d5e85d3e26e42174666ac86f",
-    "bytes": 803814
+    "sha256": "b935c64b1f382cbdded81df8d9b0bda3b2bd960975fe1c075deb39fe94d4ec94",
+    "bytes": 803749
   },
   "validation": {
     "checksPassed": 9,

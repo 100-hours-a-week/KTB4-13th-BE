@@ -1,6 +1,6 @@
 # 리뷰 변경과 이력 저장
 
-Issue #292의 구현 흐름을 나타내는 Archify 시퀀스 다이어그램입니다.
+Issue #292의 구현 흐름을 나타내는 Archify 시퀀스 다이어그램입니다. 리뷰 이력에는 IP를 수집하거나 저장하지 않습니다.
 
 ![처리 흐름](review-history.monochrome.png)
 

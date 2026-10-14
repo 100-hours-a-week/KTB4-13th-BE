@@ -15,7 +15,7 @@
       "id": "review_api",
       "type": "backend",
       "label": "리뷰 API",
-      "sublabel": "IP 해석 · Command 변환"
+      "sublabel": "Command 변환"
     },
     {
       "id": "review_service",
@@ -48,7 +48,7 @@
       "from": "review_api",
       "to": "review_service",
       "y": 160,
-      "label": "인증 사용자 · 리뷰 입력 · 요청 IP"
+      "label": "인증 사용자 · 리뷰 입력"
     },
     {
       "id": "execute_write",

@@ -10,8 +10,8 @@ import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.auth.application.command.AuthLoginCommand;
 import com.book.core.auth.application.port.IssuedTokens;
-import com.book.core.auth.application.port.OAuthIdentity;
 import com.book.core.auth.application.port.TokenIssuer;
+import com.book.core.auth.application.result.OAuthUserInfo;
 import com.book.core.auth.application.usecase.AuthLogoutUseCase;
 import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.application.usecase.AuthenticateOAuthUserUseCase;
@@ -63,7 +63,7 @@ class AuthServiceTest {
     void 기존_회원은_가입과_초기화_없이_OAuth_인증부터_refresh_session_저장까지_순서대로_실행한다() {
         final AuthLoginCommand command = command();
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthIdentity("provider-123", "reader@example.com"));
+            .thenReturn(new OAuthUserInfo("provider-123", "reader@example.com"));
         when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.of(42L));
         final Instant refreshExpiresAt = Instant.parse("2030-01-09T03:04:05Z");
         when(tokenIssuer.issue(42L)).thenReturn(new IssuedTokens("access-token", "refresh-token", refreshExpiresAt));
@@ -87,7 +87,7 @@ class AuthServiceTest {
         final UserRegistrationCommand registrationCommand =
             new UserRegistrationCommand(ProviderType.KAKAO, "provider-123", "reader@example.com");
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthIdentity("provider-123", "reader@example.com"));
+            .thenReturn(new OAuthUserInfo("provider-123", "reader@example.com"));
         when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.empty());
         when(userRegistrationUseCase.execute(registrationCommand)).thenReturn(42L);
         final Instant refreshExpiresAt = Instant.parse("2030-01-09T03:04:05Z");
@@ -108,7 +108,7 @@ class AuthServiceTest {
     void 가입하지_않은_회원의_로그인은_SIGNUP_REQUIRED이고_가입과_token_발급을_호출하지_않는다() {
         final AuthLoginCommand command = command();
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthIdentity("provider-123", null));
+            .thenReturn(new OAuthUserInfo("provider-123", null));
         when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().login(command)).isInstanceOfSatisfying(BusinessException.class,
@@ -122,7 +122,7 @@ class AuthServiceTest {
     void 이미_가입한_회원의_가입은_ALREADY_REGISTERED이고_등록과_초기화를_호출하지_않는다() {
         final AuthLoginCommand command = command();
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthIdentity("provider-123", null));
+            .thenReturn(new OAuthUserInfo("provider-123", null));
         when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.of(42L));
 
         assertThatThrownBy(() -> service().signup(command)).isInstanceOfSatisfying(BusinessException.class,
@@ -148,7 +148,7 @@ class AuthServiceTest {
         final AuthLoginCommand command = command();
         final BusinessException exception = new BusinessException(ErrorCode.USER_PROVIDER_USER_INACTIVE);
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthIdentity("provider-123", null));
+            .thenReturn(new OAuthUserInfo("provider-123", null));
         when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenThrow(exception);
 
         assertThatThrownBy(() -> service().login(command)).isSameAs(exception);
@@ -161,7 +161,7 @@ class AuthServiceTest {
         final AuthLoginCommand command = command();
         final BusinessException exception = new BusinessException(ErrorCode.ALREADY_REGISTERED);
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthIdentity("provider-123", null));
+            .thenReturn(new OAuthUserInfo("provider-123", null));
         when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.empty());
         when(userRegistrationUseCase.execute(new UserRegistrationCommand(ProviderType.KAKAO, "provider-123", null))).thenThrow(exception);
 
@@ -175,7 +175,7 @@ class AuthServiceTest {
         final AuthLoginCommand command = command();
         final BusinessException exception = new BusinessException(ErrorCode.TOKEN_ISSUE_FAILURE);
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthIdentity("provider-123", null));
+            .thenReturn(new OAuthUserInfo("provider-123", null));
         when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.of(42L));
         when(tokenIssuer.issue(42L)).thenThrow(exception);
 

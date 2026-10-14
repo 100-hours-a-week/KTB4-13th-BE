@@ -5,10 +5,10 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.auth.application.command.AuthLoginCommand;
 import com.book.core.auth.application.command.AuthReissueCommand;
 import com.book.core.auth.application.port.IssuedTokens;
-import com.book.core.auth.application.port.OAuthIdentity;
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.application.result.AuthLoginResult;
 import com.book.core.auth.application.result.AuthReissueResult;
+import com.book.core.auth.application.result.OAuthUserInfo;
 import com.book.core.auth.application.usecase.AuthLogoutUseCase;
 import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.application.usecase.AuthenticateOAuthUserUseCase;
@@ -39,14 +39,14 @@ public class AuthService {
     private final AuthLogoutUseCase authLogoutUseCase;
 
     public AuthLoginResult login(final AuthLoginCommand command) {
-        final OAuthIdentity identity = authenticate(command);
+        final OAuthUserInfo identity = authenticate(command);
         final Long userId = findOAuthUserUseCase.execute(command.providerType(), identity.providerUserId())
             .orElseThrow(() -> new BusinessException(ErrorCode.SIGNUP_REQUIRED));
         return issueAndRegisterTokens(userId);
     }
 
     public AuthLoginResult signup(final AuthLoginCommand command) {
-        final OAuthIdentity identity = authenticate(command);
+        final OAuthUserInfo identity = authenticate(command);
         if (findOAuthUserUseCase.execute(command.providerType(), identity.providerUserId()).isPresent()) {
             throw new BusinessException(ErrorCode.ALREADY_REGISTERED);
         }
@@ -61,11 +61,11 @@ public class AuthService {
         authLogoutUseCase.execute(userId);
     }
 
-    private OAuthIdentity authenticate(final AuthLoginCommand command) {
+    private OAuthUserInfo authenticate(final AuthLoginCommand command) {
         return authenticateOAuthUserUseCase.execute(command.authorizationCode(), command.codeVerifier(), command.nonce());
     }
 
-    private Long register(final ProviderType providerType, final OAuthIdentity identity) {
+    private Long register(final ProviderType providerType, final OAuthUserInfo identity) {
         final Long userId =
             userRegistrationUseCase.execute(new UserRegistrationCommand(providerType, identity.providerUserId(), identity.providerEmail()));
         initialize("장바구니", userId, createCartUseCase::execute);

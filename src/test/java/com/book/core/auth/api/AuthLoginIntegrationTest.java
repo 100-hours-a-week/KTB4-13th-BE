@@ -11,11 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.book.core.auth.application.port.OAuthIdentity;
 import com.book.core.auth.application.port.OAuthProviderClient;
 import com.book.core.auth.application.port.OAuthTokenClient;
 import com.book.core.auth.application.port.RefreshSessionRepository;
 import com.book.core.auth.application.port.RefreshTokenHasher;
+import com.book.core.auth.application.result.OAuthUserInfo;
 import com.book.core.auth.domain.RefreshSession;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.domain.Cart;
@@ -171,7 +171,7 @@ class AuthLoginIntegrationTest {
 
     private void givenKakaoUser(final String providerUserId) {
         when(oAuthTokenClient.exchangeForIdToken(providerUserId + "-code", "code-verifier")).thenReturn(providerUserId + "-id-token");
-        when(oAuthProviderClient.verify(providerUserId + "-id-token", "nonce")).thenReturn(new OAuthIdentity(providerUserId, null));
+        when(oAuthProviderClient.verify(providerUserId + "-id-token", "nonce")).thenReturn(new OAuthUserInfo(providerUserId, null));
     }
 
     private ResultActions perform(final String action, final String providerUserId) throws Exception {

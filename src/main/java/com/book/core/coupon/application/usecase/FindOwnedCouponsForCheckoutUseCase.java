@@ -32,7 +32,7 @@ public class FindOwnedCouponsForCheckoutUseCase {
         if (owned.isEmpty()) {
             return List.of();
         }
-        final Set<Long> ownedCouponIds = owned.stream().map((final var item) -> item.couponId()).collect(Collectors.toSet());
+        final Set<Long> ownedCouponIds = owned.stream().map(OwnedCoupon::couponId).collect(Collectors.toSet());
         final Map<Long, Coupon> couponMap =
             couponRepository.findAllById(ownedCouponIds).stream().collect(Collectors.toMap(Coupon::id, Function.identity()));
         return owned.stream().map((final var item) -> OwnedCouponResult.from(item, couponMap.get(item.couponId()))).toList();

@@ -3,6 +3,7 @@ package com.book.core.user.application.usecase;
 import com.book.core.cart.application.usecase.CreateCartUseCase;
 import com.book.core.point.application.usecase.CreatePointBalanceUseCase;
 import com.book.core.user.application.command.UserRegistrationCommand;
+import com.book.core.user.application.port.NicknameGeneratorPort;
 import com.book.core.user.application.port.UserProviderRepositoryPort;
 import com.book.core.user.application.port.UserRepositoryPort;
 import com.book.core.user.domain.User;
@@ -18,10 +19,11 @@ public class UserRegistrationUseCase {
     private final UserProviderRepositoryPort userProviderRepository;
     private final CreateCartUseCase createCartUseCase;
     private final CreatePointBalanceUseCase createPointBalanceUseCase;
+    private final NicknameGeneratorPort nicknameGenerator;
 
     @Transactional
     public Long execute(final UserRegistrationCommand command) {
-        final User savedUser = userRepository.save(User.create(command.nickname()));
+        final User savedUser = userRepository.save(User.create(nicknameGenerator.generate()));
         userProviderRepository
             .save(UserProvider.create(savedUser.id(), command.providerType(), command.providerUserId(), command.providerEmail()));
         createCartUseCase.execute(savedUser.id());

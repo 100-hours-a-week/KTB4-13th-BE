@@ -4,7 +4,7 @@ import com.book.core.coupon.application.usecase.GetCouponTargetsUseCase;
 import com.book.core.coupon.application.usecase.GetCouponsUseCase;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.command.GetProductsCommand;
-import com.book.core.product.application.result.GetProductCouponResult;
+import com.book.core.coupon.application.result.CouponResult;
 import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.result.GetProductsResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
@@ -26,8 +26,8 @@ public class ProductService {
     public GetProductDetailResult getProductDetail(final GetProductDetailCommand command) {
         final var product = getProductDetailUseCase.execute(command);
         final var couponIds = couponTargetReader.execute(List.of(product.productId()));
-        final var coupons = couponReader.execute(couponIds).stream().map(GetProductCouponResult::from).toList();
-        return product.withCoupons(coupons);
+        final var activeCouponIds = couponReader.execute(couponIds).stream().map(CouponResult::id).toList();
+        return product.withCouponIds(activeCouponIds);
     }
 
     public GetProductsResult getProducts(final GetProductsCommand command) {

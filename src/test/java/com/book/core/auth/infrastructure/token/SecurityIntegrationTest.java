@@ -66,9 +66,10 @@ class SecurityIntegrationTest {
     @Qualifier(JwtTokenConfiguration.TOKEN_JWT_ENCODER)
     JwtEncoder jwtEncoder;
 
-    @Test
-    void Login_endpoint는_Access_Token_없이_접근할_수_있다() throws Exception {
-        mvc.perform(post("/api/v1/auth/kakao/login")).andExpect(status().isOk());
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/auth/kakao/login", "/api/v1/auth/kakao/signup"})
+    void Login과_Signup_endpoint는_Access_Token_없이_접근할_수_있다(final String path) throws Exception {
+        mvc.perform(post(path)).andExpect(status().isOk());
     }
 
     @Test
@@ -207,7 +208,7 @@ class SecurityIntegrationTest {
 
     @RestController
     public static class ProtectedTestController {
-        @PostMapping("/api/v1/auth/{providerType}/login")
+        @PostMapping({"/api/v1/auth/{providerType}/login", "/api/v1/auth/{providerType}/signup"})
         Map<String, String> loginEndpoint() {
             return Map.of("result", "SUCCESS");
         }

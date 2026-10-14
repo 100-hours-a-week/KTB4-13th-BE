@@ -1,12 +1,13 @@
 # 인증 도메인 규칙
 
-이 문서는 Kakao 로그인 인증, 서비스 토큰과 Refresh Session 정책, Access Token 기반 인가와 로그아웃 규칙을 기록합니다.
+이 문서는 Kakao 로그인·회원 가입 인증, 서비스 토큰과 Refresh Session 정책, Access Token 기반 인가와 로그아웃 규칙을 기록합니다.
 
-회원 식별과 신규 회원 생성은 회원 도메인에서 담당하며, 인증 도메인은 외부 Provider 인증과 서비스 토큰 발급·검증에 집중합니다. 공통 오류 계약은 [예외 처리 규칙](EXCEPTION_RULE.md)을 기준으로 합니다.
+회원 조회와 신규 회원 등록은 회원 도메인에서 담당하며, 인증 도메인은 외부 Provider 인증과 서비스 토큰 발급·검증, 로그인·회원 가입 흐름의 실행 순서 조율에 집중합니다. 공통 오류 계약은 [예외 처리 규칙](EXCEPTION_RULE.md)을 기준으로 합니다.
 
 ## 1. 범위와 용어
 
-- 로그인은 Kakao 인증을 시작해 내부 회원을 식별하고 서비스 토큰을 발급하는 유스케이스입니다.
+- 로그인은 Kakao 인증으로 기존 회원을 식별하고 서비스 토큰을 발급하는 흐름입니다. 가입하지 않은 회원은 로그인할 수 없습니다.
+- 회원 가입은 Kakao 인증으로 신규 회원을 생성하고, 장바구니·포인트 잔액을 초기화한 뒤 서비스 토큰을 발급하는 흐름입니다.
 - 인증(Authentication)은 외부 사용자가 누구인지 확인하고 내부 `userId`를 식별해 Access Token과 Refresh Token을 발급하는 책임입니다.
 - 인가(Authorization)는 유효한 Access Token을 가진 요청만 보호 자원에 접근하도록 제한하는 책임입니다.
 - 로그인 API는 인증 흐름의 진입점이며 회원 Domain과 Spring Security 인가 설정을 직접 소유하지 않습니다.
@@ -16,9 +17,10 @@
 
 ## 2. Kakao 로그인 입력과 검증
 
-- 로그인 API는 `POST /api/v1/auth/{providerType}/login`이며 현재 경로의 `providerType`은 `kakao`만 허용합니다.
+- 로그인 API는 `POST /api/v1/auth/{providerType}/login`, 회원 가입 API는 `POST /api/v1/auth/{providerType}/signup`이며 현재 경로의 `providerType`은 `kakao`만 허용합니다.
+- 두 API는 같은 요청 형식을 사용하며, 각 요청은 독립적인 Kakao 인가 코드로 인증합니다. 인가 코드는 한 번만 사용할 수 있으므로 로그인이 `SIGNUP_REQUIRED`로 실패하면 새 인가 코드로 가입을 요청합니다.
 - Frontend는 Kakao Authorization Code Flow를 시작하며 PKCE `codeVerifier`, `state`, `nonce`를 생성·관리합니다.
-- Backend 로그인 요청은 `authorizationCode`, `codeVerifier`, `nonce`를 필수로 받습니다.
+- Backend 로그인·회원 가입 요청은 `authorizationCode`, `codeVerifier`, `nonce`를 필수로 받습니다.
 - `state`는 Backend 로그인 요청 계약에 포함하지 않으며 Frontend가 callback에서 검증합니다.
 - Backend는 `authorizationCode`와 `codeVerifier`로 Kakao Token API를 호출해 ID Token을 받습니다.
 - Token API 요청에는 `grant_type`, REST API Key, redirect URI, authorization code와 PKCE code verifier를 포함합니다.
@@ -34,24 +36,38 @@ Kakao ID Token은 다음 조건을 모두 만족해야 합니다.
 - Token의 `nonce`가 로그인 요청의 `nonce`와 일치해야 합니다.
 - `email` claim은 선택 값이며 없으면 `null`로 처리합니다.
 
-## 3. 로그인 인증 흐름
+## 3. 로그인·회원 가입 흐름
+
+`AuthService`가 다음 순서를 조율합니다. UseCase는 다른 UseCase를 호출하지 않습니다.
 
 ```text
-Kakao 로그인(providerType, authorizationCode, codeVerifier, nonce):
+공통 OAuth 인증 AuthenticateOAuthUserUseCase(authorizationCode, codeVerifier, nonce):
+  1. Kakao Token API에 authorizationCode와 codeVerifier를 전달해 ID Token을 받는다.
+  2. ID Token의 서명, issuer, audience, 만료, sub와 nonce를 검증한다.
+  3. sub를 providerUserId로, 선택적 email을 providerEmail로 변환한다.
 
-1. Kakao Token API에 authorizationCode와 codeVerifier를 전달해 ID Token을 받는다.
-2. ID Token의 서명, issuer, audience, 만료, sub와 nonce를 검증한다.
-3. sub를 providerUserId로, 선택적 email을 providerEmail로 변환한다.
-4. 회원 도메인에서 providerType과 providerUserId로 기존 회원을 조회한다.
-5. 기존 회원이 없으면 회원 도메인에서 신규 회원을 등록하고, 장바구니와 포인트 잔액을 차례로 생성한다.
-6. 내부 userId를 subject로 하는 Access Token과 Refresh Token을 발급한다.
-7. 기존 활성 Refresh Session이 있으면 폐기하고 새 Refresh Session을 저장한다.
-8. Access Token은 응답 body로, Refresh Token은 HttpOnly cookie로 반환한다.
+로그인(providerType, authorizationCode, codeVerifier, nonce):
+  1. OAuth 인증을 수행한다.
+  2. 회원 도메인에서 활성 회원을 조회하고, 없으면 404 SIGNUP_REQUIRED로 거부한다.
+  3. 토큰을 발급하고 Refresh Session을 등록한다.
+
+회원 가입(providerType, authorizationCode, codeVerifier, nonce):
+  1. OAuth 인증을 수행한다.
+  2. 회원 도메인에서 활성 회원을 조회하고, 있으면 409 ALREADY_REGISTERED로 거부한다.
+  3. 회원 도메인에서 User와 UserProvider를 등록한다.
+  4. 장바구니를 생성하고, 이어서 포인트 잔액을 생성한다.
+  5. 토큰을 발급하고 Refresh Session을 등록한다.
+
+토큰 발급과 Session 등록:
+  1. 내부 userId를 subject로 하는 Access Token과 Refresh Token을 발급한다.
+  2. 기존 활성 Refresh Session이 있으면 폐기하고 새 Refresh Session을 저장한다.
+  3. Access Token은 응답 body로, Refresh Token은 HttpOnly cookie로 반환한다.
 ```
 
-- `AuthService`가 위 순서를 조율합니다. UseCase는 다른 UseCase를 호출하지 않습니다.
-- 장바구니와 포인트 잔액 생성은 각 UseCase의 독립 트랜잭션에서 실행합니다. 하나가 실패해도 나머지를 시도하며, 실패는 작업별로 error 로그를 남기고 로그인을 계속 진행합니다. 실패한 초기화는 현재 자동으로 복구하지 않습니다.
-- OAuth 인증, 회원 등록, 토큰 발급과 Refresh Session 등록의 실패는 격리하지 않고 오류로 응답합니다. 회원 등록이 실패하면 초기화와 토큰 발급을 실행하지 않습니다.
+- 장바구니와 포인트 잔액 생성은 각 UseCase의 독립 트랜잭션에서 실행합니다. 하나가 실패해도 나머지를 시도하며, 실패는 작업별로 error 로그를 남기고 가입과 자동 로그인을 계속 진행합니다. 실패한 초기화는 현재 자동으로 복구하지 않습니다.
+- OAuth 인증, 회원 등록, 토큰 발급과 Refresh Session 등록의 실패는 격리하지 않고 오류로 응답합니다.
+- 회원 등록이 실패하면 장바구니·포인트 초기화와 토큰 발급을 실행하지 않습니다.
+- 회원 등록 이후 토큰 발급이나 Refresh Session 등록이 실패하면 회원과 초기화 데이터는 남습니다. 이 회원은 다시 가입하면 `ALREADY_REGISTERED`로 거부되고, 새 인가 코드로 로그인할 수 있습니다.
 
 ## 4. 서비스 토큰 정책
 
@@ -62,7 +78,7 @@ Kakao 로그인(providerType, authorizationCode, codeVerifier, nonce):
 - 각 토큰은 UUID로 생성한 `jti`를 가집니다.
 - Access Token 유효 기간은 1시간입니다.
 - Refresh Token 유효 기간은 7일입니다.
-- Access Token은 로그인 성공 또는 재발급 성공 응답 body의 `accessToken`으로 반환합니다.
+- Access Token은 로그인·회원 가입 성공 또는 재발급 성공 응답 body의 `accessToken`으로 반환합니다.
 - Refresh Token은 응답 body에 노출하지 않고 이름이 `refreshToken`인 HttpOnly cookie로 반환합니다.
 - Refresh cookie의 path는 `/api/v1/auth`, SameSite는 `Lax`, Max-Age는 7일입니다.
 - Refresh cookie의 Secure 여부는 `AUTH_COOKIE_SECURE` 설정으로 관리합니다.
@@ -74,7 +90,7 @@ Kakao 로그인(providerType, authorizationCode, codeVerifier, nonce):
 - `expiresAt`은 Refresh Token 만료 시각을 기록하고 Session 활성 여부는 현재 `revokedAt`으로 판단합니다.
 - `revokedAt`이 `null`이면 활성 Session이며 값이 있으면 폐기된 Session입니다.
 - 사용자당 활성 Refresh Session은 하나만 허용합니다.
-- 로그인 시 기존 활성 Session이 있으면 현재 시각으로 폐기한 뒤 새 Session을 저장합니다.
+- 로그인·회원 가입 시 기존 활성 Session이 있으면 현재 시각으로 폐기한 뒤 새 Session을 저장합니다.
 - 재발급 시 기존 활성 Session을 폐기하고 새 Refresh Session을 저장합니다.
 - MySQL의 `active_flag`는 `revoked_at IS NULL`이면 `1`, 그 외에는 `NULL`인 generated column입니다.
 - `active_flag`와 `user_id`의 UNIQUE 제약이 사용자당 단일 활성 Session을 보장합니다.
@@ -134,7 +150,7 @@ Refresh Token 재발급(refreshToken):
 - Spring Security Resource Server가 Authorization header의 Bearer Access Token을 검증합니다.
 - Access Token은 HS512 서명, 만료 시간, `tokenType=ACCESS`와 subject를 검증합니다.
 - subject는 공백이 아니고 양수인 `Long` 형식이어야 하며 인증된 요청의 `userId`로 사용합니다.
-- 로그인 API, Refresh Token 재발급 API와 Swagger UI·OpenAPI 문서의 GET 요청은 인증 없이 접근할 수 있습니다.
+- 로그인 API, 회원 가입 API, Refresh Token 재발급 API와 Swagger UI·OpenAPI 문서의 GET 요청은 인증 없이 접근할 수 있습니다.
 - 그 외 요청은 인증이 필요합니다.
 - 서버는 HTTP Session을 만들지 않는 stateless 방식이며 form login과 HTTP Basic 인증을 사용하지 않습니다.
 - 현재 Bearer Access Token 기반 요청을 기준으로 CSRF를 비활성화합니다.

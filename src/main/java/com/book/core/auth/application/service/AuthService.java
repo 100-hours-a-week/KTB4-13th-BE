@@ -1,5 +1,7 @@
 package com.book.core.auth.application.service;
 
+import com.book.common.exception.BusinessException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.auth.application.command.AuthLoginCommand;
 import com.book.core.auth.application.command.AuthReissueCommand;
 import com.book.core.auth.application.port.IssuedTokens;
@@ -37,11 +39,18 @@ public class AuthService {
     private final AuthLogoutUseCase authLogoutUseCase;
 
     public AuthLoginResult login(final AuthLoginCommand command) {
-        final OAuthUserInfo identity =
-            authenticateOAuthUserUseCase.execute(command.authorizationCode(), command.codeVerifier(), command.nonce());
+        final OAuthUserInfo identity = authenticate(command);
         final Long userId = findOAuthUserUseCase.execute(command.providerType(), identity.providerUserId())
-            .orElseGet(() -> register(command.providerType(), identity));
+            .orElseThrow(() -> new BusinessException(ErrorCode.SIGNUP_REQUIRED));
         return issueAndRegisterTokens(userId);
+    }
+
+    public AuthLoginResult signup(final AuthLoginCommand command) {
+        final OAuthUserInfo identity = authenticate(command);
+        if (findOAuthUserUseCase.execute(command.providerType(), identity.providerUserId()).isPresent()) {
+            throw new BusinessException(ErrorCode.ALREADY_REGISTERED);
+        }
+        return issueAndRegisterTokens(register(command.providerType(), identity));
     }
 
     public AuthReissueResult reissue(final AuthReissueCommand command) {
@@ -50,6 +59,10 @@ public class AuthService {
 
     public void logout(final Long userId) {
         authLogoutUseCase.execute(userId);
+    }
+
+    private OAuthUserInfo authenticate(final AuthLoginCommand command) {
+        return authenticateOAuthUserUseCase.execute(command.authorizationCode(), command.codeVerifier(), command.nonce());
     }
 
     private Long register(final ProviderType providerType, final OAuthUserInfo identity) {

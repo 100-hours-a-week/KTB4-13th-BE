@@ -1,0 +1,100 @@
+[
+  {
+    "pr": 275,
+    "style": "white background, black strokes and text",
+    "derived_from": "Archify canonical SVG export",
+    "topology_and_text_unchanged": true,
+    "all_pixels_grayscale": true,
+    "background_white": true,
+    "png_size": [
+      3240,
+      1734
+    ],
+    "png_sha256": "5e7c8cd7c53c5bb14fbb3b0af8488759e73ffe3883b9eba79be3362c8185af46",
+    "svg_sha256": "3082fdd50a14e9db5d1f8db11c9f38c95bde0184447e3abd793ea5ba9d25b329"
+  },
+  {
+    "pr": 276,
+    "style": "white background, black strokes and text",
+    "derived_from": "Archify canonical SVG export",
+    "topology_and_text_unchanged": true,
+    "all_pixels_grayscale": true,
+    "background_white": true,
+    "png_size": [
+      3240,
+      1821
+    ],
+    "png_sha256": "1784c41451bfa7a4f115e8cd6eb809aa731cacae2aaa5337d9813bf06a0ee1fc",
+    "svg_sha256": "b0744f7be01d56efb434119b6c0ca0e5bce950d33c217f017af1eb03fe0b0110"
+  },
+  {
+    "pr": 277,
+    "style": "white background, black strokes and text",
+    "derived_from": "Archify canonical SVG export",
+    "topology_and_text_unchanged": true,
+    "all_pixels_grayscale": true,
+    "background_white": true,
+    "png_size": [
+      3240,
+      2082
+    ],
+    "png_sha256": "2c37d246f56180cc72623c62d6fe695bc18fcd893a7eecf6eab838e2e95b8699",
+    "svg_sha256": "c2a399921931a925e2b04884bc47013a01998619281a68314aa7ea34fdb019f3"
+  },
+  {
+    "pr": 278,
+    "style": "white background, black strokes and text",
+    "derived_from": "Archify canonical SVG export",
+    "topology_and_text_unchanged": true,
+    "all_pixels_grayscale": true,
+    "background_white": true,
+    "png_size": [
+      3240,
+      1734
+    ],
+    "png_sha256": "4ef2737c108c8f710b3bb4dae3cc6a5548c0cf981c63a0b90747fe25317bb2db",
+    "svg_sha256": "ea2b3b433d1d2a02f9035e058d6c8fbe11d47756ea9cbf5d8b909c5143b80e33"
+  },
+  {
+    "pr": 279,
+    "style": "white background, black strokes and text",
+    "derived_from": "Archify canonical SVG export",
+    "topology_and_text_unchanged": true,
+    "all_pixels_grayscale": true,
+    "background_white": true,
+    "png_size": [
+      3240,
+      1821
+    ],
+    "png_sha256": "2260f3db60a997bc39283e14062e62d985bb340b33ca4a5d646d50d2ee7df28d",
+    "svg_sha256": "820a0ea3dd4a31dc95c40fa1fa9f50eb9fd80d7019ad813c872afc7cb2d4e9ba"
+  },
+  {
+    "pr": 280,
+    "style": "white background, black strokes and text",
+    "derived_from": "Archify canonical SVG export",
+    "topology_and_text_unchanged": true,
+    "all_pixels_grayscale": true,
+    "background_white": true,
+    "png_size": [
+      3240,
+      1680
+    ],
+    "png_sha256": "b49de4c329eb6690ed4960b5916b64f3d690822b1a1f039669521d3cd2aab8e5",
+    "svg_sha256": "2a544a74e9f2f5e65e2a62e31c5f9af4dab814882bb8b62ac6731be35c72cc0b"
+  },
+  {
+    "pr": 287,
+    "style": "white background, black strokes and text",
+    "derived_from": "Archify canonical SVG export",
+    "topology_and_text_unchanged": true,
+    "all_pixels_grayscale": true,
+    "background_white": true,
+    "png_size": [
+      3240,
+      1995
+    ],
+    "png_sha256": "b99428b3c896cd86389784d24c0f334b42cc4b3adf0eef742fd7269f84f26490",
+    "svg_sha256": "6c78bd98e17004ac005a6d5f544ac168a9214b1dd1496824d1cf9e3fb435f762"
+  }
+]

@@ -1,6 +1,7 @@
 package com.book.core.review.domain;
 
-import com.book.core.review.domain.enums.ReviewOperation;
+import com.book.core.review.domain.enums.ReviewEventType;
+import com.book.common.domain.BaseTimeEntity;
 import com.book.core.review.domain.enums.ReviewTargetType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -18,7 +19,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-/** 수정 가능한 생명주기 없이, 작업 직후의 리뷰 내용을 보존합니다. */
 @Entity
 @Table(name = "review_history",
     indexes = {@Index(name = "idx_review_history_review_order", columnList = "review_id,changed_at,id"),
@@ -26,7 +26,7 @@ import lombok.experimental.Accessors;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 @Accessors(fluent = true)
-public class ReviewHistory {
+public class ReviewHistory extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -45,8 +45,8 @@ public class ReviewHistory {
     private Long targetId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, updatable = false, length = 16)
-    private ReviewOperation operation;
+    @Column(name = "event_type", nullable = false, updatable = false, length = 16)
+    private ReviewEventType eventType;
 
     @Column(nullable = false, updatable = false, length = 255)
     private String content;
@@ -57,13 +57,12 @@ public class ReviewHistory {
     @Column(name = "changed_at", nullable = false, updatable = false)
     private LocalDateTime changedAt;
 
-    /** 저장된 리뷰의 값을 복사하므로 이후 원본 수정이나 삭제의 영향을 받지 않습니다. */
-    public ReviewHistory(final Review review, final ReviewOperation operation, final LocalDateTime changedAt) {
+    public ReviewHistory(final Review review, final ReviewEventType eventType, final LocalDateTime changedAt) {
         this.reviewId = review.id();
         this.userId = review.userId();
         this.targetType = review.targetType();
         this.targetId = review.targetId();
-        this.operation = operation;
+        this.eventType = eventType;
         this.content = review.content();
         this.rate = review.rate();
         this.changedAt = changedAt;

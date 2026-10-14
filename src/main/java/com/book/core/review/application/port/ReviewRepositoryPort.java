@@ -17,7 +17,6 @@ public interface ReviewRepositoryPort {
 
     Optional<Review> findActiveById(final Long reviewId);
 
-    /** 동일 리뷰의 수정과 삭제를 트랜잭션 종료까지 직렬화합니다. */
     Optional<Review> findActiveByIdForUpdate(final Long reviewId);
 
     boolean existsByUserIdAndReviewKey(final Long userId, final String reviewKey);

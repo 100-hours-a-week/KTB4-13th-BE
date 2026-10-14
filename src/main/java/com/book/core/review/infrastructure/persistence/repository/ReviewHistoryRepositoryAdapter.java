@@ -11,10 +11,11 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class ReviewHistoryRepositoryAdapter implements ReviewHistoryRepositoryPort {
     private final ReviewHistoryJpaRepository jpaRepository;
+    private final ReviewHistoryQueryRepository queryRepository;
 
     @Override
     public Optional<LocalDateTime> findLatestChangedAt(final Long reviewId) {
-        return jpaRepository.findLatestChangedAt(reviewId);
+        return queryRepository.findLatestChangedAt(reviewId);
     }
 
     @Override

@@ -51,27 +51,27 @@ public class Review extends BaseEntity {
         this.reviewKey = reviewKey;
         this.targetType = targetType;
         this.targetId = targetId;
-        final ReviewContent reviewContent = new ReviewContent(rate, content);
+        final ReviewContent reviewContent = new ReviewContent(rate, content, isSpoiler);
         this.rate = reviewContent.rate();
         this.content = reviewContent.content();
         this.isSpoiler = isSpoiler;
     }
 
-    public static Review create(final ReviewKey key, final ReviewTarget target, final ReviewContent content, final boolean isSpoiler) {
-        return new Review(null, key.userId(), key.key(), target.type(), target.id(), content.rate(), content.content(), isSpoiler);
+    public static Review create(final ReviewKey key, final ReviewTarget target, final ReviewContent content) {
+        return new Review(null, key.userId(), key.key(), target.type(), target.id(), content.rate(), content.content(),
+            Boolean.TRUE.equals(content.isSpoiler()));
     }
 
-    /** 표현상의 소수 자릿수 차이는 무시하고 실제 리뷰 상태의 변경 여부를 확인합니다. */
-    public boolean wouldChange(final ReviewContent content, final Boolean isSpoiler) {
+    public boolean wouldChange(final ReviewContent content) {
         return this.rate.compareTo(content.rate()) != 0 || !this.content.equals(content.content())
-            || (isSpoiler != null && this.isSpoiler != isSpoiler);
+            || (content.isSpoiler() != null && this.isSpoiler != content.isSpoiler());
     }
 
-    public void updateContent(final ReviewContent content, final Boolean isSpoiler) {
+    public void updateContent(final ReviewContent content) {
         this.rate = content.rate();
         this.content = content.content();
-        if (isSpoiler != null) {
-            this.isSpoiler = isSpoiler;
+        if (content.isSpoiler() != null) {
+            this.isSpoiler = content.isSpoiler();
         }
     }
 

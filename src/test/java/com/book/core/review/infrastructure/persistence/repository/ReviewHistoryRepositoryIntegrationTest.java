@@ -9,7 +9,7 @@ import com.book.core.review.domain.ReviewContent;
 import com.book.core.review.domain.ReviewHistory;
 import com.book.core.review.domain.ReviewKey;
 import com.book.core.review.domain.ReviewTarget;
-import com.book.core.review.domain.enums.ReviewOperation;
+import com.book.core.review.domain.enums.ReviewEventType;
 import com.book.core.review.domain.enums.ReviewTargetType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -45,19 +45,22 @@ class ReviewHistoryRepositoryIntegrationTest {
     @Test
     void 원본_수정과_삭제_후에도_전체_상태와_마이크로초_시각을_보존한다() {
         final var review = reviews.save(Review.create(new ReviewKey(42L, "history-mapping"),
-            new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new ReviewContent(new BigDecimal("4.5"), "최초 본문"), false));
+            new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new ReviewContent(new BigDecimal("4.5"), "최초 본문", false)));
         final var changedAt = LocalDateTime.of(2026, 10, 14, 12, 0, 0, 123456000);
-        histories.append(new ReviewHistory(review, ReviewOperation.CREATE, changedAt));
-        review.updateContent(new ReviewContent(new BigDecimal("1.0"), "수정 본문"), true);
+        histories.append(new ReviewHistory(review, ReviewEventType.CREATE, changedAt));
+        review.updateContent(new ReviewContent(new BigDecimal("1.0"), "수정 본문", true));
         review.delete();
         reviews.save(review);
 
         final var row = jdbc.queryForMap("SELECT * FROM review_history WHERE review_id = ?", review.id());
         assertThat(row).containsEntry("user_id", 42L).containsEntry("target_type", "PRODUCT").containsEntry("target_id", 10L)
-            .containsEntry("operation", "CREATE").containsEntry("content", "최초 본문");
+            .containsEntry("event_type", "CREATE").containsEntry("content", "최초 본문");
         assertThat((BigDecimal) row.get("rate")).isEqualByComparingTo("4.5");
         assertThat(jdbc.queryForObject("SELECT changed_at FROM review_history WHERE review_id = ?", LocalDateTime.class, review.id()))
             .isEqualTo(changedAt);
-        assertThat(row).doesNotContainKeys("is_spoiler", "version", "deleted_at", "updated_at", "request_ip");
+        assertThat(row).containsKeys("created_at", "updated_at", "deleted_at");
+        assertThat(row.get("created_at")).isNotNull();
+        assertThat(row.get("updated_at")).isNotNull();
+        assertThat(row).doesNotContainKeys("is_spoiler", "version", "request_ip");
     }
 }

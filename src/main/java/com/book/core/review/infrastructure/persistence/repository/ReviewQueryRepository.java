@@ -3,6 +3,9 @@ package com.book.core.review.infrastructure.persistence.repository;
 import static com.book.core.review.domain.QReview.review;
 
 import com.book.common.paging.OffsetLimit;
+import com.book.core.review.domain.Review;
+import jakarta.persistence.LockModeType;
+import java.util.Optional;
 import com.book.common.paging.Page;
 import com.book.core.review.application.result.ReviewItemResult;
 import com.book.core.review.domain.ReviewTarget;
@@ -16,6 +19,11 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 class ReviewQueryRepository {
     private final JPAQueryFactory queryFactory;
+
+    Optional<Review> findActiveByIdForUpdate(final Long reviewId) {
+        return Optional.ofNullable(queryFactory.selectFrom(review).where(review.id.eq(reviewId), review.deletedAt.isNull())
+            .setLockMode(LockModeType.PESSIMISTIC_WRITE).fetchOne());
+    }
 
     Page<ReviewItemResult> findActiveReviews(final ReviewTarget target, final OffsetLimit offsetLimit) {
         final var found = queryFactory

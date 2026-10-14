@@ -44,7 +44,7 @@ public class ReviewRepositoryAdapter implements ReviewRepositoryPort {
 
     @Override
     public Optional<Review> findActiveByIdForUpdate(final Long reviewId) {
-        return jpaRepository.findActiveByIdForUpdate(reviewId);
+        return queryRepository.findActiveByIdForUpdate(reviewId);
     }
 
     @Override

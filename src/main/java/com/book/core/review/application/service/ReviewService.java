@@ -36,20 +36,18 @@ public class ReviewService {
 
     public Long addReview(final AddReviewCommand command) {
         final ReviewKey reviewKey = validateReviewPolicyUseCase.validateNew(command.userId(), command.target());
-        final ReviewProcessResult result =
-            addReviewUseCase.execute(command.target(), reviewKey, command.content(), command.isSpoiler(), command.requestIp());
+        final ReviewProcessResult result = addReviewUseCase.execute(command.target(), reviewKey, command.content(), command.isSpoiler());
         earnPointUseCase.execute(command.userId(), PointType.REVIEW, result.id(), result.pointAmount());
         return result.id();
     }
 
     public Long updateReview(final UpdateReviewCommand command) {
         validateReviewPolicyUseCase.validateUpdate(command.userId(), command.reviewId());
-        return updateReviewUseCase.execute(command.userId(), command.reviewId(), command.content(), command.isSpoiler(),
-            command.requestIp());
+        return updateReviewUseCase.execute(command.userId(), command.reviewId(), command.content(), command.isSpoiler());
     }
 
     public Long removeReview(final RemoveReviewCommand command) {
-        final ReviewProcessResult result = deleteReviewUseCase.execute(command.userId(), command.reviewId(), command.requestIp());
+        final ReviewProcessResult result = deleteReviewUseCase.execute(command.userId(), command.reviewId());
         deductPointUseCase.execute(command.userId(), PointType.REVIEW, result.id(), result.pointAmount());
         return result.id();
     }

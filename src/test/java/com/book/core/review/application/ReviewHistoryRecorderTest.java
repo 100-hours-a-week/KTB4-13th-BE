@@ -32,14 +32,13 @@ class ReviewHistoryRecorderTest {
 
     @Test
     void 마이크로초_시각으로_리뷰_전체_내용을_기록한다() {
-        recorder.record(review, ReviewOperation.UPDATE, "192.0.2.1");
+        recorder.record(review, ReviewOperation.UPDATE);
 
         final var capture = ArgumentCaptor.forClass(ReviewHistory.class);
         verify(histories).append(capture.capture());
         assertThat(capture.getValue().changedAt()).isEqualTo(LocalDateTime.parse("2026-10-14T12:00:00.123456"));
         assertThat(capture.getValue().content()).isEqualTo("보존할 본문");
         assertThat(capture.getValue().operation()).isEqualTo(ReviewOperation.UPDATE);
-        assertThat(capture.getValue().requestIp()).isEqualTo("192.0.2.1");
     }
 
     @Test
@@ -47,7 +46,7 @@ class ReviewHistoryRecorderTest {
         final var previous = LocalDateTime.parse("2026-10-14T12:01:00.000001");
         when(histories.findLatestChangedAt(801L)).thenReturn(Optional.of(previous));
 
-        recorder.record(review, ReviewOperation.DELETE, "192.0.2.1");
+        recorder.record(review, ReviewOperation.DELETE);
 
         final var capture = ArgumentCaptor.forClass(ReviewHistory.class);
         verify(histories).append(capture.capture());
@@ -59,6 +58,6 @@ class ReviewHistoryRecorderTest {
         final var failure = new DataAccessResourceFailureException("synthetic history failure");
         doThrow(failure).when(histories).append(any(ReviewHistory.class));
 
-        assertThatThrownBy(() -> recorder.record(review, ReviewOperation.CREATE, "192.0.2.1")).isSameAs(failure);
+        assertThatThrownBy(() -> recorder.record(review, ReviewOperation.CREATE)).isSameAs(failure);
     }
 }

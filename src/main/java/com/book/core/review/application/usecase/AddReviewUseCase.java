@@ -26,13 +26,13 @@ public class AddReviewUseCase {
 
     @Transactional
     public ReviewProcessResult execute(final ReviewTarget target, final ReviewKey reviewKey, final ReviewContent content,
-        final boolean isSpoiler, final String requestIp) {
+        final boolean isSpoiler) {
         log.debug("리뷰 작성 처리를 시작합니다. targetType={}, targetId={}, traceId={}", target.type(), target.id(), MDC.get("traceId"));
         if (reviewRepository.existsByUserIdAndReviewKey(reviewKey.userId(), reviewKey.key())) {
             throw new CoreException(ErrorCode.REVIEW_ALREADY_REVIEWED);
         }
         final Review saved = reviewRepository.save(Review.create(reviewKey, target, content, isSpoiler));
-        historyRecorder.record(saved, ReviewOperation.CREATE, requestIp);
+        historyRecorder.record(saved, ReviewOperation.CREATE);
         log.info("리뷰 작성 처리를 마쳤습니다. targetType={}, targetId={}, traceId={}", target.type(), target.id(), MDC.get("traceId"));
         return new ReviewProcessResult(saved.id(), ReviewFormat.TEXT);
     }

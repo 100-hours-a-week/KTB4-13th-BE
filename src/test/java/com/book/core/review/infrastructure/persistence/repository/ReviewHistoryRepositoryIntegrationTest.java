@@ -47,17 +47,17 @@ class ReviewHistoryRepositoryIntegrationTest {
         final var review = reviews.save(Review.create(new ReviewKey(42L, "history-mapping"),
             new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new ReviewContent(new BigDecimal("4.5"), "최초 본문"), false));
         final var changedAt = LocalDateTime.of(2026, 10, 14, 12, 0, 0, 123456000);
-        histories.append(new ReviewHistory(review, ReviewOperation.CREATE, changedAt, "2001:db8::1"));
+        histories.append(new ReviewHistory(review, ReviewOperation.CREATE, changedAt));
         review.updateContent(new ReviewContent(new BigDecimal("1.0"), "수정 본문"), true);
         review.delete();
         reviews.save(review);
 
         final var row = jdbc.queryForMap("SELECT * FROM review_history WHERE review_id = ?", review.id());
         assertThat(row).containsEntry("user_id", 42L).containsEntry("target_type", "PRODUCT").containsEntry("target_id", 10L)
-            .containsEntry("operation", "CREATE").containsEntry("content", "최초 본문").containsEntry("request_ip", "2001:db8::1");
+            .containsEntry("operation", "CREATE").containsEntry("content", "최초 본문");
         assertThat((BigDecimal) row.get("rate")).isEqualByComparingTo("4.5");
         assertThat(jdbc.queryForObject("SELECT changed_at FROM review_history WHERE review_id = ?", LocalDateTime.class, review.id()))
             .isEqualTo(changedAt);
-        assertThat(row).doesNotContainKeys("is_spoiler", "version", "deleted_at", "updated_at");
+        assertThat(row).doesNotContainKeys("is_spoiler", "version", "deleted_at", "updated_at", "request_ip");
     }
 }

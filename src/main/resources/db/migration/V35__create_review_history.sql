@@ -8,7 +8,6 @@ CREATE TABLE review_history (
     content VARCHAR(255) NOT NULL,
     rate DECIMAL(3, 1) NOT NULL,
     changed_at DATETIME(6) NOT NULL,
-    request_ip VARCHAR(45) NOT NULL,
     PRIMARY KEY (id),
     INDEX idx_review_history_review_order (review_id, changed_at, id),
     INDEX idx_review_history_user (user_id),

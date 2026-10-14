@@ -56,8 +56,8 @@ class ReviewPointIntegrationTest {
         final var key = new ReviewKey(userId, "ORDER_ITEM_987601");
         when(policy.validateNew(userId, target)).thenReturn(key);
 
-        assertThatThrownBy(() -> service
-            .addReview(new AddReviewCommand(userId, target, new ReviewContent(new BigDecimal("4.5"), "본문"), false, "127.0.0.1")))
+        assertThatThrownBy(
+            () -> service.addReview(new AddReviewCommand(userId, target, new ReviewContent(new BigDecimal("4.5"), "본문"), false)))
             .isInstanceOfSatisfying(CoreException.class,
                 (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
 
@@ -72,7 +72,7 @@ class ReviewPointIntegrationTest {
         final Review review = reviews.save(Review.create(new ReviewKey(userId, "ORDER_ITEM_987602"),
             new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new ReviewContent(new BigDecimal("4.5"), "본문"), false));
 
-        assertThatThrownBy(() -> service.removeReview(new RemoveReviewCommand(userId, review.id(), "127.0.0.1"))).isInstanceOfSatisfying(
+        assertThatThrownBy(() -> service.removeReview(new RemoveReviewCommand(userId, review.id()))).isInstanceOfSatisfying(
             CoreException.class, (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
 
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM reviews WHERE id = ? AND deleted_at IS NOT NULL", Integer.class, review.id()))

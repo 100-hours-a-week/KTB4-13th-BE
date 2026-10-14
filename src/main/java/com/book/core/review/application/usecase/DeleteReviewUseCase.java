@@ -22,7 +22,7 @@ public class DeleteReviewUseCase {
     private final ReviewHistoryRecorder historyRecorder;
 
     @Transactional
-    public ReviewProcessResult execute(final Long userId, final Long reviewId, final String requestIp) {
+    public ReviewProcessResult execute(final Long userId, final Long reviewId) {
         log.debug("리뷰 삭제 처리를 시작합니다. reviewId={}, traceId={}", reviewId, MDC.get("traceId"));
         final Review review =
             reviewRepository.findActiveByIdForUpdate(reviewId).orElseThrow(() -> new CoreException(ErrorCode.REVIEW_NOT_FOUND));
@@ -31,7 +31,7 @@ public class DeleteReviewUseCase {
         }
         review.delete();
         reviewRepository.save(review);
-        historyRecorder.record(review, ReviewOperation.DELETE, requestIp);
+        historyRecorder.record(review, ReviewOperation.DELETE);
         log.info("리뷰 삭제 처리를 마쳤습니다. reviewId={}, traceId={}", reviewId, MDC.get("traceId"));
         return new ReviewProcessResult(review.id(), ReviewFormat.TEXT);
     }

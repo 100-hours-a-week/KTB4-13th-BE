@@ -21,8 +21,7 @@ public class UpdateReviewUseCase {
     private final ReviewHistoryRecorder historyRecorder;
 
     @Transactional
-    public Long execute(final Long userId, final Long reviewId, final ReviewContent content, final Boolean isSpoiler,
-        final String requestIp) {
+    public Long execute(final Long userId, final Long reviewId, final ReviewContent content, final Boolean isSpoiler) {
         log.debug("리뷰 수정 처리를 시작합니다. reviewId={}, traceId={}", reviewId, MDC.get("traceId"));
         final Review review =
             reviewRepository.findActiveByIdForUpdate(reviewId).orElseThrow(() -> new CoreException(ErrorCode.REVIEW_NOT_FOUND));
@@ -32,7 +31,7 @@ public class UpdateReviewUseCase {
         if (review.wouldChange(content, isSpoiler)) {
             review.updateContent(content, isSpoiler);
             reviewRepository.save(review);
-            historyRecorder.record(review, ReviewOperation.UPDATE, requestIp);
+            historyRecorder.record(review, ReviewOperation.UPDATE);
         }
         log.info("리뷰 수정 처리를 마쳤습니다. reviewId={}, traceId={}", reviewId, MDC.get("traceId"));
         return review.id();

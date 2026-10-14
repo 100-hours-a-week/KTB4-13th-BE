@@ -89,7 +89,7 @@ class ReviewUseCaseLoggingTest {
     @Test
     void 작성_본문_끝에서_INFO를_기록하고_내용과_평점을_제외한다() {
         new AddReviewUseCase(repository, recorder).execute(new ReviewTarget(ReviewTargetType.PRODUCT, 10L),
-            new ReviewKey(42L, "ORDER_ITEM_701"), new ReviewContent(new BigDecimal("4.5"), "private-review-content"), false, "127.0.0.1");
+            new ReviewKey(42L, "ORDER_ITEM_701"), new ReviewContent(new BigDecimal("4.5"), "private-review-content"), false);
 
         assertWriteLogs("targetId=10");
     }
@@ -99,7 +99,7 @@ class ReviewUseCaseLoggingTest {
         when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.of(review()));
 
         new UpdateReviewUseCase(repository, recorder).execute(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "private-review-content"),
-            false, "127.0.0.1");
+            false);
 
         assertWriteLogs("reviewId=801");
     }
@@ -108,7 +108,7 @@ class ReviewUseCaseLoggingTest {
     void 삭제_본문_끝에서_INFO를_기록한다() {
         when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.of(review()));
 
-        new DeleteReviewUseCase(repository, recorder).execute(42L, 801L, "127.0.0.1");
+        new DeleteReviewUseCase(repository, recorder).execute(42L, 801L);
 
         assertWriteLogs("reviewId=801");
     }
@@ -117,8 +117,7 @@ class ReviewUseCaseLoggingTest {
     void 업무_오류는_하위_계층에서_다시_기록하지_않고_종료_INFO도_남기지_않는다() {
         when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> new DeleteReviewUseCase(repository, recorder).execute(42L, 801L, "127.0.0.1"))
-            .isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> new DeleteReviewUseCase(repository, recorder).execute(42L, 801L)).isInstanceOf(CoreException.class);
 
         assertThat(appender.list).extracting(ILoggingEvent::getLevel).containsExactly(Level.DEBUG);
         assertThat(appender.list.getFirst().getThrowableProxy()).isNull();
@@ -128,7 +127,7 @@ class ReviewUseCaseLoggingTest {
         assertThat(appender.list).extracting(ILoggingEvent::getLevel).containsExactly(Level.DEBUG, Level.INFO);
         assertThat(appender.list).allSatisfy(event -> {
             assertThat(event.getFormattedMessage()).contains(identifier, "traceId=review-test-trace")
-                .doesNotContain("private-review-content", "rate=", "rating=", "userId=", "reviewKey=", "127.0.0.1");
+                .doesNotContain("private-review-content", "rate=", "rating=", "userId=", "reviewKey=");
             assertThat(event.getThrowableProxy()).isNull();
         });
     }

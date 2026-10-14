@@ -17,7 +17,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -45,7 +44,7 @@ public interface ReviewControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
     ResponseEntity<ApiResponse<Long>> addReview(@Parameter(hidden = true) final Long userId,
-        @RequestBody @Valid final AddReviewRequest request, @Parameter(hidden = true) final HttpServletRequest httpRequest);
+        @RequestBody @Valid final AddReviewRequest request);
 
     @Operation(summary = "리뷰 수정", description = "별점과 본문을 함께 수정합니다. 별점은 0.5~5.0 사이의 0.5 단위이며 본문은 공백을 제외한 내용이 필요합니다.")
     @SecurityRequirement(name = "bearerAuth")
@@ -58,8 +57,7 @@ public interface ReviewControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
     ResponseEntity<ApiResponse<Long>> updateReview(@Parameter(hidden = true) final Long userId,
-        @Positive @PathVariable("reviewId") final Long reviewId, @RequestBody @Valid final UpdateReviewRequest request,
-        @Parameter(hidden = true) final HttpServletRequest httpRequest);
+        @Positive @PathVariable("reviewId") final Long reviewId, @RequestBody @Valid final UpdateReviewRequest request);
 
     @Operation(summary = "리뷰 삭제", description = "리뷰를 소프트 삭제합니다.")
     @SecurityRequirement(name = "bearerAuth")
@@ -71,5 +69,5 @@ public interface ReviewControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
     ResponseEntity<ApiResponse<Long>> removeReview(@Parameter(hidden = true) final Long userId,
-        @Positive @PathVariable("reviewId") final Long reviewId, @Parameter(hidden = true) final HttpServletRequest httpRequest);
+        @Positive @PathVariable("reviewId") final Long reviewId);
 }

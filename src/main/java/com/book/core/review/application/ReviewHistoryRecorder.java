@@ -21,13 +21,13 @@ public class ReviewHistoryRecorder {
 
     /** 수정과 삭제의 호출자는 해당 리뷰의 쓰기 잠금을 먼저 획득해야 합니다. */
     @Transactional(propagation = Propagation.MANDATORY)
-    public void record(final Review review, final ReviewOperation operation, final String requestIp) {
+    public void record(final Review review, final ReviewOperation operation) {
         final LocalDateTime now = LocalDateTime.now(clock).truncatedTo(ChronoUnit.MICROS);
         final LocalDateTime previous = histories.findLatestChangedAt(review.id()).orElse(now);
         LocalDateTime changedAt = now;
         if (previous.isAfter(now)) {
             changedAt = previous;
         }
-        histories.append(new ReviewHistory(review, operation, changedAt, requestIp));
+        histories.append(new ReviewHistory(review, operation, changedAt));
     }
 }

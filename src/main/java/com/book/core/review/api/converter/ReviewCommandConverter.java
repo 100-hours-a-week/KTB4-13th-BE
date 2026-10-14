@@ -19,18 +19,16 @@ public class ReviewCommandConverter {
         return new GetReviewsCommand(new ReviewTarget(targetType, targetId), new OffsetLimit(offset, limit));
     }
 
-    public AddReviewCommand toAddReviewCommand(final Long userId, final AddReviewRequest request, final String requestIp) {
+    public AddReviewCommand toAddReviewCommand(final Long userId, final AddReviewRequest request) {
         return new AddReviewCommand(userId, new ReviewTarget(request.targetType(), request.targetId()),
-            new ReviewContent(request.rate(), request.content()), request.isSpoiler(), requestIp);
+            new ReviewContent(request.rate(), request.content()), request.isSpoiler());
     }
 
-    public UpdateReviewCommand toUpdateReviewCommand(final Long userId, final Long reviewId, final UpdateReviewRequest request,
-        final String requestIp) {
-        return new UpdateReviewCommand(userId, reviewId, new ReviewContent(request.rate(), request.content()), request.isSpoiler(),
-            requestIp);
+    public UpdateReviewCommand toUpdateReviewCommand(final Long userId, final Long reviewId, final UpdateReviewRequest request) {
+        return new UpdateReviewCommand(userId, reviewId, new ReviewContent(request.rate(), request.content()), request.isSpoiler());
     }
 
-    public RemoveReviewCommand toRemoveReviewCommand(final Long userId, final Long reviewId, final String requestIp) {
-        return new RemoveReviewCommand(userId, reviewId, requestIp);
+    public RemoveReviewCommand toRemoveReviewCommand(final Long userId, final Long reviewId) {
+        return new RemoveReviewCommand(userId, reviewId);
     }
 }

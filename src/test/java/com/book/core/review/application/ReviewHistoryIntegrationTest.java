@@ -62,19 +62,17 @@ class ReviewHistoryIntegrationTest {
 
     @Test
     void 생성_수정_삭제를_역순으로_추적하고_동일_수정은_제외한다() {
-        final Long id = add.execute(target, new ReviewKey(42L, "history-flow"), content("4.5", "최초 본문"), false, "192.0.2.1").id();
-        update.execute(42L, id, content("4.50", "최초 본문"), null, "192.0.2.2");
-        update.execute(42L, id, content("4.5", "최초 본문"), true, "192.0.2.3");
-        update.execute(42L, id, content("1.0", "수정 본문"), null, "192.0.2.4");
-        delete.execute(42L, id, "192.0.2.5");
+        final Long id = add.execute(target, new ReviewKey(42L, "history-flow"), content("4.5", "최초 본문"), false).id();
+        update.execute(42L, id, content("4.50", "최초 본문"), null);
+        update.execute(42L, id, content("4.5", "최초 본문"), true);
+        update.execute(42L, id, content("1.0", "수정 본문"), null);
+        delete.execute(42L, id);
 
         final var rows = jdbc.queryForList("SELECT * FROM review_history WHERE review_id = ? ORDER BY changed_at DESC, id DESC", id);
         assertThat(rows).extracting((final var row) -> row.get("operation")).containsExactly("DELETE", "UPDATE", "UPDATE", "CREATE");
         assertThat(rows).extracting((final var row) -> row.get("content")).containsExactly("수정 본문", "수정 본문", "최초 본문", "최초 본문");
         assertThat(rows).extracting((final var row) -> ((BigDecimal) row.get("rate")).toPlainString()).containsExactly("1.0", "1.0", "4.5",
             "4.5");
-        assertThat(rows).extracting((final var row) -> row.get("request_ip")).containsExactly("192.0.2.5", "192.0.2.4", "192.0.2.3",
-            "192.0.2.1");
         assertThat(reviews.findActiveById(id)).isEmpty();
     }
 
@@ -83,7 +81,7 @@ class ReviewHistoryIntegrationTest {
         final Review review = existingReview("legacy-review");
         assertThat(historyCount(review.id())).isZero();
 
-        update.execute(42L, review.id(), content("3.0", "도입 후 수정"), null, "192.0.2.1");
+        update.execute(42L, review.id(), content("3.0", "도입 후 수정"), null);
 
         assertThat(jdbc.queryForList("SELECT operation FROM review_history WHERE review_id = ?", String.class, review.id()))
             .containsExactly("UPDATE");
@@ -93,15 +91,17 @@ class ReviewHistoryIntegrationTest {
 
     @Test
     void 실제_DB_이력_저장_실패는_생성_수정_삭제를_모두_롤백한다() {
-        final Review review = existingReview("history-rollback-existing");
-        jdbc.execute("ALTER TABLE review_history ADD CONSTRAINT chk_synthetic_history_failure CHECK (request_ip <> '192.0.2.254')");
+        final ReviewTarget failureTarget = new ReviewTarget(ReviewTargetType.PRODUCT, 999292L);
+        final Review review =
+            reviews.save(Review.create(new ReviewKey(42L, "history-rollback-existing"), failureTarget, content("4.5", "기존 본문"), false));
+        jdbc.execute("ALTER TABLE review_history ADD CONSTRAINT chk_synthetic_history_failure CHECK (target_id <> 999292)");
         try {
             assertThatThrownBy(
-                () -> add.execute(target, new ReviewKey(42L, "history-rollback-create"), content("4.5", "생성 실패"), false, "192.0.2.254"))
+                () -> add.execute(failureTarget, new ReviewKey(42L, "history-rollback-create"), content("4.5", "생성 실패"), false))
                 .isInstanceOf(DataAccessException.class);
-            assertThatThrownBy(() -> update.execute(42L, review.id(), content("1.0", "수정 실패"), true, "192.0.2.254"))
+            assertThatThrownBy(() -> update.execute(42L, review.id(), content("1.0", "수정 실패"), true))
                 .isInstanceOf(DataAccessException.class);
-            assertThatThrownBy(() -> delete.execute(42L, review.id(), "192.0.2.254")).isInstanceOf(DataAccessException.class);
+            assertThatThrownBy(() -> delete.execute(42L, review.id())).isInstanceOf(DataAccessException.class);
         } finally {
             jdbc.execute("ALTER TABLE review_history DROP CHECK chk_synthetic_history_failure");
         }
@@ -124,7 +124,7 @@ class ReviewHistoryIntegrationTest {
         final var transaction = new TransactionTemplate(transactionManager);
         try (final var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             final var firstWrite = executor.submit(() -> transaction.executeWithoutResult((final var status) -> {
-                update.execute(42L, first.id(), content("2.0", "잠금 안의 수정"), null, "192.0.2.1");
+                update.execute(42L, first.id(), content("2.0", "잠금 안의 수정"), null);
                 written.countDown();
                 await(release);
             }));
@@ -134,21 +134,20 @@ class ReviewHistoryIntegrationTest {
                 assertThatThrownBy(() -> transaction.executeWithoutResult((final var status) -> {
                     jdbc.execute("SET SESSION innodb_lock_wait_timeout = 1");
                     try {
-                        delete.execute(42L, first.id(), "192.0.2.2");
+                        delete.execute(42L, first.id());
                     } finally {
                         jdbc.execute("SET SESSION innodb_lock_wait_timeout = DEFAULT");
                     }
                 })).isInstanceOf(DataAccessException.class);
 
-                final var independentWrite =
-                    executor.submit(() -> update.execute(42L, other.id(), content("3.0", "독립 수정"), null, "192.0.2.3"));
+                final var independentWrite = executor.submit(() -> update.execute(42L, other.id(), content("3.0", "독립 수정"), null));
                 assertThat(independentWrite.get(5, TimeUnit.SECONDS)).isEqualTo(other.id());
             } finally {
                 release.countDown();
             }
             firstWrite.get(10, TimeUnit.SECONDS);
         }
-        delete.execute(42L, first.id(), "192.0.2.2");
+        delete.execute(42L, first.id());
 
         final var rows = jdbc.queryForList(
             "SELECT operation, content FROM review_history WHERE review_id = ? " + "ORDER BY changed_at DESC, id DESC", first.id());
@@ -166,7 +165,7 @@ class ReviewHistoryIntegrationTest {
         final var transaction = new TransactionTemplate(transactionManager);
         try (final var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             final var firstWrite = executor.submit(() -> transaction.executeWithoutResult((final var status) -> {
-                update.execute(42L, review.id(), content("2.0", "삭제 전에 수정된 본문"), null, "192.0.2.1");
+                update.execute(42L, review.id(), content("2.0", "삭제 전에 수정된 본문"), null);
                 written.countDown();
                 await(release);
             }));
@@ -174,7 +173,7 @@ class ReviewHistoryIntegrationTest {
                 assertThat(written.await(10, TimeUnit.SECONDS)).isTrue();
                 final var waitingDelete = executor.submit(() -> {
                     deleteStarted.countDown();
-                    return delete.execute(42L, review.id(), "192.0.2.2");
+                    return delete.execute(42L, review.id());
                 });
                 assertThat(deleteStarted.await(10, TimeUnit.SECONDS)).isTrue();
                 assertThatThrownBy(() -> waitingDelete.get(300, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);

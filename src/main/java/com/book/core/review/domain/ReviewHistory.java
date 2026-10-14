@@ -57,11 +57,8 @@ public class ReviewHistory {
     @Column(name = "changed_at", nullable = false, updatable = false)
     private LocalDateTime changedAt;
 
-    @Column(name = "request_ip", nullable = false, updatable = false, length = 45)
-    private String requestIp;
-
     /** 저장된 리뷰의 값을 복사하므로 이후 원본 수정이나 삭제의 영향을 받지 않습니다. */
-    public ReviewHistory(final Review review, final ReviewOperation operation, final LocalDateTime changedAt, final String requestIp) {
+    public ReviewHistory(final Review review, final ReviewOperation operation, final LocalDateTime changedAt) {
         this.reviewId = review.id();
         this.userId = review.userId();
         this.targetType = review.targetType();
@@ -70,6 +67,5 @@ public class ReviewHistory {
         this.content = review.content();
         this.rate = review.rate();
         this.changedAt = changedAt;
-        this.requestIp = requestIp;
     }
 }

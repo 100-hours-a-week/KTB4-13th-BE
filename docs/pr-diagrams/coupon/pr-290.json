@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PR #290 · 보유 쿠폰 모델과 저장 기반",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      560
+    ]
+  },
+  "participants": [
+    {
+      "id": "caller",
+      "label": "내부 호출자",
+      "sublabel": "후속 발급 / 조회",
+      "type": "backend"
+    },
+    {
+      "id": "domain",
+      "label": "보유 쿠폰",
+      "sublabel": "OwnedCoupon",
+      "type": "backend"
+    },
+    {
+      "id": "port",
+      "label": "저장 계약",
+      "sublabel": "OwnedCoupon Port",
+      "type": "backend"
+    },
+    {
+      "id": "jpa",
+      "label": "영속 구현",
+      "sublabel": "Adapter + JPA",
+      "type": "backend"
+    },
+    {
+      "id": "db",
+      "label": "MySQL",
+      "sublabel": "owned_coupon",
+      "type": "database"
+    }
+  ],
+  "messages": [
+    {
+      "id": "foundation-step-1",
+      "from": "caller",
+      "to": "domain",
+      "y": 170,
+      "label": "필수 필드로 보유 모델 생성",
+      "variant": "default"
+    },
+    {
+      "id": "foundation-step-2",
+      "from": "domain",
+      "to": "caller",
+      "y": 199,
+      "label": "OwnedCoupon 객체",
+      "variant": "return"
+    },
+    {
+      "id": "foundation-step-3",
+      "from": "caller",
+      "to": "port",
+      "y": 228,
+      "label": "save(ownedCoupon)",
+      "variant": "default"
+    },
+    {
+      "id": "foundation-step-4",
+      "from": "port",
+      "to": "jpa",
+      "y": 257,
+      "label": "JpaRepository.save 호출",
+      "variant": "default"
+    },
+    {
+      "id": "foundation-step-5",
+      "from": "jpa",
+      "to": "db",
+      "y": 286,
+      "label": "INSERT / IDENTITY / 고유 제약",
+      "variant": "default"
+    },
+    {
+      "id": "foundation-step-6",
+      "from": "db",
+      "to": "caller",
+      "y": 315,
+      "label": "생성 ID를 가진 저장 결과",
+      "variant": "return"
+    },
+    {
+      "id": "foundation-step-7",
+      "from": "caller",
+      "to": "port",
+      "y": 344,
+      "label": "회원 ID + 원본 쿠폰 ID 조회",
+      "variant": "default"
+    },
+    {
+      "id": "foundation-step-8",
+      "from": "port",
+      "to": "jpa",
+      "y": 373,
+      "label": "조회 조건 전달",
+      "variant": "default"
+    },
+    {
+      "id": "foundation-step-9",
+      "from": "jpa",
+      "to": "db",
+      "y": 402,
+      "label": "user_id / coupon_id 조회",
+      "variant": "default"
+    },
+    {
+      "id": "foundation-step-10",
+      "from": "db",
+      "to": "caller",
+      "y": 431,
+      "label": "Optional 보유 쿠폰",
+      "variant": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "모델 / 저장 계약",
+      "items": [
+        "state는 ISSUED / USED이며, 사용 한도와 사용 횟수를 저장합니다.",
+        "UNIQUE(user_id, coupon_id)는 삭제 후에도 유지됩니다."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "분리 범위",
+      "items": [
+        "그림은 저장 계약의 정상 경로입니다. 발급/API/로그는 후속 #277에서 구현합니다.",
+        "매핑과 회원 구분, 삭제 전후 고유 제약은 발급에 의존하지 않는 DB 테스트로 검증합니다."
+      ]
+    }
+  ]
+}

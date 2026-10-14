@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/Users/connor/.codex/visualizations/2026/10/14/coupon-pr-sequences/pr-290.json",
+  "output": "/Users/connor/.codex/visualizations/2026/10/14/coupon-pr-sequences/pr-290.html",
+  "specification": {
+    "sha256": "efd35b7aac6a4280a216d18964f0f99b3570c00a9819b027e8b94baf842d2085",
+    "bytes": 3305
+  },
+  "artifact": {
+    "sha256": "b64fcb218efee3517eaf0da3917d62a37eb2d474032e5930f5d23938bac8d9b4",
+    "bytes": 805076
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

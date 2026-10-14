@@ -61,6 +61,12 @@ public class Review extends BaseEntity {
         return new Review(null, key.userId(), key.key(), target.type(), target.id(), content.rate(), content.content(), isSpoiler);
     }
 
+    /** 표현상의 소수 자릿수 차이는 무시하고 실제 리뷰 상태의 변경 여부를 확인합니다. */
+    public boolean wouldChange(final ReviewContent content, final Boolean isSpoiler) {
+        return this.rate.compareTo(content.rate()) != 0 || !this.content.equals(content.content())
+            || (isSpoiler != null && this.isSpoiler != isSpoiler);
+    }
+
     public void updateContent(final ReviewContent content, final Boolean isSpoiler) {
         this.rate = content.rate();
         this.content = content.content();

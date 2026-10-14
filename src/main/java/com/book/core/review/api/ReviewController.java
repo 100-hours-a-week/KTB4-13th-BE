@@ -1,6 +1,8 @@
 package com.book.core.review.api;
 
 import com.book.common.config.security.UserId;
+import com.book.common.config.web.RequestIpResolver;
+import jakarta.servlet.http.HttpServletRequest;
 import com.book.common.response.ApiResponse;
 import com.book.common.response.PageResponse;
 import com.book.core.review.api.converter.ReviewCommandConverter;
@@ -36,6 +38,7 @@ import com.book.core.review.api.converter.ReviewResultConverter;
 @RequestMapping("/api/v1/reviews")
 class ReviewController implements ReviewControllerSpec {
     private final ReviewService reviewService;
+    private final RequestIpResolver requestIpResolver;
     private final ReviewCommandConverter commandConverter;
     private final ReviewResultConverter resultConverter;
 
@@ -53,8 +56,9 @@ class ReviewController implements ReviewControllerSpec {
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<Long>> addReview(@UserId final Long userId, @RequestBody final AddReviewRequest request) {
-        final AddReviewCommand command = commandConverter.toAddReviewCommand(userId, request);
+    public ResponseEntity<ApiResponse<Long>> addReview(@UserId final Long userId, @RequestBody final AddReviewRequest request,
+        final HttpServletRequest httpRequest) {
+        final AddReviewCommand command = commandConverter.toAddReviewCommand(userId, request, requestIpResolver.resolve(httpRequest));
         final Long result = reviewService.addReview(command);
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
@@ -62,16 +66,19 @@ class ReviewController implements ReviewControllerSpec {
     @Override
     @PatchMapping("/{reviewId}")
     public ResponseEntity<ApiResponse<Long>> updateReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId,
-        @RequestBody final UpdateReviewRequest request) {
-        final UpdateReviewCommand command = commandConverter.toUpdateReviewCommand(userId, reviewId, request);
+        @RequestBody final UpdateReviewRequest request, final HttpServletRequest httpRequest) {
+        final UpdateReviewCommand command =
+            commandConverter.toUpdateReviewCommand(userId, reviewId, request, requestIpResolver.resolve(httpRequest));
         final Long result = reviewService.updateReview(command);
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     @Override
     @DeleteMapping("/{reviewId}")
-    public ResponseEntity<ApiResponse<Long>> removeReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId) {
-        final RemoveReviewCommand command = commandConverter.toRemoveReviewCommand(userId, reviewId);
+    public ResponseEntity<ApiResponse<Long>> removeReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId,
+        final HttpServletRequest httpRequest) {
+        final RemoveReviewCommand command =
+            commandConverter.toRemoveReviewCommand(userId, reviewId, requestIpResolver.resolve(httpRequest));
         final Long result = reviewService.removeReview(command);
         return ResponseEntity.ok(ApiResponse.ok(result));
     }

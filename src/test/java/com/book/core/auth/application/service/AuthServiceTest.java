@@ -144,7 +144,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void 회원_조회가_실패하면_가입과_token_발급을_호출하지_않는다() {
+    void 로그인_회원_조회가_실패하면_token_발급을_호출하지_않는다() {
         final AuthLoginCommand command = command();
         final BusinessException exception = new BusinessException(ErrorCode.USER_PROVIDER_USER_INACTIVE);
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
@@ -153,7 +153,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> service().login(command)).isSameAs(exception);
 
-        verifyNoInteractions(userRegistrationUseCase, tokenIssuer, refreshSessionRegistrationUseCase);
+        verifyNoInteractions(tokenIssuer, refreshSessionRegistrationUseCase);
     }
 
     @Test

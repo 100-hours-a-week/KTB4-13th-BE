@@ -7,9 +7,9 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
-import com.book.core.auth.application.port.OAuthIdentity;
 import com.book.core.auth.application.port.OAuthProviderClient;
 import com.book.core.auth.application.port.OAuthTokenClient;
+import com.book.core.auth.application.result.OAuthUserInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -24,12 +24,12 @@ class AuthenticateOAuthUserUseCaseTest {
     OAuthProviderClient oAuthProviderClient;
 
     @Test
-    void 인가_코드를_ID_Token으로_교환하고_검증한_OAuthIdentity를_반환한다() {
-        final OAuthIdentity identity = new OAuthIdentity("provider-123", null);
+    void 인가_코드를_ID_Token으로_교환하고_검증한_OAuthUserInfo를_반환한다() {
+        final OAuthUserInfo identity = new OAuthUserInfo("provider-123", null);
         when(oAuthTokenClient.exchangeForIdToken("authorization-code", "code-verifier")).thenReturn("id-token");
         when(oAuthProviderClient.verify("id-token", "nonce")).thenReturn(identity);
 
-        final OAuthIdentity result = useCase().execute("authorization-code", "code-verifier", "nonce");
+        final OAuthUserInfo result = useCase().execute("authorization-code", "code-verifier", "nonce");
 
         assertThat(result).isEqualTo(identity);
     }

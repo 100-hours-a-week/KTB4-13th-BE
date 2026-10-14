@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "리뷰 변경과 이력 저장",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1080,
+      480
+    ],
+    "column_fit": "spread"
+  },
+  "participants": [
+    {
+      "id": "review_api",
+      "type": "backend",
+      "label": "리뷰 API",
+      "sublabel": "IP 해석 · Command 변환"
+    },
+    {
+      "id": "review_service",
+      "type": "backend",
+      "label": "ReviewService",
+      "sublabel": "기존 정책 · 실행 순서"
+    },
+    {
+      "id": "write_usecase",
+      "type": "backend",
+      "label": "쓰기 UseCase",
+      "sublabel": "리뷰와 이력의 트랜잭션"
+    },
+    {
+      "id": "review_store",
+      "type": "database",
+      "label": "리뷰 저장소",
+      "sublabel": "Repository Port → JPA"
+    },
+    {
+      "id": "history_store",
+      "type": "database",
+      "label": "이력 저장소",
+      "sublabel": "Recorder → Port → JPA"
+    }
+  ],
+  "messages": [
+    {
+      "id": "convert_request",
+      "from": "review_api",
+      "to": "review_service",
+      "y": 160,
+      "label": "인증 사용자 · 리뷰 입력 · 요청 IP"
+    },
+    {
+      "id": "execute_write",
+      "from": "review_service",
+      "to": "write_usecase",
+      "y": 193,
+      "label": "생성 / 수정 / 삭제 실행"
+    },
+    {
+      "id": "lock_review",
+      "from": "write_usecase",
+      "to": "review_store",
+      "y": 226,
+      "label": "수정·삭제: 리뷰 행 쓰기 잠금"
+    },
+    {
+      "id": "return_current",
+      "from": "review_store",
+      "to": "write_usecase",
+      "y": 259,
+      "label": "현재 활성 리뷰 · 소유자 확인",
+      "variant": "return"
+    },
+    {
+      "id": "persist_review",
+      "from": "write_usecase",
+      "to": "review_store",
+      "y": 292,
+      "label": "상태 변경 · 저장"
+    },
+    {
+      "id": "append_snapshot",
+      "from": "write_usecase",
+      "to": "history_store",
+      "y": 325,
+      "label": "이전 기록 시각 확인 · 전체 상태 추가"
+    },
+    {
+      "id": "write_complete",
+      "from": "write_usecase",
+      "to": "review_service",
+      "y": 358,
+      "label": "리뷰와 이력 함께 커밋 / 실패 시 롤백",
+      "variant": "return"
+    },
+    {
+      "id": "return_result",
+      "from": "review_service",
+      "to": "review_api",
+      "y": 391,
+      "label": "기존 응답 계약 유지",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "write_usecase",
+      "from": 193,
+      "to": 362,
+      "type": "backend"
+    }
+  ]
+}

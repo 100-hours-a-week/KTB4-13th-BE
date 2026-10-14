@@ -1,0 +1,16 @@
+{
+  "diagram_type": "sequence",
+  "specification_sha256": "01df6f274a4f7d9aa1d544c6d49b89cb6e503fb3d01eaee749f96cfcef879eb9",
+  "artifact_sha256": "67e5be29e0b9f210e1c2b34840dd11a27bc8d722d5e85d3e26e42174666ac86f",
+  "validation": "9/9 showcase, 0 errors, 0 warnings",
+  "browser_evidence": "passed",
+  "visual_review": "passed",
+  "correction_rounds": 2,
+  "reviewed_views": [
+    "2048x1320 light",
+    "1440x900 dark",
+    "monochrome export"
+  ],
+  "monochrome_sha256": "7c5a9f68a459f0de0bf3a1437b2558d9fe384549ed1bbf3a22c0012b4aba0cc0",
+  "notes": "흑백 PNG는 전달된 HTML을 브라우저에서 연 뒤, 기하 구조를 유지하고 채움/선/글자 색만 바꿔 기본 PNG export로 생성한 파생물입니다."
+}

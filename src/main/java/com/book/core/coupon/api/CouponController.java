@@ -39,7 +39,8 @@ public class CouponController implements CouponControllerSpec {
     public ResponseEntity<ApiResponse<List<CouponResponse>>> getCoupons(@RequestParam("ids") final List<Long> couponIds) {
         final GetCouponsCommand command = commandConverter.toGetCouponsCommand(couponIds);
         final List<CouponResult> result = couponService.getCoupons(command);
-        return ResponseEntity.ok(ApiResponse.ok(resultConverter.toCouponResponses(result)));
+        final List<CouponResponse> response = resultConverter.toCouponResponses(result);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @Override

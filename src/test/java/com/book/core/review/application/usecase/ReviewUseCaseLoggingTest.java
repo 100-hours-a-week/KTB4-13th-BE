@@ -87,23 +87,23 @@ class ReviewUseCaseLoggingTest {
     @Test
     void 작성_본문_끝에서_INFO를_기록하고_내용과_평점을_제외한다() {
         new AddReviewUseCase(repository).execute(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new ReviewKey(42L, "ORDER_ITEM_701"),
-            new ReviewContent(new BigDecimal("4.5"), "private-review-content"), false);
+            new ReviewContent(new BigDecimal("4.5"), "private-review-content", false));
 
         assertWriteLogs("targetId=10");
     }
 
     @Test
     void 수정_본문_끝에서_INFO를_기록한다() {
-        when(repository.findActiveById(801L)).thenReturn(Optional.of(review()));
+        when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.of(review()));
 
-        new UpdateReviewUseCase(repository).execute(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "private-review-content"), false);
+        new UpdateReviewUseCase(repository).execute(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "private-review-content", false));
 
         assertWriteLogs("reviewId=801");
     }
 
     @Test
     void 삭제_본문_끝에서_INFO를_기록한다() {
-        when(repository.findActiveById(801L)).thenReturn(Optional.of(review()));
+        when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.of(review()));
 
         new DeleteReviewUseCase(repository).execute(42L, 801L);
 
@@ -112,7 +112,7 @@ class ReviewUseCaseLoggingTest {
 
     @Test
     void 업무_오류는_하위_계층에서_다시_기록하지_않고_종료_INFO도_남기지_않는다() {
-        when(repository.findActiveById(801L)).thenReturn(Optional.empty());
+        when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> new DeleteReviewUseCase(repository).execute(42L, 801L)).isInstanceOf(CoreException.class);
 
@@ -131,7 +131,7 @@ class ReviewUseCaseLoggingTest {
 
     private Review review() {
         return Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 10L),
-            new ReviewContent(new BigDecimal("4.5"), "private-review-content"), false);
+            new ReviewContent(new BigDecimal("4.5"), "private-review-content", false));
     }
 
     private static Logger logger(final Class<?> type) {

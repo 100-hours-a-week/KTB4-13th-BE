@@ -17,6 +17,8 @@ public interface ReviewRepositoryPort {
 
     Optional<Review> findActiveById(final Long reviewId);
 
+    Optional<Review> findActiveByIdForUpdate(final Long reviewId);
+
     boolean existsByUserIdAndReviewKey(final Long userId, final String reviewKey);
 
     List<Review> findByUserIdAndReviewKeyIn(final Long userId, final List<String> reviewKeys);

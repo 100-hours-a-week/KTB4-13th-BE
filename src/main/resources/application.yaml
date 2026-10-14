@@ -1,3 +1,7 @@
+# 연결 IP는 애플리케이션에서 신뢰 프록시를 확인한 뒤 해석합니다.
+server:
+  forward-headers-strategy: none
+
 spring:
   application:
     name: book
@@ -22,6 +26,8 @@ sentry:
   traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}
 
 app:
+  request-ip:
+    trusted-proxies: ${TRUSTED_PROXY_CIDRS:}
   cors:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
 

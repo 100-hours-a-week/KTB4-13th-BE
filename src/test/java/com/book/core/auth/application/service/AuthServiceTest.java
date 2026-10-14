@@ -10,8 +10,8 @@ import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.auth.application.command.AuthLoginCommand;
 import com.book.core.auth.application.port.IssuedTokens;
-import com.book.core.auth.application.port.OAuthIdentity;
 import com.book.core.auth.application.port.TokenIssuer;
+import com.book.core.auth.application.result.OAuthUserInfo;
 import com.book.core.auth.application.usecase.AuthLogoutUseCase;
 import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.application.usecase.AuthenticateOAuthUserUseCase;
@@ -51,7 +51,7 @@ class AuthServiceTest {
     void OAuth_인증부터_refresh_session_저장까지_순서대로_실행한다() {
         final AuthLoginCommand command = command();
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthIdentity("provider-123", "reader@example.com"));
+            .thenReturn(new OAuthUserInfo("provider-123", "reader@example.com"));
         when(identifyUserUseCase.execute(new IdentifyUserCommand(ProviderType.KAKAO, "provider-123", "reader@example.com")))
             .thenReturn(new IdentifyUserResult(42L));
         final Instant refreshExpiresAt = Instant.parse("2030-01-09T03:04:05Z");
@@ -85,7 +85,7 @@ class AuthServiceTest {
         final AuthLoginCommand command = command();
         final BusinessException exception = new BusinessException(ErrorCode.USER_PROVIDER_USER_INACTIVE);
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthIdentity("provider-123", null));
+            .thenReturn(new OAuthUserInfo("provider-123", null));
         when(identifyUserUseCase.execute(new IdentifyUserCommand(ProviderType.KAKAO, "provider-123", null))).thenThrow(exception);
 
         assertThatThrownBy(() -> service().login(command)).isSameAs(exception);
@@ -98,7 +98,7 @@ class AuthServiceTest {
         final AuthLoginCommand command = command();
         final BusinessException exception = new BusinessException(ErrorCode.TOKEN_ISSUE_FAILURE);
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthIdentity("provider-123", null));
+            .thenReturn(new OAuthUserInfo("provider-123", null));
         when(identifyUserUseCase.execute(new IdentifyUserCommand(ProviderType.KAKAO, "provider-123", null)))
             .thenReturn(new IdentifyUserResult(42L));
         when(tokenIssuer.issue(42L)).thenThrow(exception);

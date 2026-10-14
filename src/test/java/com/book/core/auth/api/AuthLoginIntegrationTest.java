@@ -6,10 +6,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.book.core.auth.application.port.OAuthIdentity;
 import com.book.core.auth.application.port.OAuthProviderClient;
 import com.book.core.auth.application.port.OAuthTokenClient;
 import com.book.core.auth.application.port.RefreshTokenHasher;
+import com.book.core.auth.application.result.OAuthUserInfo;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import javax.crypto.SecretKey;
@@ -67,7 +67,7 @@ class AuthLoginIntegrationTest {
     @Test
     void 로그인_HTTP_요청이_회원과_RefreshSession_저장과_Cookie_응답까지_연결된다() throws Exception {
         when(oAuthTokenClient.exchangeForIdToken("authorization-code", "code-verifier")).thenReturn("kakao-id-token");
-        when(oAuthProviderClient.verify("kakao-id-token", "nonce")).thenReturn(new OAuthIdentity("provider-123", "reader@example.com"));
+        when(oAuthProviderClient.verify("kakao-id-token", "nonce")).thenReturn(new OAuthUserInfo("provider-123", "reader@example.com"));
 
         final MvcResult firstLogin = login();
         final String firstRefreshToken = firstLogin.getResponse().getCookie("refreshToken").getValue();

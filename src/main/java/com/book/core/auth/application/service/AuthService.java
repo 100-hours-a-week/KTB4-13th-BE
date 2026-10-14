@@ -3,10 +3,10 @@ package com.book.core.auth.application.service;
 import com.book.core.auth.application.command.AuthLoginCommand;
 import com.book.core.auth.application.command.AuthReissueCommand;
 import com.book.core.auth.application.port.IssuedTokens;
-import com.book.core.auth.application.port.OAuthIdentity;
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.application.result.AuthLoginResult;
 import com.book.core.auth.application.result.AuthReissueResult;
+import com.book.core.auth.application.result.OAuthUserInfo;
 import com.book.core.auth.application.usecase.AuthLogoutUseCase;
 import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.application.usecase.AuthenticateOAuthUserUseCase;
@@ -27,7 +27,7 @@ public class AuthService {
     private final AuthLogoutUseCase authLogoutUseCase;
 
     public AuthLoginResult login(final AuthLoginCommand command) {
-        final OAuthIdentity identity =
+        final OAuthUserInfo identity =
             authenticateOAuthUserUseCase.execute(command.authorizationCode(), command.codeVerifier(), command.nonce());
         final Long userId = identifyUserUseCase
             .execute(new IdentifyUserCommand(command.providerType(), identity.providerUserId(), identity.providerEmail())).userId();

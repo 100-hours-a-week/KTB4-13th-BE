@@ -3,10 +3,10 @@ package com.book.core.auth.application.service;
 import com.book.core.auth.application.command.AuthLoginCommand;
 import com.book.core.auth.application.command.AuthReissueCommand;
 import com.book.core.auth.application.port.IssuedTokens;
-import com.book.core.auth.application.port.OAuthIdentity;
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.application.result.AuthLoginResult;
 import com.book.core.auth.application.result.AuthReissueResult;
+import com.book.core.auth.application.result.OAuthUserInfo;
 import com.book.core.auth.application.usecase.AuthLogoutUseCase;
 import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.application.usecase.AuthenticateOAuthUserUseCase;
@@ -37,7 +37,7 @@ public class AuthService {
     private final AuthLogoutUseCase authLogoutUseCase;
 
     public AuthLoginResult login(final AuthLoginCommand command) {
-        final OAuthIdentity identity =
+        final OAuthUserInfo identity =
             authenticateOAuthUserUseCase.execute(command.authorizationCode(), command.codeVerifier(), command.nonce());
         final Long userId = findOAuthUserUseCase.execute(command.providerType(), identity.providerUserId())
             .orElseGet(() -> register(command.providerType(), identity));
@@ -52,7 +52,7 @@ public class AuthService {
         authLogoutUseCase.execute(userId);
     }
 
-    private Long register(final ProviderType providerType, final OAuthIdentity identity) {
+    private Long register(final ProviderType providerType, final OAuthUserInfo identity) {
         final Long userId =
             userRegistrationUseCase.execute(new UserRegistrationCommand(providerType, identity.providerUserId(), identity.providerEmail()));
         initialize("장바구니", userId, createCartUseCase::execute);

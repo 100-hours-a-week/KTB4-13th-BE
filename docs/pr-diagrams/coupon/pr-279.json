@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PR #279 · 체크아웃 쿠폰 후보 조회",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      607
+    ]
+  },
+  "participants": [
+    {
+      "id": "caller",
+      "type": "backend",
+      "label": "내부 호출자",
+      "sublabel": "향후 체크아웃"
+    },
+    {
+      "id": "service",
+      "type": "backend",
+      "label": "보유 서비스",
+      "sublabel": "OwnedCouponService"
+    },
+    {
+      "id": "targets",
+      "type": "backend",
+      "label": "대상 조회",
+      "sublabel": "GetCouponTargets"
+    },
+    {
+      "id": "usecase",
+      "type": "backend",
+      "label": "후보 조회",
+      "sublabel": "FindOwnedCoupons"
+    },
+    {
+      "id": "repository",
+      "type": "backend",
+      "label": "영속 계층",
+      "sublabel": "Port / Adapter / JPA"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "Coupon JOIN OwnedCoupon"
+    }
+  ],
+  "messages": [
+    {
+      "id": "pr279-step-1",
+      "to": "service",
+      "y": 170,
+      "label": "회원 ID + 상품 ID 목록",
+      "variant": "default",
+      "from": "caller"
+    },
+    {
+      "id": "pr279-step-2",
+      "to": "targets",
+      "y": 199,
+      "label": "상품 / 카테고리 대상 조회",
+      "variant": "default",
+      "from": "service"
+    },
+    {
+      "id": "pr279-step-3",
+      "to": "db",
+      "y": 228,
+      "label": "활성 대상 연결 조회",
+      "variant": "default",
+      "from": "targets"
+    },
+    {
+      "id": "pr279-step-4",
+      "to": "service",
+      "y": 257,
+      "label": "관련 쿠폰 ID 합집합",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr279-step-5",
+      "to": "usecase",
+      "y": 286,
+      "label": "userId + couponIds + now",
+      "variant": "default",
+      "from": "service"
+    },
+    {
+      "id": "pr279-step-6",
+      "to": "repository",
+      "y": 315,
+      "label": "회원의 후보 보유 조회",
+      "variant": "default",
+      "from": "usecase"
+    },
+    {
+      "id": "pr279-step-7",
+      "to": "db",
+      "y": 344,
+      "label": "ISSUED / 활성 / 미만료",
+      "variant": "default",
+      "from": "repository"
+    },
+    {
+      "id": "pr279-step-8",
+      "to": "usecase",
+      "y": 373,
+      "label": "보유 후보 목록",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr279-step-9",
+      "to": "repository",
+      "y": 402,
+      "label": "원본 쿠폰 ID 일괄 조회",
+      "variant": "default",
+      "from": "usecase"
+    },
+    {
+      "id": "pr279-step-10",
+      "to": "db",
+      "y": 431,
+      "label": "후보 Coupon 상세 조회",
+      "variant": "default",
+      "from": "repository"
+    },
+    {
+      "id": "pr279-step-11",
+      "to": "usecase",
+      "y": 460,
+      "label": "원본 Coupon 목록",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr279-step-12",
+      "to": "service",
+      "y": 489,
+      "label": "후보 Result 목록",
+      "variant": "return",
+      "from": "usecase"
+    },
+    {
+      "id": "pr279-step-13",
+      "to": "caller",
+      "y": 518,
+      "label": "체크아웃 후보 반환",
+      "variant": "return",
+      "from": "service"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "조회 / 처리 계약",
+      "items": [
+        "회원, ISSUED, 보유/원본 활성, expiredAt > now를 검사합니다.",
+        "최소 주문 금액과 잔여 사용 횟수는 추가 필터하지 않습니다."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "범위와 경계",
+      "items": [
+        "상품/대상/보유 결과가 비면 후속 조회를 생략합니다.",
+        "현재 외부 체크아웃 API나 주문 호출자는 연결하지 않은 내부 계약입니다."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PR #278 · 보유 쿠폰 목록 조회",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      578
+    ]
+  },
+  "participants": [
+    {
+      "id": "client",
+      "type": "frontend",
+      "label": "클라이언트",
+      "sublabel": "인증 회원"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "보유 쿠폰 API",
+      "sublabel": "Controller / Converter"
+    },
+    {
+      "id": "service",
+      "type": "backend",
+      "label": "보유 서비스",
+      "sublabel": "OwnedCouponService"
+    },
+    {
+      "id": "usecase",
+      "type": "backend",
+      "label": "목록 조회",
+      "sublabel": "GetOwnedCoupons"
+    },
+    {
+      "id": "repository",
+      "type": "backend",
+      "label": "영속 계층",
+      "sublabel": "Port / Adapter / JPA"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "owned_coupon / coupon"
+    }
+  ],
+  "messages": [
+    {
+      "id": "pr278-step-1",
+      "to": "api",
+      "y": 170,
+      "label": "GET /api/v1/owned-coupons",
+      "variant": "default",
+      "from": "client"
+    },
+    {
+      "id": "pr278-step-2",
+      "to": "service",
+      "y": 199,
+      "label": "JWT 회원 조회 Command",
+      "variant": "default",
+      "from": "api"
+    },
+    {
+      "id": "pr278-step-3",
+      "to": "usecase",
+      "y": 228,
+      "label": "회원별 보유 목록 조회",
+      "variant": "default",
+      "from": "service"
+    },
+    {
+      "id": "pr278-step-4",
+      "to": "repository",
+      "y": 257,
+      "label": "삭제되지 않은 보유 조회",
+      "variant": "default",
+      "from": "usecase"
+    },
+    {
+      "id": "pr278-step-5",
+      "to": "db",
+      "y": 286,
+      "label": "userId + deletedAt IS NULL",
+      "variant": "default",
+      "from": "repository"
+    },
+    {
+      "id": "pr278-step-6",
+      "to": "usecase",
+      "y": 315,
+      "label": "보유 쿠폰 목록",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr278-step-7",
+      "to": "repository",
+      "y": 344,
+      "label": "원본 쿠폰 ID 일괄 조회",
+      "variant": "default",
+      "from": "usecase"
+    },
+    {
+      "id": "pr278-step-8",
+      "to": "db",
+      "y": 373,
+      "label": "coupon ID IN 목록",
+      "variant": "default",
+      "from": "repository"
+    },
+    {
+      "id": "pr278-step-9",
+      "to": "usecase",
+      "y": 402,
+      "label": "원본 Coupon 목록",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr278-step-10",
+      "to": "service",
+      "y": 431,
+      "label": "OwnedCouponResult 목록",
+      "variant": "return",
+      "from": "usecase"
+    },
+    {
+      "id": "pr278-step-11",
+      "to": "api",
+      "y": 460,
+      "label": "결과 전달",
+      "variant": "return",
+      "from": "service"
+    },
+    {
+      "id": "pr278-step-12",
+      "to": "client",
+      "y": 489,
+      "label": "200 flat 보유 쿠폰 목록",
+      "variant": "return",
+      "from": "api"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "조회 / 처리 계약",
+      "items": [
+        "목록에는 만료 쿠폰과 USED 보유 쿠폰도 포함합니다.",
+        "보유 목록이 비어 있으면 원본 조회를 생략하고 []를 반환합니다."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "범위와 경계",
+      "items": [
+        "응답 id는 보유 쿠폰 ID입니다. 원본 쿠폰 ID와 다릅니다.",
+        "내부 단건 조회도 제공하지만, 그림은 HTTP 목록 조회 경로를 보여줍니다."
+      ]
+    }
+  ]
+}

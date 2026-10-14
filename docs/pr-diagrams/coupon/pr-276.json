@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PR #276 · 상품 상세 쿠폰 연결",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      607
+    ]
+  },
+  "participants": [
+    {
+      "id": "client",
+      "type": "frontend",
+      "label": "클라이언트",
+      "sublabel": "상품 상세"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "상품 API",
+      "sublabel": "Controller / Converter"
+    },
+    {
+      "id": "service",
+      "type": "backend",
+      "label": "상품 서비스",
+      "sublabel": "ProductService"
+    },
+    {
+      "id": "product",
+      "type": "backend",
+      "label": "상품 조회",
+      "sublabel": "GetProductDetail"
+    },
+    {
+      "id": "coupon",
+      "type": "backend",
+      "label": "쿠폰 조회",
+      "sublabel": "Targets + Coupons"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "영속 계층",
+      "sublabel": "Port → Adapter → JPA"
+    }
+  ],
+  "messages": [
+    {
+      "id": "pr276-step-1",
+      "to": "api",
+      "y": 170,
+      "label": "GET 상품 상세",
+      "variant": "default",
+      "from": "client"
+    },
+    {
+      "id": "pr276-step-2",
+      "to": "service",
+      "y": 199,
+      "label": "상품 상세 Command",
+      "variant": "default",
+      "from": "api"
+    },
+    {
+      "id": "pr276-step-3",
+      "to": "product",
+      "y": 228,
+      "label": "상품 상세 조회",
+      "variant": "default",
+      "from": "service"
+    },
+    {
+      "id": "pr276-step-4",
+      "to": "db",
+      "y": 257,
+      "label": "활성 상품 조회",
+      "variant": "default",
+      "from": "product"
+    },
+    {
+      "id": "pr276-step-5",
+      "to": "service",
+      "y": 286,
+      "label": "상품 상세 결과",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr276-step-6",
+      "to": "coupon",
+      "y": 315,
+      "label": "상품 / 카테고리 대상 ID",
+      "variant": "default",
+      "from": "service"
+    },
+    {
+      "id": "pr276-step-7",
+      "to": "db",
+      "y": 344,
+      "label": "활성 대상 연결 조회",
+      "variant": "default",
+      "from": "coupon"
+    },
+    {
+      "id": "pr276-step-8",
+      "to": "coupon",
+      "y": 373,
+      "label": "중복 제거 쿠폰 ID",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr276-step-9",
+      "to": "coupon",
+      "y": 402,
+      "label": "활성 쿠폰 상세 조회",
+      "variant": "default",
+      "from": "service"
+    },
+    {
+      "id": "pr276-step-10",
+      "to": "db",
+      "y": 431,
+      "label": "쿠폰 활성 조건 조회",
+      "variant": "default",
+      "from": "coupon"
+    },
+    {
+      "id": "pr276-step-11",
+      "to": "service",
+      "y": 460,
+      "label": "CouponResult 목록",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr276-step-12",
+      "to": "api",
+      "y": 489,
+      "label": "상품 + coupons 상세",
+      "variant": "return",
+      "from": "service"
+    },
+    {
+      "id": "pr276-step-13",
+      "to": "client",
+      "y": 518,
+      "label": "200 상품 상세 응답",
+      "variant": "return",
+      "from": "api"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "조회 / 처리 계약",
+      "items": [
+        "이 PR 단계에서는 coupons에 쿠폰 상세를 포함합니다.",
+        "maxDiscountAmount / maxUseCount / usedCount는 null입니다."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "범위와 경계",
+      "items": [
+        "만료 쿠폰도 포함합니다. 쿠폰 자체는 활성 상태만 조회합니다.",
+        "후속 PR #287이 coupons를 couponIds로 바꿉니다. 영속 호출은 간결하게 묶어 표시했습니다."
+      ]
+    }
+  ]
+}

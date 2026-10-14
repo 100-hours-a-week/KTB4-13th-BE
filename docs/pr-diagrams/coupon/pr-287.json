@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PR #287 · 상품과 쿠폰 조회 분리",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      665
+    ]
+  },
+  "participants": [
+    {
+      "id": "client",
+      "type": "frontend",
+      "label": "프론트엔드",
+      "sublabel": "두 번의 공개 조회"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "HTTP API",
+      "sublabel": "상품 / 쿠폰"
+    },
+    {
+      "id": "service",
+      "type": "backend",
+      "label": "서비스",
+      "sublabel": "Product / Coupon"
+    },
+    {
+      "id": "usecase",
+      "type": "backend",
+      "label": "조회 UseCase",
+      "sublabel": "Product / Targets / Coupons"
+    },
+    {
+      "id": "repository",
+      "type": "backend",
+      "label": "영속 계층",
+      "sublabel": "Port / Adapter / JPA"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "상품 / 대상 / 쿠폰"
+    }
+  ],
+  "messages": [
+    {
+      "id": "pr287-step-1",
+      "to": "api",
+      "y": 170,
+      "label": "GET 상품 상세",
+      "variant": "default",
+      "from": "client"
+    },
+    {
+      "id": "pr287-step-2",
+      "to": "service",
+      "y": 199,
+      "label": "상품 상세 Command",
+      "variant": "default",
+      "from": "api"
+    },
+    {
+      "id": "pr287-step-3",
+      "to": "usecase",
+      "y": 228,
+      "label": "상품 / 쿠폰 대상 조회",
+      "variant": "default",
+      "from": "service"
+    },
+    {
+      "id": "pr287-step-4",
+      "to": "repository",
+      "y": 257,
+      "label": "대상 ID / 활성 쿠폰 조회",
+      "variant": "default",
+      "from": "usecase"
+    },
+    {
+      "id": "pr287-step-5",
+      "to": "db",
+      "y": 286,
+      "label": "기존 활성 조건 유지",
+      "variant": "default",
+      "from": "repository"
+    },
+    {
+      "id": "pr287-step-6",
+      "to": "service",
+      "y": 315,
+      "label": "상품 + 활성 쿠폰 ID",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr287-step-7",
+      "to": "api",
+      "y": 344,
+      "label": "couponIds로 결과 조합",
+      "variant": "return",
+      "from": "service"
+    },
+    {
+      "id": "pr287-step-8",
+      "to": "client",
+      "y": 373,
+      "label": "200 상품 + couponIds",
+      "variant": "return",
+      "from": "api"
+    },
+    {
+      "id": "pr287-step-9",
+      "to": "api",
+      "y": 402,
+      "label": "GET /api/v1/coupons?ids=...",
+      "variant": "default",
+      "from": "client"
+    },
+    {
+      "id": "pr287-step-10",
+      "to": "service",
+      "y": 431,
+      "label": "ID 목록 검증 / Command",
+      "variant": "default",
+      "from": "api"
+    },
+    {
+      "id": "pr287-step-11",
+      "to": "usecase",
+      "y": 460,
+      "label": "GetCouponsUseCase 재사용",
+      "variant": "default",
+      "from": "service"
+    },
+    {
+      "id": "pr287-step-12",
+      "to": "repository",
+      "y": 489,
+      "label": "활성 쿠폰 일괄 조회",
+      "variant": "default",
+      "from": "usecase"
+    },
+    {
+      "id": "pr287-step-13",
+      "to": "db",
+      "y": 518,
+      "label": "ID IN / deletedAt IS NULL",
+      "variant": "default",
+      "from": "repository"
+    },
+    {
+      "id": "pr287-step-14",
+      "to": "api",
+      "y": 547,
+      "label": "쿠폰 상세 결과",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr287-step-15",
+      "to": "client",
+      "y": 576,
+      "label": "200 CouponResponse[]",
+      "variant": "return",
+      "from": "api"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "조회 / 처리 계약",
+      "items": [
+        "상품 상세의 coupons를 couponIds로 대체하는 공개 응답 계약 변경입니다.",
+        "일반 쿠폰 GET은 공개이며, 발급과 보유 조회 인증은 그대로입니다."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "범위와 경계",
+      "items": [
+        "만료 쿠폰을 포함하고, 없는/비활성 ID는 제외합니다. ids 누락/빈 값/비양수/형식 오류는 400입니다.",
+        "프론트엔드 연결은 미구현입니다. couponIds가 비면 쿠폰 조회를 생략할 수 있습니다."
+      ]
+    }
+  ]
+}

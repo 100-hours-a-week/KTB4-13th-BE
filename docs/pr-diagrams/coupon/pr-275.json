@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PR #275 · 쿠폰 적용 대상 조회",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      578
+    ]
+  },
+  "participants": [
+    {
+      "id": "caller",
+      "type": "backend",
+      "label": "호출자",
+      "sublabel": "상품 / 체크아웃"
+    },
+    {
+      "id": "targets",
+      "type": "backend",
+      "label": "대상 조회",
+      "sublabel": "GetCouponTargets"
+    },
+    {
+      "id": "port",
+      "type": "backend",
+      "label": "저장 계약",
+      "sublabel": "CouponTarget Port"
+    },
+    {
+      "id": "jpa",
+      "type": "backend",
+      "label": "영속 조회",
+      "sublabel": "Adapter + JPA"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "coupon_target"
+    }
+  ],
+  "messages": [
+    {
+      "id": "pr275-step-1",
+      "to": "targets",
+      "y": 170,
+      "label": "상품 ID 목록",
+      "variant": "default",
+      "from": "caller"
+    },
+    {
+      "id": "pr275-step-2",
+      "to": "port",
+      "y": 199,
+      "label": "활성 상품 대상 조회",
+      "variant": "default",
+      "from": "targets"
+    },
+    {
+      "id": "pr275-step-3",
+      "to": "jpa",
+      "y": 228,
+      "label": "PRODUCT 조건 전달",
+      "variant": "default",
+      "from": "port"
+    },
+    {
+      "id": "pr275-step-4",
+      "to": "db",
+      "y": 257,
+      "label": "삭제되지 않은 대상 조회",
+      "variant": "default",
+      "from": "jpa"
+    },
+    {
+      "id": "pr275-step-5",
+      "to": "targets",
+      "y": 286,
+      "label": "상품 대상 쿠폰",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr275-step-6",
+      "to": "jpa",
+      "y": 315,
+      "label": "상품의 카테고리 ID 조회",
+      "variant": "default",
+      "from": "targets"
+    },
+    {
+      "id": "pr275-step-7",
+      "to": "db",
+      "y": 344,
+      "label": "활성 상품-카테고리 연결 조회",
+      "variant": "default",
+      "from": "jpa"
+    },
+    {
+      "id": "pr275-step-8",
+      "to": "targets",
+      "y": 373,
+      "label": "카테고리 ID 목록",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr275-step-9",
+      "to": "jpa",
+      "y": 402,
+      "label": "활성 카테고리 대상 조회",
+      "variant": "default",
+      "from": "targets"
+    },
+    {
+      "id": "pr275-step-10",
+      "to": "db",
+      "y": 431,
+      "label": "PRODUCT_CATEGORY 조건",
+      "variant": "default",
+      "from": "jpa"
+    },
+    {
+      "id": "pr275-step-11",
+      "to": "targets",
+      "y": 460,
+      "label": "카테고리 대상 쿠폰",
+      "variant": "return",
+      "from": "db"
+    },
+    {
+      "id": "pr275-step-12",
+      "to": "caller",
+      "y": 489,
+      "label": "합집합 / 중복 제거 ID",
+      "variant": "return",
+      "from": "targets"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "조회 / 처리 계약",
+      "items": [
+        "상품 직접 대상과 카테고리 대상의 쿠폰 ID를 합칩니다.",
+        "빈 상품 목록이면 저장소 호출 없이 빈 집합을 반환합니다."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "범위와 경계",
+      "items": [
+        "대상 연결의 삭제 여부를 검사하며, 쿠폰 자체의 활성/만료 여부는 이 단계에서 검사하지 않습니다.",
+        "GetCouponTargetsUseCase의 read-only 트랜잭션입니다."
+      ]
+    }
+  ]
+}

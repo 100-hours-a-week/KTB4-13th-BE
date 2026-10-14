@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PR #280 · 쿠폰 사용과 복원",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      560
+    ]
+  },
+  "participants": [
+    {
+      "id": "caller",
+      "type": "backend",
+      "label": "내부 호출자",
+      "sublabel": "향후 주문 / 취소"
+    },
+    {
+      "id": "usecase",
+      "type": "backend",
+      "label": "쓰기 UseCase",
+      "sublabel": "Use / Revert"
+    },
+    {
+      "id": "domain",
+      "type": "backend",
+      "label": "보유 쿠폰",
+      "sublabel": "OwnedCoupon"
+    },
+    {
+      "id": "jpa",
+      "type": "backend",
+      "label": "트랜잭션 경계",
+      "sublabel": "Spring / JPA"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "owned_coupon"
+    }
+  ],
+  "messages": [
+    {
+      "id": "pr280-shared-1",
+      "from": "caller",
+      "to": "usecase",
+      "label": "사용 또는 복원 요청",
+      "y": 170,
+      "variant": "default"
+    },
+    {
+      "id": "pr280-shared-2",
+      "from": "usecase",
+      "to": "jpa",
+      "label": "findById / 쓰기 트랜잭션",
+      "y": 199,
+      "variant": "default"
+    },
+    {
+      "id": "pr280-shared-3",
+      "from": "jpa",
+      "to": "db",
+      "label": "보유 쿠폰 조회",
+      "y": 228,
+      "variant": "default"
+    },
+    {
+      "id": "pr280-shared-4",
+      "from": "db",
+      "to": "usecase",
+      "label": "관리 Entity 반환",
+      "y": 257,
+      "variant": "return"
+    },
+    {
+      "id": "pr280-shared-5",
+      "from": "usecase",
+      "to": "domain",
+      "label": "가드 검사 후 use() / revert()",
+      "y": 286,
+      "variant": "default"
+    },
+    {
+      "id": "pr280-shared-6",
+      "from": "domain",
+      "to": "usecase",
+      "label": "횟수 / 상태 변경",
+      "y": 315,
+      "variant": "return"
+    },
+    {
+      "id": "pr280-shared-7",
+      "from": "usecase",
+      "to": "jpa",
+      "label": "본문 종료 INFO / 프록시 복귀",
+      "y": 344,
+      "variant": "return"
+    },
+    {
+      "id": "pr280-shared-8",
+      "from": "jpa",
+      "to": "db",
+      "label": "단독 호출: flush / commit",
+      "y": 373,
+      "variant": "default"
+    },
+    {
+      "id": "pr280-shared-9",
+      "from": "jpa",
+      "to": "caller",
+      "label": "단독 호출: 커밋 후 반환",
+      "y": 402,
+      "variant": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "조회 / 처리 계약",
+      "items": [
+        "마지막 사용이면 USED, 복원 횟수가 0이면 ISSUED입니다. 일부 복원은 USED를 유지합니다.",
+        "없는 보유 쿠폰은 E5000, 초과 사용/미사용 복원은 E5001입니다."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "범위와 경계",
+      "items": [
+        "외부 트랜잭션에 참여하면 UPDATE/커밋은 바깥 경계에서 발생합니다. INFO가 커밋을 보장하지 않습니다.",
+        "낙관적 락은 미구현입니다. 사용처 연결 시 충돌 처리와 별도 중복 방지가 필요합니다."
+      ]
+    }
+  ]
+}

@@ -15,6 +15,7 @@ import com.book.core.user.application.port.UserRepositoryPort;
 import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,9 @@ class IdentifyUserUseCaseTest {
 
     @Mock
     UserRegistrationUseCase userRegistrationUseCase;
+
+    @Mock
+    RecoverWithdrawalUseCase recoverWithdrawalUseCase;
 
     @Test
     void 기존_활성_provider_연결의_내부_userId를_반환한다() {
@@ -97,7 +101,22 @@ class IdentifyUserUseCaseTest {
         verify(userRegistrationUseCase).execute(new UserRegistrationCommand(ProviderType.KAKAO, "conflict-provider", null));
     }
 
+    @Test
+    void 탈퇴_신청한_회원이_로그인하면_복구를_요청하고_기존_userId를_반환한다() {
+        final IdentifyUserCommand command = new IdentifyUserCommand(ProviderType.KAKAO, "withdrawal-provider", null);
+        when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "withdrawal-provider"))
+            .thenReturn(Optional.of(UserProvider.restore(7L, 42L, ProviderType.KAKAO, "withdrawal-provider", null)));
+        final User user = User.restore(42L, "북적이");
+        user.requestWithdrawal(LocalDateTime.of(2030, 1, 1, 0, 0));
+        when(userRepository.findById(42L)).thenReturn(Optional.of(user));
+
+        assertThat(useCase().execute(command).userId()).isEqualTo(42L);
+
+        verify(recoverWithdrawalUseCase).execute(42L);
+        verifyNoInteractions(userRegistrationUseCase);
+    }
+
     private IdentifyUserUseCase useCase() {
-        return new IdentifyUserUseCase(userRepository, userProviderRepository, userRegistrationUseCase);
+        return new IdentifyUserUseCase(userRepository, userProviderRepository, userRegistrationUseCase, recoverWithdrawalUseCase);
     }
 }

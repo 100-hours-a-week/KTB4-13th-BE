@@ -14,3 +14,7 @@ auth:
     secret: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZg==
     access-token-expiration: 1h
     refresh-token-expiration: 7d
+
+app:
+  signup-initialization-recovery:
+    cron: "-"

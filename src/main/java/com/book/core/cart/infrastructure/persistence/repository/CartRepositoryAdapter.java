@@ -2,6 +2,8 @@ package com.book.core.cart.infrastructure.persistence.repository;
 
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.domain.Cart;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -25,5 +27,15 @@ public class CartRepositoryAdapter implements CartRepositoryPort {
     @Override
     public Optional<Cart> findByUserId(final Long userId) {
         return jpaRepository.findByUserIdAndDeletedAtIsNull(userId);
+    }
+
+    @Override
+    public boolean existsByUserId(final Long userId) {
+        return jpaRepository.existsByUserId(userId);
+    }
+
+    @Override
+    public List<Long> findActiveUserIdsWithoutCart(final LocalDateTime registeredBefore, final Long afterUserId, final int limit) {
+        return jpaRepository.findActiveUserIdsWithoutCart(registeredBefore, afterUserId, limit);
     }
 }

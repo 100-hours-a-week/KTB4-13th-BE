@@ -20,6 +20,7 @@ import com.book.core.product.application.result.ProductListItem;
 import com.book.core.product.domain.Product;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -197,6 +198,16 @@ class CartAddUseCaseTest {
         @Override
         public Optional<Cart> findByUserId(final Long userId) {
             return Optional.ofNullable(cart);
+        }
+
+        @Override
+        public boolean existsByUserId(final Long userId) {
+            return cart != null;
+        }
+
+        @Override
+        public List<Long> findActiveUserIdsWithoutCart(final LocalDateTime registeredBefore, final Long afterUserId, final int limit) {
+            return List.of();
         }
     }
 

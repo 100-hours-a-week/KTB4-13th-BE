@@ -57,7 +57,7 @@ public class PaymentService {
         return paymentId;
     }
 
-    /** 실패 콜백을 검증하고 이력만 기록합니다. 주문 CREATED와 결제 READY 상태를 유지합니다. */
+    /** 실패 콜백을 검증하고 이력만 기록합니다. 주문 CREATED와 주문과 결제의 기존 상태를 변경하지 않고 실패 이력만 기록합니다. */
     public void fail(final FailPaymentCommand command) {
         final var order = getPaymentOrderUseCase.execute(command.orderKey(), OrderStatus.CREATED);
         validatePaymentUseCase.validateForFail(order.id());

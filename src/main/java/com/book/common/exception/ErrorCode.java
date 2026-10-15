@@ -83,6 +83,8 @@ public enum ErrorCode {
     ONBOARDING_PARENT_QUESTION_NOT_ANSWERED(HttpStatus.CONFLICT, "E409", "선행 질문에 대한 답변이 필요합니다.", LogLevel.INFO),
     INVALID_ONBOARDING_SUBCATEGORY_SELECTION(HttpStatus.BAD_REQUEST, "E400", "세부 카테고리 선택 개수나 코드가 올바르지 않습니다.", LogLevel.INFO),
     INVALID_ONBOARDING_BOOK_SELECTION(HttpStatus.BAD_REQUEST, "E400", "선택한 도서 목록의 형식이 올바르지 않습니다.", LogLevel.INFO),
+    INVALID_ONBOARDING_PREFERENCES(HttpStatus.BAD_REQUEST, "E400", "온보딩 취향 정보의 질문 구성이나 선택이 올바르지 않습니다.", LogLevel.INFO),
+    ONBOARDING_NOT_COMPLETED(HttpStatus.CONFLICT, "E409", "완료되지 않은 온보딩은 수정할 수 없습니다.", LogLevel.INFO),
     RECOMMENDATION_CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "추천 카드를 찾을 수 없습니다.", LogLevel.INFO),
     AI_RECOMMENDATION_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "E429", "AI 추천 서비스 요청이 많아 잠시 후 다시 시도해야 합니다.", LogLevel.INFO),
     AI_RECOMMENDATION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "E503", "AI 추천 서비스를 일시적으로 사용할 수 없습니다.", LogLevel.ERROR),

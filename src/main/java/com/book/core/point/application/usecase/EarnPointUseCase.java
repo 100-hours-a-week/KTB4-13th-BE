@@ -22,10 +22,6 @@ public class EarnPointUseCase {
 
     @Transactional
     public void execute(final Long userId, final PointType type, final Long referenceId, final BigDecimal amount) {
-        if (userId == null || userId <= 0 || type == null || referenceId == null || amount == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-
         if (amount.compareTo(BigDecimal.ZERO) == 0) {
             log.debug("금액이 0이어서 포인트 적립을 생략합니다. type={}, referenceId={}, traceId={}", type, referenceId, MDC.get("traceId"));
             return;

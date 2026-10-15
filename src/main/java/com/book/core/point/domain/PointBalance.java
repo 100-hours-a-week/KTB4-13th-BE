@@ -1,8 +1,6 @@
 package com.book.core.point.domain;
 
 import com.book.common.domain.BaseEntity;
-import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -31,17 +29,11 @@ public class PointBalance extends BaseEntity {
 
     public PointBalance(final Long id, final Long userId, final BigDecimal balance) {
         super(id);
-        if (userId == null || userId <= 0 || balance == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
         this.userId = userId;
         this.balance = balance;
     }
 
     public void apply(final BigDecimal amount) {
-        if (amount == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
         balance = balance.add(amount);
     }
 }

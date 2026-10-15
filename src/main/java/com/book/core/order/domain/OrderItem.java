@@ -61,6 +61,9 @@ public class OrderItem extends BaseTimeEntity {
     @Column(nullable = false)
     private Integer quantity;
 
+    @Column(name = "canceled_quantity", nullable = false)
+    private long canceledQuantity = 0L;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private OrderItemStatus status;
@@ -86,6 +89,31 @@ public class OrderItem extends BaseTimeEntity {
 
     public static boolean isQuantityInRange(final int quantity) {
         return quantity >= MIN_QUANTITY && quantity <= MAX_QUANTITY;
+    }
+
+    void paid() {
+        status = OrderItemStatus.PAID;
+    }
+
+    /** 참고 부분 취소처럼 누적 취소 수량으로 주문상품 상태를 정합니다. */
+    public void cancel(final long cancelQuantity) {
+        if (this.canceledQuantity + cancelQuantity > this.quantity) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        this.canceledQuantity += cancelQuantity;
+        if (isAllCanceled()) {
+            status = OrderItemStatus.CANCELED;
+        } else {
+            status = OrderItemStatus.PARTIAL_CANCELED;
+        }
+    }
+
+    public long cancellableQuantity() {
+        return quantity - canceledQuantity;
+    }
+
+    public boolean isAllCanceled() {
+        return quantity.longValue() == canceledQuantity;
     }
 
     void cancel() {

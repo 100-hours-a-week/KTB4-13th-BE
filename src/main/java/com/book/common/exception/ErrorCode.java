@@ -48,58 +48,204 @@ public enum ErrorCode {
                                                                                                 LogLevel.INFO), NICKNAME_GENERATION_FAILED(
                                                                                                     HttpStatus.INTERNAL_SERVER_ERROR,
                                                                                                     "NICKNAME_GENERATION_FAILED",
-                                                                                                    "닉네임을 생성하지 못했습니다.", LogLevel.ERROR),
-    // spotless:off
-    PROVIDER_IDENTITY_CONFLICT(
-        HttpStatus.CONFLICT,
-        "PROVIDER_IDENTITY_CONFLICT",
-        "동일한 활성 소셜 로그인 계정이 이미 존재합니다.",
-        LogLevel.INFO),
-    // spotless:on
-    // spotless:off
-    USER_PROVIDER_USER_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_NOT_FOUND", "회원 연결의 내부 회원을 찾을 수 없습니다.",
-        LogLevel.ERROR),
-    USER_PROVIDER_USER_INACTIVE(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_INACTIVE", "회원 연결의 내부 회원이 비활성 상태입니다.",
-        LogLevel.ERROR),
-    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "주문을 찾을 수 없습니다.", LogLevel.INFO),
-    ORDER_CANNOT_BE_CANCELED(HttpStatus.CONFLICT, "ORDER_CANNOT_BE_CANCELED", "현재 상태의 주문은 취소할 수 없습니다.", LogLevel.INFO),
-    INVALID_AUTHORIZATION_CODE(HttpStatus.UNAUTHORIZED, "INVALID_AUTHORIZATION_CODE", "인가 코드가 유효하지 않습니다.", LogLevel.INFO),
-    OAUTH_TOKEN_EXCHANGE_FAILURE(HttpStatus.INTERNAL_SERVER_ERROR, "OAUTH_TOKEN_EXCHANGE_FAILURE", "외부 인증 토큰을 발급할 수 없습니다.",
-        LogLevel.ERROR),
-    OAUTH_PROVIDER_CONFIGURATION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "OAUTH_PROVIDER_CONFIGURATION_ERROR",
-        "외부 인증 서비스 설정이 올바르지 않습니다.", LogLevel.ERROR),
-    OAUTH_PROVIDER_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "OAUTH_PROVIDER_UNAVAILABLE", "외부 인증 서비스를 사용할 수 없습니다.", LogLevel.ERROR),
-    TOKEN_ISSUE_FAILURE(HttpStatus.INTERNAL_SERVER_ERROR, "TOKEN_ISSUE_FAILURE", "인증 토큰을 발급할 수 없습니다.", LogLevel.ERROR),
-    INVALID_ID_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_ID_TOKEN", "ID Token이 유효하지 않습니다.", LogLevel.INFO),
-    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "Refresh Token이 유효하지 않습니다.", LogLevel.INFO),
-    AI_SERVICE_UNAUTHORIZED(HttpStatus.BAD_GATEWAY, "E502", "외부 AI 서비스 인증에 실패했습니다.", LogLevel.ERROR),
-    AI_SERVICE_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "외부 AI 서비스 호출에 실패했습니다.", LogLevel.INFO),
-    ONBOARDING_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "온보딩 질문을 찾을 수 없습니다.", LogLevel.INFO),
-    ONBOARDING_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "진행 중인 온보딩이 없습니다.", LogLevel.INFO),
-    ONBOARDING_OPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "온보딩 선택지를 찾을 수 없습니다.", LogLevel.INFO),
-    ONBOARDING_BOOK_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "존재하지 않는 도서가 포함되어 있습니다.", LogLevel.INFO),
-    INVALID_ONBOARDING_ANSWER_SELECTION(HttpStatus.BAD_REQUEST, "E400", "온보딩 답변 선택 개수나 형식이 올바르지 않습니다.", LogLevel.INFO),
-    ONBOARDING_OPTION_QUESTION_MISMATCH(HttpStatus.CONFLICT, "E409", "선택지가 해당 질문에 속하지 않습니다.", LogLevel.INFO),
-    ONBOARDING_PARENT_QUESTION_NOT_ANSWERED(HttpStatus.CONFLICT, "E409", "선행 질문에 대한 답변이 필요합니다.", LogLevel.INFO),
-    INVALID_ONBOARDING_SUBCATEGORY_SELECTION(HttpStatus.BAD_REQUEST, "E400", "세부 카테고리 선택 개수나 코드가 올바르지 않습니다.", LogLevel.INFO),
-    INVALID_ONBOARDING_BOOK_SELECTION(HttpStatus.BAD_REQUEST, "E400", "선택한 도서 목록의 형식이 올바르지 않습니다.", LogLevel.INFO),
-    RECOMMENDATION_CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "추천 카드를 찾을 수 없습니다.", LogLevel.INFO),
-    AI_RECOMMENDATION_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "E429", "AI 추천 서비스 요청이 많아 잠시 후 다시 시도해야 합니다.", LogLevel.INFO),
-    AI_RECOMMENDATION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "E503", "AI 추천 서비스를 일시적으로 사용할 수 없습니다.", LogLevel.ERROR),
-    AI_RECOMMENDATION_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "E504", "AI 추천 서비스 응답이 시간 내에 도착하지 않았습니다.", LogLevel.INFO),
-    AI_RECOMMENDATION_SPEC_VIOLATION(HttpStatus.BAD_GATEWAY, "E502", "AI 추천 서비스가 유효하지 않은 추천 조건을 반환했습니다.", LogLevel.INFO),
-    AI_RECOMMENDATION_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "AI 추천 서비스 호출에 실패했습니다.", LogLevel.INFO),
-    AI_FEED_INVALID_REQUEST(HttpStatus.BAD_GATEWAY, "E502", "AI 추천 피드 서비스가 요청을 거부했습니다.", LogLevel.ERROR),
-    AI_FEED_CURSOR_EXPIRED(HttpStatus.GONE, "E410", "추천 피드 커서가 만료되었습니다. 처음부터 다시 조회해야 합니다.", LogLevel.INFO),
-    AI_FEED_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "E504", "AI 추천 피드 서비스 응답이 시간 내에 도착하지 않았습니다.", LogLevel.INFO),
-    AI_FEED_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "AI 추천 피드 조회에 실패했습니다.", LogLevel.INFO),
-    AI_SEARCH_CURSOR_EXPIRED(HttpStatus.GONE, "E410", "검색 결과 커서가 만료되었습니다. 처음부터 다시 검색해야 합니다.", LogLevel.INFO),
-    AI_SEARCH_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "E429", "AI 검색 서비스 요청이 많아 잠시 후 다시 시도해야 합니다.", LogLevel.INFO),
-    AI_SEARCH_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "E504", "AI 검색 서비스 응답이 시간 내에 도착하지 않았습니다.", LogLevel.INFO),
-    AI_SEARCH_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "AI 검색 결과 조회에 실패했습니다.", LogLevel.INFO),
-    NOT_FOUND_DATA(HttpStatus.NOT_FOUND, "E404", "데이터를 찾을 수 없습니다.", LogLevel.ERROR),
-    REVIEW_UPDATE_EXPIRED(HttpStatus.BAD_REQUEST, "E7002", "리뷰 수정 가능 기간이 지났습니다.", LogLevel.INFO);
-    // spotless:on
+                                                                                                    "닉네임을 생성하지 못했습니다.",
+                                                                                                    LogLevel.ERROR), PROVIDER_IDENTITY_CONFLICT(
+                                                                                                        HttpStatus.CONFLICT,
+                                                                                                        "PROVIDER_IDENTITY_CONFLICT",
+                                                                                                        "동일한 활성 소셜 로그인 계정이 이미 존재합니다.",
+                                                                                                        LogLevel.INFO), USER_PROVIDER_USER_NOT_FOUND(
+                                                                                                            HttpStatus.INTERNAL_SERVER_ERROR,
+                                                                                                            "USER_PROVIDER_USER_NOT_FOUND",
+                                                                                                            "회원 연결의 내부 회원을 찾을 수 없습니다.",
+                                                                                                            LogLevel.ERROR), USER_PROVIDER_USER_INACTIVE(
+                                                                                                                HttpStatus.INTERNAL_SERVER_ERROR,
+                                                                                                                "USER_PROVIDER_USER_INACTIVE",
+                                                                                                                "회원 연결의 내부 회원이 비활성 상태입니다.",
+                                                                                                                LogLevel.ERROR), ORDER_NOT_FOUND(
+                                                                                                                    HttpStatus.NOT_FOUND,
+                                                                                                                    "ORDER_NOT_FOUND",
+                                                                                                                    "주문을 찾을 수 없습니다.",
+                                                                                                                    LogLevel.INFO), ORDER_CANNOT_BE_CANCELED(
+                                                                                                                        HttpStatus.CONFLICT,
+                                                                                                                        "ORDER_CANNOT_BE_CANCELED",
+                                                                                                                        "현재 상태의 주문은 취소할 수 없습니다.",
+                                                                                                                        LogLevel.INFO), INVALID_AUTHORIZATION_CODE(
+                                                                                                                            HttpStatus.UNAUTHORIZED,
+                                                                                                                            "INVALID_AUTHORIZATION_CODE",
+                                                                                                                            "인가 코드가 유효하지 않습니다.",
+                                                                                                                            LogLevel.INFO), OAUTH_TOKEN_EXCHANGE_FAILURE(
+                                                                                                                                HttpStatus.INTERNAL_SERVER_ERROR,
+                                                                                                                                "OAUTH_TOKEN_EXCHANGE_FAILURE",
+                                                                                                                                "외부 인증 토큰을 발급할 수 없습니다.",
+                                                                                                                                LogLevel.ERROR), OAUTH_PROVIDER_CONFIGURATION_ERROR(
+                                                                                                                                    HttpStatus.INTERNAL_SERVER_ERROR,
+                                                                                                                                    "OAUTH_PROVIDER_CONFIGURATION_ERROR",
+                                                                                                                                    "외부 인증 서비스 설정이 올바르지 않습니다.",
+                                                                                                                                    LogLevel.ERROR), OAUTH_PROVIDER_UNAVAILABLE(
+                                                                                                                                        HttpStatus.BAD_GATEWAY,
+                                                                                                                                        "OAUTH_PROVIDER_UNAVAILABLE",
+                                                                                                                                        "외부 인증 서비스를 사용할 수 없습니다.",
+                                                                                                                                        LogLevel.ERROR), TOKEN_ISSUE_FAILURE(
+                                                                                                                                            HttpStatus.INTERNAL_SERVER_ERROR,
+                                                                                                                                            "TOKEN_ISSUE_FAILURE",
+                                                                                                                                            "인증 토큰을 발급할 수 없습니다.",
+                                                                                                                                            LogLevel.ERROR), INVALID_ID_TOKEN(
+                                                                                                                                                HttpStatus.UNAUTHORIZED,
+                                                                                                                                                "INVALID_ID_TOKEN",
+                                                                                                                                                "ID Token이 유효하지 않습니다.",
+                                                                                                                                                LogLevel.INFO), INVALID_REFRESH_TOKEN(
+                                                                                                                                                    HttpStatus.UNAUTHORIZED,
+                                                                                                                                                    "INVALID_REFRESH_TOKEN",
+                                                                                                                                                    "Refresh Token이 유효하지 않습니다.",
+                                                                                                                                                    LogLevel.INFO), AI_SERVICE_UNAUTHORIZED(
+                                                                                                                                                        HttpStatus.BAD_GATEWAY,
+                                                                                                                                                        "E502",
+                                                                                                                                                        "외부 AI 서비스 인증에 실패했습니다.",
+                                                                                                                                                        LogLevel.ERROR), AI_SERVICE_FAILURE(
+                                                                                                                                                            HttpStatus.BAD_GATEWAY,
+                                                                                                                                                            "E502",
+                                                                                                                                                            "외부 AI 서비스 호출에 실패했습니다.",
+                                                                                                                                                            LogLevel.INFO), ONBOARDING_QUESTION_NOT_FOUND(
+                                                                                                                                                                HttpStatus.NOT_FOUND,
+                                                                                                                                                                "E404",
+                                                                                                                                                                "온보딩 질문을 찾을 수 없습니다.",
+                                                                                                                                                                LogLevel.INFO), ONBOARDING_NOT_FOUND(
+                                                                                                                                                                    HttpStatus.NOT_FOUND,
+                                                                                                                                                                    "E404",
+                                                                                                                                                                    "진행 중인 온보딩이 없습니다.",
+                                                                                                                                                                    LogLevel.INFO), ONBOARDING_OPTION_NOT_FOUND(
+                                                                                                                                                                        HttpStatus.NOT_FOUND,
+                                                                                                                                                                        "E404",
+                                                                                                                                                                        "온보딩 선택지를 찾을 수 없습니다.",
+                                                                                                                                                                        LogLevel.INFO), ONBOARDING_BOOK_NOT_FOUND(
+                                                                                                                                                                            HttpStatus.NOT_FOUND,
+                                                                                                                                                                            "E404",
+                                                                                                                                                                            "존재하지 않는 도서가 포함되어 있습니다.",
+                                                                                                                                                                            LogLevel.INFO), INVALID_ONBOARDING_ANSWER_SELECTION(
+                                                                                                                                                                                HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                "E400",
+                                                                                                                                                                                "온보딩 답변 선택 개수나 형식이 올바르지 않습니다.",
+                                                                                                                                                                                LogLevel.INFO), ONBOARDING_OPTION_QUESTION_MISMATCH(
+                                                                                                                                                                                    HttpStatus.CONFLICT,
+                                                                                                                                                                                    "E409",
+                                                                                                                                                                                    "선택지가 해당 질문에 속하지 않습니다.",
+                                                                                                                                                                                    LogLevel.INFO), ONBOARDING_PARENT_QUESTION_NOT_ANSWERED(
+                                                                                                                                                                                        HttpStatus.CONFLICT,
+                                                                                                                                                                                        "E409",
+                                                                                                                                                                                        "선행 질문에 대한 답변이 필요합니다.",
+                                                                                                                                                                                        LogLevel.INFO), INVALID_ONBOARDING_SUBCATEGORY_SELECTION(
+                                                                                                                                                                                            HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                            "E400",
+                                                                                                                                                                                            "세부 카테고리 선택 개수나 코드가 올바르지 않습니다.",
+                                                                                                                                                                                            LogLevel.INFO), INVALID_ONBOARDING_BOOK_SELECTION(
+                                                                                                                                                                                                HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                "E400",
+                                                                                                                                                                                                "선택한 도서 목록의 형식이 올바르지 않습니다.",
+                                                                                                                                                                                                LogLevel.INFO), RECOMMENDATION_CARD_NOT_FOUND(
+                                                                                                                                                                                                    HttpStatus.NOT_FOUND,
+                                                                                                                                                                                                    "E404",
+                                                                                                                                                                                                    "추천 카드를 찾을 수 없습니다.",
+                                                                                                                                                                                                    LogLevel.INFO), AI_RECOMMENDATION_RATE_LIMITED(
+                                                                                                                                                                                                        HttpStatus.TOO_MANY_REQUESTS,
+                                                                                                                                                                                                        "E429",
+                                                                                                                                                                                                        "AI 추천 서비스 요청이 많아 잠시 후 다시 시도해야 합니다.",
+                                                                                                                                                                                                        LogLevel.INFO), AI_RECOMMENDATION_UNAVAILABLE(
+                                                                                                                                                                                                            HttpStatus.SERVICE_UNAVAILABLE,
+                                                                                                                                                                                                            "E503",
+                                                                                                                                                                                                            "AI 추천 서비스를 일시적으로 사용할 수 없습니다.",
+                                                                                                                                                                                                            LogLevel.ERROR), AI_RECOMMENDATION_TIMEOUT(
+                                                                                                                                                                                                                HttpStatus.GATEWAY_TIMEOUT,
+                                                                                                                                                                                                                "E504",
+                                                                                                                                                                                                                "AI 추천 서비스 응답이 시간 내에 도착하지 않았습니다.",
+                                                                                                                                                                                                                LogLevel.INFO), AI_RECOMMENDATION_SPEC_VIOLATION(
+                                                                                                                                                                                                                    HttpStatus.BAD_GATEWAY,
+                                                                                                                                                                                                                    "E502",
+                                                                                                                                                                                                                    "AI 추천 서비스가 유효하지 않은 추천 조건을 반환했습니다.",
+                                                                                                                                                                                                                    LogLevel.INFO), AI_RECOMMENDATION_FAILURE(
+                                                                                                                                                                                                                        HttpStatus.BAD_GATEWAY,
+                                                                                                                                                                                                                        "E502",
+                                                                                                                                                                                                                        "AI 추천 서비스 호출에 실패했습니다.",
+                                                                                                                                                                                                                        LogLevel.INFO), AI_FEED_INVALID_REQUEST(
+                                                                                                                                                                                                                            HttpStatus.BAD_GATEWAY,
+                                                                                                                                                                                                                            "E502",
+                                                                                                                                                                                                                            "AI 추천 피드 서비스가 요청을 거부했습니다.",
+                                                                                                                                                                                                                            LogLevel.ERROR), AI_FEED_CURSOR_EXPIRED(
+                                                                                                                                                                                                                                HttpStatus.GONE,
+                                                                                                                                                                                                                                "E410",
+                                                                                                                                                                                                                                "추천 피드 커서가 만료되었습니다. 처음부터 다시 조회해야 합니다.",
+                                                                                                                                                                                                                                LogLevel.INFO), AI_FEED_TIMEOUT(
+                                                                                                                                                                                                                                    HttpStatus.GATEWAY_TIMEOUT,
+                                                                                                                                                                                                                                    "E504",
+                                                                                                                                                                                                                                    "AI 추천 피드 서비스 응답이 시간 내에 도착하지 않았습니다.",
+                                                                                                                                                                                                                                    LogLevel.INFO), AI_FEED_FAILURE(
+                                                                                                                                                                                                                                        HttpStatus.BAD_GATEWAY,
+                                                                                                                                                                                                                                        "E502",
+                                                                                                                                                                                                                                        "AI 추천 피드 조회에 실패했습니다.",
+                                                                                                                                                                                                                                        LogLevel.INFO), AI_SEARCH_CURSOR_EXPIRED(
+                                                                                                                                                                                                                                            HttpStatus.GONE,
+                                                                                                                                                                                                                                            "E410",
+                                                                                                                                                                                                                                            "검색 결과 커서가 만료되었습니다. 처음부터 다시 검색해야 합니다.",
+                                                                                                                                                                                                                                            LogLevel.INFO), AI_SEARCH_RATE_LIMITED(
+                                                                                                                                                                                                                                                HttpStatus.TOO_MANY_REQUESTS,
+                                                                                                                                                                                                                                                "E429",
+                                                                                                                                                                                                                                                "AI 검색 서비스 요청이 많아 잠시 후 다시 시도해야 합니다.",
+                                                                                                                                                                                                                                                LogLevel.INFO), AI_SEARCH_TIMEOUT(
+                                                                                                                                                                                                                                                    HttpStatus.GATEWAY_TIMEOUT,
+                                                                                                                                                                                                                                                    "E504",
+                                                                                                                                                                                                                                                    "AI 검색 서비스 응답이 시간 내에 도착하지 않았습니다.",
+                                                                                                                                                                                                                                                    LogLevel.INFO), AI_SEARCH_FAILURE(
+                                                                                                                                                                                                                                                        HttpStatus.BAD_GATEWAY,
+                                                                                                                                                                                                                                                        "E502",
+                                                                                                                                                                                                                                                        "AI 검색 결과 조회에 실패했습니다.",
+                                                                                                                                                                                                                                                        LogLevel.INFO), NOT_FOUND_DATA(
+                                                                                                                                                                                                                                                            HttpStatus.NOT_FOUND,
+                                                                                                                                                                                                                                                            "E404",
+                                                                                                                                                                                                                                                            "데이터를 찾을 수 없습니다.",
+                                                                                                                                                                                                                                                            LogLevel.ERROR), REVIEW_UPDATE_EXPIRED(
+                                                                                                                                                                                                                                                                HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                                                                                "E7002",
+                                                                                                                                                                                                                                                                "리뷰 수정 가능 기간이 지났습니다.",
+                                                                                                                                                                                                                                                                LogLevel.INFO), COUPON_NOT_FOUND_OR_EXPIRED(
+                                                                                                                                                                                                                                                                    HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                                                                                    "E4000",
+                                                                                                                                                                                                                                                                    "쿠폰을 찾을 수 없거나 만료되었습니다.",
+                                                                                                                                                                                                                                                                    LogLevel.INFO), COUPON_ALREADY_DOWNLOADED(
+                                                                                                                                                                                                                                                                        HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                                                                                        "E4001",
+                                                                                                                                                                                                                                                                        "이미 다운로드한 쿠폰입니다.",
+                                                                                                                                                                                                                                                                        LogLevel.INFO), OWNED_COUPON_INVALID(
+                                                                                                                                                                                                                                                                            HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                                                                                            "E5000",
+                                                                                                                                                                                                                                                                            "사용할 수 없는 쿠폰입니다.",
+                                                                                                                                                                                                                                                                            LogLevel.INFO), OWNED_COUPON_INVALID_USAGE(
+                                                                                                                                                                                                                                                                                HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                                                                                                "E5001",
+                                                                                                                                                                                                                                                                                "비정상적인 쿠폰 사용입니다.",
+                                                                                                                                                                                                                                                                                LogLevel.INFO), ORDER_ALREADY_PAID(
+                                                                                                                                                                                                                                                                                    HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                                                                                                    "E1000",
+                                                                                                                                                                                                                                                                                    "이미 결제가 완료된 주문입니다.",
+                                                                                                                                                                                                                                                                                    LogLevel.INFO), PAYMENT_INVALID_STATE(
+                                                                                                                                                                                                                                                                                        HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                                                                                                        "E2000",
+                                                                                                                                                                                                                                                                                        "결제 상태가 유효하지 않습니다.",
+                                                                                                                                                                                                                                                                                        LogLevel.INFO), PAYMENT_AMOUNT_MISMATCH(
+                                                                                                                                                                                                                                                                                            HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                                                                                                            "E2001",
+                                                                                                                                                                                                                                                                                            "결제 금액이 일치하지 않습니다.",
+                                                                                                                                                                                                                                                                                            LogLevel.INFO), PAYMENT_INVALID_AMOUNT(
+                                                                                                                                                                                                                                                                                                HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                                                                                                                "E2002",
+                                                                                                                                                                                                                                                                                                "결제 금액이 0보다 작을 수 없습니다.",
+                                                                                                                                                                                                                                                                                                LogLevel.INFO), OWNED_COUPON_MIN_AMOUNT_NOT_REACHED(
+                                                                                                                                                                                                                                                                                                    HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                                                                                                                    "E5002",
+                                                                                                                                                                                                                                                                                                    "쿠폰 사용 가능 최소 금액이 부족합니다.",
+                                                                                                                                                                                                                                                                                                    LogLevel.INFO), POINT_EXCEEDS_BALANCE(
+                                                                                                                                                                                                                                                                                                        HttpStatus.BAD_REQUEST,
+                                                                                                                                                                                                                                                                                                        "E6000",
+                                                                                                                                                                                                                                                                                                        "보유 포인트를 초과하여 사용할 수 없습니다.",
+                                                                                                                                                                                                                                                                                                        LogLevel.INFO);
 
     private final HttpStatus status;
     private final String code;

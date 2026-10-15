@@ -1,5 +1,6 @@
 package com.book.core.coupon.api.spec;
 
+import com.book.core.coupon.api.response.OwnedCouponResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -7,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Positive;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Coupon", description = "쿠폰 API")
@@ -19,4 +21,9 @@ public interface CouponControllerSpec {
     ResponseEntity<com.book.common.response.ApiResponse<Void>> issue(@Parameter(hidden = true) final Long userId,
         @Parameter(description = "쿠폰 ID", required = true) @Positive final Long couponId);
 
+    @Operation(summary = "보유 쿠폰 조회", description = "인증된 회원의 활성 보유 쿠폰을 조회합니다. 만료 및 사용 완료 쿠폰도 포함합니다.")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "보유 쿠폰 조회 성공"),
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
+    ResponseEntity<com.book.common.response.ApiResponse<List<OwnedCouponResponse>>> getOwnedCoupons(
+        @Parameter(hidden = true) final Long userId);
 }

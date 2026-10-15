@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class GetPaymentUseCase {
     private final PaymentRepositoryPort paymentRepository;
 
+    /** 주문 ID에 연결된 결제를 반환합니다. 대상이 없으면 NOT_FOUND_DATA로 거절합니다. */
     @Transactional(readOnly = true)
     public Payment execute(final Long orderId) {
         return paymentRepository.findByOrderId(orderId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));

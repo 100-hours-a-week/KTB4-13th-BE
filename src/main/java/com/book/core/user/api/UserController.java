@@ -11,6 +11,7 @@ import com.book.core.user.application.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,6 +37,13 @@ class UserController implements UserControllerSpec {
     public ResponseEntity<ApiResponse<Void>> updateMyInfo(@UserId final Long userId,
         @Valid @RequestBody final UpdateMyInfoRequest request) {
         userService.updateMyInfo(commandConverter.toUpdateMyInfoCommand(userId, request));
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> requestWithdrawal(@UserId final Long userId) {
+        userService.requestWithdrawal(userId);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 }

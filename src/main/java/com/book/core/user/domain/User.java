@@ -6,6 +6,8 @@ import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,9 +21,14 @@ import lombok.experimental.Accessors;
 public class User extends BaseEntity {
     private static final int MIN_NICKNAME_LENGTH = 2;
     private static final int MAX_NICKNAME_LENGTH = 20;
+    private static final Duration WITHDRAWAL_RECOVERY_PERIOD = Duration.ofDays(7);
+    private static final String WITHDRAWN_NICKNAME = "탈퇴한 회원";
 
     @Column(nullable = false, length = 20)
     private String nickname;
+
+    @Column(name = "delete_requested_at")
+    private LocalDateTime deleteRequestedAt;
 
     private User(final Long id, final String nickname) {
         super(id);
@@ -44,6 +51,40 @@ public class User extends BaseEntity {
         if (!normalized.equals(this.nickname)) {
             this.nickname = normalized;
         }
+    }
+
+    public void requestWithdrawal(final LocalDateTime requestedAt) {
+        if (deleteRequestedAt == null) {
+            deleteRequestedAt = requestedAt;
+        }
+    }
+
+    public boolean isWithdrawalRequested() {
+        return deleteRequestedAt != null;
+    }
+
+    public boolean isWithdrawalRecoverable(final LocalDateTime now) {
+        return isWithdrawalRequested() && now.isBefore(deleteRequestedAt.plus(WITHDRAWAL_RECOVERY_PERIOD));
+    }
+
+    public boolean isWithdrawalCompletable(final LocalDateTime now) {
+        return isActive() && isWithdrawalRequested() && !isWithdrawalRecoverable(now);
+    }
+
+    public void recoverWithdrawal(final LocalDateTime now) {
+        if (!isWithdrawalRecoverable(now)) {
+            throw new BusinessException(ErrorCode.USER_WITHDRAWAL_PENDING);
+        }
+        deleteRequestedAt = null;
+    }
+
+    public void completeWithdrawal() {
+        nickname = WITHDRAWN_NICKNAME;
+        delete();
+    }
+
+    public static LocalDateTime withdrawalCompletableRequestedBefore(final LocalDateTime now) {
+        return now.minus(WITHDRAWAL_RECOVERY_PERIOD);
     }
 
     public static String normalizeNickname(final String nickname) {

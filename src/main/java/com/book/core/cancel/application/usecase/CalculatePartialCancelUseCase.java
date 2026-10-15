@@ -25,6 +25,7 @@ public class CalculatePartialCancelUseCase {
     private final CancelBalanceRepositoryPort cancelBalanceRepository;
     private final GetOwnedCouponUseCase getOwnedCouponUseCase;
 
+    /** 주문상품 금액과 남은 잔액으로 취소액을 쿠폰, 실결제액, 포인트 순서로 배분합니다. */
     @Transactional(readOnly = true)
     public CancelCalculated execute(final PartialCancelAction action) {
         final var order = getOrderForCancelUseCase.execute(action.orderKey());

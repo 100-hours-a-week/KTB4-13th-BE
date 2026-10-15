@@ -16,6 +16,7 @@ public class CancelCommandConverter {
         return new CancelCommand(userId, new CancelAction(request.orderKey()));
     }
 
+    /** 인증 회원 ID와 주문 키, 주문상품 ID, 취소 수량을 부분 취소 Command로 옮깁니다. */
     public PartialCancelCommand toPartialCancelCommand(final Long userId, final PartialCancelRequest request) {
         return new PartialCancelCommand(userId, new PartialCancelAction(request.orderKey(), request.orderItemId(), request.quantity()));
     }

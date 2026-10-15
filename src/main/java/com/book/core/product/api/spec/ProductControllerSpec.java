@@ -18,7 +18,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Product", description = "상품 API")
 public interface ProductControllerSpec {
-    @Operation(summary = "상품 상세 조회", description = "상품 식별자로 활성 상품의 상세 정보를 조회합니다. 도서 소개가 없으면 description은 null입니다.")
+    @Operation(summary = "상품 상세 조회",
+        description = "상품 식별자로 활성 상품의 상세 정보를 조회합니다. 도서 소개가 없으면 description은 null입니다. "
+            + "couponIds는 관련 활성 쿠폰의 ID이며 만료 쿠폰도 포함합니다. 상세 정보는 GET /api/v1/coupons?ids=...로 조회합니다.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "상품 상세 조회 성공"),
         @ApiResponse(responseCode = "400", description = "요청이 올바르지 않음"), @ApiResponse(responseCode = "404", description = "상품을 찾을 수 없음"),
         @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})

@@ -7,7 +7,7 @@ import java.util.List;
 
 public record GetProductDetailResult(Long productId, String itemName, String thumbnailUrl, String author, String publisher,
     LocalDate publishedAt, String category, String description, BigDecimal salePrice, BigDecimal discountedPrice, Long reviewCount,
-    BigDecimal reviewRate, Integer stockQuantity, List<GetProductCouponResult> coupons) {
+    BigDecimal reviewRate, Integer stockQuantity, List<Long> couponIds) {
     public static GetProductDetailResult from(final Product product) {
         final var book = product.book();
         return new GetProductDetailResult(product.id(), product.name(), product.thumbnailUrl(), book.author(), book.publisher(),
@@ -16,8 +16,8 @@ public record GetProductDetailResult(Long productId, String itemName, String thu
             0L, BigDecimal.ZERO, product.stockQuantity(), List.of());
     }
 
-    public GetProductDetailResult withCoupons(final List<GetProductCouponResult> coupons) {
+    public GetProductDetailResult withCouponIds(final List<Long> couponIds) {
         return new GetProductDetailResult(productId, itemName, thumbnailUrl, author, publisher, publishedAt, category, description,
-            salePrice, discountedPrice, reviewCount, reviewRate, stockQuantity, coupons);
+            salePrice, discountedPrice, reviewCount, reviewRate, stockQuantity, couponIds);
     }
 }

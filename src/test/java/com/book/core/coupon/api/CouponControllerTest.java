@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.config.security.UserIdMvcConfig;
+import com.book.common.api.config.SwaggerConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
@@ -19,9 +20,11 @@ import com.book.core.coupon.api.converter.CouponCommandConverter;
 import com.book.core.coupon.api.converter.CouponResultConverter;
 import com.book.core.coupon.application.command.IssueCouponCommand;
 import com.book.core.coupon.application.command.GetOwnedCouponsCommand;
+import com.book.core.coupon.application.command.GetCouponsCommand;
 import com.book.core.coupon.application.result.CouponResult;
 import com.book.core.coupon.application.result.OwnedCouponResult;
 import com.book.core.coupon.application.service.OwnedCouponService;
+import com.book.core.coupon.application.service.CouponService;
 import com.book.core.coupon.domain.enums.CouponType;
 import com.book.core.coupon.domain.enums.OwnedCouponStatus;
 import java.math.BigDecimal;
@@ -29,8 +32,11 @@ import java.util.List;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -38,10 +44,16 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springdoc.core.configuration.SpringDocConfiguration;
+import org.springdoc.core.properties.SpringDocConfigProperties;
+import org.springdoc.webmvc.core.configuration.MultipleOpenApiSupportConfiguration;
+import org.springdoc.webmvc.core.configuration.SpringDocWebMvcConfiguration;
 
 @WebMvcTest(CouponController.class)
 @Import({CouponCommandConverter.class, CouponResultConverter.class, UserIdMvcConfig.class, SecurityConfiguration.class,
-    JwtAuthenticationEntryPoint.class, WebCorsConfiguration.class})
+    JwtAuthenticationEntryPoint.class, WebCorsConfiguration.class, SwaggerConfig.class})
+@ImportAutoConfiguration({SpringDocConfiguration.class, SpringDocConfigProperties.class, SpringDocWebMvcConfiguration.class,
+    MultipleOpenApiSupportConfiguration.class})
 @ActiveProfiles("test")
 class CouponControllerTest {
     @Autowired
@@ -50,12 +62,63 @@ class CouponControllerTest {
     @MockitoBean
     private OwnedCouponService ownedCouponService;
 
+    @MockitoBean
+    private CouponService couponService;
+
     @MockitoBean(name = "serviceJwtDecoder")
     private JwtDecoder jwtDecoder;
 
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void 쿠폰_ID_목록으로_인증_없이_쿠폰_상세를_조회한다() throws Exception {
+        final var coupon = new CouponResult(10L, "할인", CouponType.PERCENT_RATE, new BigDecimal("0.10"), new BigDecimal("1000"),
+            LocalDateTime.of(2020, 1, 1, 9, 0));
+        when(couponService.getCoupons(new GetCouponsCommand(List.of(10L, 20L)))).thenReturn(List.of(coupon));
+
+        mvc.perform(get("/api/v1/coupons").param("ids", "10,20")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.length()").value(1)).andExpect(jsonPath("$.data[0].id").value(10))
+            .andExpect(jsonPath("$.data[0].name").value("할인")).andExpect(jsonPath("$.data[0].type").value("PERCENT_RATE"))
+            .andExpect(jsonPath("$.data[0].discount").value(0.10)).andExpect(jsonPath("$.data[0].minOrderAmount").value(1000))
+            .andExpect(jsonPath("$.data[0].expiredAt").value("2020-01-01T09:00:00")).andExpect(jsonPath("$.data[0].userId").doesNotExist())
+            .andExpect(jsonPath("$.data[0].usedCount").doesNotExist());
+        verify(couponService).getCoupons(new GetCouponsCommand(List.of(10L, 20L)));
+        verifyNoInteractions(ownedCouponService);
+    }
+
+    @Test
+    void 조회할_활성_쿠폰이_없으면_빈_목록을_반환한다() throws Exception {
+        when(couponService.getCoupons(new GetCouponsCommand(List.of(999L)))).thenReturn(List.of());
+        mvc.perform(get("/api/v1/coupons").param("ids", "999")).andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "0", "-1", "10,not-a-number", "10,,20"})
+    void 잘못된_쿠폰_ID_목록은_HTTP_경계에서_거부한다(final String ids) throws Exception {
+        mvc.perform(get("/api/v1/coupons").param("ids", ids)).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
+        verifyNoInteractions(couponService, ownedCouponService);
+    }
+
+    @Test
+    void 쿠폰_ID_목록이_없으면_거부한다() throws Exception {
+        mvc.perform(get("/api/v1/coupons")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+        verifyNoInteractions(couponService, ownedCouponService);
+    }
+
+    @Test
+    void 쿠폰_조회는_공개_명세이고_발급과_보유_조회는_인증_명세다() throws Exception {
+        mvc.perform(get("/v3/api-docs/general")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.paths['/api/v1/coupons'].get.parameters[0].name").value("ids"))
+            .andExpect(jsonPath("$.paths['/api/v1/coupons'].get.parameters[0].required").value(true))
+            .andExpect(jsonPath("$.paths['/api/v1/coupons'].get.security").doesNotExist())
+            .andExpect(jsonPath("$.paths['/api/v1/coupons/{couponId}/issue'].post.security[0].bearerAuth").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/owned-coupons'].get.security[0].bearerAuth").exists())
+            .andExpect(jsonPath("$.components.schemas.CouponResponse.properties.id.type").value("integer"))
+            .andExpect(jsonPath("$.components.schemas.CouponResponse.properties.usedCount").doesNotExist());
     }
 
     @Test

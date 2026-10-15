@@ -28,6 +28,7 @@ public class PaymentCommandConverter {
         return new ApprovePaymentCommand(orderId, paymentKey, amount);
     }
 
+    /** 주문 키와 실패 코드 및 메시지를 업무 이력 기록용 Command로 옮깁니다. */
     public FailPaymentCommand toFailCommand(final String orderId, final String code, final String message) {
         return new FailPaymentCommand(orderId, code, message);
     }

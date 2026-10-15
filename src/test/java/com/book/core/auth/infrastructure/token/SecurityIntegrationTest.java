@@ -1,6 +1,7 @@
 package com.book.core.auth.infrastructure.token;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
+import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import com.book.support.config.WebCorsConfiguration;
 import java.time.Clock;
 import java.time.Duration;
@@ -35,6 +37,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,6 +61,9 @@ class SecurityIntegrationTest {
 
     @Autowired
     TokenIssuer tokenIssuer;
+
+    @MockitoBean
+    CheckUserRestrictionUseCase checkUserRestrictionUseCase;
 
     @Autowired
     TokenProperties properties;
@@ -106,6 +112,13 @@ class SecurityIntegrationTest {
         mvc.perform(get("/test/protected").header(HttpHeaders.AUTHORIZATION, bearer(accessToken))).andExpect(status().isOk())
             .andExpect(jsonPath("$.authenticated").value(true)).andExpect(jsonPath("$.subject").value(USER_ID.toString()))
             .andExpect(jsonPath("$.userId").value(USER_ID));
+    }
+
+    @Test
+    void 탈퇴_신청_회원의_유효한_Access_Token은_401을_응답한다() throws Exception {
+        when(checkUserRestrictionUseCase.execute(USER_ID)).thenReturn(true);
+
+        assertUnauthorized(tokenIssuer.issue(USER_ID).accessToken());
     }
 
     @Test

@@ -47,6 +47,16 @@ class GetOwnedCouponsUseCasesTest {
     }
 
     @Test
+    void 보유_목록의_원본_쿠폰이_일부_누락되면_NOT_FOUND_DATA다() {
+        when(ownedCouponRepository.findActiveByUserId(42L))
+            .thenReturn(List.of(ownedCoupon(0L), new OwnedCoupon(42L, 20L, OwnedCouponStatus.ISSUED, 2L)));
+        when(couponRepository.findAllById(Set.of(10L, 20L))).thenReturn(List.of(coupon(10L)));
+
+        assertThatThrownBy(() -> new GetOwnedCouponsUseCase(ownedCouponRepository, couponRepository).execute(42L))
+            .isInstanceOf(CoreException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_DATA);
+    }
+
+    @Test
     void 보유_단건은_쿠폰_정보를_함께_반환한다() {
         when(ownedCouponRepository.findById(1L)).thenReturn(Optional.of(ownedCoupon(0L)));
         when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon(10L)));

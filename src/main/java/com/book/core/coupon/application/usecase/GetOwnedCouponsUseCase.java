@@ -1,6 +1,8 @@
 package com.book.core.coupon.application.usecase;
 
 import com.book.common.annotation.UseCase;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.application.result.OwnedCouponResult;
@@ -34,6 +36,12 @@ public class GetOwnedCouponsUseCase {
         final Set<Long> couponIds = owned.stream().map(OwnedCoupon::couponId).collect(Collectors.toSet());
         final Map<Long, Coupon> couponMap =
             couponRepository.findAllById(couponIds).stream().collect(Collectors.toMap(Coupon::id, Function.identity()));
-        return owned.stream().map((final var item) -> OwnedCouponResult.from(item, couponMap.get(item.couponId()))).toList();
+        return owned.stream().map((final var item) -> {
+            final Coupon coupon = couponMap.get(item.couponId());
+            if (coupon == null) {
+                throw new CoreException(ErrorCode.NOT_FOUND_DATA);
+            }
+            return OwnedCouponResult.from(item, coupon);
+        }).toList();
     }
 }

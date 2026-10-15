@@ -100,7 +100,9 @@ public enum ErrorCode {
     NOT_FOUND_DATA(HttpStatus.NOT_FOUND, "E404", "데이터를 찾을 수 없습니다.", LogLevel.ERROR),
     REVIEW_UPDATE_EXPIRED(HttpStatus.BAD_REQUEST, "E7002", "리뷰 수정 가능 기간이 지났습니다.", LogLevel.INFO),
     COUPON_NOT_FOUND_OR_EXPIRED(HttpStatus.BAD_REQUEST, "E4000", "쿠폰을 찾을 수 없거나 만료되었습니다.", LogLevel.INFO),
-    COUPON_ALREADY_DOWNLOADED(HttpStatus.BAD_REQUEST, "E4001", "이미 다운로드한 쿠폰입니다.", LogLevel.INFO);
+    COUPON_ALREADY_DOWNLOADED(HttpStatus.BAD_REQUEST, "E4001", "이미 다운로드한 쿠폰입니다.", LogLevel.INFO),
+    OWNED_COUPON_INVALID(HttpStatus.BAD_REQUEST, "E5000", "사용할 수 없는 쿠폰입니다.", LogLevel.INFO),
+    OWNED_COUPON_INVALID_USAGE(HttpStatus.BAD_REQUEST, "E5001", "비정상적인 쿠폰 사용입니다.", LogLevel.INFO);
     // spotless:on
 
     private final HttpStatus status;

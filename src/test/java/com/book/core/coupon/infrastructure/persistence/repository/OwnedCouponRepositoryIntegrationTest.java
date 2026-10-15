@@ -7,6 +7,8 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.application.usecase.IssueCouponUseCase;
+import com.book.core.coupon.application.usecase.RevertOwnedCouponUseCase;
+import com.book.core.coupon.application.usecase.UseOwnedCouponUseCase;
 import com.book.core.coupon.domain.Coupon;
 import com.book.core.coupon.domain.OwnedCoupon;
 import com.book.core.coupon.domain.enums.CouponType;
@@ -42,6 +44,10 @@ class OwnedCouponRepositoryIntegrationTest {
     OwnedCouponJpaRepository ownedCouponJpaRepository;
     @Autowired
     IssueCouponUseCase issueCoupon;
+    @Autowired
+    UseOwnedCouponUseCase useOwnedCoupon;
+    @Autowired
+    RevertOwnedCouponUseCase revertOwnedCoupon;
 
     @Test
     void 체크아웃은_회원과_상태와_만료만_필터하고_금액이나_횟수는_필터하지_않는다() {
@@ -70,12 +76,21 @@ class OwnedCouponRepositoryIntegrationTest {
     }
 
     @Test
-    void 발급과_삭제_후에도_유지되는_중복_제약을_검증한다() {
+    void 발급_사용_복원과_삭제_후에도_유지되는_중복_제약을_검증한다() {
         final var coupon = saveCoupon(LocalDateTime.now().plusDays(7));
         issueCoupon.execute(42L, coupon.id());
         final var owned = ownedCouponRepository.findByUserIdAndCouponId(42L, coupon.id()).orElseThrow();
-        owned.delete();
-        ownedCouponRepository.save(owned);
+        useOwnedCoupon.execute(owned.id());
+        useOwnedCoupon.execute(owned.id());
+        assertThat(ownedCouponRepository.findById(owned.id()).orElseThrow().status()).isEqualTo(OwnedCouponStatus.USED);
+        revertOwnedCoupon.execute(owned.id());
+        assertThat(ownedCouponRepository.findById(owned.id()).orElseThrow().status()).isEqualTo(OwnedCouponStatus.USED);
+        revertOwnedCoupon.execute(owned.id());
+        final var restored = ownedCouponRepository.findById(owned.id()).orElseThrow();
+        assertThat(restored.usedCount()).isZero();
+        assertThat(restored.status()).isEqualTo(OwnedCouponStatus.ISSUED);
+        restored.delete();
+        ownedCouponRepository.save(restored);
         assertThatThrownBy(() -> issueCoupon.execute(42L, coupon.id())).isInstanceOf(CoreException.class).extracting("errorCode")
             .isEqualTo(ErrorCode.COUPON_ALREADY_DOWNLOADED);
         assertThatThrownBy(() -> ownedCouponJpaRepository.saveAndFlush(new OwnedCoupon(42L, coupon.id(), OwnedCouponStatus.ISSUED, 2L, 0L)))

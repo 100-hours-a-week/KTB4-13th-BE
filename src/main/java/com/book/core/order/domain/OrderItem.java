@@ -88,6 +88,10 @@ public class OrderItem extends BaseTimeEntity {
         return quantity >= MIN_QUANTITY && quantity <= MAX_QUANTITY;
     }
 
+    void paid() {
+        status = OrderItemStatus.PAID;
+    }
+
     void cancel() {
         if (status != OrderItemStatus.CREATED) {
             throw new CoreException(ErrorCode.ORDER_CANNOT_BE_CANCELED);

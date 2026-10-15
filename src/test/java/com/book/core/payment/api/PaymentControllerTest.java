@@ -1,5 +1,6 @@
 package com.book.core.payment.api;
 
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -9,9 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.book.common.api.config.SwaggerConfig;
 import com.book.common.config.security.UserIdMvcConfig;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
 import com.book.core.payment.api.converter.PaymentCommandConverter;
+import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
 import com.book.core.payment.application.service.PaymentService;
 import com.book.support.config.WebCorsConfiguration;
@@ -65,6 +69,35 @@ class PaymentControllerTest {
         mvc.perform(post("/api/v1/payments").header("Authorization", "Bearer test-token").contentType(MediaType.APPLICATION_JSON)
             .content("{\"orderKey\":\"order\",\"useOwnedCouponId\":10,\"usePoint\":1200}")).andExpect(status().isOk());
         verify(paymentService).create(command);
+    }
+
+    @Test
+    void 성공_콜백은_주문키와_PG키_금액을_변환하고_데이터_없이_응답한다() throws Exception {
+        authenticate();
+        mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderId", "order")
+            .param("paymentKey", "test-pg-key").param("amount", "8800.00")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
+        verify(paymentService).success(new ApprovePaymentCommand("order", "test-pg-key", new BigDecimal("8800.00")));
+    }
+
+    @Test
+    void 필수_키_누락과_공백_주문키는_HTTP에서_거부한다() throws Exception {
+        authenticate();
+        mvc.perform(post("/api/v1/payments").header("Authorization", "Bearer test-token").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"orderKey\":\" \"}")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+        mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderId", "order"))
+            .andExpect(status().isBadRequest());
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    void 결제_금액_불일치는_참고_오류_코드로_응답한다() throws Exception {
+        authenticate();
+        doThrow(new CoreException(ErrorCode.PAYMENT_AMOUNT_MISMATCH)).when(paymentService)
+            .success(new ApprovePaymentCommand("order", "test-pg-key", BigDecimal.TEN));
+        mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderId", "order")
+            .param("paymentKey", "test-pg-key").param("amount", "10")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E2001"));
     }
 
     @Test

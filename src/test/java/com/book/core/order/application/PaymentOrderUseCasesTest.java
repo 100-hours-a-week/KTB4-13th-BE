@@ -25,7 +25,7 @@ class PaymentOrderUseCasesTest {
         final var useCase = new GetPaymentOrderUseCase(orders);
         assertThat(useCase.execute(1L, "order")).isSameAs(order);
         assertThatThrownBy(() -> useCase.execute(2L, "order")).isInstanceOf(CoreException.class);
-        order.cancel();
+        order.paid();
         assertThatThrownBy(() -> useCase.execute(1L, "order")).isInstanceOf(CoreException.class);
     }
 

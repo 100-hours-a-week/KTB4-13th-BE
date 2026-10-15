@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecordPaymentHistoryUseCase {
     private final PaymentHistoryRepositoryPort paymentHistoryRepository;
 
+    /** 결제 이력을 저장합니다. 호출자의 트랜잭션이 있으면 함께 참여하고 실패를 전파합니다. */
     @Transactional
     public void execute(final PaymentHistory history) {
         paymentHistoryRepository.save(history);

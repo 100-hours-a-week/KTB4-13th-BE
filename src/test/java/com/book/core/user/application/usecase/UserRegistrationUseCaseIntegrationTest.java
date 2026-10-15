@@ -50,7 +50,7 @@ class UserRegistrationUseCaseIntegrationTest {
 
     @Test
     void 회원가입은_새_user의_Cart와_잔액_0인_포인트를_하나씩_저장한다() {
-        final UserRegistrationCommand command = new UserRegistrationCommand(ProviderType.KAKAO, "cart-success-provider", null, "카트성공회원");
+        final UserRegistrationCommand command = new UserRegistrationCommand(ProviderType.KAKAO, "cart-success-provider", null);
 
         final Long userId = userRegistrationUseCase.execute(command);
 
@@ -65,14 +65,14 @@ class UserRegistrationUseCaseIntegrationTest {
 
     @Test
     void cart_저장_실패는_User와_UserProvider를_함께_rollback한다() {
-        final UserRegistrationCommand command =
-            new UserRegistrationCommand(ProviderType.KAKAO, "cart-save-failure-provider", null, "카트실패회원");
+        final UserRegistrationCommand command = new UserRegistrationCommand(ProviderType.KAKAO, "cart-save-failure-provider", null);
+        final Integer usersBefore = jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class);
         doThrow(new DataAccessResourceFailureException("cart save failed")).when(cartRepository).save(any(Cart.class));
 
         assertThatThrownBy(() -> userRegistrationUseCase.execute(command)).isInstanceOf(DataAccessResourceFailureException.class);
 
         verify(cartRepository).save(any(Cart.class));
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE nickname = ?", Integer.class, command.nickname())).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(usersBefore);
         assertThat(
             jdbc.queryForObject("SELECT COUNT(*) FROM user_providers WHERE provider_user_id = ?", Integer.class, command.providerUserId()))
             .isZero();
@@ -80,8 +80,7 @@ class UserRegistrationUseCaseIntegrationTest {
 
     @Test
     void 포인트_저장_실패는_회원과_Provider와_Cart를_함께_rollback한다() {
-        final UserRegistrationCommand command =
-            new UserRegistrationCommand(ProviderType.KAKAO, "point-save-failure-provider", null, "포인트실패회원");
+        final UserRegistrationCommand command = new UserRegistrationCommand(ProviderType.KAKAO, "point-save-failure-provider", null);
         doThrow(new DataAccessResourceFailureException("point save failed")).when(pointBalanceRepository).save(any(PointBalance.class));
 
         assertThatThrownBy(() -> userRegistrationUseCase.execute(command)).isInstanceOf(DataAccessResourceFailureException.class);

@@ -8,7 +8,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,6 +24,8 @@ import lombok.experimental.Accessors;
 public class UserProvider extends BaseEntity {
     private static final int MAX_PROVIDER_USER_ID_LENGTH = 255;
     private static final int MAX_PROVIDER_EMAIL_LENGTH = 254;
+    private static final String WITHDRAWN_PROVIDER_USER_ID_PREFIX = "withdrawn:";
+    private static final Duration UNLINK_SETTLEMENT_PERIOD = Duration.ofHours(12);
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
@@ -67,6 +71,16 @@ public class UserProvider extends BaseEntity {
 
     public boolean isUnlinked() {
         return unlinkedAt != null;
+    }
+
+    public boolean isUnlinkSettled(final LocalDateTime now) {
+        return isUnlinked() && !unlinkedAt.plus(UNLINK_SETTLEMENT_PERIOD).isAfter(now);
+    }
+
+    public void withdraw() {
+        providerUserId = WITHDRAWN_PROVIDER_USER_ID_PREFIX + UUID.randomUUID();
+        providerEmail = null;
+        delete();
     }
 
     private static void validateUserId(final Long userId) {

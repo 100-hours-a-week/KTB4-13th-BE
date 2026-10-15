@@ -4,6 +4,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,6 +18,7 @@ import com.book.core.auth.infrastructure.security.SecurityConfiguration;
 import com.book.core.payment.api.converter.PaymentCommandConverter;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
+import com.book.core.payment.application.command.FailPaymentCommand;
 import com.book.core.payment.application.service.PaymentService;
 import com.book.support.config.WebCorsConfiguration;
 import java.math.BigDecimal;
@@ -81,6 +83,15 @@ class PaymentControllerTest {
     }
 
     @Test
+    void 실패_콜백은_오류_코드와_메시지를_전달한다() throws Exception {
+        authenticate();
+        mvc.perform(post("/api/v1/payments/callback/fail").header("Authorization", "Bearer test-token").param("orderId", "order")
+            .param("code", "FAIL").param("message", "test failure")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true));
+        verify(paymentService).fail(new FailPaymentCommand("order", "FAIL", "test failure"));
+    }
+
+    @Test
     void 필수_키_누락과_공백_주문키는_HTTP에서_거부한다() throws Exception {
         authenticate();
         mvc.perform(post("/api/v1/payments").header("Authorization", "Bearer test-token").contentType(MediaType.APPLICATION_JSON)
@@ -107,6 +118,15 @@ class PaymentControllerTest {
         mvc.perform(post("/api/v1/payments/callback/success").param("orderId", "order").param("paymentKey", "test").param("amount", "10"))
             .andExpect(status().isUnauthorized());
         verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    void OpenAPI에_일반_결제_성공_실패_계약을_노출한다() throws Exception {
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andExpect(jsonPath("$.paths['/api/v1/payments'].post").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/payments'].post.parameters").doesNotExist())
+
+            .andExpect(jsonPath("$.paths['/api/v1/payments/callback/success'].post").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/payments/callback/fail'].post").exists());
     }
 
     private void authenticate() {

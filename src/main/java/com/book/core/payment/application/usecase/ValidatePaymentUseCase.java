@@ -27,4 +27,9 @@ public class ValidatePaymentUseCase {
         }
     }
 
+    /** 실패 콜백을 기록할 결제가 존재하는지 확인합니다. */
+    @Transactional(readOnly = true)
+    public void validateForFail(final Long orderId) {
+        paymentRepository.findByOrderId(orderId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
+    }
 }

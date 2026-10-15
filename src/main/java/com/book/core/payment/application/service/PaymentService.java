@@ -7,8 +7,10 @@ import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
+import com.book.core.payment.application.command.FailPaymentCommand;
 import com.book.core.payment.application.usecase.CompletePaymentUseCase;
 import com.book.core.payment.application.usecase.CreatePaymentUseCase;
+import com.book.core.payment.application.usecase.FailPaymentUseCase;
 import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
 import com.book.core.payment.application.usecase.ValidatePaymentUseCase;
 import com.book.core.payment.domain.PaymentCoupon;
@@ -29,6 +31,7 @@ public class PaymentService {
     private final CreatePaymentUseCase createPaymentUseCase;
     private final ValidatePaymentUseCase validatePaymentUseCase;
     private final CompletePaymentUseCase completePaymentUseCase;
+    private final FailPaymentUseCase failPaymentUseCase;
     private final PostProcessPaymentUseCase postProcessPaymentUseCase;
 
     /** 주문 상태와 소유권, 상품 존재 여부를 확인한 뒤 쿠폰 후보와 포인트 잔액으로 결제를 생성합니다. 미입력 포인트 -1 계산을 유지합니다. */
@@ -54,4 +57,10 @@ public class PaymentService {
         return paymentId;
     }
 
+    /** 실패 콜백을 검증하고 이력만 기록합니다. 주문 CREATED와 결제 READY 상태를 유지합니다. */
+    public void fail(final FailPaymentCommand command) {
+        final var order = getPaymentOrderUseCase.execute(command.orderKey(), OrderStatus.CREATED);
+        validatePaymentUseCase.validateForFail(order.id());
+        failPaymentUseCase.execute(command.orderKey(), command.code(), command.message());
+    }
 }

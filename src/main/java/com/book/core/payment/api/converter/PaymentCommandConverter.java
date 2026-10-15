@@ -3,6 +3,7 @@ package com.book.core.payment.api.converter;
 import com.book.core.payment.api.request.CreatePaymentRequest;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
+import com.book.core.payment.application.command.FailPaymentCommand;
 import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
 
@@ -25,4 +26,7 @@ public class PaymentCommandConverter {
         return new ApprovePaymentCommand(orderId, paymentKey, amount);
     }
 
+    public FailPaymentCommand toFailCommand(final String orderId, final String code, final String message) {
+        return new FailPaymentCommand(orderId, code, message);
+    }
 }

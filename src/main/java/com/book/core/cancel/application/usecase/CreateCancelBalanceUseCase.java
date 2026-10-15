@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CreateCancelBalanceUseCase {
     private final CancelBalanceRepositoryPort cancelBalanceRepository;
 
+    /** 결제 당시 실결제액과 사용 포인트 및 쿠폰 금액으로 주문의 취소 가능 잔액을 초기화합니다. */
     @Transactional
     public void execute(final Long orderId, final BigDecimal paidAmount, final BigDecimal pointAmount, final BigDecimal couponAmount) {
         cancelBalanceRepository

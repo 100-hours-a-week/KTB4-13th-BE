@@ -5,6 +5,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,6 +21,9 @@ import java.math.BigDecimal;
 public class PointBalance extends BaseEntity {
     private Long userId;
     private BigDecimal balance = BigDecimal.ZERO;
+
+    @Version
+    private long version = 0L;
 
     public PointBalance(final Long userId) {
         this(null, userId, BigDecimal.ZERO);

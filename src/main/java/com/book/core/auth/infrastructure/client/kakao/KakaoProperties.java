@@ -11,9 +11,10 @@ import org.springframework.util.StringUtils;
 public class KakaoProperties {
     private final String restApiKey;
     private final String clientSecret;
+    private final String adminKey;
     private final String redirectUri;
 
-    public KakaoProperties(final String restApiKey, final String clientSecret, final String redirectUri) {
+    public KakaoProperties(final String restApiKey, final String clientSecret, final String adminKey, final String redirectUri) {
         if (!StringUtils.hasText(restApiKey)) {
             throw new IllegalStateException("auth.kakao.rest-api-key 설정이 필요합니다.");
         }
@@ -22,6 +23,7 @@ public class KakaoProperties {
         }
         this.restApiKey = restApiKey;
         this.clientSecret = clientSecret;
+        this.adminKey = adminKey;
         this.redirectUri = redirectUri;
     }
 }

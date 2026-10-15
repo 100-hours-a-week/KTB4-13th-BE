@@ -99,5 +99,18 @@ class UserTest {
         assertThatThrownBy(() -> expired.recoverWithdrawal(requestedAt.plusDays(7))).isInstanceOfSatisfying(BusinessException.class,
             (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.USER_WITHDRAWAL_PENDING));
         assertThat(expired.deleteRequestedAt()).isEqualTo(requestedAt);
+        assertThat(expired.isWithdrawalCompletable(requestedAt.plusDays(7))).isTrue();
+    }
+
+    @Test
+    void 최종_탈퇴하면_닉네임을_파기하고_비활성_상태가_된다() {
+        final User user = User.restore(42L, "북적이");
+        user.requestWithdrawal(LocalDateTime.of(2030, 1, 1, 12, 0));
+
+        user.completeWithdrawal();
+
+        assertThat(user.nickname()).isEqualTo("탈퇴한 회원");
+        assertThat(user.isActive()).isFalse();
+        assertThat(user.isWithdrawalCompletable(LocalDateTime.of(2030, 2, 1, 0, 0))).isFalse();
     }
 }

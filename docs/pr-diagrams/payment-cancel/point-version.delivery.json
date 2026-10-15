@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "./point-version.sequence.json",
+  "output": "./point-version.html",
+  "specification": {
+    "sha256": "7c4e5cf622e41815cd562f7ea0df4da42bcd8d00a4a1ea4c69324bd3c5d5e047",
+    "bytes": 2110
+  },
+  "artifact": {
+    "sha256": "f9fd7427711235eb2e560df7d5d5e904310cc0cc1fbac74d0aea701e44d8d026",
+    "bytes": 802671
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "결제 실패 이력 기록",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      560
+    ]
+  },
+  "participants": [
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "PaymentController",
+      "sublabel": "실패 콜백"
+    },
+    {
+      "id": "svc",
+      "type": "backend",
+      "label": "PaymentService",
+      "sublabel": "fail"
+    },
+    {
+      "id": "validate",
+      "type": "backend",
+      "label": "ValidatePayment",
+      "sublabel": "UseCase"
+    },
+    {
+      "id": "fail",
+      "type": "backend",
+      "label": "FailPayment",
+      "sublabel": "UseCase / 쓰기 TX"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "transaction_history"
+    }
+  ],
+  "messages": [
+    {
+      "id": "failure-0",
+      "from": "api",
+      "to": "svc",
+      "y": 170,
+      "label": "FailPaymentCommand 전달"
+    },
+    {
+      "id": "failure-1",
+      "from": "svc",
+      "to": "validate",
+      "y": 214,
+      "label": "대상 결제 존재 여부 확인"
+    },
+    {
+      "id": "failure-2",
+      "from": "svc",
+      "to": "fail",
+      "y": 258,
+      "label": "실패 코드와 메시지 전달"
+    },
+    {
+      "id": "failure-3",
+      "from": "fail",
+      "to": "db",
+      "y": 302,
+      "label": "PAYMENT_FAIL 이력만 저장"
+    },
+    {
+      "id": "failure-4",
+      "from": "fail",
+      "to": "svc",
+      "y": 346,
+      "label": "주문과 결제 상태 유지",
+      "variant": "return"
+    },
+    {
+      "id": "failure-5",
+      "from": "svc",
+      "to": "api",
+      "y": 390,
+      "label": "빈 성공 응답 반환",
+      "variant": "return"
+    }
+  ]
+}

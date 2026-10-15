@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "./failure.sequence.json",
+  "output": "./failure.html",
+  "specification": {
+    "sha256": "916e4a0f1319e965bd7433af27608155f99a4d44d34276a6e83a15b2b1ce33f6",
+    "bytes": 1791
+  },
+  "artifact": {
+    "sha256": "aebdd934209b5b35ce867c38c9c828c224ac9e675ff73b8badf5cdc59e650888",
+    "bytes": 801235
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

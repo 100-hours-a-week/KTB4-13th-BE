@@ -1,0 +1,13 @@
+{
+  "key": "history",
+  "sourceHtmlSha256": "4a724267c76e7286830bf790e21b15a85142541cccf246fae443fd7707a6be70",
+  "nativeSvgSha256": "5558e8a18115281ea91cb4b78609a8ccfd461843d6b7d9f16d1e426ceaa32d22",
+  "monochromeSvgSha256": "532703bd14806fe8d4d2e12e1f02666d4e2153a432a19e35130c55bc9529a155",
+  "pngSha256": "272b2ba7c552593be51b7495e6060932dcf021d6198161b669edcdc07d478a4f",
+  "width": 2160,
+  "height": 1120,
+  "nonGrayPixels": 0,
+  "transparentPixels": 0,
+  "topologyPreserved": true,
+  "visualReview": "pending"
+}

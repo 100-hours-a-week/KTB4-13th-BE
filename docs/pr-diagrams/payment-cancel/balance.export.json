@@ -1,0 +1,13 @@
+{
+  "key": "balance",
+  "sourceHtmlSha256": "baafca648feddcbb8ba9f389cfdaa9ad42fc454e6146837a7b069682424860ac",
+  "nativeSvgSha256": "e6d55ae875ad052de4cf8b61bf9a80960515a810f01531b737785087cc9fdfc6",
+  "monochromeSvgSha256": "61c6665607de4555ff5f0735c2bfba097324f4d5f531c9577fb894fb2668ac17",
+  "pngSha256": "c56d77f058bf8c7d6382a2e570cf45323312e4f733f558abcfc78e09a5b29448",
+  "width": 2160,
+  "height": 1120,
+  "nonGrayPixels": 0,
+  "transparentPixels": 0,
+  "topologyPreserved": true,
+  "visualReview": "pending"
+}

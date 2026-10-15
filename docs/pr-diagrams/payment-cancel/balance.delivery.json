@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "./balance.sequence.json",
+  "output": "./balance.html",
+  "specification": {
+    "sha256": "02dff3cf73535739736083133409bbbfbf6a926d189900780a252d54cf006ac4",
+    "bytes": 1526
+  },
+  "artifact": {
+    "sha256": "baafca648feddcbb8ba9f389cfdaa9ad42fc454e6146837a7b069682424860ac",
+    "bytes": 799731
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "포인트 입력 계약 정리",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      560
+    ]
+  },
+  "participants": [
+    {
+      "id": "uc",
+      "type": "backend",
+      "label": "Point UseCase",
+      "sublabel": "적립 또는 차감"
+    },
+    {
+      "id": "repo",
+      "type": "backend",
+      "label": "Balance Port",
+      "sublabel": "Adapter / JPA"
+    },
+    {
+      "id": "balance",
+      "type": "backend",
+      "label": "PointBalance",
+      "sublabel": "잔액 변경"
+    },
+    {
+      "id": "history",
+      "type": "database",
+      "label": "PointHistory",
+      "sublabel": "이력 저장"
+    }
+  ],
+  "messages": [
+    {
+      "id": "input-0",
+      "from": "uc",
+      "to": "repo",
+      "y": 170,
+      "label": "userId로 잔액 조회"
+    },
+    {
+      "id": "input-1",
+      "from": "repo",
+      "to": "uc",
+      "y": 214,
+      "label": "잔액 모델 반환",
+      "variant": "return"
+    },
+    {
+      "id": "input-2",
+      "from": "uc",
+      "to": "balance",
+      "y": 258,
+      "label": "apply(변동 금액)"
+    },
+    {
+      "id": "input-3",
+      "from": "uc",
+      "to": "history",
+      "y": 302,
+      "label": "변경액과 잔액 이력 저장"
+    },
+    {
+      "id": "input-4",
+      "from": "history",
+      "to": "uc",
+      "y": 346,
+      "label": "저장 처리 반환",
+      "variant": "return"
+    }
+  ]
+}

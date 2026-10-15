@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "포인트 잔액 낙관적 락",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      650
+    ]
+  },
+  "participants": [
+    {
+      "id": "a",
+      "type": "backend",
+      "label": "트랜잭션 A",
+      "sublabel": "적립 또는 차감"
+    },
+    {
+      "id": "b",
+      "type": "backend",
+      "label": "트랜잭션 B",
+      "sublabel": "독립 트랜잭션"
+    },
+    {
+      "id": "jpa",
+      "type": "backend",
+      "label": "PointBalance",
+      "sublabel": "JPA / Version"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "point_balance / history"
+    }
+  ],
+  "messages": [
+    {
+      "id": "version-0",
+      "from": "a",
+      "to": "jpa",
+      "y": 170,
+      "label": "현재 잔액과 version 0 조회"
+    },
+    {
+      "id": "version-1",
+      "from": "b",
+      "to": "jpa",
+      "y": 214,
+      "label": "동일 잔액과 version 0 조회"
+    },
+    {
+      "id": "version-2",
+      "from": "b",
+      "to": "jpa",
+      "y": 258,
+      "label": "잔액 변경과 이력 저장"
+    },
+    {
+      "id": "version-3",
+      "from": "jpa",
+      "to": "db",
+      "y": 302,
+      "label": "version 0 갱신 / version 1 커밋"
+    },
+    {
+      "id": "version-4",
+      "from": "a",
+      "to": "jpa",
+      "y": 346,
+      "label": "이전 잔액 변경과 이력 저장"
+    },
+    {
+      "id": "version-5",
+      "from": "jpa",
+      "to": "db",
+      "y": 390,
+      "label": "오래된 version 0 갱신 시도"
+    },
+    {
+      "id": "version-6",
+      "from": "db",
+      "to": "jpa",
+      "y": 434,
+      "label": "일치하는 버전 없음",
+      "variant": "return"
+    },
+    {
+      "id": "version-7",
+      "from": "jpa",
+      "to": "a",
+      "y": 478,
+      "label": "낙관적 락 충돌 예외",
+      "variant": "return"
+    },
+    {
+      "id": "version-8",
+      "from": "a",
+      "to": "db",
+      "y": 522,
+      "label": "A의 잔액 변경과 이력 롤백"
+    }
+  ]
+}

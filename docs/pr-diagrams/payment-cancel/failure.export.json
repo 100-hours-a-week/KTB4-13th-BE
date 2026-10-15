@@ -1,0 +1,13 @@
+{
+  "key": "failure",
+  "sourceHtmlSha256": "aebdd934209b5b35ce867c38c9c828c224ac9e675ff73b8badf5cdc59e650888",
+  "nativeSvgSha256": "b54bb844c5bada67cdf25f6c9380156d43672a3c6eb9c745363f00d67dd63fb2",
+  "monochromeSvgSha256": "53122466541e617150f7bac94a01fb8b175d2298f509dfddd2b3da7947b9c5f9",
+  "pngSha256": "366fe44a6725e6002e3639ab6b1ce7738575e7409fe0abc3e58f85fbfef8b643",
+  "width": 2160,
+  "height": 1120,
+  "nonGrayPixels": 0,
+  "transparentPixels": 0,
+  "topologyPreserved": true,
+  "visualReview": "pending"
+}

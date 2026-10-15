@@ -1,0 +1,13 @@
+{
+  "key": "create",
+  "sourceHtmlSha256": "f3fb75ae1c59741fb0e0d704f88fcb9f70e8aa4abde0f2bb58739354de16513f",
+  "nativeSvgSha256": "282f27340d4820a3146e4499b7d01589ffd91644dcbe4f3f8408c6212f87d5be",
+  "monochromeSvgSha256": "200a0453b422708e1ce849328351a4ad0822fcc6a179dc3cefe495a6c2304ef3",
+  "pngSha256": "56507ae58596f572a6b3ac83969b19255bf48a5c4293c48b1444720a4c3039d0",
+  "width": 2160,
+  "height": 1124,
+  "nonGrayPixels": 0,
+  "transparentPixels": 0,
+  "topologyPreserved": true,
+  "visualReview": "pending"
+}

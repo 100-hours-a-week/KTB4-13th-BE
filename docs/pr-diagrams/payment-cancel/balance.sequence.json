@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "취소 가능 잔액 초기화",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      560
+    ]
+  },
+  "participants": [
+    {
+      "id": "uc",
+      "type": "backend",
+      "label": "CreateCancelBalance",
+      "sublabel": "UseCase"
+    },
+    {
+      "id": "domain",
+      "type": "backend",
+      "label": "CancelBalance",
+      "sublabel": "금액별 잔액 모델"
+    },
+    {
+      "id": "repo",
+      "type": "backend",
+      "label": "Balance Port",
+      "sublabel": "Adapter / JPA"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "cancel_balance"
+    }
+  ],
+  "messages": [
+    {
+      "id": "balance-0",
+      "from": "uc",
+      "to": "domain",
+      "y": 170,
+      "label": "결제액 / 포인트 / 쿠폰으로 생성"
+    },
+    {
+      "id": "balance-1",
+      "from": "uc",
+      "to": "repo",
+      "y": 214,
+      "label": "save(cancelBalance)"
+    },
+    {
+      "id": "balance-2",
+      "from": "repo",
+      "to": "db",
+      "y": 258,
+      "label": "주문별 취소 가능 잔액 INSERT"
+    },
+    {
+      "id": "balance-3",
+      "from": "db",
+      "to": "repo",
+      "y": 302,
+      "label": "저장 처리 반환",
+      "variant": "return"
+    },
+    {
+      "id": "balance-4",
+      "from": "repo",
+      "to": "uc",
+      "y": 346,
+      "label": "초기화 처리 반환",
+      "variant": "return"
+    }
+  ]
+}

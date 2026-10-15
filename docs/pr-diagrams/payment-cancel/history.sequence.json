@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "결제 이력 저장 기반",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      560
+    ]
+  },
+  "participants": [
+    {
+      "id": "record",
+      "type": "backend",
+      "label": "RecordPaymentHistory",
+      "sublabel": "UseCase.execute"
+    },
+    {
+      "id": "port",
+      "type": "backend",
+      "label": "RepositoryPort",
+      "sublabel": "PaymentHistory"
+    },
+    {
+      "id": "adapter",
+      "type": "backend",
+      "label": "RepositoryAdapter",
+      "sublabel": "JpaRepository"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "transaction_history"
+    }
+  ],
+  "messages": [
+    {
+      "from": "record",
+      "to": "port",
+      "y": 170,
+      "label": "save(history)"
+    },
+    {
+      "from": "port",
+      "to": "adapter",
+      "y": 225,
+      "label": "Port 구현 위임"
+    },
+    {
+      "from": "adapter",
+      "to": "db",
+      "y": 280,
+      "label": "이력 INSERT"
+    },
+    {
+      "from": "db",
+      "to": "adapter",
+      "y": 335,
+      "label": "생성된 이력 ID",
+      "variant": "return"
+    },
+    {
+      "from": "adapter",
+      "to": "record",
+      "y": 390,
+      "label": "저장 결과 반환",
+      "variant": "return"
+    }
+  ]
+}

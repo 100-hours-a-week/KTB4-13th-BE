@@ -1,0 +1,13 @@
+{
+  "key": "input",
+  "sourceHtmlSha256": "e45d2b9fc0ed5b729c4ac05eba0c2b21a502c492ae2718584ec24dcbe0d95ef0",
+  "nativeSvgSha256": "04e1eb9902a9c17e667a6d7302a7d33a747d4e65095a28ac0b5de2d7803fbbf0",
+  "monochromeSvgSha256": "ca5fd774c1e18c6c4548f7ffeb7cd2ccaddbb8014c8c5ea4b3af8931f0c23bc2",
+  "pngSha256": "8ee2e69f02c2ee0d5d4f6c1494c314b37065424b7e5f157a639a84af95651ee5",
+  "width": 2160,
+  "height": 1120,
+  "nonGrayPixels": 0,
+  "transparentPixels": 0,
+  "topologyPreserved": true,
+  "visualReview": "pending"
+}

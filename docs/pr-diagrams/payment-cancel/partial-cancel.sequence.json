@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "주문상품 부분 취소",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      606
+    ]
+  },
+  "participants": [
+    {
+      "id": "svc",
+      "type": "backend",
+      "label": "CancelService",
+      "sublabel": "partialCancel"
+    },
+    {
+      "id": "validate",
+      "type": "backend",
+      "label": "ValidateCancel",
+      "sublabel": "UseCase"
+    },
+    {
+      "id": "calc",
+      "type": "backend",
+      "label": "CalculatePartial",
+      "sublabel": "CancelUseCase"
+    },
+    {
+      "id": "amount",
+      "type": "backend",
+      "label": "CancelAmount",
+      "sublabel": "쿠폰 / 실결제 / 포인트"
+    },
+    {
+      "id": "partial",
+      "type": "backend",
+      "label": "PartialCancel",
+      "sublabel": "PaymentUseCase / TX"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "상품 / 잔액 / 이력"
+    }
+  ],
+  "messages": [
+    {
+      "id": "partial-cancel-0",
+      "from": "svc",
+      "to": "validate",
+      "y": 170,
+      "label": "소유자 / 상품 소속 / 수량 확인"
+    },
+    {
+      "id": "partial-cancel-1",
+      "from": "svc",
+      "to": "calc",
+      "y": 214,
+      "label": "취소 상품과 잔액 조회"
+    },
+    {
+      "id": "partial-cancel-2",
+      "from": "calc",
+      "to": "amount",
+      "y": 258,
+      "label": "최소 금액 경계와 환급액 계산"
+    },
+    {
+      "id": "partial-cancel-3",
+      "from": "calc",
+      "to": "svc",
+      "y": 302,
+      "label": "CancelCalculated 반환",
+      "variant": "return"
+    },
+    {
+      "id": "partial-cancel-4",
+      "from": "svc",
+      "to": "partial",
+      "y": 346,
+      "label": "액션과 계산 결과 전달"
+    },
+    {
+      "id": "partial-cancel-5",
+      "from": "partial",
+      "to": "db",
+      "y": 390,
+      "label": "누적 수량과 주문 상태 전이"
+    },
+    {
+      "id": "partial-cancel-6",
+      "from": "partial",
+      "to": "db",
+      "y": 434,
+      "label": "혜택 복원 / 최초 취소 보너스 회수"
+    },
+    {
+      "id": "partial-cancel-7",
+      "from": "partial",
+      "to": "db",
+      "y": 478,
+      "label": "잔액과 취소 / 결제 이력 저장"
+    },
+    {
+      "id": "partial-cancel-8",
+      "from": "partial",
+      "to": "svc",
+      "y": 522,
+      "label": "TX 커밋 뒤 cancelId 반환",
+      "variant": "return"
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "일반 주문 결제 생성",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      562
+    ]
+  },
+  "participants": [
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "PaymentController",
+      "sublabel": "CommandConverter"
+    },
+    {
+      "id": "svc",
+      "type": "backend",
+      "label": "PaymentService",
+      "sublabel": "create"
+    },
+    {
+      "id": "read",
+      "type": "backend",
+      "label": "조회 UseCases",
+      "sublabel": "주문 / 쿠폰 / 포인트"
+    },
+    {
+      "id": "create",
+      "type": "backend",
+      "label": "CreatePayment",
+      "sublabel": "UseCase"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "payment"
+    }
+  ],
+  "messages": [
+    {
+      "id": "create-0",
+      "from": "api",
+      "to": "svc",
+      "y": 170,
+      "label": "입력을 CreatePaymentCommand로 전달"
+    },
+    {
+      "id": "create-1",
+      "from": "svc",
+      "to": "read",
+      "y": 214,
+      "label": "주문 상태 / 소유권 / 빈 주문 확인"
+    },
+    {
+      "id": "create-2",
+      "from": "svc",
+      "to": "read",
+      "y": 258,
+      "label": "쿠폰 후보와 포인트 잔액 조회"
+    },
+    {
+      "id": "create-3",
+      "from": "read",
+      "to": "svc",
+      "y": 302,
+      "label": "주문과 할인 입력 반환",
+      "variant": "return"
+    },
+    {
+      "id": "create-4",
+      "from": "svc",
+      "to": "create",
+      "y": 346,
+      "label": "PaymentDiscount와 주문 전달"
+    },
+    {
+      "id": "create-5",
+      "from": "create",
+      "to": "db",
+      "y": 390,
+      "label": "Port를 통해 READY 결제 저장"
+    },
+    {
+      "id": "create-6",
+      "from": "create",
+      "to": "svc",
+      "y": 434,
+      "label": "paymentId 반환",
+      "variant": "return"
+    },
+    {
+      "id": "create-7",
+      "from": "svc",
+      "to": "api",
+      "y": 478,
+      "label": "결제 생성 결과 반환",
+      "variant": "return"
+    }
+  ]
+}

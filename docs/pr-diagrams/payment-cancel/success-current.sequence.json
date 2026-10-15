@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "결제 성공과 장바구니 후처리",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      606
+    ]
+  },
+  "participants": [
+    {
+      "id": "svc",
+      "type": "backend",
+      "label": "PaymentService",
+      "sublabel": "success"
+    },
+    {
+      "id": "validate",
+      "type": "backend",
+      "label": "ValidatePayment",
+      "sublabel": "UseCase"
+    },
+    {
+      "id": "complete",
+      "type": "backend",
+      "label": "CompletePayment",
+      "sublabel": "UseCase / 쓰기 TX"
+    },
+    {
+      "id": "benefit",
+      "type": "backend",
+      "label": "혜택 UseCases",
+      "sublabel": "쿠폰 / 포인트 / 잔액"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "상태와 결제 이력"
+    },
+    {
+      "id": "post",
+      "type": "backend",
+      "label": "PostProcessPayment",
+      "sublabel": "UseCase / Async"
+    }
+  ],
+  "messages": [
+    {
+      "id": "success-current-0",
+      "from": "svc",
+      "to": "validate",
+      "y": 170,
+      "label": "READY 상태와 승인 금액 확인"
+    },
+    {
+      "id": "success-current-1",
+      "from": "svc",
+      "to": "complete",
+      "y": 214,
+      "label": "주문 키와 PG 키 전달"
+    },
+    {
+      "id": "success-current-2",
+      "from": "complete",
+      "to": "db",
+      "y": 258,
+      "label": "주문과 상품 PAID / 결제 SUCCESS"
+    },
+    {
+      "id": "success-current-3",
+      "from": "complete",
+      "to": "benefit",
+      "y": 302,
+      "label": "쿠폰 사용 / 포인트 차감과 적립"
+    },
+    {
+      "id": "success-current-4",
+      "from": "complete",
+      "to": "benefit",
+      "y": 346,
+      "label": "취소 가능 잔액 초기화"
+    },
+    {
+      "id": "success-current-5",
+      "from": "complete",
+      "to": "db",
+      "y": 390,
+      "label": "결제 이력 저장 후 TX 커밋"
+    },
+    {
+      "id": "success-current-6",
+      "from": "complete",
+      "to": "svc",
+      "y": 434,
+      "label": "커밋 뒤 paymentId 반환",
+      "variant": "return"
+    },
+    {
+      "id": "success-current-7",
+      "from": "svc",
+      "to": "post",
+      "y": 478,
+      "label": "비동기 장바구니 정리 요청"
+    },
+    {
+      "id": "success-current-8",
+      "from": "post",
+      "to": "db",
+      "y": 522,
+      "label": "Cart 공개 UseCase로 상품 삭제"
+    }
+  ]
+}

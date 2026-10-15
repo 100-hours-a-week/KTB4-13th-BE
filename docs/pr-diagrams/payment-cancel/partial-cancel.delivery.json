@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "./partial-cancel.sequence.json",
+  "output": "./partial-cancel.html",
+  "specification": {
+    "sha256": "5b368dcf9e757ac0b0f630acbff944cec594888ad50788a1c324c078cd6d62c8",
+    "bytes": 2509
+  },
+  "artifact": {
+    "sha256": "c6fd8a852f5aa469a44227db94672aeeee69be3e2867c53a4e554ce4dcbf6747",
+    "bytes": 804910
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

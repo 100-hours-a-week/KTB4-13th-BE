@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "결제 전체 취소",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      560
+    ]
+  },
+  "participants": [
+    {
+      "id": "svc",
+      "type": "backend",
+      "label": "CancelService",
+      "sublabel": "cancel"
+    },
+    {
+      "id": "validate",
+      "type": "backend",
+      "label": "ValidateCancel",
+      "sublabel": "UseCase"
+    },
+    {
+      "id": "cancel",
+      "type": "backend",
+      "label": "CancelPayment",
+      "sublabel": "UseCase / 쓰기 TX"
+    },
+    {
+      "id": "benefit",
+      "type": "backend",
+      "label": "혜택 UseCases",
+      "sublabel": "쿠폰 / 포인트"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "주문 / 잔액 / 이력"
+    }
+  ],
+  "messages": [
+    {
+      "id": "full-cancel-0",
+      "from": "svc",
+      "to": "validate",
+      "y": 170,
+      "label": "소유자 / PAID / SUCCESS 확인"
+    },
+    {
+      "id": "full-cancel-1",
+      "from": "svc",
+      "to": "cancel",
+      "y": 214,
+      "label": "CancelAction 전달"
+    },
+    {
+      "id": "full-cancel-2",
+      "from": "cancel",
+      "to": "benefit",
+      "y": 258,
+      "label": "쿠폰과 사용 포인트 복원"
+    },
+    {
+      "id": "full-cancel-3",
+      "from": "cancel",
+      "to": "benefit",
+      "y": 302,
+      "label": "결제 시 지급 포인트 회수"
+    },
+    {
+      "id": "full-cancel-4",
+      "from": "cancel",
+      "to": "db",
+      "y": 346,
+      "label": "주문 CANCELED / 취소 잔액 차감"
+    },
+    {
+      "id": "full-cancel-5",
+      "from": "cancel",
+      "to": "db",
+      "y": 390,
+      "label": "Cancel과 PaymentHistory 저장"
+    },
+    {
+      "id": "full-cancel-6",
+      "from": "cancel",
+      "to": "svc",
+      "y": 434,
+      "label": "TX 커밋 뒤 cancelId 반환",
+      "variant": "return"
+    }
+  ]
+}

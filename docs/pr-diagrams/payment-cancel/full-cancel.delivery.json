@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "./full-cancel.sequence.json",
+  "output": "./full-cancel.html",
+  "specification": {
+    "sha256": "37c36e5d8502a842643367c806ad042edf63f60222a6c47d2d24faad87411ec5",
+    "bytes": 1977
+  },
+  "artifact": {
+    "sha256": "b9b6942cded79858a20361e2490fa7d02e4378eba1a7e74a01f68bf60eafe7e1",
+    "bytes": 802005
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

@@ -3,5 +3,8 @@ package com.book.core.order.domain;
 
 
 public enum OrderItemStatus {
-    CREATED, PAID, CANCELED, PARTIAL_CANCELED
+    CREATED,
+    PAID,
+    CANCELED,
+    PARTIAL_CANCELED
 }

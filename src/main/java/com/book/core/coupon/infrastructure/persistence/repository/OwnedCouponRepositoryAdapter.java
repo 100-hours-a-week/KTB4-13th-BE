@@ -2,6 +2,7 @@ package com.book.core.coupon.infrastructure.persistence.repository;
 
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.OwnedCoupon;
+import com.book.core.coupon.domain.enums.OwnedCouponStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -32,7 +33,7 @@ public class OwnedCouponRepositoryAdapter implements OwnedCouponRepositoryPort {
 
     @Override
     public List<OwnedCoupon> findOwnedCouponIds(final Long userId, final Collection<Long> couponIds, final LocalDateTime expiredAtAfter) {
-        return ownedCouponRepository.findOwnedCouponIds(userId, couponIds, expiredAtAfter);
+        return ownedCouponRepository.findOwnedCouponIds(userId, couponIds, expiredAtAfter, OwnedCouponStatus.ISSUED);
     }
 
     @Override

@@ -1,8 +1,11 @@
 package com.book.core.cancel.api.converter;
 
 import com.book.core.cancel.api.request.CancelRequest;
+import com.book.core.cancel.api.request.PartialCancelRequest;
 import com.book.core.cancel.application.command.CancelCommand;
+import com.book.core.cancel.application.command.PartialCancelCommand;
 import com.book.core.cancel.domain.CancelAction;
+import com.book.core.cancel.domain.PartialCancelAction;
 import org.springframework.stereotype.Component;
 
 /** HTTP 값을 참고 취소 액션을 포함한 Command로 변환합니다. */
@@ -12,4 +15,7 @@ public class CancelCommandConverter {
         return new CancelCommand(userId, new CancelAction(request.orderKey()));
     }
 
+    public PartialCancelCommand toPartialCancelCommand(final Long userId, final PartialCancelRequest request) {
+        return new PartialCancelCommand(userId, new PartialCancelAction(request.orderKey(), request.orderItemId(), request.quantity()));
+    }
 }

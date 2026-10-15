@@ -4,6 +4,7 @@ import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.cancel.api.converter.CancelCommandConverter;
 import com.book.core.cancel.api.request.CancelRequest;
+import com.book.core.cancel.api.request.PartialCancelRequest;
 import com.book.core.cancel.api.spec.CancelControllerSpec;
 import com.book.core.cancel.application.service.CancelService;
 import jakarta.validation.Valid;
@@ -26,4 +27,11 @@ class CancelController implements CancelControllerSpec {
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
+    @Override
+    @PostMapping("/api/v1/partial-cancel")
+    public ResponseEntity<ApiResponse<Void>> partialCancel(@UserId final Long userId,
+        @Valid @RequestBody final PartialCancelRequest request) {
+        cancelService.partialCancel(commandConverter.toPartialCancelCommand(userId, request));
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
 }

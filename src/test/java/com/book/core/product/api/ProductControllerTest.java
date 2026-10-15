@@ -59,8 +59,8 @@ class ProductControllerTest {
     void 상품_상세를_명세_필드로_응답한다() throws Exception {
         when(productService.getProductDetail(any())).thenReturn(new GetProductDetailResult(20L, "상품명", "thumbnail.jpg", "작가", "출판사",
             LocalDate.of(2026, 1, 1), "소설", "마음을 다독이는 산문집", new BigDecimal("20000.00"), new BigDecimal("18000.00"), 3L,
-            new BigDecimal("4.5"), 10, List.of(new GetProductCouponResult(1L, "ACTIVE", "할인 쿠폰", "PERCENT", new BigDecimal("10.00"),
-                new BigDecimal("10000.00"), new BigDecimal("5000.00"), 1, 0, "2026-12-31T23:59:59"))));
+            new BigDecimal("4.5"), 10, List.of(new GetProductCouponResult(1L, "ACTIVE", "할인 쿠폰", "PERCENT_RATE", new BigDecimal("0.10"),
+                new BigDecimal("10000.00"), null, null, null, "2026-12-31T23:59:59"))));
 
         mvc.perform(get("/api/v1/products/{productId}", 20)).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.productId").value(20)).andExpect(jsonPath("$.data.itemId").doesNotExist())
@@ -70,7 +70,14 @@ class ProductControllerTest {
             .andExpect(jsonPath("$.data.description").value("마음을 다독이는 산문집")).andExpect(jsonPath("$.data.salePrice").value(20000.00))
             .andExpect(jsonPath("$.data.discountedPrice").value(18000.00)).andExpect(jsonPath("$.data.reviewCount").value(3))
             .andExpect(jsonPath("$.data.reviewRate").value(4.5)).andExpect(jsonPath("$.data.stockQuantity").value(10))
-            .andExpect(jsonPath("$.data.coupons[0].id").value(1)).andExpect(jsonPath("$.data.coupons[0].name").value("할인 쿠폰"));
+            .andExpect(jsonPath("$.data.coupons[0].id").value(1)).andExpect(jsonPath("$.data.coupons[0].name").value("할인 쿠폰"))
+            .andExpect(jsonPath("$.data.coupons[0].status").value("ACTIVE"))
+            .andExpect(jsonPath("$.data.coupons[0].type").value("PERCENT_RATE"))
+            .andExpect(jsonPath("$.data.coupons[0].discount").value(0.10))
+            .andExpect(jsonPath("$.data.coupons[0].minOrderAmount").value(10000.00))
+            .andExpect(jsonPath("$.data.coupons[0].maxDiscountAmount").value(nullValue()))
+            .andExpect(jsonPath("$.data.coupons[0].maxUseCount").value(nullValue()))
+            .andExpect(jsonPath("$.data.coupons[0].usedCount").value(nullValue()));
 
         verify(productService).getProductDetail(any());
     }

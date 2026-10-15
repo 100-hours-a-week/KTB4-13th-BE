@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.config.security.UserIdMvcConfig;
+import com.book.core.auth.api.cookie.RefreshTokenCookieFactory;
 import com.book.core.user.api.converter.UserCommandConverter;
 import com.book.core.user.application.result.GetMyInfoResult;
 import com.book.core.user.application.service.UserService;
@@ -31,6 +32,9 @@ class GetMyInfoControllerTest {
 
     @MockitoBean
     UserService userService;
+
+    @MockitoBean
+    RefreshTokenCookieFactory refreshTokenCookieFactory;
 
     @AfterEach
     void clearSecurityContext() {

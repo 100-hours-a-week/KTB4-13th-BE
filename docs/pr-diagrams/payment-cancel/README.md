@@ -4,7 +4,7 @@
 
 | Issue | 기능 | 브랜치 | 다이어그램 |
 |---|---|---|---|
-| #302 | 포인트 수동 기본 입력 검증 정리 | `feat/302-point-input-contract` | [input](input.monochrome.png) |
+| #302 | 포인트 수동 기본 입력 검증 정리 | `feat/302-point-basic-input` | [input](input.monochrome.png) |
 | #303 | 결제와 결제 이력 저장 기반 추가 | `feat/303-payment-foundation` | [history](history.monochrome.png) |
 | #304 | 일반 주문 결제 생성과 할인 계산 추가 | `feat/304-payment-create` | [create](create.monochrome.png) |
 | #305 | 취소 가능 잔액 관리 기반 추가 | `feat/305-cancel-balance` | [balance](balance.monochrome.png) |

@@ -1,0 +1,81 @@
+package com.book.core.payment.domain;
+
+import com.book.common.domain.BaseEntity;
+import com.book.core.payment.domain.enums.PaymentMethod;
+import com.book.core.payment.domain.enums.PaymentState;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+
+/** 주문 소유자와 결제자를 구분하고 결제 승인 결과를 보관합니다. */
+@Entity
+@Table(name = "payment", indexes = @Index(name = "udx_payment_order_id", columnList = "order_id", unique = true))
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+@Accessors(fluent = true)
+public class Payment extends BaseEntity {
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+    @Column(name = "order_id", nullable = false)
+    private Long orderId;
+    @Column(name = "origin_amount", nullable = false, precision = 38, scale = 2)
+    private BigDecimal originAmount;
+    @Column(name = "owned_coupon_id", nullable = false)
+    private Long ownedCouponId;
+    @Column(name = "coupon_discount", nullable = false, precision = 38, scale = 2)
+    private BigDecimal couponDiscount;
+    @Column(name = "used_point", nullable = false, precision = 38, scale = 2)
+    private BigDecimal usedPoint;
+    @Column(name = "payer_user_id", nullable = false)
+    private Long payerUserId;
+    @Column(name = "paid_amount", nullable = false, precision = 38, scale = 2)
+    private BigDecimal paidAmount;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private PaymentState state;
+    @Column(name = "external_payment_key")
+    private String externalPaymentKey;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 32)
+    private PaymentMethod method;
+    @Column(name = "approve_code")
+    private String approveCode;
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
+
+    public Payment(final Long userId, final Long orderId, final BigDecimal originAmount, final Long ownedCouponId,
+        final BigDecimal couponDiscount, final BigDecimal usedPoint, final Long payerUserId, final BigDecimal paidAmount,
+        final PaymentState state) {
+        this.userId = userId;
+        this.orderId = orderId;
+        this.originAmount = originAmount;
+        this.ownedCouponId = ownedCouponId;
+        this.couponDiscount = couponDiscount;
+        this.usedPoint = usedPoint;
+        this.payerUserId = payerUserId;
+        this.paidAmount = paidAmount;
+        this.state = state;
+    }
+
+    /** 참고 구현과 동일하게 승인 값과 승인 시각을 설정합니다. */
+    public void success(final String externalPaymentKey, final PaymentMethod method, final String approveCode) {
+        this.state = PaymentState.SUCCESS;
+        this.externalPaymentKey = externalPaymentKey;
+        this.method = method;
+        this.approveCode = approveCode;
+        this.paidAt = LocalDateTime.now();
+    }
+
+    public boolean hasAppliedCoupon() {
+        return ownedCouponId > 0;
+    }
+}

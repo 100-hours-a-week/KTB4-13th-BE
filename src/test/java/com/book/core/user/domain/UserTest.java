@@ -60,4 +60,26 @@ class UserTest {
         assertThatThrownBy(() -> User.restore(null, "북적이")).isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> User.restore(0L, "북적이")).isInstanceOf(BusinessException.class);
     }
+
+    @Test
+    void 닉네임을_앞뒤_공백을_제거한_값으로_변경한다() {
+        final User user = User.restore(42L, "북적이");
+        user.changeNickname("  새로운 북적이  ");
+        assertThat(user.nickname()).isEqualTo("새로운 북적이");
+    }
+
+    @Test
+    void 정규화한_닉네임이_현재와_같으면_기존_값을_유지한다() {
+        final User user = User.restore(42L, "북적이");
+        user.changeNickname("  북적이  ");
+        assertThat(user.nickname()).isEqualTo("북적이");
+    }
+
+    @Test
+    void 잘못된_닉네임으로_변경하면_거부하고_기존_값을_유지한다() {
+        final User user = User.restore(42L, "북적이");
+        assertThatThrownBy(() -> user.changeNickname(" 한 ")).isInstanceOfSatisfying(BusinessException.class,
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_NICKNAME));
+        assertThat(user.nickname()).isEqualTo("북적이");
+    }
 }

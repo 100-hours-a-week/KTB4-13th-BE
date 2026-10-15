@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.config.security.UserIdMvcConfig;
+import com.book.core.user.api.converter.UserCommandConverter;
 import com.book.core.user.application.result.GetMyInfoResult;
 import com.book.core.user.application.service.UserService;
 import org.junit.jupiter.api.AfterEach;
@@ -22,7 +23,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(UserController.class)
-@Import(UserIdMvcConfig.class)
+@Import({UserCommandConverter.class, UserIdMvcConfig.class})
 @ActiveProfiles("test")
 class GetMyInfoControllerTest {
     @Autowired

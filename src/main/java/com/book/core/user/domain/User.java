@@ -39,6 +39,13 @@ public class User extends BaseEntity {
         return new User(id, nickname);
     }
 
+    public void changeNickname(final String nickname) {
+        final String normalized = normalizeNickname(nickname);
+        if (!normalized.equals(this.nickname)) {
+            this.nickname = normalized;
+        }
+    }
+
     public static String normalizeNickname(final String nickname) {
         if (nickname == null || nickname.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_NICKNAME);

@@ -51,6 +51,7 @@ public enum ErrorCode {
     // spotless:on
     // spotless:off
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "회원을 찾을 수 없습니다.", LogLevel.INFO),
+    USER_WITHDRAWAL_PENDING(HttpStatus.FORBIDDEN, "USER_WITHDRAWAL_PENDING", "탈퇴 처리 중인 회원입니다.", LogLevel.INFO),
     USER_PROVIDER_USER_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_NOT_FOUND", "회원 연결의 내부 회원을 찾을 수 없습니다.",
         LogLevel.ERROR),
     USER_PROVIDER_USER_INACTIVE(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_INACTIVE", "회원 연결의 내부 회원이 비활성 상태입니다.",

@@ -19,6 +19,7 @@ public class IdentifyUserUseCase {
     private final UserRepositoryPort userRepository;
     private final UserProviderRepositoryPort userProviderRepository;
     private final UserRegistrationUseCase userRegistrationUseCase;
+    private final RecoverWithdrawalUseCase recoverWithdrawalUseCase;
 
     public IdentifyUserResult execute(final IdentifyUserCommand command) {
         final Optional<UserProvider> existingProvider =
@@ -34,6 +35,9 @@ public class IdentifyUserUseCase {
             userRepository.findById(userProvider.userId()).orElseThrow(() -> new BusinessException(ErrorCode.USER_PROVIDER_USER_NOT_FOUND));
         if (!user.isActive()) {
             throw new BusinessException(ErrorCode.USER_PROVIDER_USER_INACTIVE);
+        }
+        if (user.isWithdrawalRequested()) {
+            recoverWithdrawalUseCase.execute(user.id());
         }
         return new IdentifyUserResult(user.id());
     }

@@ -6,6 +6,7 @@ import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -20,6 +21,7 @@ import lombok.experimental.Accessors;
 public class User extends BaseEntity {
     private static final int MIN_NICKNAME_LENGTH = 2;
     private static final int MAX_NICKNAME_LENGTH = 20;
+    private static final Duration WITHDRAWAL_RECOVERY_PERIOD = Duration.ofDays(7);
 
     @Column(nullable = false, length = 20)
     private String nickname;
@@ -58,6 +60,17 @@ public class User extends BaseEntity {
 
     public boolean isWithdrawalRequested() {
         return deleteRequestedAt != null;
+    }
+
+    public boolean isWithdrawalRecoverable(final LocalDateTime now) {
+        return isWithdrawalRequested() && now.isBefore(deleteRequestedAt.plus(WITHDRAWAL_RECOVERY_PERIOD));
+    }
+
+    public void recoverWithdrawal(final LocalDateTime now) {
+        if (!isWithdrawalRecoverable(now)) {
+            throw new BusinessException(ErrorCode.USER_WITHDRAWAL_PENDING);
+        }
+        deleteRequestedAt = null;
     }
 
     public static String normalizeNickname(final String nickname) {

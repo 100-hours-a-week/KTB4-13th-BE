@@ -53,6 +53,7 @@ public class PaymentDiscount {
             case FIXED_AMOUNT -> couponDiscount;
             case PERCENT_RATE -> orderPrice.multiply(couponDiscount);
         };
+        // NOTE: 미입력 usePoint=-1의 원값 계산은 참고 동작을 유지하기로 확정했다.
         final BigDecimal amount = orderPrice.subtract(couponDiscountAmount.add(usePointAmount));
         if (amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new CoreException(ErrorCode.PAYMENT_INVALID_AMOUNT);

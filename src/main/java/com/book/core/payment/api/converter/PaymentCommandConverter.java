@@ -1,6 +1,7 @@
 package com.book.core.payment.api.converter;
 
 import com.book.core.payment.api.request.CreatePaymentRequest;
+import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
 import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
@@ -18,6 +19,10 @@ public class PaymentCommandConverter {
             usePoint = BigDecimal.valueOf(-1);
         }
         return new CreatePaymentCommand(userId, request.orderKey(), useOwnedCouponId, usePoint);
+    }
+
+    public ApprovePaymentCommand toApproveCommand(final String orderKey, final String paymentKey, final BigDecimal amount) {
+        return new ApprovePaymentCommand(orderKey, paymentKey, amount);
     }
 
 }

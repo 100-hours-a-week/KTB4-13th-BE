@@ -6,8 +6,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
+import com.book.core.coupon.domain.OwnedCoupon;
+import com.book.core.coupon.domain.enums.OwnedCouponStatus;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.domain.Order;
+import com.book.core.order.domain.OrderStatus;
+import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.application.service.PaymentService;
@@ -55,6 +59,37 @@ class PaymentIntegrationTest {
     private JdbcTemplate jdbc;
     @Autowired
     private PlatformTransactionManager transactionManager;
+
+    @Test
+    void 성공_트랜잭션은_주문_포인트_취소잔액_거래이력을_함께_저장한다() {
+        final Order order = order(1001L);
+        balances.save(new PointBalance(null, 1001L, BigDecimal.valueOf(5000)));
+        final Payment payment = payments.save(payment(order, -1L));
+        service.success(new ApprovePaymentCommand(order.key(), "test-pg-key", new BigDecimal("8800.00")));
+        assertThat(payments.findById(payment.id()).orElseThrow().state()).isEqualTo(PaymentState.SUCCESS);
+        assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
+        assertThat(balances.findByUserId(1001L).orElseThrow().balance()).isEqualByComparingTo("5800");
+        assertThat(jdbc.queryForObject("select count(*) from point_history where reference_id = ?", Long.class, payment.id()))
+            .isEqualTo(2L);
+        assertThat(
+            jdbc.queryForObject("select cancellable_paid_amount from cancel_balance where order_id = ?", BigDecimal.class, order.id()))
+            .isEqualByComparingTo("8800");
+        assertThat(jdbc.queryForObject("select count(*) from transaction_history where payment_id = ? and type = 'PAYMENT'", Long.class,
+            payment.id())).isEqualTo(1L);
+    }
+
+    @Test
+    void 사용완료_쿠폰_실패는_앞서_변경한_결제와_주문도_롤백한다() {
+        final Order order = order(1002L);
+        final OwnedCoupon coupon = coupons.save(new OwnedCoupon(1002L, 123L, OwnedCouponStatus.USED, 1L, 1L));
+        final Payment payment = payments.save(payment(order, coupon.id()));
+        assertThatThrownBy(() -> service.success(new ApprovePaymentCommand(order.key(), "test-pg-key", new BigDecimal("8800.00"))))
+            .isInstanceOf(CoreException.class);
+        assertThat(payments.findById(payment.id()).orElseThrow().state()).isEqualTo(PaymentState.READY);
+        assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.CREATED);
+        assertThat(jdbc.queryForObject("select count(*) from transaction_history where payment_id = ?", Long.class, payment.id())).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from cancel_balance where order_id = ?", Long.class, order.id())).isZero();
+    }
 
     @Test
     void 상품이_없는_주문은_결제를_저장하기_전에_거절한다() {

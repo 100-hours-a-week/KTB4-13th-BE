@@ -6,8 +6,13 @@ import com.book.core.coupon.application.usecase.GetCouponTargetsUseCase;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderItem;
+import com.book.core.order.domain.OrderStatus;
+import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
+import com.book.core.payment.application.usecase.CompletePaymentUseCase;
 import com.book.core.payment.application.usecase.CreatePaymentUseCase;
+import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
+import com.book.core.payment.application.usecase.ValidatePaymentUseCase;
 import com.book.core.payment.domain.PaymentCoupon;
 import com.book.core.payment.domain.PaymentDiscount;
 import com.book.core.point.application.usecase.GetPointBalanceUseCase;
@@ -26,6 +31,9 @@ public class PaymentService {
     private final FindOwnedCouponsForCheckoutUseCase findOwnedCouponsForCheckoutUseCase;
     private final GetPointBalanceUseCase getPointBalanceUseCase;
     private final CreatePaymentUseCase createPaymentUseCase;
+    private final ValidatePaymentUseCase validatePaymentUseCase;
+    private final CompletePaymentUseCase completePaymentUseCase;
+    private final PostProcessPaymentUseCase postProcessPaymentUseCase;
 
     public Long create(final CreatePaymentCommand command) {
         final Order order = getPaymentOrderUseCase.execute(command.userId(), command.orderKey());
@@ -39,6 +47,16 @@ public class PaymentService {
         final PaymentDiscount paymentDiscount =
             new PaymentDiscount(ownedCoupons, pointBalance, command.useOwnedCouponId(), command.usePoint());
         return createPaymentUseCase.execute(order, command.userId(), paymentDiscount);
+    }
+
+    public Long success(final ApprovePaymentCommand command) {
+        final Order order = getPaymentOrderUseCase.execute(command.orderKey(), OrderStatus.CREATED);
+        validatePaymentUseCase.validateForApprove(order.id(), command.amount());
+
+        // TODO(#329): 실제 PG 승인 확인과 실패 보상 정책을 구현한 뒤 결제를 운영에 사용한다.
+        final Long paymentId = completePaymentUseCase.execute(command.orderKey(), command.externalPaymentKey());
+        postProcessPaymentUseCase.execute(paymentId, command.orderKey());
+        return paymentId;
     }
 
 }

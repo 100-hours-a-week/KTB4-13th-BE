@@ -1,7 +1,5 @@
 package com.book.core.cancel.application.usecase;
 
-import com.book.core.order.domain.OrderItem;
-
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
@@ -10,6 +8,7 @@ import com.book.core.cancel.domain.PartialCancelAction;
 import com.book.core.order.application.usecase.GetOrderForCancelUseCase;
 import com.book.core.order.application.usecase.GetOrderItemForCancelUseCase;
 import com.book.core.order.domain.Order;
+import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.usecase.GetPaymentUseCase;
 import com.book.core.payment.domain.enums.PaymentState;

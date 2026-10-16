@@ -1,7 +1,5 @@
 package com.book.core.cancel.application.usecase;
 
-import com.book.core.cancel.domain.CancelCalculated;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -11,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
 import com.book.core.cancel.application.port.CancelBalanceRepositoryPort;
 import com.book.core.cancel.domain.CancelBalance;
+import com.book.core.cancel.domain.CancelCalculated;
 import com.book.core.cancel.domain.PartialCancelAction;
 import com.book.core.coupon.application.result.CouponResult;
 import com.book.core.coupon.application.result.OwnedCouponResult;

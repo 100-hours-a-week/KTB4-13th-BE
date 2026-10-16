@@ -79,7 +79,8 @@ class CancelIntegrationTest {
             jdbc.queryForObject("select count(*) from transaction_history where order_id = ? and type = 'CANCEL'", Long.class, order.id()))
             .isEqualTo(1L);
 
-        assertThat(jdbc.queryForObject("select canceled_quantity from order_item where order_id = ?", Long.class, order.id())).isZero();
+        assertThat(jdbc.queryForObject("select quantity from order_item where order_id = ?", Integer.class, order.id())).isEqualTo(5);
+        assertThat(jdbc.queryForObject("select status from order_item where order_id = ?", String.class, order.id())).isEqualTo("PAID");
     }
 
     @Test

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/merchant.json",
+  "output": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/merchant.html",
+  "specification": {
+    "sha256": "445fe52c61350777c1a3b267a9de718700aabbc8fae10029251692a50fb4bba9",
+    "bytes": 2200
+  },
+  "artifact": {
+    "sha256": "8a3d87345636019159df39c9392b47d3817bb4f8be7bb09b9ca4654c70a5a8d8",
+    "bytes": 801753
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

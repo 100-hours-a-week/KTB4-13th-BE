@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "결제·전체 취소·부분 취소 정산 대상 적재",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1440,
+      894
+    ]
+  },
+  "participants": [
+    {
+      "id": "service",
+      "type": "backend",
+      "label": "SettlementService"
+    },
+    {
+      "id": "read",
+      "type": "backend",
+      "label": "거래 조회 UseCase"
+    },
+    {
+      "id": "create",
+      "type": "backend",
+      "label": "대상 적재 UseCase"
+    },
+    {
+      "id": "related",
+      "type": "backend",
+      "label": "주문상품 · 가맹점"
+    },
+    {
+      "id": "store",
+      "type": "backend",
+      "label": "대상 RepositoryPort"
+    }
+  ],
+  "messages": [
+    {
+      "id": "load-m1",
+      "from": "service",
+      "to": "read",
+      "y": 180,
+      "label": "결제: 1000건 ID 오름차순 조회",
+      "variant": "default"
+    },
+    {
+      "id": "load-m2",
+      "from": "read",
+      "to": "service",
+      "y": 228,
+      "label": "content · hasNext",
+      "variant": "return"
+    },
+    {
+      "id": "load-m3",
+      "from": "service",
+      "to": "create",
+      "y": 276,
+      "label": "processPayments(settleDate, payments)",
+      "variant": "default"
+    },
+    {
+      "id": "load-m4",
+      "from": "create",
+      "to": "related",
+      "y": 324,
+      "label": "주문상품 · 상품별 가맹점 조회",
+      "variant": "default"
+    },
+    {
+      "id": "load-m5",
+      "from": "related",
+      "to": "create",
+      "y": 372,
+      "label": "상품과 가맹점 매핑",
+      "variant": "return"
+    },
+    {
+      "id": "load-m6",
+      "from": "create",
+      "to": "store",
+      "y": 420,
+      "label": "PAYMENT: +totalPrice 저장",
+      "variant": "default"
+    },
+    {
+      "id": "load-m7",
+      "from": "service",
+      "to": "read",
+      "y": 468,
+      "label": "취소: 1000건 ID 오름차순 조회",
+      "variant": "default"
+    },
+    {
+      "id": "load-m8",
+      "from": "read",
+      "to": "service",
+      "y": 516,
+      "label": "content · hasNext",
+      "variant": "return"
+    },
+    {
+      "id": "load-m9",
+      "from": "service",
+      "to": "create",
+      "y": 564,
+      "label": "processCancels(settleDate, cancels)",
+      "variant": "default"
+    },
+    {
+      "id": "load-m10",
+      "from": "create",
+      "to": "related",
+      "y": 612,
+      "label": "전체: 주문 / 부분: 주문상품 조회",
+      "variant": "default"
+    },
+    {
+      "id": "load-m11",
+      "from": "create",
+      "to": "store",
+      "y": 660,
+      "label": "CANCEL: -totalPrice 저장",
+      "variant": "default"
+    },
+    {
+      "id": "load-m12",
+      "from": "create",
+      "to": "store",
+      "y": 708,
+      "label": "PARTIAL_CANCEL: -단가×취소수량",
+      "variant": "default"
+    },
+    {
+      "id": "load-m13",
+      "from": "store",
+      "to": "service",
+      "y": 756,
+      "label": "페이지별 처리 종료",
+      "variant": "return"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/transfer.json",
+  "output": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/transfer.html",
+  "specification": {
+    "sha256": "15d144d86ede523725a678796c6659675915ae084635b2aab842b1a11eb11c36",
+    "bytes": 2501
+  },
+  "artifact": {
+    "sha256": "e02f5ad71a743e536fbb182b6158787c672431465dfa015cfb8b3eff70aae477",
+    "bytes": 803746
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

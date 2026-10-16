@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "가맹점 정산 주기 확인과 SENT 상태 전환",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1680,
+      750
+    ]
+  },
+  "participants": [
+    {
+      "id": "service",
+      "type": "backend",
+      "label": "SettlementService"
+    },
+    {
+      "id": "read",
+      "type": "backend",
+      "label": "정산 · 가맹점 조회"
+    },
+    {
+      "id": "transfer",
+      "type": "backend",
+      "label": "이체 판단 UseCase"
+    },
+    {
+      "id": "complete",
+      "type": "backend",
+      "label": "완료 처리 UseCase"
+    },
+    {
+      "id": "domain",
+      "type": "backend",
+      "label": "Settlement 도메인"
+    },
+    {
+      "id": "store",
+      "type": "backend",
+      "label": "RepositoryPort"
+    }
+  ],
+  "messages": [
+    {
+      "id": "transfer-m1",
+      "from": "service",
+      "to": "read",
+      "y": 180,
+      "label": "모든 READY · 해당 Merchant 조회",
+      "variant": "default"
+    },
+    {
+      "id": "transfer-m2",
+      "from": "read",
+      "to": "service",
+      "y": 228,
+      "label": "readySettlements · merchants",
+      "variant": "return"
+    },
+    {
+      "id": "transfer-m3",
+      "from": "service",
+      "to": "transfer",
+      "y": 276,
+      "label": "transfer(targetDate, merchants, settlements)",
+      "variant": "default"
+    },
+    {
+      "id": "transfer-m5",
+      "from": "transfer",
+      "to": "complete",
+      "y": 324,
+      "label": "주기·양수 조건 충족: execute(settlements)",
+      "variant": "default"
+    },
+    {
+      "id": "transfer-m6",
+      "from": "complete",
+      "to": "store",
+      "y": 372,
+      "label": "findAllById(settlementIds)",
+      "variant": "default"
+    },
+    {
+      "id": "transfer-m7",
+      "from": "store",
+      "to": "complete",
+      "y": 420,
+      "label": "영속 정산 목록",
+      "variant": "return"
+    },
+    {
+      "id": "transfer-m8",
+      "from": "complete",
+      "to": "domain",
+      "y": 468,
+      "label": "sent(): READY → SENT",
+      "variant": "default"
+    },
+    {
+      "id": "transfer-m9",
+      "from": "complete",
+      "to": "store",
+      "y": 516,
+      "label": "saveAll(entities)",
+      "variant": "default"
+    },
+    {
+      "id": "transfer-m10",
+      "from": "store",
+      "to": "service",
+      "y": 564,
+      "label": "가맹점별 상태 전환 종료",
+      "variant": "return"
+    }
+  ]
+}

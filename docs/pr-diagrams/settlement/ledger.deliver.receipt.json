@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/ledger.json",
+  "output": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/ledger.html",
+  "specification": {
+    "sha256": "952810fcc1e7cd51c706f7e02ea5893c58974f70daeb907d735fff0c24d0bd91",
+    "bytes": 2375
+  },
+  "artifact": {
+    "sha256": "5ad44ee9a47f509a234c7c1e1072bd4b2244a6dd31b672c8b92575c062bfd307",
+    "bytes": 802377
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

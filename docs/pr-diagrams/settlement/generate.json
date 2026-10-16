@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "최근 매출 구간별 수수료 계산과 READY 생성",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1440,
+      702
+    ]
+  },
+  "participants": [
+    {
+      "id": "service",
+      "type": "backend",
+      "label": "SettlementService"
+    },
+    {
+      "id": "read",
+      "type": "backend",
+      "label": "정산 조회 UseCase"
+    },
+    {
+      "id": "generate",
+      "type": "backend",
+      "label": "정산 생성 UseCase"
+    },
+    {
+      "id": "calculator",
+      "type": "backend",
+      "label": "SettlementCalculator"
+    },
+    {
+      "id": "store",
+      "type": "backend",
+      "label": "RepositoryPort"
+    }
+  ],
+  "messages": [
+    {
+      "id": "generate-m1",
+      "from": "service",
+      "to": "read",
+      "y": 180,
+      "label": "정산일 대상 집계 조회",
+      "variant": "default"
+    },
+    {
+      "id": "generate-m2",
+      "from": "read",
+      "to": "service",
+      "y": 228,
+      "label": "가맹점별 summaries",
+      "variant": "return"
+    },
+    {
+      "id": "generate-m3",
+      "from": "service",
+      "to": "read",
+      "y": 276,
+      "label": "한 달 전~전날 SENT 원금 조회",
+      "variant": "default"
+    },
+    {
+      "id": "generate-m4",
+      "from": "read",
+      "to": "service",
+      "y": 324,
+      "label": "recentSalesAmountMap",
+      "variant": "return"
+    },
+    {
+      "id": "generate-m5",
+      "from": "service",
+      "to": "generate",
+      "y": 372,
+      "label": "execute(summaries, recentSalesAmountMap)",
+      "variant": "default"
+    },
+    {
+      "id": "generate-m6",
+      "from": "generate",
+      "to": "calculator",
+      "y": 420,
+      "label": "calculate(targetAmount, recentSalesAmount)",
+      "variant": "default"
+    },
+    {
+      "id": "generate-m7",
+      "from": "calculator",
+      "to": "generate",
+      "y": 468,
+      "label": "10% / 8% / 5% · HALF_UP",
+      "variant": "return"
+    },
+    {
+      "id": "generate-m8",
+      "from": "generate",
+      "to": "store",
+      "y": 516,
+      "label": "saveAll(READY settlements)",
+      "variant": "default"
+    },
+    {
+      "id": "generate-m9",
+      "from": "store",
+      "to": "service",
+      "y": 564,
+      "label": "생성 건수",
+      "variant": "return"
+    }
+  ]
+}

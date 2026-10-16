@@ -1,0 +1,182 @@
+[
+  {
+    "key": "merchant",
+    "delivery": {
+      "schemaVersion": 1,
+      "ok": true,
+      "command": "deliver",
+      "type": "sequence",
+      "input": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/merchant.json",
+      "output": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/merchant.html",
+      "specification": {
+        "sha256": "445fe52c61350777c1a3b267a9de718700aabbc8fae10029251692a50fb4bba9",
+        "bytes": 2200
+      },
+      "artifact": {
+        "sha256": "8a3d87345636019159df39c9392b47d3817bb4f8be7bb09b9ca4654c70a5a8d8",
+        "bytes": 801753
+      },
+      "validation": {
+        "checksPassed": 9,
+        "checkCount": 9,
+        "compositionProfile": "showcase",
+        "compositionStatus": "pass",
+        "errors": 0,
+        "warnings": 0
+      }
+    },
+    "browser_evidence": "passed",
+    "visual_review": "passed",
+    "monochrome_png_sha256": "1ff06ba647aa6e2479b80d0f5b0b873334fa522394736f5f68851c9adbb251f0"
+  },
+  {
+    "key": "ledger",
+    "delivery": {
+      "schemaVersion": 1,
+      "ok": true,
+      "command": "deliver",
+      "type": "sequence",
+      "input": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/ledger.json",
+      "output": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/ledger.html",
+      "specification": {
+        "sha256": "952810fcc1e7cd51c706f7e02ea5893c58974f70daeb907d735fff0c24d0bd91",
+        "bytes": 2375
+      },
+      "artifact": {
+        "sha256": "5ad44ee9a47f509a234c7c1e1072bd4b2244a6dd31b672c8b92575c062bfd307",
+        "bytes": 802377
+      },
+      "validation": {
+        "checksPassed": 9,
+        "checkCount": 9,
+        "compositionProfile": "showcase",
+        "compositionStatus": "pass",
+        "errors": 0,
+        "warnings": 0
+      }
+    },
+    "browser_evidence": "passed",
+    "visual_review": "passed",
+    "monochrome_png_sha256": "ca211f011c06d3332937a318afb8374309adaf084a63dae21f8a4dd5c4567abc"
+  },
+  {
+    "key": "sources",
+    "delivery": {
+      "schemaVersion": 1,
+      "ok": true,
+      "command": "deliver",
+      "type": "sequence",
+      "input": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/sources.json",
+      "output": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/sources.html",
+      "specification": {
+        "sha256": "94af1f8df5edddcc80122948c4deddb3de8cf703de42691397e8f690b52b8f25",
+        "bytes": 2385
+      },
+      "artifact": {
+        "sha256": "e365de542cd38e5f8175fc90aded6b9d9f2050799659c268f0b247994fceeff5",
+        "bytes": 802512
+      },
+      "validation": {
+        "checksPassed": 9,
+        "checkCount": 9,
+        "compositionProfile": "showcase",
+        "compositionStatus": "pass",
+        "errors": 0,
+        "warnings": 0
+      }
+    },
+    "browser_evidence": "passed",
+    "visual_review": "passed",
+    "monochrome_png_sha256": "54ea7764e0b84d1e78556c936cc0a9d5e0ddfec320e455bebfc351ad9043bb62"
+  },
+  {
+    "key": "load",
+    "delivery": {
+      "schemaVersion": 1,
+      "ok": true,
+      "command": "deliver",
+      "type": "sequence",
+      "input": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/load.json",
+      "output": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/load.html",
+      "specification": {
+        "sha256": "7c060d5ff8cef064c89d53691a4bda61c31b2522a2b6e9b6f6b9681f07a11a91",
+        "bytes": 3074
+      },
+      "artifact": {
+        "sha256": "02302fde51f1722e17a0a2475a4d3974a71fadc579e81e8a7511eb85a2835d0f",
+        "bytes": 805074
+      },
+      "validation": {
+        "checksPassed": 9,
+        "checkCount": 9,
+        "compositionProfile": "showcase",
+        "compositionStatus": "pass",
+        "errors": 0,
+        "warnings": 0
+      }
+    },
+    "browser_evidence": "passed",
+    "visual_review": "passed",
+    "monochrome_png_sha256": "8da5aa8642f53ee4e18c064d73909dc2b139f8f0e1ef0d21a92a1f87fd7fc658"
+  },
+  {
+    "key": "generate",
+    "delivery": {
+      "schemaVersion": 1,
+      "ok": true,
+      "command": "deliver",
+      "type": "sequence",
+      "input": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/generate.json",
+      "output": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/generate.html",
+      "specification": {
+        "sha256": "1dddbfcdb3710478b147f9be7499d04d593b7a5ff375287a06ab7828ba55d849",
+        "bytes": 2378
+      },
+      "artifact": {
+        "sha256": "79809e25c0d539930f6e5d53eb1725ea1501b13fdcb0e8a5453632bd084e336a",
+        "bytes": 802384
+      },
+      "validation": {
+        "checksPassed": 9,
+        "checkCount": 9,
+        "compositionProfile": "showcase",
+        "compositionStatus": "pass",
+        "errors": 0,
+        "warnings": 0
+      }
+    },
+    "browser_evidence": "passed",
+    "visual_review": "passed",
+    "monochrome_png_sha256": "ea7cfa229584924b63af57153090fe923e86bc87f06fbf309f8aa6f575faccf8"
+  },
+  {
+    "key": "transfer",
+    "delivery": {
+      "schemaVersion": 1,
+      "ok": true,
+      "command": "deliver",
+      "type": "sequence",
+      "input": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/transfer.json",
+      "output": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/transfer.html",
+      "specification": {
+        "sha256": "15d144d86ede523725a678796c6659675915ae084635b2aab842b1a11eb11c36",
+        "bytes": 2501
+      },
+      "artifact": {
+        "sha256": "e02f5ad71a743e536fbb182b6158787c672431465dfa015cfb8b3eff70aae477",
+        "bytes": 803746
+      },
+      "validation": {
+        "checksPassed": 9,
+        "checkCount": 9,
+        "compositionProfile": "showcase",
+        "compositionStatus": "pass",
+        "errors": 0,
+        "warnings": 0
+      }
+    },
+    "browser_evidence": "passed",
+    "visual_review": "passed",
+    "monochrome_png_sha256": "29a806648c418197fd3cf099d819f0248f33e5ef71817f2ec89c0668b42528dc"
+  }
+]

@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "정산 내역 저장과 대상 집계",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1440,
+      750
+    ]
+  },
+  "participants": [
+    {
+      "id": "caller",
+      "type": "backend",
+      "label": "정산 UseCase"
+    },
+    {
+      "id": "port",
+      "type": "backend",
+      "label": "RepositoryPort"
+    },
+    {
+      "id": "adapter",
+      "type": "backend",
+      "label": "RepositoryAdapter"
+    },
+    {
+      "id": "jpa",
+      "type": "backend",
+      "label": "JpaRepository"
+    }
+  ],
+  "messages": [
+    {
+      "id": "ledger-m1",
+      "from": "caller",
+      "to": "port",
+      "y": 180,
+      "label": "saveAll(targets / settlements)",
+      "variant": "default"
+    },
+    {
+      "id": "ledger-m2",
+      "from": "port",
+      "to": "adapter",
+      "y": 228,
+      "label": "도메인 모델 저장",
+      "variant": "default"
+    },
+    {
+      "id": "ledger-m3",
+      "from": "adapter",
+      "to": "jpa",
+      "y": 276,
+      "label": "정산 대상 · 정산 내역 저장",
+      "variant": "default"
+    },
+    {
+      "id": "ledger-m4",
+      "from": "jpa",
+      "to": "caller",
+      "y": 324,
+      "label": "저장 결과",
+      "variant": "return"
+    },
+    {
+      "id": "ledger-m5",
+      "from": "caller",
+      "to": "adapter",
+      "y": 372,
+      "label": "findSummary(settlementDate)",
+      "variant": "default"
+    },
+    {
+      "id": "ledger-m6",
+      "from": "adapter",
+      "to": "jpa",
+      "y": 420,
+      "label": "가맹점·일자별 SUM / COUNT",
+      "variant": "default"
+    },
+    {
+      "id": "ledger-m7",
+      "from": "jpa",
+      "to": "caller",
+      "y": 468,
+      "label": "금액 · 대상 수 · 주문 수",
+      "variant": "return"
+    },
+    {
+      "id": "ledger-m8",
+      "from": "caller",
+      "to": "adapter",
+      "y": 516,
+      "label": "readRecentSalesAmounts(...)",
+      "variant": "default"
+    },
+    {
+      "id": "ledger-m9",
+      "from": "adapter",
+      "to": "jpa",
+      "y": 564,
+      "label": "한 달 전~전날 SENT 원금 SUM",
+      "variant": "default"
+    },
+    {
+      "id": "ledger-m10",
+      "from": "jpa",
+      "to": "caller",
+      "y": 612,
+      "label": "merchantId → 최근 매출 Map",
+      "variant": "return"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/generate.json",
+  "output": "/Users/connor/.codex/visualizations/2026/10/17/settlement-pr-sequences/generate.html",
+  "specification": {
+    "sha256": "1dddbfcdb3710478b147f9be7499d04d593b7a5ff375287a06ab7828ba55d849",
+    "bytes": 2378
+  },
+  "artifact": {
+    "sha256": "79809e25c0d539930f6e5d53eb1725ea1501b13fdcb0e8a5453632bd084e336a",
+    "bytes": 802384
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

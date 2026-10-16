@@ -21,6 +21,7 @@ public class ValidatePaymentUseCase {
         if (payment.state() != PaymentState.READY) {
             throw new CoreException(ErrorCode.PAYMENT_INVALID_STATE);
         }
+        // TODO(#328): 동일 금액의 scale 차이를 허용하는 비교 계약과 DB 왕복 테스트를 보강한다.
         if (!payment.paidAmount().equals(amount)) {
             throw new CoreException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }

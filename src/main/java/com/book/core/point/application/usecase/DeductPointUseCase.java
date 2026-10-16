@@ -1,12 +1,11 @@
 package com.book.core.point.application.usecase;
 
-import com.book.core.point.domain.PointBalance;
-
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.application.port.PointHistoryRepositoryPort;
+import com.book.core.point.domain.PointBalance;
 import com.book.core.point.domain.PointHistory;
 import com.book.core.point.domain.enums.PointType;
 import java.math.BigDecimal;

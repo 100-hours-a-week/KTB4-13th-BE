@@ -1,17 +1,16 @@
 package com.book.core.payment.application.usecase;
 
-import com.book.core.order.domain.Order;
-import com.book.core.payment.domain.Payment;
-
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.cancel.application.usecase.CreateCancelBalanceUseCase;
 import com.book.core.coupon.application.usecase.UseOwnedCouponUseCase;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
+import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
-import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.application.port.PaymentHistoryRepositoryPort;
+import com.book.core.payment.application.port.PaymentRepositoryPort;
+import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.PaymentHistory;
 import com.book.core.payment.domain.enums.PaymentMethod;
 import com.book.core.payment.domain.enums.TransactionType;

@@ -1,11 +1,10 @@
 package com.book.core.payment.application.usecase;
 
-import com.book.core.payment.domain.Payment;
-
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
+import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.enums.PaymentState;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;

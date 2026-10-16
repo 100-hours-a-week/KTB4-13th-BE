@@ -85,7 +85,7 @@ class CancelIntegrationTest {
 
     @Test
     void 세번의_부분취소는_현금과_포인트를_배분하고_첫번만_적립포인트를_회수한다() {
-        final var order = fixture(10002L, 3, false, false);
+        final Order order = fixture(10002L, 3, false, false);
         final Long itemId = itemId(order);
         final long[] paid = {10000, 5000, 0};
         final long[] point = {0, 5000, 10000};
@@ -108,7 +108,7 @@ class CancelIntegrationTest {
 
     @Test
     void 쿠폰_최소금액이_깨지는_부분취소에만_쿠폰을_복원한다() {
-        final var order = fixture(10003L, 5, true, true);
+        final Order order = fixture(10003L, 5, true, true);
         final Long itemId = itemId(order);
         service.partialCancel(new PartialCancelCommand(10003L, new PartialCancelAction(order.key(), itemId, 1L)));
         assertThat(coupons.findByUserIdAndCouponId(10003L, 10003L).orElseThrow().status()).isEqualTo(OwnedCouponStatus.USED);
@@ -147,8 +147,8 @@ class CancelIntegrationTest {
 
     @Test
     void 다른_회원과_다른_주문의_상품은_취소할_수_없다() {
-        final var order = fixture(10006L, 3, false, false);
-        final var other = fixture(10007L, 3, false, false);
+        final Order order = fixture(10006L, 3, false, false);
+        final Order other = fixture(10007L, 3, false, false);
         assertThatThrownBy(() -> service.cancel(new CancelCommand(999L, new CancelAction(order.key())))).isInstanceOf(CoreException.class);
         assertThatThrownBy(
             () -> service.partialCancel(new PartialCancelCommand(10006L, new PartialCancelAction(order.key(), itemId(other), 1L))))

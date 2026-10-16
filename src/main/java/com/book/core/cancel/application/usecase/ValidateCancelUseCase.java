@@ -1,5 +1,7 @@
 package com.book.core.cancel.application.usecase;
 
+import com.book.core.order.domain.OrderItem;
+
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
@@ -30,10 +32,9 @@ public class ValidateCancelUseCase {
         validateOwnerAndPayment(userId, order);
     }
 
-    /** PAID 또는 PARTIAL_CANCELED 주문의 소유자, SUCCESS 결제, 상품 소속과 잔여 수량을 확인합니다. */
     @Transactional(readOnly = true)
     public void validatePartial(final Long userId, final PartialCancelAction action) {
-        final var order = getOrderForCancelUseCase.execute(action.orderKey());
+        final Order order = getOrderForCancelUseCase.execute(action.orderKey());
         if (!order.userId().equals(userId)) {
             throw new CoreException(ErrorCode.NOT_FOUND_DATA);
         }
@@ -41,7 +42,7 @@ public class ValidateCancelUseCase {
             throw new CoreException(ErrorCode.PAYMENT_INVALID_STATE);
         }
         validatePayment(order);
-        final var targetItem = getOrderItemForCancelUseCase.execute(action.orderItemId());
+        final OrderItem targetItem = getOrderItemForCancelUseCase.execute(action.orderItemId());
         if (!targetItem.order().id().equals(order.id())) {
             throw new CoreException(ErrorCode.NOT_FOUND_DATA);
         }

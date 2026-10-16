@@ -1,5 +1,10 @@
 package com.book.core.cancel.application.usecase;
 
+import com.book.core.cancel.domain.CancelBalance;
+import com.book.core.order.domain.Order;
+import com.book.core.order.domain.OrderItem;
+import com.book.core.payment.domain.Payment;
+
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
@@ -15,7 +20,6 @@ import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 참고 계산처럼 취소 금액을 쿠폰, 결제 금액, 포인트로 배분합니다. */
 @UseCase
 @RequiredArgsConstructor
 public class CalculatePartialCancelUseCase {
@@ -25,19 +29,18 @@ public class CalculatePartialCancelUseCase {
     private final CancelBalanceRepositoryPort cancelBalanceRepository;
     private final GetOwnedCouponUseCase getOwnedCouponUseCase;
 
-    /** 주문상품 금액과 남은 잔액으로 취소액을 쿠폰, 실결제액, 포인트 순서로 배분합니다. */
     @Transactional(readOnly = true)
     public CancelCalculated execute(final PartialCancelAction action) {
-        final var order = getOrderForCancelUseCase.execute(action.orderKey());
-        final var targetItem = getOrderItemForCancelUseCase.execute(action.orderItemId());
-        final var payment = getPaymentUseCase.execute(order.id());
-        final var cancelBalance =
+        final Order order = getOrderForCancelUseCase.execute(action.orderKey());
+        final OrderItem targetItem = getOrderItemForCancelUseCase.execute(action.orderItemId());
+        final Payment payment = getPaymentUseCase.execute(order.id());
+        final CancelBalance cancelBalance =
             cancelBalanceRepository.findByOrderId(order.id()).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
         BigDecimal minOrderAmount = BigDecimal.ZERO;
         if (payment.hasAppliedCoupon()) {
             minOrderAmount = getOwnedCouponUseCase.execute(payment.ownedCouponId()).coupon().minOrderAmount();
         }
-        final var cancelAmount = new CancelAmount(targetItem.unitPrice().multiply(BigDecimal.valueOf(action.quantity())),
+        final CancelAmount cancelAmount = new CancelAmount(targetItem.unitPrice().multiply(BigDecimal.valueOf(action.quantity())),
             order.totalPrice(), cancelBalance.totalCanceledAmount(), cancelBalance.cancellablePaidAmount(),
             cancelBalance.cancellablePointAmount(), cancelBalance.cancellableCouponAmount(), minOrderAmount);
         return new CancelCalculated(cancelAmount.paidAmount(), cancelAmount.couponAmount(), cancelAmount.pointAmount(),

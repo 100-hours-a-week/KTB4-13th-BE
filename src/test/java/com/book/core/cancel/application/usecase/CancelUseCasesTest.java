@@ -87,15 +87,15 @@ class CancelUseCasesTest {
 
     @Test
     void 첫_부분취소는_적립포인트를_회수하고_상품과_주문을_부분취소로_전환한다() {
-        final var order = order(3);
+        final Order order = order(3);
         prepare(order, -1L);
-        final var calculated = new CancelCalculated(BigDecimal.valueOf(1000), BigDecimal.ZERO, BigDecimal.ZERO, false);
+        final CancelCalculated calculated = new CancelCalculated(BigDecimal.valueOf(1000), BigDecimal.ZERO, BigDecimal.ZERO, false);
         partial().execute(new PartialCancelAction("order", 4L, 1L), calculated);
         assertThat(order.status()).isEqualTo(OrderStatus.PARTIAL_CANCELED);
         assertThat(order.items().getFirst().canceledQuantity()).isEqualTo(1);
         verify(deduct).execute(1L, PointType.PAYMENT, 3L, PointAmount.PAYMENT);
         verifyNoInteractions(coupons, earn);
-        final var capture = ArgumentCaptor.forClass(Cancel.class);
+        final ArgumentCaptor<Cancel> capture = ArgumentCaptor.forClass(Cancel.class);
         verify(cancels).save(capture.capture());
         assertThat(capture.getValue().type()).isEqualTo(CancelType.PARTIAL);
         assertThat(capture.getValue().orderItemId()).isEqualTo(4L);
@@ -104,10 +104,10 @@ class CancelUseCasesTest {
 
     @Test
     void 후속_부분취소는_적립포인트를_다시_회수하지_않고_마지막_수량이면_주문을_전체취소한다() {
-        final var order = order(1);
+        final Order order = order(1);
         prepare(order, 10L);
         when(cancels.countByOrderId(2L)).thenReturn(1L);
-        final var calculated = new CancelCalculated(BigDecimal.ZERO, BigDecimal.valueOf(1000), BigDecimal.valueOf(100), true);
+        final CancelCalculated calculated = new CancelCalculated(BigDecimal.ZERO, BigDecimal.valueOf(1000), BigDecimal.valueOf(100), true);
         partial().execute(new PartialCancelAction("order", 4L, 1L), calculated);
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
         verify(coupons).execute(10L);
@@ -125,15 +125,15 @@ class CancelUseCasesTest {
 
     @Test
     void 검증은_주문_소유자_결제상태_상품소속과_잔여수량을_확인한다() {
-        final var order = order(3);
+        final Order order = order(3);
         prepare(order, -1L);
-        final var validator = new ValidateCancelUseCase(orders, payments, items);
+        final ValidateCancelUseCase validator = new ValidateCancelUseCase(orders, payments, items);
         validator.validate(1L, new CancelAction("order"));
         validator.validatePartial(1L, new PartialCancelAction("order", 4L, 3L));
         assertThatThrownBy(() -> validator.validate(9L, new CancelAction("order"))).isInstanceOf(CoreException.class);
         assertThatThrownBy(() -> validator.validatePartial(9L, new PartialCancelAction("order", 4L, 1L))).isInstanceOf(CoreException.class);
         assertThatThrownBy(() -> validator.validatePartial(1L, new PartialCancelAction("order", 4L, 4L))).isInstanceOf(CoreException.class);
-        final var other = order(1);
+        final Order other = order(1);
         ReflectionTestUtils.setField(other, "id", 99L);
         when(items.execute(4L)).thenReturn(other.items().getFirst());
         assertThatThrownBy(() -> validator.validatePartial(1L, new PartialCancelAction("order", 4L, 1L))).isInstanceOf(CoreException.class);
@@ -141,9 +141,9 @@ class CancelUseCasesTest {
 
     @Test
     void 결제_READY와_취소된_주문은_거부하고_부분취소_상태는_부분취소만_허용한다() {
-        final var order = order(3);
+        final Order order = order(3);
         prepare(order, -1L);
-        final var validator = new ValidateCancelUseCase(orders, payments, items);
+        final ValidateCancelUseCase validator = new ValidateCancelUseCase(orders, payments, items);
         order.partialCanceled();
         validator.validatePartial(1L, new PartialCancelAction("order", 4L, 1L));
         assertThatThrownBy(() -> validator.validate(1L, new CancelAction("order"))).isInstanceOf(CoreException.class);

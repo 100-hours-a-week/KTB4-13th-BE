@@ -95,7 +95,6 @@ public class OrderItem extends BaseTimeEntity {
         status = OrderItemStatus.PAID;
     }
 
-    /** 참고 부분 취소처럼 누적 취소 수량으로 주문상품 상태를 정합니다. */
     public void cancel(final long cancelQuantity) {
         if (this.canceledQuantity + cancelQuantity > this.quantity) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);

@@ -1,5 +1,7 @@
 package com.book.core.cancel.application.service;
 
+import com.book.core.cancel.domain.CancelCalculated;
+
 import com.book.core.cancel.application.command.CancelCommand;
 import com.book.core.cancel.application.command.PartialCancelCommand;
 import com.book.core.cancel.application.usecase.CalculatePartialCancelUseCase;
@@ -23,11 +25,10 @@ public class CancelService {
         return cancelPaymentUseCase.execute(command.action());
     }
 
-    /** 부분 취소 가능 수량을 검증하고 환급액을 배분한 뒤 수량, 혜택, 잔액과 이력을 함께 변경합니다. */
     public Long partialCancel(final PartialCancelCommand command) {
         validateCancelUseCase.validatePartial(command.userId(), command.action());
-        final var calculated = calculatePartialCancelUseCase.execute(command.action());
-        // NOTE: PG 부분 취소 API 호출 => calculated.paidAmount 만큼 PG 취소 요청 | 실패 시 예외 발생
+        final CancelCalculated calculated = calculatePartialCancelUseCase.execute(command.action());
+
         return partialCancelPaymentUseCase.execute(command.action(), calculated);
     }
 }

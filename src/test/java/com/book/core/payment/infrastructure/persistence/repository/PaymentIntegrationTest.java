@@ -1,5 +1,7 @@
 package com.book.core.payment.infrastructure.persistence.repository;
 
+import org.springframework.transaction.TransactionStatus;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -92,11 +94,11 @@ class PaymentIntegrationTest {
 
     @Test
     void 상품이_없는_주문은_결제를_저장하기_전에_거절한다() {
-        final var order = orders.save(Order.create(1004L, "empty-order-" + UUID.randomUUID(), null));
+        final Order order = orders.save(Order.create(1004L, "empty-order-" + UUID.randomUUID(), null));
         balances.save(new PointBalance(1004L));
 
         assertThatThrownBy(() -> service.create(new CreatePaymentCommand(1004L, order.key(), -1L, BigDecimal.ZERO))).isInstanceOfSatisfying(
-            CoreException.class, (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
+            CoreException.class, (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
         assertThat(payments.findByOrderId(order.id())).isEmpty();
     }
 
@@ -109,8 +111,8 @@ class PaymentIntegrationTest {
             "INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?)",
             productId, bookId, "결제 테스트 상품", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), BigDecimal.ZERO, 10);
-        return new TransactionTemplate(transactionManager).execute((final var status) -> {
-            final var order = Order.create(userId, "test-order-" + UUID.randomUUID(), null);
+        return new TransactionTemplate(transactionManager).execute((final TransactionStatus status) -> {
+            final Order order = Order.create(userId, "test-order-" + UUID.randomUUID(), null);
             order.addItem(productId, "책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), 1);
             return orders.save(order);
         });

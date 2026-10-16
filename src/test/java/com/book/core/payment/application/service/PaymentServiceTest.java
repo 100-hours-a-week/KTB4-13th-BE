@@ -44,14 +44,14 @@ class PaymentServiceTest {
 
     @Test
     void 일반_결제는_주문과_체크아웃_후보_잔액을_조합하고_원값을_전달한다() {
-        final var order = order();
+        final Order order = order();
         when(orders.execute(1L, "order")).thenReturn(order);
         when(targets.execute(List.of())).thenReturn(Set.of());
         when(coupons.execute(eq(1L), eq(Set.of()), any())).thenReturn(List.of());
         when(balance.execute(1L)).thenReturn(BigDecimal.ZERO);
         when(create.execute(eq(order), eq(1L), any())).thenReturn(3L);
         assertThat(service.create(new CreatePaymentCommand(1L, "order", -1L, BigDecimal.valueOf(-1)))).isEqualTo(3L);
-        final var captured = ArgumentCaptor.forClass(PaymentDiscount.class);
+        final ArgumentCaptor<PaymentDiscount> captured = ArgumentCaptor.forClass(PaymentDiscount.class);
         verify(create).execute(eq(order), eq(1L), captured.capture());
         assertThat(captured.getValue().paidAmount(BigDecimal.valueOf(10000))).isEqualByComparingTo("10001");
     }
@@ -77,7 +77,7 @@ class PaymentServiceTest {
     }
 
     private static Order order() {
-        final var order = Order.create(1L, "order", null);
+        final Order order = Order.create(1L, "order", null);
         ReflectionTestUtils.setField(order, "id", 2L);
         return order;
     }

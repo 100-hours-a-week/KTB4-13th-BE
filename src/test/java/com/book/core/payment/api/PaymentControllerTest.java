@@ -53,7 +53,7 @@ class PaymentControllerTest {
     @Test
     void 일반_결제는_JWT_회원과_미입력_기본값으로_생성한다() throws Exception {
         authenticate();
-        final var command = new CreatePaymentCommand(42L, "order", -1L, BigDecimal.valueOf(-1));
+        final CreatePaymentCommand command = new CreatePaymentCommand(42L, "order", -1L, BigDecimal.valueOf(-1));
         when(paymentService.create(command)).thenReturn(3L);
         mvc.perform(post("/api/v1/payments").header("Authorization", "Bearer test-token").contentType(MediaType.APPLICATION_JSON)
             .content("{\"orderKey\":\"order\"}")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
@@ -64,7 +64,7 @@ class PaymentControllerTest {
     @Test
     void 명시한_쿠폰과_포인트_값은_그대로_전달한다() throws Exception {
         authenticate();
-        final var command = new CreatePaymentCommand(42L, "order", 10L, BigDecimal.valueOf(1200));
+        final CreatePaymentCommand command = new CreatePaymentCommand(42L, "order", 10L, BigDecimal.valueOf(1200));
         when(paymentService.create(command)).thenReturn(3L);
         mvc.perform(post("/api/v1/payments").header("Authorization", "Bearer test-token").contentType(MediaType.APPLICATION_JSON)
             .content("{\"orderKey\":\"order\",\"useOwnedCouponId\":10,\"usePoint\":1200}")).andExpect(status().isOk());

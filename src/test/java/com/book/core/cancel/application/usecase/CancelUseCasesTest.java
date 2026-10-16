@@ -100,7 +100,7 @@ class CancelUseCasesTest {
         final CancelBalance balance = new CancelBalance(2L, BigDecimal.valueOf(7800), BigDecimal.valueOf(1200), BigDecimal.valueOf(1000),
             BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         when(orders.execute("order")).thenReturn(order);
-        when(payments.execute(2L)).thenReturn(payment);
+        when(payments.execute("order")).thenReturn(payment);
         when(balances.findByOrderId(2L)).thenReturn(Optional.of(balance));
         when(cancels.save(any())).thenAnswer((final InvocationOnMock invocation) -> {
             final Cancel cancel = invocation.getArgument(0);

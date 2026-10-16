@@ -35,7 +35,7 @@ public class ValidateCancelUseCase {
     }
 
     private void validatePayment(final Order order) {
-        if (getPaymentUseCase.execute(order.id()).state() != PaymentState.SUCCESS) {
+        if (getPaymentUseCase.execute(order.key()).state() != PaymentState.SUCCESS) {
             throw new CoreException(ErrorCode.PAYMENT_INVALID_STATE);
         }
     }

@@ -5,6 +5,7 @@ import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderStatus;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,4 +23,8 @@ public interface OrderRepositoryPort {
         final OrderListCursor cursor, final int limit);
 
     Optional<OrderItem> findActiveOrderItem(final Long orderItemId);
+
+    List<OrderItem> findOrderItemsByOrderIdIn(final Collection<Long> orderIds);
+
+    List<OrderItem> findOrderItemsByIdIn(final Collection<Long> orderItemIds);
 }

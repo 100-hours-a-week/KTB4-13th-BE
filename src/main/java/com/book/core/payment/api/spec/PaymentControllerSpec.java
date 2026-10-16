@@ -25,6 +25,6 @@ public interface PaymentControllerSpec {
         @NotBlank @Size(max = 255) final String paymentKey, final BigDecimal amount);
 
     @Operation(summary = "결제 실패 콜백", description = "주문과 결제의 기존 상태를 변경하지 않고 실패 이력만 기록합니다.")
-    ResponseEntity<ApiResponse<Void>> callbackForFail(@NotBlank @Size(max = 255) final String orderId, final String code,
+    ResponseEntity<ApiResponse<Void>> callbackForFail(@NotBlank @Size(max = 255) final String orderKey, final String code,
         final String message);
 }

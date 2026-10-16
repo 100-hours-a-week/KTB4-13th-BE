@@ -46,9 +46,9 @@ class PaymentController implements PaymentControllerSpec {
 
     @Override
     @PostMapping("/callback/fail")
-    public ResponseEntity<ApiResponse<Void>> callbackForFail(@NotBlank @Size(max = 255) @RequestParam("orderId") final String orderId,
+    public ResponseEntity<ApiResponse<Void>> callbackForFail(@NotBlank @Size(max = 255) @RequestParam("orderId") final String orderKey,
         @RequestParam("code") final String code, @RequestParam("message") final String message) {
-        paymentService.fail(commandConverter.toFailCommand(orderId, code, message));
+        paymentService.fail(commandConverter.toFailCommand(orderKey, code, message));
         return ResponseEntity.ok(ApiResponse.ok());
     }
 }

@@ -26,7 +26,7 @@ public class PaymentCommandConverter {
         return new ApprovePaymentCommand(orderKey, paymentKey, amount);
     }
 
-    public FailPaymentCommand toFailCommand(final String orderId, final String code, final String message) {
-        return new FailPaymentCommand(orderId, code, message);
+    public FailPaymentCommand toFailCommand(final String orderKey, final String code, final String message) {
+        return new FailPaymentCommand(orderKey, code, message);
     }
 }

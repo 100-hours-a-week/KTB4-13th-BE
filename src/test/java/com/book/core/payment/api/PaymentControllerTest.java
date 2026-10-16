@@ -1,5 +1,6 @@
 package com.book.core.payment.api;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -126,7 +127,11 @@ class PaymentControllerTest {
             .andExpect(jsonPath("$.paths['/api/v1/payments'].post.parameters").doesNotExist())
 
             .andExpect(jsonPath("$.paths['/api/v1/payments/callback/success'].post").exists())
-            .andExpect(jsonPath("$.paths['/api/v1/payments/callback/fail'].post").exists());
+            .andExpect(jsonPath("$.paths['/api/v1/payments/callback/fail'].post").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/payments/callback/success'].post.parameters[*].name",
+                containsInAnyOrder("orderId", "paymentKey", "amount")))
+            .andExpect(jsonPath("$.paths['/api/v1/payments/callback/fail'].post.parameters[*].name",
+                containsInAnyOrder("orderId", "code", "message")));
     }
 
     private void authenticate() {

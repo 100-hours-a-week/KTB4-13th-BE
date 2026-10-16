@@ -1,5 +1,9 @@
 package com.book.core.cancel.application.usecase;
 
+import com.book.core.cancel.domain.CancelBalance;
+import com.book.core.order.domain.Order;
+import com.book.core.payment.domain.Payment;
+
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
@@ -25,7 +29,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 참고 전체 취소의 혜택 복원, 잔액 차감 및 취소 내역 기록입니다. */
 @UseCase
 @RequiredArgsConstructor
 @Slf4j
@@ -39,15 +42,14 @@ public class CancelPaymentUseCase {
     private final CancelRepositoryPort cancelRepository;
     private final RecordPaymentHistoryUseCase recordPaymentHistoryUseCase;
 
-    /** 주문 상태만 CANCELED로 바꾸고 쿠폰과 사용 포인트를 복원합니다. 지급 포인트 회수, 취소 잔액과 이력도 같은 트랜잭션에 기록합니다. */
     @Transactional
     public Long execute(final CancelAction action) {
-        final var order = getOrderForCancelUseCase.execute(action.orderKey());
+        final Order order = getOrderForCancelUseCase.execute(action.orderKey());
         if (order.status() != OrderStatus.PAID) {
             throw new CoreException(ErrorCode.NOT_FOUND_DATA);
         }
-        final var payment = getPaymentUseCase.execute(order.id());
-        final var cancelBalance =
+        final Payment payment = getPaymentUseCase.execute(order.id());
+        final CancelBalance cancelBalance =
             cancelBalanceRepository.findByOrderId(order.id()).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
         order.canceled();
         if (payment.hasAppliedCoupon()) {
@@ -56,7 +58,7 @@ public class CancelPaymentUseCase {
         earnPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), payment.usedPoint());
         deductPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), PointAmount.PAYMENT);
         cancelBalance.cancel(payment.paidAmount(), payment.usedPoint(), payment.couponDiscount());
-        final var cancel = cancelRepository.save(new Cancel(payment.userId(), CancelType.ALL, payment.orderId(), -1L, payment.id(),
+        final Cancel cancel = cancelRepository.save(new Cancel(payment.userId(), CancelType.ALL, payment.orderId(), -1L, payment.id(),
             payment.originAmount(), payment.ownedCouponId(), payment.couponDiscount(), payment.usedPoint(), payment.paidAmount(), -1L,
             payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "PG_API_응답_취소_고유_값_저장", LocalDateTime.now()));
         recordPaymentHistoryUseCase.execute(

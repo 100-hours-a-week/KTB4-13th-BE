@@ -14,7 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-/** 참고 취소 내역의 원래 금액, 취소 금액, 수량, 유형 및 시각을 보관합니다. */
 @Entity
 @Table(name = "cancel")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

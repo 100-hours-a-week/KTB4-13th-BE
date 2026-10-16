@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 
-/** 참고의 전체 및 부분 취소 API 계약입니다. */
 @Tag(name = "Cancel", description = "결제 완료 주문의 취소")
 @SecurityRequirement(name = "bearerAuth")
 public interface CancelControllerSpec {

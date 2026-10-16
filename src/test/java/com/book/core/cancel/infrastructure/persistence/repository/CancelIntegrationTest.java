@@ -1,5 +1,7 @@
 package com.book.core.cancel.infrastructure.persistence.repository;
 
+import org.springframework.transaction.TransactionStatus;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -64,7 +66,7 @@ class CancelIntegrationTest {
 
     @Test
     void 전체취소는_쿠폰_포인트_잔액_주문_취소내역과_거래이력을_같이_커밋한다() {
-        final var order = fixture(10001L, 5, true, true);
+        final Order order = fixture(10001L, 5, true, true);
         service.cancel(new CancelCommand(10001L, new CancelAction(order.key())));
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.CANCELED);
         assertThat(balances.findByOrderId(order.id()).orElseThrow().totalCanceledAmount()).isEqualByComparingTo("50000");
@@ -75,13 +77,13 @@ class CancelIntegrationTest {
         assertThat(
             jdbc.queryForObject("select count(*) from transaction_history where order_id = ? and type = 'CANCEL'", Long.class, order.id()))
             .isEqualTo(1L);
-        // 참고 전체 취소는 주문상품 수량을 갱신하지 않습니다.
+
         assertThat(jdbc.queryForObject("select canceled_quantity from order_item where order_id = ?", Long.class, order.id())).isZero();
     }
 
     @Test
     void 쿠폰_복원_실패는_앞서_변경한_주문도_롤백하고_취소내역을_남기지_않는다() {
-        final var order = fixture(10004L, 5, true, false);
+        final Order order = fixture(10004L, 5, true, false);
         assertThatThrownBy(() -> service.cancel(new CancelCommand(10004L, new CancelAction(order.key()))))
             .isInstanceOf(CoreException.class);
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
@@ -91,7 +93,7 @@ class CancelIntegrationTest {
 
     @Test
     void 거래이력_저장실패는_쿠폰과_포인트_잔액과_취소내역까지_롤백한다() {
-        final var order = fixture(10005L, 5, true, true);
+        final Order order = fixture(10005L, 5, true, true);
         jdbc.update("update payment set external_payment_key = null where order_id = ?", order.id());
         assertThatThrownBy(() -> service.cancel(new CancelCommand(10005L, new CancelAction(order.key()))))
             .isInstanceOf(DataIntegrityViolationException.class);
@@ -116,8 +118,8 @@ class CancelIntegrationTest {
             "INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?)",
             productId, bookId, "취소 테스트 상품", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), BigDecimal.ZERO, 10);
-        return new TransactionTemplate(transactionManager).execute((final var status) -> {
-            final var order = Order.create(userId, "test-cancel-" + UUID.randomUUID(), null);
+        return new TransactionTemplate(transactionManager).execute((final TransactionStatus status) -> {
+            final Order order = Order.create(userId, "test-cancel-" + UUID.randomUUID(), null);
             order.addItem(productId, "책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), quantity);
             order.paid();
             orders.save(order);
@@ -141,7 +143,7 @@ class CancelIntegrationTest {
             }
             points.save(new PointBalance(null, userId, BigDecimal.valueOf(20000)));
             final BigDecimal paidAmount = order.totalPrice().subtract(couponDiscount).subtract(usedPoint);
-            final var payment = new Payment(userId, order.id(), order.totalPrice(), ownedCouponId, couponDiscount, usedPoint, userId,
+            final Payment payment = new Payment(userId, order.id(), order.totalPrice(), ownedCouponId, couponDiscount, usedPoint, userId,
                 paidAmount, PaymentState.READY);
             payment.success("test-pg", PaymentMethod.CARD, "test");
             payments.save(payment);

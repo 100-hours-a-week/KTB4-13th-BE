@@ -92,7 +92,6 @@ public class Order extends BaseTimeEntity {
         items.forEach(OrderItem::paid);
     }
 
-    /** 참고 결제 후 전체 취소처럼 주문 상태만 전환합니다. */
     public void canceled() {
         status = OrderStatus.CANCELED;
     }

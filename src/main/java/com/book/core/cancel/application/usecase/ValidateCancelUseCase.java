@@ -12,17 +12,15 @@ import com.book.core.payment.domain.enums.PaymentState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 참고 취소 검증의 소유권, 결제 상태, 주문상품 소속과 잔여 수량 조건입니다. */
 @UseCase
 @RequiredArgsConstructor
 public class ValidateCancelUseCase {
     private final GetOrderForCancelUseCase getOrderForCancelUseCase;
     private final GetPaymentUseCase getPaymentUseCase;
 
-    /** 전체 취소는 소유자의 PAID 주문과 SUCCESS 결제만 허용합니다. */
     @Transactional(readOnly = true)
     public void validate(final Long userId, final CancelAction action) {
-        final var order = getOrderForCancelUseCase.execute(action.orderKey());
+        final Order order = getOrderForCancelUseCase.execute(action.orderKey());
         if (order.status() != OrderStatus.PAID) {
             throw new CoreException(ErrorCode.NOT_FOUND_DATA);
         }

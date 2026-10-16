@@ -32,7 +32,7 @@ public class CalculatePartialCancelUseCase {
     public CancelCalculated execute(final PartialCancelAction action) {
         final Order order = getOrderForCancelUseCase.execute(action.orderKey());
         final OrderItem targetItem = getOrderItemForCancelUseCase.execute(action.orderItemId());
-        final Payment payment = getPaymentUseCase.execute(order.id());
+        final Payment payment = getPaymentUseCase.execute(order.key());
         final CancelBalance cancelBalance =
             cancelBalanceRepository.findByOrderId(order.id()).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
         BigDecimal minOrderAmount = BigDecimal.ZERO;

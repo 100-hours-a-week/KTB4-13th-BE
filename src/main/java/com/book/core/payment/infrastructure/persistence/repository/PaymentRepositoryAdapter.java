@@ -22,6 +22,11 @@ class PaymentRepositoryAdapter implements PaymentRepositoryPort {
     }
 
     @Override
+    public Optional<Payment> findByOrderKey(final String orderKey) {
+        return jpaRepository.findByOrderKey(orderKey);
+    }
+
+    @Override
     public Optional<Payment> findById(final Long paymentId) {
         return jpaRepository.findById(paymentId);
     }

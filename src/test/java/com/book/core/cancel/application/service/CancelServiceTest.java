@@ -1,7 +1,5 @@
 package com.book.core.cancel.application.service;
 
-import org.mockito.InOrder;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
@@ -21,6 +19,7 @@ import com.book.core.cancel.domain.CancelCalculated;
 import com.book.core.cancel.domain.PartialCancelAction;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 class CancelServiceTest {
     private final ValidateCancelUseCase validate = mock(ValidateCancelUseCase.class);

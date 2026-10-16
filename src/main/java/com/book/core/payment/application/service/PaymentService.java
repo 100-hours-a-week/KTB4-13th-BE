@@ -56,6 +56,7 @@ public class PaymentService {
         final Order order = getPaymentOrderUseCase.execute(command.orderKey(), OrderStatus.CREATED);
         validatePaymentUseCase.validateForApprove(order.id(), command.amount());
 
+        // TODO(#329): 실제 PG 승인 확인과 실패 보상 정책을 구현한 뒤 결제를 운영에 사용한다.
         final Long paymentId = completePaymentUseCase.execute(command.orderKey(), command.externalPaymentKey());
         postProcessPaymentUseCase.execute(paymentId, command.orderKey());
         return paymentId;

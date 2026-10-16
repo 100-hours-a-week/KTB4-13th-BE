@@ -44,6 +44,7 @@ public class CompletePaymentUseCase {
         if (payment.hasAppliedCoupon()) {
             useOwnedCouponUseCase.execute(payment.ownedCouponId());
         }
+        // TODO(#330): 승인 시 사용 포인트 부족을 재검증하거나 예약하고, 보너스 회수 정책과 분리한다.
         deductPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), payment.usedPoint());
         earnPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), PointAmount.PAYMENT);
         createCancelBalanceUseCase.execute(order.id(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount());

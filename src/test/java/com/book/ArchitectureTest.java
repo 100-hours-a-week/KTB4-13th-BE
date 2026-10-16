@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.core.address.domain.Address;
 import com.book.core.book.domain.Book;
+import com.book.core.cancel.domain.Cancel;
 import com.book.core.cancel.domain.CancelBalance;
 import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
@@ -66,6 +67,7 @@ class ArchitectureTest {
     void 업무_모델은_JPA_Entity를_겸한다() {
         assertThat(Payment.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(PaymentHistory.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(Cancel.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(CancelBalance.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Address.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Cart.class.isAnnotationPresent(Entity.class)).isTrue();

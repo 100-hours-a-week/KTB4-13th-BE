@@ -146,7 +146,7 @@ class CancelUseCasesTest {
         order.partialCanceled();
         validator.validatePartial(1L, new PartialCancelAction("order", 4L, 1L));
         assertThatThrownBy(() -> validator.validate(1L, new CancelAction("order"))).isInstanceOf(CoreException.class);
-        when(payments.execute(2L))
+        when(payments.execute("order"))
             .thenReturn(new Payment(1L, 2L, BigDecimal.TEN, -1L, BigDecimal.ZERO, BigDecimal.ZERO, 1L, BigDecimal.TEN, PaymentState.READY));
         assertThatThrownBy(() -> validator.validatePartial(1L, new PartialCancelAction("order", 4L, 1L))).isInstanceOf(CoreException.class);
         order.canceled();
@@ -170,7 +170,7 @@ class CancelUseCasesTest {
             BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         when(orders.execute("order")).thenReturn(order);
         when(items.execute(4L)).thenReturn(order.items().getFirst());
-        when(payments.execute(2L)).thenReturn(payment);
+        when(payments.execute("order")).thenReturn(payment);
         when(balances.findByOrderId(2L)).thenReturn(Optional.of(balance));
         when(cancels.save(any())).thenAnswer((final InvocationOnMock invocation) -> {
             final Cancel cancel = invocation.getArgument(0);

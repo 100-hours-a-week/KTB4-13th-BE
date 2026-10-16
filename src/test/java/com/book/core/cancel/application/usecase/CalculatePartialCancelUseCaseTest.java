@@ -72,8 +72,8 @@ class CalculatePartialCancelUseCaseTest {
         order.addItem(10L, "책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), 3);
         when(orders.execute("order")).thenReturn(order);
         when(items.execute(4L)).thenReturn(order.items().getFirst());
-        when(payments.execute(2L)).thenReturn(new Payment(1L, 2L, order.totalPrice(), couponId, BigDecimal.ZERO, BigDecimal.valueOf(15000),
-            1L, BigDecimal.valueOf(15000), PaymentState.SUCCESS));
+        when(payments.execute("order")).thenReturn(new Payment(1L, 2L, order.totalPrice(), couponId, BigDecimal.ZERO,
+            BigDecimal.valueOf(15000), 1L, BigDecimal.valueOf(15000), PaymentState.SUCCESS));
         when(balances.findByOrderId(2L)).thenReturn(Optional.of(new CancelBalance(2L, BigDecimal.valueOf(15000), BigDecimal.valueOf(15000),
             BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)));
     }

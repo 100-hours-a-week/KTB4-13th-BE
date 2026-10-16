@@ -8,5 +8,7 @@ public interface PaymentRepositoryPort {
 
     Optional<Payment> findByOrderId(final Long orderId);
 
+    Optional<Payment> findByOrderKey(final String orderKey);
+
     Optional<Payment> findById(final Long paymentId);
 }

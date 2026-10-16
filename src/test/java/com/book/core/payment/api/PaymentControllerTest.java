@@ -77,7 +77,7 @@ class PaymentControllerTest {
     @Test
     void 성공_콜백은_주문키와_PG키_금액을_변환하고_데이터_없이_응답한다() throws Exception {
         authenticate();
-        mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderId", "order")
+        mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderKey", "order")
             .param("paymentKey", "test-pg-key").param("amount", "8800.00")).andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
         verify(paymentService).success(new ApprovePaymentCommand("order", "test-pg-key", new BigDecimal("8800.00")));
@@ -86,7 +86,7 @@ class PaymentControllerTest {
     @Test
     void 실패_콜백은_오류_코드와_메시지를_전달한다() throws Exception {
         authenticate();
-        mvc.perform(post("/api/v1/payments/callback/fail").header("Authorization", "Bearer test-token").param("orderId", "order")
+        mvc.perform(post("/api/v1/payments/callback/fail").header("Authorization", "Bearer test-token").param("orderKey", "order")
             .param("code", "FAIL").param("message", "test failure")).andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
         verify(paymentService).fail(new FailPaymentCommand("order", "FAIL", "test failure"));
@@ -97,7 +97,7 @@ class PaymentControllerTest {
         authenticate();
         mvc.perform(post("/api/v1/payments").header("Authorization", "Bearer test-token").contentType(MediaType.APPLICATION_JSON)
             .content("{\"orderKey\":\" \"}")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
-        mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderId", "order"))
+        mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderKey", "order"))
             .andExpect(status().isBadRequest());
         verifyNoInteractions(paymentService);
     }
@@ -107,7 +107,7 @@ class PaymentControllerTest {
         authenticate();
         doThrow(new CoreException(ErrorCode.PAYMENT_AMOUNT_MISMATCH)).when(paymentService)
             .success(new ApprovePaymentCommand("order", "test-pg-key", BigDecimal.TEN));
-        mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderId", "order")
+        mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderKey", "order")
             .param("paymentKey", "test-pg-key").param("amount", "10")).andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("E2001"));
     }
@@ -116,7 +116,7 @@ class PaymentControllerTest {
     void Book_기존_정책에_따라_새_결제_API는_인증이_필요하다() throws Exception {
         mvc.perform(post("/api/v1/payments").contentType(MediaType.APPLICATION_JSON).content("{\"orderKey\":\"order\"}"))
             .andExpect(status().isUnauthorized());
-        mvc.perform(post("/api/v1/payments/callback/success").param("orderId", "order").param("paymentKey", "test").param("amount", "10"))
+        mvc.perform(post("/api/v1/payments/callback/success").param("orderKey", "order").param("paymentKey", "test").param("amount", "10"))
             .andExpect(status().isUnauthorized());
         verifyNoInteractions(paymentService);
     }
@@ -129,9 +129,25 @@ class PaymentControllerTest {
             .andExpect(jsonPath("$.paths['/api/v1/payments/callback/success'].post").exists())
             .andExpect(jsonPath("$.paths['/api/v1/payments/callback/fail'].post").exists())
             .andExpect(jsonPath("$.paths['/api/v1/payments/callback/success'].post.parameters[*].name",
-                containsInAnyOrder("orderId", "paymentKey", "amount")))
+                containsInAnyOrder("orderKey", "paymentKey", "amount")))
             .andExpect(jsonPath("$.paths['/api/v1/payments/callback/fail'].post.parameters[*].name",
-                containsInAnyOrder("orderId", "code", "message")));
+                containsInAnyOrder("orderKey", "code", "message")));
+    }
+
+    @Test
+    void 성공_콜백은_이전_orderId_파라미터만_보내면_거부한다() throws Exception {
+        authenticate();
+        mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderId", "order")
+            .param("paymentKey", "test-pg-key").param("amount", "10")).andExpect(status().isBadRequest());
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    void 실패_콜백은_이전_orderId_파라미터만_보내면_거부한다() throws Exception {
+        authenticate();
+        mvc.perform(post("/api/v1/payments/callback/fail").header("Authorization", "Bearer test-token").param("orderId", "order")
+            .param("code", "FAIL").param("message", "test failure")).andExpect(status().isBadRequest());
+        verifyNoInteractions(paymentService);
     }
 
     private void authenticate() {

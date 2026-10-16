@@ -24,6 +24,7 @@ public class CreatePaymentUseCase {
         if (paymentRepository.findByOrderId(order.id()).filter((final Payment item) -> item.state() == PaymentState.SUCCESS).isPresent()) {
             throw new CoreException(ErrorCode.ORDER_ALREADY_PAID);
         }
+        // TODO(#327): 정률 쿠폰 비율을 실제 할인 금액과 분리해 결제·취소 잔액에 저장한다.
         final Payment payment = new Payment(order.userId(), order.id(), order.totalPrice(), paymentDiscount.useOwnedCouponId(),
             paymentDiscount.couponDiscount(), paymentDiscount.usePoint(), payerUserId, paymentDiscount.paidAmount(order.totalPrice()),
             PaymentState.READY);

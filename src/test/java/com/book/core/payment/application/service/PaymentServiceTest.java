@@ -18,8 +18,10 @@ import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
+import com.book.core.payment.application.command.FailPaymentCommand;
 import com.book.core.payment.application.usecase.CompletePaymentUseCase;
 import com.book.core.payment.application.usecase.CreatePaymentUseCase;
+import com.book.core.payment.application.usecase.FailPaymentUseCase;
 import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
 import com.book.core.payment.application.usecase.ValidatePaymentUseCase;
 import com.book.core.payment.domain.PaymentDiscount;
@@ -40,8 +42,9 @@ class PaymentServiceTest {
     private final CreatePaymentUseCase create = mock(CreatePaymentUseCase.class);
     private final ValidatePaymentUseCase validate = mock(ValidatePaymentUseCase.class);
     private final CompletePaymentUseCase complete = mock(CompletePaymentUseCase.class);
+    private final FailPaymentUseCase fail = mock(FailPaymentUseCase.class);
     private final PostProcessPaymentUseCase post = mock(PostProcessPaymentUseCase.class);
-    private final PaymentService service = new PaymentService(orders, targets, coupons, balance, create, validate, complete, post);
+    private final PaymentService service = new PaymentService(orders, targets, coupons, balance, create, validate, complete, fail, post);
 
     @Test
     void 일반_결제는_주문과_체크아웃_후보_잔액을_조합하고_원값을_전달한다() {
@@ -74,6 +77,16 @@ class PaymentServiceTest {
         doThrow(new IllegalStateException("test")).when(validate).validateForApprove(2L, BigDecimal.TEN);
         assertThatThrownBy(() -> service.success(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN)))
             .isInstanceOf(IllegalStateException.class);
+        verifyNoInteractions(complete, post);
+    }
+
+    @Test
+    void 실패는_실패_검증_후_기록만_실행한다() {
+        when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
+        service.fail(new FailPaymentCommand("order", "FAIL", "test"));
+        final InOrder sequence = inOrder(validate, fail);
+        sequence.verify(validate).validateForFail(2L);
+        sequence.verify(fail).execute("order", "FAIL", "test");
         verifyNoInteractions(complete, post);
     }
 

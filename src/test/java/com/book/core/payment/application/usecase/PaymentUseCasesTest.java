@@ -80,6 +80,7 @@ class PaymentUseCasesTest {
         validator.validateForApprove(2L, BigDecimal.valueOf(8800));
         assertThatThrownBy(() -> validator.validateForApprove(2L, new BigDecimal("8800.00"))).isInstanceOf(CoreException.class);
         assertThatThrownBy(() -> validator.validateForApprove(2L, BigDecimal.TEN)).isInstanceOf(CoreException.class);
+        validator.validateForFail(2L);
     }
 
     @Test
@@ -90,6 +91,7 @@ class PaymentUseCasesTest {
         final ValidatePaymentUseCase validator = new ValidatePaymentUseCase(payments);
         assertThatThrownBy(() -> validator.validateForApprove(2L, BigDecimal.valueOf(8800))).isInstanceOf(CoreException.class);
         when(payments.findByOrderId(2L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> validator.validateForFail(2L)).isInstanceOf(CoreException.class);
     }
 
     @Test
@@ -128,6 +130,23 @@ class PaymentUseCasesTest {
         doThrow(new CoreException(ErrorCode.OWNED_COUPON_INVALID_USAGE)).when(coupons).execute(10L);
         assertThatThrownBy(() -> complete().execute("order", "test-external")).isInstanceOf(CoreException.class);
         verifyNoInteractions(deduct, earn, cancel, histories);
+    }
+
+    @Test
+    void 실패는_마이너스_1_거래이력만_저장하고_READY와_CREATED를_유지한다() {
+        final Order order = order();
+        final Payment payment = payment(10L);
+        when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order);
+        when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
+        new FailPaymentUseCase(payments, orders, histories).execute("order", "FAIL", "test failure");
+        final ArgumentCaptor<PaymentHistory> captured = ArgumentCaptor.forClass(PaymentHistory.class);
+        verify(histories).save(captured.capture());
+        assertThat(captured.getValue().type()).isEqualTo(TransactionType.PAYMENT_FAIL);
+        assertThat(captured.getValue().paidAmount()).isEqualByComparingTo("-1");
+        assertThat(captured.getValue().message()).isEqualTo("[FAIL] test failure");
+        assertThat(payment.state()).isEqualTo(PaymentState.READY);
+        assertThat(order.status()).isEqualTo(OrderStatus.CREATED);
+        verifyNoInteractions(coupons, deduct, earn, cancel);
     }
 
     private CompletePaymentUseCase complete() {

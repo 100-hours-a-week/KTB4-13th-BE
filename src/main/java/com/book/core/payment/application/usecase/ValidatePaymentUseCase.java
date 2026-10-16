@@ -27,4 +27,8 @@ public class ValidatePaymentUseCase {
         }
     }
 
+    @Transactional(readOnly = true)
+    public void validateForFail(final Long orderId) {
+        paymentRepository.findByOrderId(orderId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
+    }
 }

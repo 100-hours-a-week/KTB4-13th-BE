@@ -9,8 +9,10 @@ import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
+import com.book.core.payment.application.command.FailPaymentCommand;
 import com.book.core.payment.application.usecase.CompletePaymentUseCase;
 import com.book.core.payment.application.usecase.CreatePaymentUseCase;
+import com.book.core.payment.application.usecase.FailPaymentUseCase;
 import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
 import com.book.core.payment.application.usecase.ValidatePaymentUseCase;
 import com.book.core.payment.domain.PaymentCoupon;
@@ -33,6 +35,7 @@ public class PaymentService {
     private final CreatePaymentUseCase createPaymentUseCase;
     private final ValidatePaymentUseCase validatePaymentUseCase;
     private final CompletePaymentUseCase completePaymentUseCase;
+    private final FailPaymentUseCase failPaymentUseCase;
     private final PostProcessPaymentUseCase postProcessPaymentUseCase;
 
     public Long create(final CreatePaymentCommand command) {
@@ -59,4 +62,9 @@ public class PaymentService {
         return paymentId;
     }
 
+    public void fail(final FailPaymentCommand command) {
+        final Order order = getPaymentOrderUseCase.execute(command.orderKey(), OrderStatus.CREATED);
+        validatePaymentUseCase.validateForFail(order.id());
+        failPaymentUseCase.execute(command.orderKey(), command.code(), command.message());
+    }
 }

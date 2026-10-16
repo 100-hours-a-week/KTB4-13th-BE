@@ -13,6 +13,7 @@ import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
+import com.book.core.payment.application.command.FailPaymentCommand;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.application.service.PaymentService;
 import com.book.core.payment.domain.Payment;
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -89,6 +91,18 @@ class PaymentIntegrationTest {
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.CREATED);
         assertThat(jdbc.queryForObject("select count(*) from transaction_history where payment_id = ?", Long.class, payment.id())).isZero();
         assertThat(jdbc.queryForObject("select count(*) from cancel_balance where order_id = ?", Long.class, order.id())).isZero();
+    }
+
+    @Test
+    void 실패는_이력만_커밋하고_중복_결제의_고유_제약은_기술예외를_전파한다() {
+        final Order order = order(1003L);
+        final Payment payment = payments.save(payment(order, -1L));
+        service.fail(new FailPaymentCommand(order.key(), "FAIL", "test failure"));
+        assertThat(payments.findById(payment.id()).orElseThrow().state()).isEqualTo(PaymentState.READY);
+        assertThat(jdbc.queryForObject("select paid_amount from transaction_history where payment_id = ?", BigDecimal.class, payment.id()))
+            .isEqualByComparingTo("-1");
+        assertThatThrownBy(() -> paymentJpaRepository.saveAndFlush(payment(order, -1L)))
+            .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test

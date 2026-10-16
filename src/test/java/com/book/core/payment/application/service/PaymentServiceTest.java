@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class PaymentServiceTest {
@@ -47,14 +48,14 @@ class PaymentServiceTest {
 
     @Test
     void 일반_결제는_주문과_체크아웃_후보_잔액을_조합하고_원값을_전달한다() {
-        final var order = order();
+        final Order order = order();
         when(orders.execute(1L, "order")).thenReturn(order);
         when(targets.execute(List.of())).thenReturn(Set.of());
         when(coupons.execute(eq(1L), eq(Set.of()), any())).thenReturn(List.of());
         when(balance.execute(1L)).thenReturn(BigDecimal.ZERO);
         when(create.execute(eq(order), eq(1L), any())).thenReturn(3L);
         assertThat(service.create(new CreatePaymentCommand(1L, "order", -1L, BigDecimal.valueOf(-1)))).isEqualTo(3L);
-        final var captured = ArgumentCaptor.forClass(PaymentDiscount.class);
+        final ArgumentCaptor<PaymentDiscount> captured = ArgumentCaptor.forClass(PaymentDiscount.class);
         verify(create).execute(eq(order), eq(1L), captured.capture());
         assertThat(captured.getValue().paidAmount(BigDecimal.valueOf(10000))).isEqualByComparingTo("10001");
     }
@@ -64,7 +65,7 @@ class PaymentServiceTest {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
         when(complete.execute("order", "test-key")).thenReturn(3L);
         assertThat(service.success(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN))).isEqualTo(3L);
-        final var sequence = inOrder(validate, complete, post);
+        final InOrder sequence = inOrder(validate, complete, post);
         sequence.verify(validate).validateForApprove(2L, BigDecimal.TEN);
         sequence.verify(complete).execute("order", "test-key");
         sequence.verify(post).execute(3L, "order");
@@ -83,14 +84,14 @@ class PaymentServiceTest {
     void 실패는_실패_검증_후_기록만_실행한다() {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
         service.fail(new FailPaymentCommand("order", "FAIL", "test"));
-        final var sequence = inOrder(validate, fail);
+        final InOrder sequence = inOrder(validate, fail);
         sequence.verify(validate).validateForFail(2L);
         sequence.verify(fail).execute("order", "FAIL", "test");
         verifyNoInteractions(complete, post);
     }
 
     private static Order order() {
-        final var order = Order.create(1L, "order", null);
+        final Order order = Order.create(1L, "order", null);
         ReflectionTestUtils.setField(order, "id", 2L);
         return order;
     }

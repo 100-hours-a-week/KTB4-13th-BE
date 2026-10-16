@@ -5,6 +5,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.application.port.PointHistoryRepositoryPort;
+import com.book.core.point.domain.PointBalance;
 import com.book.core.point.domain.PointHistory;
 import com.book.core.point.domain.enums.PointType;
 import java.math.BigDecimal;
@@ -29,8 +30,8 @@ public class EarnPointUseCase {
 
         log.debug("포인트 적립 처리를 시작합니다. type={}, referenceId={}, traceId={}", type, referenceId, MDC.get("traceId"));
 
-        // NOTE: 모든 유저는 가입 시 Point 테이블 생성
-        final var balance = pointBalanceRepository.findByUserId(userId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
+        final PointBalance balance =
+            pointBalanceRepository.findByUserId(userId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
         balance.apply(amount);
         pointHistoryRepository.save(PointHistory.builder().userId(userId).type(type).referenceId(referenceId).amount(amount)
             .balanceAfter(balance.balance()).build());

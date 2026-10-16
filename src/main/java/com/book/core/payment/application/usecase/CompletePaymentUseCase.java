@@ -6,9 +6,11 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.cancel.application.usecase.CreateCancelBalanceUseCase;
 import com.book.core.coupon.application.usecase.UseOwnedCouponUseCase;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
+import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
-import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.application.port.PaymentHistoryRepositoryPort;
+import com.book.core.payment.application.port.PaymentRepositoryPort;
+import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.PaymentHistory;
 import com.book.core.payment.domain.enums.PaymentMethod;
 import com.book.core.payment.domain.enums.TransactionType;
@@ -21,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 참고 PaymentProcessor.success의 쓰기 작업을 한 트랜잭션에서 수행합니다. */
 @UseCase
 @RequiredArgsConstructor
 @Slf4j
@@ -34,11 +35,10 @@ public class CompletePaymentUseCase {
     private final CreateCancelBalanceUseCase createCancelBalanceUseCase;
     private final PaymentHistoryRepositoryPort paymentHistoryRepository;
 
-    /** 결제를 SUCCESS, 주문과 상품을 PAID로 전환하고 쿠폰 사용, 포인트 변경, 취소 잔액 초기화와 결제 이력을 같은 트랜잭션에 저장합니다. */
     @Transactional
     public Long execute(final String orderKey, final String externalPaymentKey) {
-        final var order = getPaymentOrderUseCase.execute(orderKey, OrderStatus.CREATED);
-        final var payment = paymentRepository.findByOrderId(order.id()).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
+        final Order order = getPaymentOrderUseCase.execute(orderKey, OrderStatus.CREATED);
+        final Payment payment = paymentRepository.findByOrderId(order.id()).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
         payment.success(externalPaymentKey, PaymentMethod.CARD, "PG 승인 API 호출의 응답 값 중 `승인번호` 넣기");
         order.paid();
         if (payment.hasAppliedCoupon()) {

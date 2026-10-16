@@ -86,14 +86,12 @@ public class Order extends BaseTimeEntity {
         this.totalPrice = this.totalPrice.add(orderItem.totalPrice());
     }
 
-    /** 결제 성공 시 주문과 주문상품을 결제 완료로 전환합니다. */
     public void paid() {
         status = OrderStatus.PAID;
         paidAt = LocalDateTime.now();
         items.forEach(OrderItem::paid);
     }
 
-    /** 참고 결제 후 전체 취소처럼 주문 상태만 전환합니다. */
     public void canceled() {
         status = OrderStatus.CANCELED;
     }

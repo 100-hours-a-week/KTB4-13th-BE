@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 class OrderItemPartialCancelTest {
     @Test
     void 누적_취소_수량에_따라_부분취소와_전체취소_상태를_정한다() {
-        final var order = order();
-        final var item = order.items().getFirst();
+        final Order order = order();
+        final OrderItem item = order.items().getFirst();
         item.cancel(1L);
         assertThat(item.canceledQuantity()).isEqualTo(1);
         assertThat(item.cancellableQuantity()).isEqualTo(2);
@@ -25,7 +25,7 @@ class OrderItemPartialCancelTest {
 
     @Test
     void 결제_후_전체취소는_참고처럼_주문상태만_바꾸고_상품의_취소수량은_유지한다() {
-        final var order = order();
+        final Order order = order();
         order.canceled();
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
         assertThat(order.items().getFirst().canceledQuantity()).isZero();
@@ -33,7 +33,7 @@ class OrderItemPartialCancelTest {
     }
 
     private static Order order() {
-        final var order = Order.create(1L, "order", null);
+        final Order order = Order.create(1L, "order", null);
         order.addItem(10L, "책", "", "저자", BigDecimal.TEN, BigDecimal.TEN, 3);
         order.paid();
         return order;

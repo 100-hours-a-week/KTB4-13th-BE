@@ -34,6 +34,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -66,7 +67,7 @@ class CancelIntegrationTest {
 
     @Test
     void 전체취소는_쿠폰_포인트_잔액_주문_취소내역과_거래이력을_같이_커밋한다() {
-        final var order = fixture(10001L, 5, true, true);
+        final Order order = fixture(10001L, 5, true, true);
         service.cancel(new CancelCommand(10001L, new CancelAction(order.key())));
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.CANCELED);
         assertThat(balances.findByOrderId(order.id()).orElseThrow().totalCanceledAmount()).isEqualByComparingTo("50000");
@@ -77,13 +78,13 @@ class CancelIntegrationTest {
         assertThat(
             jdbc.queryForObject("select count(*) from transaction_history where order_id = ? and type = 'CANCEL'", Long.class, order.id()))
             .isEqualTo(1L);
-        // 참고 전체 취소는 주문상품 수량을 갱신하지 않습니다.
+
         assertThat(jdbc.queryForObject("select canceled_quantity from order_item where order_id = ?", Long.class, order.id())).isZero();
     }
 
     @Test
     void 세번의_부분취소는_현금과_포인트를_배분하고_첫번만_적립포인트를_회수한다() {
-        final var order = fixture(10002L, 3, false, false);
+        final Order order = fixture(10002L, 3, false, false);
         final Long itemId = itemId(order);
         final long[] paid = {10000, 5000, 0};
         final long[] point = {0, 5000, 10000};
@@ -106,7 +107,7 @@ class CancelIntegrationTest {
 
     @Test
     void 쿠폰_최소금액이_깨지는_부분취소에만_쿠폰을_복원한다() {
-        final var order = fixture(10003L, 5, true, true);
+        final Order order = fixture(10003L, 5, true, true);
         final Long itemId = itemId(order);
         service.partialCancel(new PartialCancelCommand(10003L, new PartialCancelAction(order.key(), itemId, 1L)));
         assertThat(coupons.findByUserIdAndCouponId(10003L, 10003L).orElseThrow().status()).isEqualTo(OwnedCouponStatus.USED);
@@ -121,7 +122,7 @@ class CancelIntegrationTest {
 
     @Test
     void 쿠폰_복원_실패는_앞서_변경한_주문도_롤백하고_취소내역을_남기지_않는다() {
-        final var order = fixture(10004L, 5, true, false);
+        final Order order = fixture(10004L, 5, true, false);
         assertThatThrownBy(() -> service.cancel(new CancelCommand(10004L, new CancelAction(order.key()))))
             .isInstanceOf(CoreException.class);
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
@@ -131,7 +132,7 @@ class CancelIntegrationTest {
 
     @Test
     void 거래이력_저장실패는_쿠폰과_포인트_잔액과_취소내역까지_롤백한다() {
-        final var order = fixture(10005L, 5, true, true);
+        final Order order = fixture(10005L, 5, true, true);
         jdbc.update("update payment set external_payment_key = null where order_id = ?", order.id());
         assertThatThrownBy(() -> service.cancel(new CancelCommand(10005L, new CancelAction(order.key()))))
             .isInstanceOf(DataIntegrityViolationException.class);
@@ -145,8 +146,8 @@ class CancelIntegrationTest {
 
     @Test
     void 다른_회원과_다른_주문의_상품은_취소할_수_없다() {
-        final var order = fixture(10006L, 3, false, false);
-        final var other = fixture(10007L, 3, false, false);
+        final Order order = fixture(10006L, 3, false, false);
+        final Order other = fixture(10007L, 3, false, false);
         assertThatThrownBy(() -> service.cancel(new CancelCommand(999L, new CancelAction(order.key())))).isInstanceOf(CoreException.class);
         assertThatThrownBy(
             () -> service.partialCancel(new PartialCancelCommand(10006L, new PartialCancelAction(order.key(), itemId(other), 1L))))
@@ -167,8 +168,8 @@ class CancelIntegrationTest {
             "INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?)",
             productId, bookId, "취소 테스트 상품", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), BigDecimal.ZERO, 10);
-        return new TransactionTemplate(transactionManager).execute((final var status) -> {
-            final var order = Order.create(userId, "test-cancel-" + UUID.randomUUID(), null);
+        return new TransactionTemplate(transactionManager).execute((final TransactionStatus status) -> {
+            final Order order = Order.create(userId, "test-cancel-" + UUID.randomUUID(), null);
             order.addItem(productId, "책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), quantity);
             order.paid();
             orders.save(order);
@@ -192,7 +193,7 @@ class CancelIntegrationTest {
             }
             points.save(new PointBalance(null, userId, BigDecimal.valueOf(20000)));
             final BigDecimal paidAmount = order.totalPrice().subtract(couponDiscount).subtract(usedPoint);
-            final var payment = new Payment(userId, order.id(), order.totalPrice(), ownedCouponId, couponDiscount, usedPoint, userId,
+            final Payment payment = new Payment(userId, order.id(), order.totalPrice(), ownedCouponId, couponDiscount, usedPoint, userId,
                 paidAmount, PaymentState.READY);
             payment.success("test-pg", PaymentMethod.CARD, "test");
             payments.save(payment);

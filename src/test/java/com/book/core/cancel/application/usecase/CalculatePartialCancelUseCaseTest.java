@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
 import com.book.core.cancel.application.port.CancelBalanceRepositoryPort;
 import com.book.core.cancel.domain.CancelBalance;
+import com.book.core.cancel.domain.CancelCalculated;
 import com.book.core.cancel.domain.PartialCancelAction;
 import com.book.core.coupon.application.result.CouponResult;
 import com.book.core.coupon.application.result.OwnedCouponResult;
@@ -38,7 +39,7 @@ class CalculatePartialCancelUseCaseTest {
     @Test
     void 단가와_취소수량으로_계산하고_쿠폰이_없으면_최소금액_조회는_생략한다() {
         prepare(-1L);
-        final var result = useCase.execute(new PartialCancelAction("order", 4L, 2L));
+        final CancelCalculated result = useCase.execute(new PartialCancelAction("order", 4L, 2L));
         assertThat(result.paidAmount()).isEqualByComparingTo("15000");
         assertThat(result.pointAmount()).isEqualByComparingTo("5000");
         assertThat(result.isRestoreCoupon()).isFalse();
@@ -52,7 +53,7 @@ class CalculatePartialCancelUseCaseTest {
             CouponType.FIXED_AMOUNT, BigDecimal.valueOf(10000), BigDecimal.valueOf(25000), LocalDateTime.now())));
         when(balances.findByOrderId(2L)).thenReturn(Optional.of(new CancelBalance(2L, BigDecimal.valueOf(20000), BigDecimal.ZERO,
             BigDecimal.valueOf(10000), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)));
-        final var result = useCase.execute(new PartialCancelAction("order", 4L, 1L));
+        final CancelCalculated result = useCase.execute(new PartialCancelAction("order", 4L, 1L));
         assertThat(result.couponAmount()).isEqualByComparingTo("10000");
         assertThat(result.paidAmount()).isEqualByComparingTo("0");
         assertThat(result.isRestoreCoupon()).isTrue();
@@ -66,7 +67,7 @@ class CalculatePartialCancelUseCaseTest {
     }
 
     private void prepare(final Long couponId) {
-        final var order = Order.create(1L, "order", null);
+        final Order order = Order.create(1L, "order", null);
         ReflectionTestUtils.setField(order, "id", 2L);
         order.addItem(10L, "책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), 3);
         when(orders.execute("order")).thenReturn(order);

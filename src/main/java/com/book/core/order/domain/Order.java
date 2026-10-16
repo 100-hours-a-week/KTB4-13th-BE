@@ -86,7 +86,6 @@ public class Order extends BaseTimeEntity {
         this.totalPrice = this.totalPrice.add(orderItem.totalPrice());
     }
 
-    /** 결제 성공 시 주문과 주문상품을 결제 완료로 전환합니다. */
     public void paid() {
         status = OrderStatus.PAID;
         paidAt = LocalDateTime.now();

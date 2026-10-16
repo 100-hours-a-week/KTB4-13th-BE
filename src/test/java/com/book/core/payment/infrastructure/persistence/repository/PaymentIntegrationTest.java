@@ -1,5 +1,7 @@
 package com.book.core.payment.infrastructure.persistence.repository;
 
+import org.springframework.transaction.TransactionStatus;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -63,9 +65,9 @@ class PaymentIntegrationTest {
 
     @Test
     void 성공_트랜잭션은_주문_포인트_취소잔액_거래이력을_함께_저장한다() {
-        final var order = order(1001L);
+        final Order order = order(1001L);
         balances.save(new PointBalance(null, 1001L, BigDecimal.valueOf(5000)));
-        final var payment = payments.save(payment(order, -1L));
+        final Payment payment = payments.save(payment(order, -1L));
         service.success(new ApprovePaymentCommand(order.key(), "test-pg-key", new BigDecimal("8800.00")));
         assertThat(payments.findById(payment.id()).orElseThrow().state()).isEqualTo(PaymentState.SUCCESS);
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
@@ -81,9 +83,9 @@ class PaymentIntegrationTest {
 
     @Test
     void 사용완료_쿠폰_실패는_앞서_변경한_결제와_주문도_롤백한다() {
-        final var order = order(1002L);
-        final var coupon = coupons.save(new OwnedCoupon(1002L, 123L, OwnedCouponStatus.USED, 1L, 1L));
-        final var payment = payments.save(payment(order, coupon.id()));
+        final Order order = order(1002L);
+        final OwnedCoupon coupon = coupons.save(new OwnedCoupon(1002L, 123L, OwnedCouponStatus.USED, 1L, 1L));
+        final Payment payment = payments.save(payment(order, coupon.id()));
         assertThatThrownBy(() -> service.success(new ApprovePaymentCommand(order.key(), "test-pg-key", new BigDecimal("8800.00"))))
             .isInstanceOf(CoreException.class);
         assertThat(payments.findById(payment.id()).orElseThrow().state()).isEqualTo(PaymentState.READY);
@@ -94,8 +96,8 @@ class PaymentIntegrationTest {
 
     @Test
     void 실패는_이력만_커밋하고_중복_결제의_고유_제약은_기술예외를_전파한다() {
-        final var order = order(1003L);
-        final var payment = payments.save(payment(order, -1L));
+        final Order order = order(1003L);
+        final Payment payment = payments.save(payment(order, -1L));
         service.fail(new FailPaymentCommand(order.key(), "FAIL", "test failure"));
         assertThat(payments.findById(payment.id()).orElseThrow().state()).isEqualTo(PaymentState.READY);
         assertThat(jdbc.queryForObject("select paid_amount from transaction_history where payment_id = ?", BigDecimal.class, payment.id()))
@@ -106,11 +108,11 @@ class PaymentIntegrationTest {
 
     @Test
     void 상품이_없는_주문은_결제를_저장하기_전에_거절한다() {
-        final var order = orders.save(Order.create(1004L, "empty-order-" + UUID.randomUUID(), null));
+        final Order order = orders.save(Order.create(1004L, "empty-order-" + UUID.randomUUID(), null));
         balances.save(new PointBalance(1004L));
 
         assertThatThrownBy(() -> service.create(new CreatePaymentCommand(1004L, order.key(), -1L, BigDecimal.ZERO))).isInstanceOfSatisfying(
-            CoreException.class, (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
+            CoreException.class, (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
         assertThat(payments.findByOrderId(order.id())).isEmpty();
     }
 
@@ -123,8 +125,8 @@ class PaymentIntegrationTest {
             "INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?)",
             productId, bookId, "결제 테스트 상품", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), BigDecimal.ZERO, 10);
-        return new TransactionTemplate(transactionManager).execute((final var status) -> {
-            final var order = Order.create(userId, "test-order-" + UUID.randomUUID(), null);
+        return new TransactionTemplate(transactionManager).execute((final TransactionStatus status) -> {
+            final Order order = Order.create(userId, "test-order-" + UUID.randomUUID(), null);
             order.addItem(productId, "책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), 1);
             return orders.save(order);
         });

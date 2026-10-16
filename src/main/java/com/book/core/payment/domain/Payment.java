@@ -16,7 +16,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-/** 주문 소유자와 결제자를 구분하고 결제 승인 결과를 보관합니다. */
 @Entity
 @Table(name = "payment", indexes = @Index(name = "udx_payment_order_id", columnList = "order_id", unique = true))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -66,7 +65,6 @@ public class Payment extends BaseEntity {
         this.state = state;
     }
 
-    /** 참고 구현과 동일하게 승인 값과 승인 시각을 설정합니다. */
     public void success(final String externalPaymentKey, final PaymentMethod method, final String approveCode) {
         this.state = PaymentState.SUCCESS;
         this.externalPaymentKey = externalPaymentKey;

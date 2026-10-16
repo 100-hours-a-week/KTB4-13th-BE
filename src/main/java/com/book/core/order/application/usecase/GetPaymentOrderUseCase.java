@@ -9,7 +9,6 @@ import com.book.core.order.domain.OrderStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 결제 흐름에서 활성 주문과 요청 상태 및 소유권을 확인합니다. */
 @UseCase
 @RequiredArgsConstructor
 public class GetPaymentOrderUseCase {
@@ -29,7 +28,7 @@ public class GetPaymentOrderUseCase {
 
     @Transactional(readOnly = true)
     public Order execute(final String orderKey, final OrderStatus state) {
-        return orderRepository.findActiveOrderByKey(orderKey).filter((final var order) -> order.status() == state)
+        return orderRepository.findActiveOrderByKey(orderKey).filter((final Order order) -> order.status() == state)
             .orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
     }
 }

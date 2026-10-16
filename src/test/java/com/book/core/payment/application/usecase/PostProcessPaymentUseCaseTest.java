@@ -27,10 +27,10 @@ class PostProcessPaymentUseCaseTest {
 
     @Test
     void 성공한_주문의_상품만_주문_소유자_장바구니에서_제거한다() {
-        final var payment =
+        final Payment payment =
             new Payment(1L, 2L, BigDecimal.TEN, -1L, BigDecimal.ZERO, BigDecimal.ZERO, 99L, BigDecimal.TEN, PaymentState.READY);
         payment.success("test-key", PaymentMethod.CARD, "test");
-        final var order = Order.create(1L, "order", null);
+        final Order order = Order.create(1L, "order", null);
         order.addItem(10L, "책", "", "저자", BigDecimal.TEN, BigDecimal.TEN, 1);
         order.paid();
         when(payments.findById(3L)).thenReturn(Optional.of(payment));
@@ -48,7 +48,7 @@ class PostProcessPaymentUseCaseTest {
 
     @Test
     void READY_결제는_장바구니를_변경하지_않는다() {
-        final var payment =
+        final Payment payment =
             new Payment(1L, 2L, BigDecimal.TEN, -1L, BigDecimal.ZERO, BigDecimal.ZERO, 1L, BigDecimal.TEN, PaymentState.READY);
         when(payments.findById(3L)).thenReturn(Optional.of(payment));
         post.execute(3L, "order");

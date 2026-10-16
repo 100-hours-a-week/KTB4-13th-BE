@@ -8,7 +8,6 @@ import java.util.List;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
-/** 참고 결제의 쿠폰 및 포인트 계산을 보존합니다. */
 @Getter
 @Accessors(fluent = true)
 public class PaymentDiscount {
@@ -25,8 +24,8 @@ public class PaymentDiscount {
         this.useOwnedCouponId = useOwnedCouponId;
         this.usePointAmount = usePointAmount;
         if (useOwnedCouponId > 0) {
-            final var ownedCoupon = ownedCoupons.stream().filter((final var item) -> item.id().equals(useOwnedCouponId)).findFirst()
-                .orElseThrow(() -> new CoreException(ErrorCode.OWNED_COUPON_INVALID));
+            final PaymentCoupon ownedCoupon = ownedCoupons.stream().filter((final PaymentCoupon item) -> item.id().equals(useOwnedCouponId))
+                .findFirst().orElseThrow(() -> new CoreException(ErrorCode.OWNED_COUPON_INVALID));
             couponType = ownedCoupon.type();
             couponDiscount = ownedCoupon.discount();
             couponMinOrderAmount = ownedCoupon.minOrderAmount();
@@ -45,7 +44,6 @@ public class PaymentDiscount {
         }
     }
 
-    /** 사용자 선택에 따라 정규화 전 usePointAmount를 빼는 참고 동작을 유지합니다. */
     public BigDecimal paidAmount(final BigDecimal orderPrice) {
         if (orderPrice.compareTo(couponMinOrderAmount) < 0) {
             throw new CoreException(ErrorCode.OWNED_COUPON_MIN_AMOUNT_NOT_REACHED);

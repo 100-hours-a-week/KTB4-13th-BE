@@ -3,6 +3,10 @@ package com.book.core.settlement.application.service;
 import com.book.core.cancel.application.usecase.GetCancelsForSettlementUseCase;
 import com.book.core.payment.application.usecase.GetPaymentsForSettlementUseCase;
 import com.book.core.settlement.application.usecase.CreateSettlementTargetsUseCase;
+import com.book.core.settlement.application.usecase.GenerateSettlementsUseCase;
+import com.book.core.settlement.application.usecase.GetSettlementTargetsUseCase;
+import com.book.core.settlement.application.usecase.GetSettlementsUseCase;
+import com.book.core.settlement.domain.SettlementTargetSummary;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -18,12 +22,21 @@ public class SettlementService {
     private final GetPaymentsForSettlementUseCase getPaymentsForSettlementUseCase;
     private final GetCancelsForSettlementUseCase getCancelsForSettlementUseCase;
     private final CreateSettlementTargetsUseCase createSettlementTargetsUseCase;
+    private final GetSettlementTargetsUseCase getSettlementTargetsUseCase;
+    private final GetSettlementsUseCase getSettlementsUseCase;
+    private final GenerateSettlementsUseCase generateSettlementsUseCase;
 
     public void loadTargets(final LocalDate targetDate, final LocalDateTime from, final LocalDateTime to) {
         processPayments(targetDate, from, to);
         processCancels(targetDate, from, to);
     }
 
+    public int generate(final LocalDate targetDate) {
+        final var summaries = getSettlementTargetsUseCase.execute(targetDate);
+        final var recentSalesAmountMap =
+            getSettlementsUseCase.recentSalesAmounts(targetDate, summaries.stream().map(SettlementTargetSummary::merchantId).toList());
+        return generateSettlementsUseCase.execute(summaries, recentSalesAmountMap);
+    }
 
 
     private void processPayments(final LocalDate targetDate, final LocalDateTime from, final LocalDateTime to) {

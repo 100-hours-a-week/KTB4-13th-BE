@@ -96,8 +96,8 @@ class PaymentIntegrationTest {
 
     @Test
     void 실패는_이력만_커밋하고_중복_결제의_고유_제약은_기술예외를_전파한다() {
-        final var order = order(1003L);
-        final var payment = payments.save(payment(order, -1L));
+        final Order order = order(1003L);
+        final Payment payment = payments.save(payment(order, -1L));
         service.fail(new FailPaymentCommand(order.key(), "FAIL", "test failure"));
         assertThat(payments.findById(payment.id()).orElseThrow().state()).isEqualTo(PaymentState.READY);
         assertThat(jdbc.queryForObject("select paid_amount from transaction_history where payment_id = ?", BigDecimal.class, payment.id()))

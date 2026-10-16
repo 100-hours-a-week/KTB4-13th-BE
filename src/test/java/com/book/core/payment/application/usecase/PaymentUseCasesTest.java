@@ -136,12 +136,12 @@ class PaymentUseCasesTest {
 
     @Test
     void 실패는_마이너스_1_거래이력만_저장하고_READY와_CREATED를_유지한다() {
-        final var order = order();
-        final var payment = payment(10L);
+        final Order order = order();
+        final Payment payment = payment(10L);
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order);
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
         new FailPaymentUseCase(payments, orders, histories).execute("order", "FAIL", "test failure");
-        final var captured = ArgumentCaptor.forClass(PaymentHistory.class);
+        final ArgumentCaptor<PaymentHistory> captured = ArgumentCaptor.forClass(PaymentHistory.class);
         verify(histories).save(captured.capture());
         assertThat(captured.getValue().type()).isEqualTo(TransactionType.PAYMENT_FAIL);
         assertThat(captured.getValue().paidAmount()).isEqualByComparingTo("-1");

@@ -85,7 +85,7 @@ class PaymentServiceTest {
     void 실패는_실패_검증_후_기록만_실행한다() {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
         service.fail(new FailPaymentCommand("order", "FAIL", "test"));
-        final var sequence = inOrder(validate, fail);
+        final InOrder sequence = inOrder(validate, fail);
         sequence.verify(validate).validateForFail(2L);
         sequence.verify(fail).execute("order", "FAIL", "test");
         verifyNoInteractions(complete, post);

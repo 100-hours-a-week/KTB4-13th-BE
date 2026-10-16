@@ -49,9 +49,9 @@ class PaymentProcessingLoggingTest {
         appender.start();
         logger.addAppender(appender);
         MDC.put("traceId", "payment-test-trace");
-        final var order = Order.create(1L, "order", null);
+        final Order order = Order.create(1L, "order", null);
         ReflectionTestUtils.setField(order, "id", 2L);
-        final var payment =
+        final Payment payment =
             new Payment(1L, 2L, BigDecimal.TEN, -1L, BigDecimal.ZERO, BigDecimal.ZERO, 1L, BigDecimal.TEN, PaymentState.READY);
         ReflectionTestUtils.setField(payment, "id", 3L);
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order);
@@ -75,9 +75,9 @@ class PaymentProcessingLoggingTest {
         useCase.execute("order", "private-external-code", "private-external-message");
 
         assertThat(appender.list).extracting(ILoggingEvent::getLevel).containsExactly(Level.DEBUG, Level.INFO);
-        assertThat(appender.list).allSatisfy(
-            (final var event) -> assertThat(event.getFormattedMessage()).contains("paymentId=3", "orderId=2", "traceId=payment-test-trace")
-                .doesNotContain("private-external-code", "private-external-message", "externalPaymentKey=", "amount="));
+        assertThat(appender.list).allSatisfy((final ILoggingEvent event) -> assertThat(event.getFormattedMessage())
+            .contains("paymentId=3", "orderId=2", "traceId=payment-test-trace")
+            .doesNotContain("private-external-code", "private-external-message", "externalPaymentKey=", "amount="));
     }
 
     @Test

@@ -1,0 +1,13 @@
+{
+  "key": "success-owner",
+  "sourceHtmlSha256": "a581e04d0289b11b85dc0ab783e6a013eb67417fd1d352d12b82fb1277749c88",
+  "nativeSvgSha256": "3aecfb89122c7eb32068221390cfa0362ad1072bb6268babf339785e65720400",
+  "monochromeSvgSha256": "ac789a26d7d24ec2e9d2e69562d8974710239e650980b657de7e87742bc144ef",
+  "pngSha256": "91f0050866a37f1e6ec050d8d23e55aa5eec86abd53117f754effc7fdade106d",
+  "width": 2160,
+  "height": 1212,
+  "nonGrayPixels": 0,
+  "transparentPixels": 0,
+  "topologyPreserved": true,
+  "visualReview": "pending"
+}

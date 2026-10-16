@@ -33,3 +33,9 @@
 애플리케이션 테스트와 실제 PG·운영 DB 검증 결과는 이 다이어그램 검증에 포함되지 않습니다.
 
 Archify가 생성한 HTML·SVG의 공백도 해시 일치를 위해 그대로 보관합니다. Git 공백 검사는 직접 작성한 Markdown·JSON에 적용했습니다.
+
+## 후처리 소유자 검증 보완
+
+결제 소유자와 주문 소유자 일치 검사를 장바구니 삭제 전에 추가한 최신 정상 흐름은 [success-owner PNG](success-owner.monochrome.png)와 [명세](success-owner.sequence.json)에 반영했습니다. 기존 success-current는 이전 스냅샷으로 보관합니다.
+
+새 후보를 showcase 9/9, 오류·경고 0건으로 검증한 뒤 전달했습니다. 네 데스크톱 크기와 밝은·어두운 테마의 자동 브라우저 검사를 통과했으며, PR에 사용하는 흰 배경 PNG를 별도로 열어 글자와 잘림을 확인했습니다. 원본 HTML과 명세는 전달 후 변경하지 않았습니다.

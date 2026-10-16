@@ -22,8 +22,8 @@ public class PaymentCommandConverter {
         return new CreatePaymentCommand(userId, request.orderKey(), useOwnedCouponId, usePoint);
     }
 
-    public ApprovePaymentCommand toApproveCommand(final String orderId, final String paymentKey, final BigDecimal amount) {
-        return new ApprovePaymentCommand(orderId, paymentKey, amount);
+    public ApprovePaymentCommand toApproveCommand(final String orderKey, final String paymentKey, final BigDecimal amount) {
+        return new ApprovePaymentCommand(orderKey, paymentKey, amount);
     }
 
     public FailPaymentCommand toFailCommand(final String orderId, final String code, final String message) {

@@ -38,9 +38,9 @@ class PaymentController implements PaymentControllerSpec {
 
     @Override
     @PostMapping("/callback/success")
-    public ResponseEntity<ApiResponse<Void>> callbackForSuccess(@NotBlank @Size(max = 255) @RequestParam("orderId") final String orderId,
+    public ResponseEntity<ApiResponse<Void>> callbackForSuccess(@NotBlank @Size(max = 255) @RequestParam("orderId") final String orderKey,
         @NotBlank @Size(max = 255) @RequestParam("paymentKey") final String paymentKey, @RequestParam("amount") final BigDecimal amount) {
-        paymentService.success(commandConverter.toApproveCommand(orderId, paymentKey, amount));
+        paymentService.success(commandConverter.toApproveCommand(orderKey, paymentKey, amount));
         return ResponseEntity.ok(ApiResponse.ok());
     }
 

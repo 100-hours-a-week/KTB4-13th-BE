@@ -21,7 +21,7 @@ public interface PaymentControllerSpec {
         @Valid final CreatePaymentRequest request);
 
     @Operation(summary = "결제 성공 콜백", description = "orderId는 숫자 ID가 아닌 주문 키입니다. 실제 PG 승인 연동은 미구현입니다.")
-    ResponseEntity<ApiResponse<Void>> callbackForSuccess(@NotBlank @Size(max = 255) final String orderId,
+    ResponseEntity<ApiResponse<Void>> callbackForSuccess(@NotBlank @Size(max = 255) final String orderKey,
         @NotBlank @Size(max = 255) final String paymentKey, final BigDecimal amount);
 
     @Operation(summary = "결제 실패 콜백", description = "주문과 결제의 기존 상태를 변경하지 않고 실패 이력만 기록합니다.")

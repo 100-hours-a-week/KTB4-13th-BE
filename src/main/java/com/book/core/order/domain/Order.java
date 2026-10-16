@@ -96,6 +96,10 @@ public class Order extends BaseTimeEntity {
         status = OrderStatus.CANCELED;
     }
 
+    public void partialCanceled() {
+        status = OrderStatus.PARTIAL_CANCELED;
+    }
+
     public void cancel() {
         if (status != OrderStatus.CREATED || items.stream().anyMatch(item -> item.status() != OrderItemStatus.CREATED)) {
             throw new CoreException(ErrorCode.ORDER_CANNOT_BE_CANCELED);

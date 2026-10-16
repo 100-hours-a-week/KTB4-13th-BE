@@ -1,5 +1,7 @@
 package com.book.core.cancel.application.usecase;
 
+import org.mockito.invocation.InvocationOnMock;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,20 +56,20 @@ class CancelUseCasesTest {
 
     @Test
     void 전체취소는_쿠폰과_포인트를_복원하고_적립포인트를_회수하며_이력을_기록한다() {
-        final var order = order(3);
-        final var balance = prepare(order, 10L);
+        final Order order = order(3);
+        final CancelBalance balance = prepare(order, 10L);
         assertThat(full().execute(new CancelAction("order"))).isEqualTo(5L);
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
         assertThat(balance.cancellablePaidAmount()).isEqualByComparingTo("0");
         verify(coupons).execute(10L);
         verify(earn).execute(1L, PointType.PAYMENT, 3L, BigDecimal.valueOf(1200));
         verify(deduct).execute(1L, PointType.PAYMENT, 3L, PointAmount.PAYMENT);
-        final var capture = ArgumentCaptor.forClass(Cancel.class);
+        final ArgumentCaptor<Cancel> capture = ArgumentCaptor.forClass(Cancel.class);
         verify(cancels).save(capture.capture());
         assertThat(capture.getValue().type()).isEqualTo(CancelType.ALL);
         assertThat(capture.getValue().orderItemId()).isEqualTo(-1L);
         assertThat(capture.getValue().canceledQuantity()).isEqualTo(-1L);
-        final var history = ArgumentCaptor.forClass(PaymentHistory.class);
+        final ArgumentCaptor<PaymentHistory> history = ArgumentCaptor.forClass(PaymentHistory.class);
         verify(histories).execute(history.capture());
         assertThat(history.getValue().type()).isEqualTo(TransactionType.CANCEL);
         assertThat(history.getValue().occurredAt()).isEqualTo(capture.getValue().canceledAt());
@@ -75,7 +77,7 @@ class CancelUseCasesTest {
 
     @Test
     void 전체취소는_쿠폰이_없으면_복원을_생략하고_부분취소된_주문은_거부한다() {
-        final var order = order(3);
+        final Order order = order(3);
         prepare(order, -1L);
         full().execute(new CancelAction("order"));
         verifyNoInteractions(coupons);
@@ -161,17 +163,17 @@ class CancelUseCasesTest {
     }
 
     private CancelBalance prepare(final Order order, final Long ownedCouponId) {
-        final var payment = new Payment(1L, 2L, BigDecimal.valueOf(10000), ownedCouponId, BigDecimal.valueOf(1000),
+        final Payment payment = new Payment(1L, 2L, BigDecimal.valueOf(10000), ownedCouponId, BigDecimal.valueOf(1000),
             BigDecimal.valueOf(1200), 9L, BigDecimal.valueOf(7800), PaymentState.READY);
         ReflectionTestUtils.setField(payment, "id", 3L);
         payment.success("test-pg", PaymentMethod.CARD, "test");
-        final var balance = new CancelBalance(2L, BigDecimal.valueOf(7800), BigDecimal.valueOf(1200), BigDecimal.valueOf(1000),
+        final CancelBalance balance = new CancelBalance(2L, BigDecimal.valueOf(7800), BigDecimal.valueOf(1200), BigDecimal.valueOf(1000),
             BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         when(orders.execute("order")).thenReturn(order);
         when(items.execute(4L)).thenReturn(order.items().getFirst());
         when(payments.execute(2L)).thenReturn(payment);
         when(balances.findByOrderId(2L)).thenReturn(Optional.of(balance));
-        when(cancels.save(any())).thenAnswer((final var invocation) -> {
+        when(cancels.save(any())).thenAnswer((final InvocationOnMock invocation) -> {
             final Cancel cancel = invocation.getArgument(0);
             ReflectionTestUtils.setField(cancel, "id", 5L);
             return cancel;
@@ -180,7 +182,7 @@ class CancelUseCasesTest {
     }
 
     private static Order order(final int quantity) {
-        final var order = Order.create(1L, "order", null);
+        final Order order = Order.create(1L, "order", null);
         ReflectionTestUtils.setField(order, "id", 2L);
         order.addItem(10L, "책", "", "저자", BigDecimal.valueOf(1000), BigDecimal.valueOf(1000), quantity);
         ReflectionTestUtils.setField(order.items().getFirst(), "id", 4L);

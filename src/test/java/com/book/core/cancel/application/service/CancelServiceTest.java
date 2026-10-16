@@ -1,5 +1,7 @@
 package com.book.core.cancel.application.service;
 
+import org.mockito.InOrder;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
@@ -29,10 +31,10 @@ class CancelServiceTest {
 
     @Test
     void 전체취소는_검증_후_쓰기를_실행한다() {
-        final var action = new CancelAction("order");
+        final CancelAction action = new CancelAction("order");
         when(cancel.execute(action)).thenReturn(10L);
         assertThat(service.cancel(new CancelCommand(1L, action))).isEqualTo(10L);
-        final var sequence = inOrder(validate, cancel);
+        final InOrder sequence = inOrder(validate, cancel);
         sequence.verify(validate).validate(1L, action);
         sequence.verify(cancel).execute(action);
         verifyNoInteractions(calculate, partial);

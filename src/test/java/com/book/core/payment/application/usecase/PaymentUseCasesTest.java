@@ -1,5 +1,9 @@
 package com.book.core.payment.application.usecase;
 
+import com.book.core.order.domain.OrderItem;
+
+import org.mockito.invocation.InvocationOnMock;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,15 +50,15 @@ class PaymentUseCasesTest {
 
     @Test
     void 생성은_주문_소유자와_결제자_및_할인_값을_유지한다() {
-        final var order = order();
+        final Order order = order();
         when(payments.findByOrderId(2L)).thenReturn(Optional.empty());
-        when(payments.save(any())).thenAnswer((final var invocation) -> {
+        when(payments.save(any())).thenAnswer((final InvocationOnMock invocation) -> {
             final Payment payment = invocation.getArgument(0);
             ReflectionTestUtils.setField(payment, "id", 3L);
             return payment;
         });
         assertThat(new CreatePaymentUseCase(payments).execute(order, 99L, PaymentDiscount.EMPTY)).isEqualTo(3L);
-        final var captured = ArgumentCaptor.forClass(Payment.class);
+        final ArgumentCaptor<Payment> captured = ArgumentCaptor.forClass(Payment.class);
         verify(payments).save(captured.capture());
         assertThat(captured.getValue().userId()).isEqualTo(1L);
         assertThat(captured.getValue().payerUserId()).isEqualTo(99L);
@@ -64,17 +68,17 @@ class PaymentUseCasesTest {
 
     @Test
     void 이미_성공한_결제가_있는_주문은_거부한다() {
-        final var payment = payment(-1L);
+        final Payment payment = payment(-1L);
         payment.success("test", PaymentMethod.CARD, "test");
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
         assertThatThrownBy(() -> new CreatePaymentUseCase(payments).execute(order(), 1L, PaymentDiscount.EMPTY)).isInstanceOfSatisfying(
-            CoreException.class, (final var e) -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ORDER_ALREADY_PAID));
+            CoreException.class, (final CoreException e) -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ORDER_ALREADY_PAID));
     }
 
     @Test
     void 승인_금액은_참고처럼_스케일까지_비교하고_불일치는_거부한다() {
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment(-1L)));
-        final var validator = new ValidatePaymentUseCase(payments);
+        final ValidatePaymentUseCase validator = new ValidatePaymentUseCase(payments);
         validator.validateForApprove(2L, BigDecimal.valueOf(8800));
         assertThatThrownBy(() -> validator.validateForApprove(2L, new BigDecimal("8800.00"))).isInstanceOf(CoreException.class);
         assertThatThrownBy(() -> validator.validateForApprove(2L, BigDecimal.TEN)).isInstanceOf(CoreException.class);
@@ -83,10 +87,10 @@ class PaymentUseCasesTest {
 
     @Test
     void 승인_검증은_SUCCESS와_없는_결제를_거부한다() {
-        final var payment = payment(-1L);
+        final Payment payment = payment(-1L);
         payment.success("test", PaymentMethod.CARD, "test");
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
-        final var validator = new ValidatePaymentUseCase(payments);
+        final ValidatePaymentUseCase validator = new ValidatePaymentUseCase(payments);
         assertThatThrownBy(() -> validator.validateForApprove(2L, BigDecimal.valueOf(8800))).isInstanceOf(CoreException.class);
         when(payments.findByOrderId(2L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> validator.validateForFail(2L)).isInstanceOf(CoreException.class);
@@ -94,19 +98,19 @@ class PaymentUseCasesTest {
 
     @Test
     void 성공은_주문과_상품_혜택_취소잔액_거래이력을_연결한다() {
-        final var order = order();
-        final var payment = payment(10L);
+        final Order order = order();
+        final Payment payment = payment(10L);
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order);
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
         assertThat(complete().execute("order", "test-external")).isEqualTo(3L);
         assertThat(order.status()).isEqualTo(OrderStatus.PAID);
-        assertThat(order.items()).allSatisfy((final var item) -> assertThat(item.status()).isEqualTo(OrderItemStatus.PAID));
+        assertThat(order.items()).allSatisfy((final OrderItem item) -> assertThat(item.status()).isEqualTo(OrderItemStatus.PAID));
         assertThat(payment.state()).isEqualTo(PaymentState.SUCCESS);
         verify(coupons).execute(10L);
         verify(deduct).execute(1L, PointType.PAYMENT, 3L, BigDecimal.valueOf(1200));
         verify(earn).execute(1L, PointType.PAYMENT, 3L, PointAmount.PAYMENT);
         verify(cancel).execute(2L, BigDecimal.valueOf(8800), BigDecimal.valueOf(1200), BigDecimal.ZERO);
-        final var captured = ArgumentCaptor.forClass(PaymentHistory.class);
+        final ArgumentCaptor<PaymentHistory> captured = ArgumentCaptor.forClass(PaymentHistory.class);
         verify(histories).save(captured.capture());
         assertThat(captured.getValue().type()).isEqualTo(TransactionType.PAYMENT);
         assertThat(captured.getValue().externalPaymentKey()).isEqualTo("test-external");
@@ -132,12 +136,12 @@ class PaymentUseCasesTest {
 
     @Test
     void 실패는_마이너스_1_거래이력만_저장하고_READY와_CREATED를_유지한다() {
-        final var order = order();
-        final var payment = payment(10L);
+        final Order order = order();
+        final Payment payment = payment(10L);
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order);
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
         new FailPaymentUseCase(payments, orders, histories).execute("order", "FAIL", "test failure");
-        final var captured = ArgumentCaptor.forClass(PaymentHistory.class);
+        final ArgumentCaptor<PaymentHistory> captured = ArgumentCaptor.forClass(PaymentHistory.class);
         verify(histories).save(captured.capture());
         assertThat(captured.getValue().type()).isEqualTo(TransactionType.PAYMENT_FAIL);
         assertThat(captured.getValue().paidAmount()).isEqualByComparingTo("-1");
@@ -152,14 +156,14 @@ class PaymentUseCasesTest {
     }
 
     private static Order order() {
-        final var order = Order.create(1L, "order", null);
+        final Order order = Order.create(1L, "order", null);
         ReflectionTestUtils.setField(order, "id", 2L);
         order.addItem(10L, "책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), 1);
         return order;
     }
 
     private static Payment payment(final Long couponId) {
-        final var payment = new Payment(1L, 2L, BigDecimal.valueOf(10000), couponId, BigDecimal.ZERO, BigDecimal.valueOf(1200), 1L,
+        final Payment payment = new Payment(1L, 2L, BigDecimal.valueOf(10000), couponId, BigDecimal.ZERO, BigDecimal.valueOf(1200), 1L,
             BigDecimal.valueOf(8800), PaymentState.READY);
         ReflectionTestUtils.setField(payment, "id", 3L);
         return payment;

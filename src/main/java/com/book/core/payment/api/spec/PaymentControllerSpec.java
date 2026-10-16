@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 
-/** 참고 결제 API를 Book의 /api/v1 경로와 공통 응답 형식으로 제공합니다. */
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Payment", description = "일반 결제")
 public interface PaymentControllerSpec {

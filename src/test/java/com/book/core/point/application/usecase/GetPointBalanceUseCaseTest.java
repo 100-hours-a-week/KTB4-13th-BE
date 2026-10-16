@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
 class GetPointBalanceUseCaseTest {
     @Test
     void 포인트_이력_없이_잔액을_조회하고_없는_회원은_거부한다() {
-        final var repository = mock(PointBalanceRepositoryPort.class);
-        final var useCase = new GetPointBalanceUseCase(repository);
+        final PointBalanceRepositoryPort repository = mock(PointBalanceRepositoryPort.class);
+        final GetPointBalanceUseCase useCase = new GetPointBalanceUseCase(repository);
         when(repository.findByUserId(42L)).thenReturn(Optional.of(new PointBalance(1L, 42L, BigDecimal.TEN)));
         assertThat(useCase.execute(42L)).isEqualByComparingTo("10");
         when(repository.findByUserId(42L)).thenReturn(Optional.empty());

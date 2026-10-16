@@ -13,17 +13,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 참고 PaymentCreator의 결제 생성 및 이미 결제한 주문 검사입니다. */
 @UseCase
 @RequiredArgsConstructor
 @Slf4j
 public class CreatePaymentUseCase {
     private final PaymentRepositoryPort paymentRepository;
 
-    /** 결제 완료 주문을 거절하고 새 READY 결제를 저장합니다. 기존 READY 결제 재생성은 주문별 UNIQUE 제약으로 거절됩니다. */
     @Transactional
     public Long execute(final Order order, final Long payerUserId, final PaymentDiscount paymentDiscount) {
-        if (paymentRepository.findByOrderId(order.id()).filter((final var item) -> item.state() == PaymentState.SUCCESS).isPresent()) {
+        if (paymentRepository.findByOrderId(order.id()).filter((final Payment item) -> item.state() == PaymentState.SUCCESS).isPresent()) {
             throw new CoreException(ErrorCode.ORDER_ALREADY_PAID);
         }
         final Payment payment = new Payment(order.userId(), order.id(), order.totalPrice(), paymentDiscount.useOwnedCouponId(),

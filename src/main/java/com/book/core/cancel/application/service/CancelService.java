@@ -27,8 +27,10 @@ public class CancelService {
 
     public Long partialCancel(final PartialCancelCommand command) {
         validateCancelUseCase.validatePartial(command.userId(), command.action());
+        // TODO(#331): 검증·계산·쓰기가 같은 스냅샷을 사용하도록 후속 설계를 검토한다.
         final CancelCalculated calculated = calculatePartialCancelUseCase.execute(command.action());
 
+        // TODO(#329): 실제 PG 부분 취소와 DB 실패 보상을 구현한다. 현재는 내부 상태만 변경한다.
         return partialCancelPaymentUseCase.execute(command.action(), calculated);
     }
 }

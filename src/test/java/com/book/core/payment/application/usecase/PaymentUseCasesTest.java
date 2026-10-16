@@ -1,5 +1,7 @@
 package com.book.core.payment.application.usecase;
 
+import org.mockito.invocation.InvocationOnMock;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,15 +38,15 @@ class PaymentUseCasesTest {
 
     @Test
     void 생성은_주문_소유자와_결제자_및_할인_값을_유지한다() {
-        final var order = order();
+        final Order order = order();
         when(payments.findByOrderId(2L)).thenReturn(Optional.empty());
-        when(payments.save(any())).thenAnswer((final var invocation) -> {
+        when(payments.save(any())).thenAnswer((final InvocationOnMock invocation) -> {
             final Payment payment = invocation.getArgument(0);
             ReflectionTestUtils.setField(payment, "id", 3L);
             return payment;
         });
         assertThat(new CreatePaymentUseCase(payments).execute(order, 99L, PaymentDiscount.EMPTY)).isEqualTo(3L);
-        final var captured = ArgumentCaptor.forClass(Payment.class);
+        final ArgumentCaptor<Payment> captured = ArgumentCaptor.forClass(Payment.class);
         verify(payments).save(captured.capture());
         assertThat(captured.getValue().userId()).isEqualTo(1L);
         assertThat(captured.getValue().payerUserId()).isEqualTo(99L);
@@ -54,22 +56,22 @@ class PaymentUseCasesTest {
 
     @Test
     void 이미_성공한_결제가_있는_주문은_거부한다() {
-        final var payment = payment(-1L);
+        final Payment payment = payment(-1L);
         payment.success("test", PaymentMethod.CARD, "test");
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
         assertThatThrownBy(() -> new CreatePaymentUseCase(payments).execute(order(), 1L, PaymentDiscount.EMPTY)).isInstanceOfSatisfying(
-            CoreException.class, (final var e) -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ORDER_ALREADY_PAID));
+            CoreException.class, (final CoreException e) -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ORDER_ALREADY_PAID));
     }
 
     private static Order order() {
-        final var order = Order.create(1L, "order", null);
+        final Order order = Order.create(1L, "order", null);
         ReflectionTestUtils.setField(order, "id", 2L);
         order.addItem(10L, "책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), 1);
         return order;
     }
 
     private static Payment payment(final Long couponId) {
-        final var payment = new Payment(1L, 2L, BigDecimal.valueOf(10000), couponId, BigDecimal.ZERO, BigDecimal.valueOf(1200), 1L,
+        final Payment payment = new Payment(1L, 2L, BigDecimal.valueOf(10000), couponId, BigDecimal.ZERO, BigDecimal.valueOf(1200), 1L,
             BigDecimal.valueOf(8800), PaymentState.READY);
         ReflectionTestUtils.setField(payment, "id", 3L);
         return payment;

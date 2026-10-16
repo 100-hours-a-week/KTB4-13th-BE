@@ -60,7 +60,7 @@ class DeductPointUseCaseTest {
         when(balances.findByUserId(42L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN)).isInstanceOfSatisfying(CoreException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
         verifyNoInteractions(histories);
     }
 

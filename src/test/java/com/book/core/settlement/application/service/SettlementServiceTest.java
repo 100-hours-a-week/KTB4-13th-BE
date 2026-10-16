@@ -4,17 +4,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.book.common.paging.SliceResult;
 import com.book.core.cancel.application.usecase.GetCancelsForSettlementUseCase;
 import com.book.core.cancel.domain.Cancel;
+import com.book.core.merchant.application.usecase.GetMerchantsUseCase;
 import com.book.core.payment.application.usecase.GetPaymentsForSettlementUseCase;
 import com.book.core.payment.domain.Payment;
 import com.book.core.settlement.application.usecase.CreateSettlementTargetsUseCase;
 import com.book.core.settlement.application.usecase.GenerateSettlementsUseCase;
 import com.book.core.settlement.application.usecase.GetSettlementTargetsUseCase;
 import com.book.core.settlement.application.usecase.GetSettlementsUseCase;
+import com.book.core.settlement.application.usecase.TransferSettlementsUseCase;
+import com.book.core.settlement.domain.Settlement;
+import com.book.core.settlement.domain.SettlementState;
 import com.book.core.settlement.domain.SettlementTargetSummary;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -29,7 +34,10 @@ class SettlementServiceTest {
     private final GetSettlementTargetsUseCase targets = mock(GetSettlementTargetsUseCase.class);
     private final GetSettlementsUseCase settlements = mock(GetSettlementsUseCase.class);
     private final GenerateSettlementsUseCase generate = mock(GenerateSettlementsUseCase.class);
-    private final SettlementService service = new SettlementService(payments, cancels, create, targets, settlements, generate);
+    private final GetMerchantsUseCase merchants = mock(GetMerchantsUseCase.class);
+    private final TransferSettlementsUseCase transfer = mock(TransferSettlementsUseCase.class);
+    private final SettlementService service =
+        new SettlementService(payments, cancels, create, targets, settlements, generate, merchants, transfer);
     private final LocalDate date = LocalDate.of(2026, 10, 16);
 
     @Test
@@ -70,4 +78,13 @@ class SettlementServiceTest {
         order.verify(generate).execute(summaries, amounts);
     }
 
+    @Test
+    void 이체는_READY_전체와_해당가맹점을_전달한다() {
+        final var ready = List.of(
+            new Settlement(1L, date, BigDecimal.TEN, BigDecimal.ONE, new BigDecimal("0.1"), new BigDecimal("9"), SettlementState.READY));
+        when(settlements.byState(SettlementState.READY)).thenReturn(ready);
+        when(merchants.execute(List.of(1L))).thenReturn(List.of());
+        service.transfer(date);
+        verify(transfer).transfer(date, List.of(), ready);
+    }
 }

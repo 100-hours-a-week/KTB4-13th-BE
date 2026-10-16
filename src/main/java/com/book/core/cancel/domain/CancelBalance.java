@@ -12,7 +12,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-/** 참고 CancelBalance의 영속 필드와 업무 동작을 유지합니다. */
 @Entity
 @Table(name = "cancel_balance", indexes = @Index(name = "udx_cancel_balance_order_id", columnList = "order_id", unique = true))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

@@ -14,7 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-/** 결제 성공·실패와 전체·부분 취소 이력을 기록합니다. */
 @Entity
 @Table(name = "transaction_history")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

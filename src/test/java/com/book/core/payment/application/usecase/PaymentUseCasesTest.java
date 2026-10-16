@@ -23,6 +23,7 @@ import com.book.core.order.domain.OrderItemStatus;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.application.port.PaymentHistoryRepositoryPort;
+import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.PaymentDiscount;
 import com.book.core.payment.domain.PaymentHistory;
@@ -37,6 +38,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.invocation.InvocationOnMock;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class PaymentUseCasesTest {

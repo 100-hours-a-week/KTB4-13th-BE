@@ -20,9 +20,10 @@ class PointBalanceVersionMigrationTest {
 
     @Test
     void 기존_잔액과_신규_행의_버전을_0으로_초기화한다() {
-        final var dataSource = new DriverManagerDataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+        final DriverManagerDataSource dataSource =
+            new DriverManagerDataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
         Flyway.configure().dataSource(dataSource).target("24").load().migrate();
-        final var jdbc = new JdbcTemplate(dataSource);
+        final JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         jdbc.update("INSERT INTO point_balance (user_id, balance, created_at, updated_at) VALUES (1, 1000, NOW(), NOW())");
 
         Flyway.configure().dataSource(dataSource).load().migrate();

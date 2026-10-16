@@ -19,6 +19,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -48,16 +49,16 @@ class PointBalanceOptimisticLockIntegrationTest {
     @CsvSource({"false, 940001, 1250", "true, 940002, 750"})
     void 먼저_읽은_잔액의_갱신이_충돌하면_그_트랜잭션의_이력도_롤백한다(final boolean deduct, final Long userId, final BigDecimal expectedBalance) {
         balances.save(new PointBalance(null, userId, new BigDecimal("1000")));
-        final var transaction = new TransactionTemplate(transactionManager);
+        final TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 
-        assertThatThrownBy(() -> transaction.executeWithoutResult((final var outer) -> {
+        assertThatThrownBy(() -> transaction.executeWithoutResult((final TransactionStatus outer) -> {
             assertThat(balances.findByUserId(userId).orElseThrow().version()).isZero();
-            transaction.executeWithoutResult((final var inner) -> apply(deduct, userId, 1L, new BigDecimal("250")));
+            transaction.executeWithoutResult((final TransactionStatus inner) -> apply(deduct, userId, 1L, new BigDecimal("250")));
             apply(deduct, userId, 2L, new BigDecimal("100"));
         })).isInstanceOf(OptimisticLockingFailureException.class);
 
-        final var balance = balances.findByUserId(userId).orElseThrow();
+        final PointBalance balance = balances.findByUserId(userId).orElseThrow();
         assertThat(balance.balance()).isEqualByComparingTo(expectedBalance);
         assertThat(balance.version()).isEqualTo(1L);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM point_history WHERE user_id = ? AND reference_id = 1", Long.class, userId))
@@ -76,7 +77,7 @@ class PointBalanceOptimisticLockIntegrationTest {
         earnPointUseCase.execute(userId, PointType.REVIEW, 1L, amount);
         deductPointUseCase.execute(userId, PointType.REVIEW, 2L, amount);
 
-        final var balance = balances.findByUserId(userId).orElseThrow();
+        final PointBalance balance = balances.findByUserId(userId).orElseThrow();
         assertThat(balance.balance()).isEqualByComparingTo("1000");
         assertThat(balance.version()).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM point_history WHERE user_id = ?", Long.class, userId)).isZero();

@@ -50,11 +50,10 @@ public class PaymentService {
         return createPaymentUseCase.execute(order, command.userId(), paymentDiscount);
     }
 
-    /** 승인 금액을 확인하고 결제, 주문, 혜택, 취소 잔액과 이력을 원자적으로 변경한 뒤 비동기 후처리를 요청합니다. */
     public Long success(final ApprovePaymentCommand command) {
-        final var order = getPaymentOrderUseCase.execute(command.orderKey(), OrderStatus.CREATED);
+        final Order order = getPaymentOrderUseCase.execute(command.orderKey(), OrderStatus.CREATED);
         validatePaymentUseCase.validateForApprove(order.id(), command.amount());
-        // NOTE: PG 승인 API 호출 => 성공 시 다음 로직으로 진행 | 실패 시 예외 발생
+
         final Long paymentId = completePaymentUseCase.execute(command.orderKey(), command.externalPaymentKey());
         postProcessPaymentUseCase.execute(paymentId, command.orderKey());
         return paymentId;

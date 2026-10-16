@@ -1,5 +1,7 @@
 package com.book.core.payment.application.service;
 
+import org.mockito.InOrder;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -61,7 +63,7 @@ class PaymentServiceTest {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
         when(complete.execute("order", "test-key")).thenReturn(3L);
         assertThat(service.success(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN))).isEqualTo(3L);
-        final var sequence = inOrder(validate, complete, post);
+        final InOrder sequence = inOrder(validate, complete, post);
         sequence.verify(validate).validateForApprove(2L, BigDecimal.TEN);
         sequence.verify(complete).execute("order", "test-key");
         sequence.verify(post).execute(3L, "order");

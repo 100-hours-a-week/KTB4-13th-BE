@@ -21,7 +21,6 @@ public class PaymentCommandConverter {
         return new CreatePaymentCommand(userId, request.orderKey(), useOwnedCouponId, usePoint);
     }
 
-    /** 외부 orderId를 주문 키로 해석해 승인 입력을 Command로 옮깁니다. */
     public ApprovePaymentCommand toApproveCommand(final String orderId, final String paymentKey, final BigDecimal amount) {
         return new ApprovePaymentCommand(orderId, paymentKey, amount);
     }

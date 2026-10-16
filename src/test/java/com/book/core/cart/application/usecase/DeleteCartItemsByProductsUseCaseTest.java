@@ -19,8 +19,8 @@ class DeleteCartItemsByProductsUseCaseTest {
 
     @Test
     void 결제한_상품만_삭제하고_나머지는_유지한다() {
-        final var purchased = new CartItem(1L, 10L, 100L, 1);
-        final var other = new CartItem(2L, 10L, 200L, 1);
+        final CartItem purchased = new CartItem(1L, 10L, 100L, 1);
+        final CartItem other = new CartItem(2L, 10L, 200L, 1);
         when(carts.findByUserId(42L)).thenReturn(Optional.of(new Cart(10L, 42L)));
         when(items.findActiveByCartId(10L)).thenReturn(List.of(purchased, other));
         new DeleteCartItemsByProductsUseCase(carts, items).execute(42L, List.of(100L));

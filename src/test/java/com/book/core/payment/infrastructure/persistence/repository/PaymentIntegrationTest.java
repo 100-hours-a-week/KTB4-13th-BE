@@ -63,9 +63,9 @@ class PaymentIntegrationTest {
 
     @Test
     void 성공_트랜잭션은_주문_포인트_취소잔액_거래이력을_함께_저장한다() {
-        final var order = order(1001L);
+        final Order order = order(1001L);
         balances.save(new PointBalance(null, 1001L, BigDecimal.valueOf(5000)));
-        final var payment = payments.save(payment(order, -1L));
+        final Payment payment = payments.save(payment(order, -1L));
         service.success(new ApprovePaymentCommand(order.key(), "test-pg-key", new BigDecimal("8800.00")));
         assertThat(payments.findById(payment.id()).orElseThrow().state()).isEqualTo(PaymentState.SUCCESS);
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
@@ -81,9 +81,9 @@ class PaymentIntegrationTest {
 
     @Test
     void 사용완료_쿠폰_실패는_앞서_변경한_결제와_주문도_롤백한다() {
-        final var order = order(1002L);
-        final var coupon = coupons.save(new OwnedCoupon(1002L, 123L, OwnedCouponStatus.USED, 1L, 1L));
-        final var payment = payments.save(payment(order, coupon.id()));
+        final Order order = order(1002L);
+        final OwnedCoupon coupon = coupons.save(new OwnedCoupon(1002L, 123L, OwnedCouponStatus.USED, 1L, 1L));
+        final Payment payment = payments.save(payment(order, coupon.id()));
         assertThatThrownBy(() -> service.success(new ApprovePaymentCommand(order.key(), "test-pg-key", new BigDecimal("8800.00"))))
             .isInstanceOf(CoreException.class);
         assertThat(payments.findById(payment.id()).orElseThrow().state()).isEqualTo(PaymentState.READY);

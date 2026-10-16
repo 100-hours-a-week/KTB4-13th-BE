@@ -1,11 +1,15 @@
 package com.book.core.settlement.application.service;
 
 import com.book.core.cancel.application.usecase.GetCancelsForSettlementUseCase;
+import com.book.core.merchant.application.usecase.GetMerchantsUseCase;
 import com.book.core.payment.application.usecase.GetPaymentsForSettlementUseCase;
 import com.book.core.settlement.application.usecase.CreateSettlementTargetsUseCase;
 import com.book.core.settlement.application.usecase.GenerateSettlementsUseCase;
 import com.book.core.settlement.application.usecase.GetSettlementTargetsUseCase;
 import com.book.core.settlement.application.usecase.GetSettlementsUseCase;
+import com.book.core.settlement.application.usecase.TransferSettlementsUseCase;
+import com.book.core.settlement.domain.Settlement;
+import com.book.core.settlement.domain.SettlementState;
 import com.book.core.settlement.domain.SettlementTargetSummary;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,6 +29,8 @@ public class SettlementService {
     private final GetSettlementTargetsUseCase getSettlementTargetsUseCase;
     private final GetSettlementsUseCase getSettlementsUseCase;
     private final GenerateSettlementsUseCase generateSettlementsUseCase;
+    private final GetMerchantsUseCase getMerchantsUseCase;
+    private final TransferSettlementsUseCase transferSettlementsUseCase;
 
     public void loadTargets(final LocalDate targetDate, final LocalDateTime from, final LocalDateTime to) {
         processPayments(targetDate, from, to);
@@ -38,6 +44,11 @@ public class SettlementService {
         return generateSettlementsUseCase.execute(summaries, recentSalesAmountMap);
     }
 
+    public void transfer(final LocalDate targetDate) {
+        final var readySettlements = getSettlementsUseCase.byState(SettlementState.READY);
+        final var merchants = getMerchantsUseCase.execute(readySettlements.stream().map(Settlement::merchantId).toList());
+        transferSettlementsUseCase.transfer(targetDate, merchants, readySettlements);
+    }
 
     private void processPayments(final LocalDate targetDate, final LocalDateTime from, final LocalDateTime to) {
         int page = 0;

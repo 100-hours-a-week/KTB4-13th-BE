@@ -14,7 +14,7 @@ public class GetPaymentUseCase {
     private final PaymentRepositoryPort paymentRepository;
 
     @Transactional(readOnly = true)
-    public Payment execute(final Long orderId) {
-        return paymentRepository.findByOrderId(orderId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
+    public Payment execute(final String orderKey) {
+        return paymentRepository.findByOrderKey(orderKey).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
     }
 }

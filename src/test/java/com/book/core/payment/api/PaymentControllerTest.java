@@ -86,7 +86,7 @@ class PaymentControllerTest {
     @Test
     void 실패_콜백은_오류_코드와_메시지를_전달한다() throws Exception {
         authenticate();
-        mvc.perform(post("/api/v1/payments/callback/fail").header("Authorization", "Bearer test-token").param("orderId", "order")
+        mvc.perform(post("/api/v1/payments/callback/fail").header("Authorization", "Bearer test-token").param("orderKey", "order")
             .param("code", "FAIL").param("message", "test failure")).andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
         verify(paymentService).fail(new FailPaymentCommand("order", "FAIL", "test failure"));
@@ -129,9 +129,9 @@ class PaymentControllerTest {
             .andExpect(jsonPath("$.paths['/api/v1/payments/callback/success'].post").exists())
             .andExpect(jsonPath("$.paths['/api/v1/payments/callback/fail'].post").exists())
             .andExpect(jsonPath("$.paths['/api/v1/payments/callback/success'].post.parameters[*].name",
-                containsInAnyOrder("orderId", "paymentKey", "amount")))
+                containsInAnyOrder("orderKey", "paymentKey", "amount")))
             .andExpect(jsonPath("$.paths['/api/v1/payments/callback/fail'].post.parameters[*].name",
-                containsInAnyOrder("orderId", "code", "message")));
+                containsInAnyOrder("orderKey", "code", "message")));
     }
 
     @Test
@@ -139,6 +139,14 @@ class PaymentControllerTest {
         authenticate();
         mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderId", "order")
             .param("paymentKey", "test-pg-key").param("amount", "10")).andExpect(status().isBadRequest());
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    void 실패_콜백은_이전_orderId_파라미터만_보내면_거부한다() throws Exception {
+        authenticate();
+        mvc.perform(post("/api/v1/payments/callback/fail").header("Authorization", "Bearer test-token").param("orderId", "order")
+            .param("code", "FAIL").param("message", "test failure")).andExpect(status().isBadRequest());
         verifyNoInteractions(paymentService);
     }
 

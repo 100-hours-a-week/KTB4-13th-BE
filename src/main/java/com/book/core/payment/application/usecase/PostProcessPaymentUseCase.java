@@ -32,6 +32,9 @@ public class PostProcessPaymentUseCase {
                 throw new CoreException(ErrorCode.PAYMENT_INVALID_STATE);
             }
             final Order order = getPaymentOrderUseCase.execute(orderKey, OrderStatus.PAID);
+            if (!payment.userId().equals(order.userId())) {
+                throw new CoreException(ErrorCode.NOT_FOUND_DATA);
+            }
             deleteCartItemsByProductsUseCase.execute(payment.userId(), order.items().stream().map(OrderItem::productId).toList());
             log.info("결제 후처리를 마쳤습니다. paymentId={}", paymentId);
         } catch (final Exception exception) {

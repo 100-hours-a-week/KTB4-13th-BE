@@ -1,5 +1,6 @@
 package com.book.core.settlement.application.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -11,15 +12,24 @@ import com.book.core.cancel.domain.Cancel;
 import com.book.core.payment.application.usecase.GetPaymentsForSettlementUseCase;
 import com.book.core.payment.domain.Payment;
 import com.book.core.settlement.application.usecase.CreateSettlementTargetsUseCase;
+import com.book.core.settlement.application.usecase.GenerateSettlementsUseCase;
+import com.book.core.settlement.application.usecase.GetSettlementTargetsUseCase;
+import com.book.core.settlement.application.usecase.GetSettlementsUseCase;
+import com.book.core.settlement.domain.SettlementTargetSummary;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class SettlementServiceTest {
     private final GetPaymentsForSettlementUseCase payments = mock(GetPaymentsForSettlementUseCase.class);
     private final GetCancelsForSettlementUseCase cancels = mock(GetCancelsForSettlementUseCase.class);
     private final CreateSettlementTargetsUseCase create = mock(CreateSettlementTargetsUseCase.class);
-    private final SettlementService service = new SettlementService(payments, cancels, create);
+    private final GetSettlementTargetsUseCase targets = mock(GetSettlementTargetsUseCase.class);
+    private final GetSettlementsUseCase settlements = mock(GetSettlementsUseCase.class);
+    private final GenerateSettlementsUseCase generate = mock(GenerateSettlementsUseCase.class);
+    private final SettlementService service = new SettlementService(payments, cancels, create, targets, settlements, generate);
     private final LocalDate date = LocalDate.of(2026, 10, 16);
 
     @Test
@@ -46,5 +56,18 @@ class SettlementServiceTest {
         order.verify(create).processCancels(date, List.of());
     }
 
+    @Test
+    void 생성은_집계_매출조회_생성_순서를_유지한다() {
+        final var summaries = List.of(new SettlementTargetSummary(1L, date, BigDecimal.TEN, 1, 1));
+        final var amounts = Map.of(1L, BigDecimal.ZERO);
+        when(targets.execute(date)).thenReturn(summaries);
+        when(settlements.recentSalesAmounts(date, List.of(1L))).thenReturn(amounts);
+        when(generate.execute(summaries, amounts)).thenReturn(1);
+        assertThat(service.generate(date)).isEqualTo(1);
+        final var order = inOrder(targets, settlements, generate);
+        order.verify(targets).execute(date);
+        order.verify(settlements).recentSalesAmounts(date, List.of(1L));
+        order.verify(generate).execute(summaries, amounts);
+    }
 
 }

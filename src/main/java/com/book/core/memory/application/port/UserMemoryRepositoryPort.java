@@ -4,6 +4,8 @@ import com.book.core.memory.domain.UserMemory;
 import java.util.List;
 
 public interface UserMemoryRepositoryPort {
+    List<UserMemory> findActiveByUserId(final Long userId);
+
     List<UserMemory> findDeletedByUserIdAndConversationId(final Long userId, final String conversationId);
 
     void deleteActiveByUserIdAndConversationId(final Long userId, final String conversationId);

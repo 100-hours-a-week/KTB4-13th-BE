@@ -195,14 +195,26 @@ class OrderServiceTest {
     }
 
     @Test
-    void 결제_주문의_Payment나_취소_잔액이_없으면_정합성_오류다() {
+    void 결제_주문의_Payment가_없으면_취소_잔액을_조회하지_않고_정합성_오류다() {
         final GetOrderCommand command = new GetOrderCommand(42L, "order_test");
         when(getOrderUseCase.execute(command)).thenReturn(orderDetail(LocalDateTime.of(2026, 9, 28, 10, 0)));
-        when(getPaymentUseCase.execute("order_test")).thenThrow(new CoreException(ErrorCode.NOT_FOUND_DATA)).thenReturn(payment());
+        when(getPaymentUseCase.execute("order_test")).thenThrow(new CoreException(ErrorCode.NOT_FOUND_DATA));
+
+        assertOrderDataInconsistent(command);
+        verifyNoInteractions(getCancelBalanceUseCase);
+    }
+
+    @Test
+    void 결제_주문의_취소_잔액이_없으면_정합성_오류다() {
+        final GetOrderCommand command = new GetOrderCommand(42L, "order_test");
+        when(getOrderUseCase.execute(command)).thenReturn(orderDetail(LocalDateTime.of(2026, 9, 28, 10, 0)));
+        when(getPaymentUseCase.execute("order_test")).thenReturn(payment());
         when(getCancelBalanceUseCase.execute(7L)).thenThrow(new CoreException(ErrorCode.NOT_FOUND_DATA));
 
-        assertThatThrownBy(() -> service.getOrder(command)).isInstanceOf(CoreException.class)
-            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.ORDER_DATA_INCONSISTENT);
+        assertOrderDataInconsistent(command);
+    }
+
+    private void assertOrderDataInconsistent(final GetOrderCommand command) {
         assertThatThrownBy(() -> service.getOrder(command)).isInstanceOf(CoreException.class)
             .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.ORDER_DATA_INCONSISTENT);
     }

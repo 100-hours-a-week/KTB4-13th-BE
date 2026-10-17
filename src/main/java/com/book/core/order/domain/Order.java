@@ -25,6 +25,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
 @Table(name = "orders")
@@ -62,6 +63,7 @@ public class Order extends BaseTimeEntity {
     @Getter(AccessLevel.NONE)
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
+    @BatchSize(size = 100)
     private List<OrderItem> items = new ArrayList<>();
 
     private Order(final Long userId, final String key, final OrderAddress address) {

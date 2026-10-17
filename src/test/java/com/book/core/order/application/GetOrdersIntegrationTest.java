@@ -13,6 +13,7 @@ import com.book.core.order.application.result.OrderSummaryResult;
 import com.book.core.order.application.usecase.GetOrdersUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
+import jakarta.persistence.EntityManagerFactory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,7 +21,11 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -30,7 +35,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 @ActiveProfiles("test")
 @Testcontainers
 @Tag("integration")
@@ -49,6 +54,9 @@ class GetOrdersIntegrationTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    EntityManagerFactory entityManagerFactory;
 
     @BeforeEach
     void setUpProduct() {
@@ -160,6 +168,23 @@ class GetOrdersIntegrationTest {
         assertThatThrownBy(() -> getOrders.execute(new GetOrdersCommand(userId, null, null, null, null, 20)))
             .isInstanceOf(CoreException.class).extracting(exception -> ((CoreException) exception).errorCode())
             .isEqualTo(ErrorCode.ORDER_DATA_INCONSISTENT);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 20})
+    void 주문_수와_무관하게_주문과_주문상품을_두_번의_SQL로_조회한다(final int orderCount) {
+        final long userId = 7600L + orderCount;
+        for (int index = 0; index < orderCount; index++) {
+            paidOrder(userId, "sql_count_" + orderCount + "_" + index, LocalDateTime.of(2026, 9, 1, 0, 0).plusMinutes(index),
+                OrderStatus.PAID);
+        }
+        final Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.clear();
+
+        final GetOrdersResult result = getOrders.execute(new GetOrdersCommand(userId, null, null, null, null, 20));
+
+        assertThat(result.orders()).hasSize(orderCount);
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(2);
     }
 
     private List<String> keys(final GetOrdersCommand command) {

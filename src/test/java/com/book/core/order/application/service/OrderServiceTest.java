@@ -205,6 +205,17 @@ class OrderServiceTest {
     }
 
     @Test
+    void 결제_주문의_Payment가_승인_완료_상태가_아니면_취소_잔액을_조회하지_않고_정합성_오류다() {
+        final GetOrderCommand command = new GetOrderCommand(42L, "order_test");
+        when(getOrderUseCase.execute(command)).thenReturn(orderDetail(LocalDateTime.of(2026, 9, 28, 10, 0)));
+        when(getPaymentUseCase.execute("order_test")).thenReturn(new Payment(42L, 7L, new BigDecimal("10500.00"), 3L,
+            new BigDecimal("1000.00"), new BigDecimal("500.00"), 42L, new BigDecimal("9000.00"), PaymentState.READY));
+
+        assertOrderDataInconsistent(command);
+        verifyNoInteractions(getCancelBalanceUseCase);
+    }
+
+    @Test
     void 결제_주문의_취소_잔액이_없으면_정합성_오류다() {
         final GetOrderCommand command = new GetOrderCommand(42L, "order_test");
         when(getOrderUseCase.execute(command)).thenReturn(orderDetail(LocalDateTime.of(2026, 9, 28, 10, 0)));

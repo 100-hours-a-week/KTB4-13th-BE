@@ -25,6 +25,7 @@ import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.payment.application.usecase.GetPaymentUseCase;
 import com.book.core.payment.domain.Payment;
+import com.book.core.payment.domain.enums.PaymentState;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
@@ -59,6 +60,9 @@ public class OrderService {
             return order;
         }
         final Payment payment = requirePaidOrderData(() -> getPaymentUseCase.execute(order.key()));
+        if (payment.state() != PaymentState.SUCCESS) {
+            throw new CoreException(ErrorCode.ORDER_DATA_INCONSISTENT);
+        }
         final CancelBalance cancelBalance = requirePaidOrderData(() -> getCancelBalanceUseCase.execute(payment.orderId()));
         return order.withPayment(OrderPaymentResult.of(payment, cancelBalance));
     }

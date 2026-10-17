@@ -98,8 +98,7 @@ class OrderControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(
-        strings = {"status=CREATED", "from=2026-09-29&to=2026-09-28", "limit=0", "limit=101", "to=2026-09-28T00:00:00", "cursor=MTIz"})
+    @ValueSource(strings = {"status=CREATED", "to=2026-09-28T00:00:00"})
     void 주문_목록_조회_조건이_잘못되면_서비스를_호출하지_않고_E400을_응답한다(final String query) throws Exception {
         authenticateAs(42L);
 

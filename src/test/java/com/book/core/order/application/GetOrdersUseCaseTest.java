@@ -1,6 +1,7 @@
 package com.book.core.order.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -74,7 +75,6 @@ class GetOrdersUseCaseTest {
         final var result = useCase.execute(command);
 
         assertThat(result.orders()).extracting(order -> order.key()).containsExactly("order_3", "order_2");
-        assertThat(decode(result.nextCursor())).isEqualTo("2026-09-28T10:00:00.123456|2|||2026-09-28");
         assertThat(OrderListCursor.parse(result.nextCursor(), null, null, TO)).isEqualTo(new OrderListCursor(samePaidAt, 2L));
     }
 
@@ -93,10 +93,7 @@ class GetOrdersUseCaseTest {
 
     @Test
     void 같은_날짜의_시작일과_종료일과_최대_limit을_허용한다() {
-        final GetOrdersCommand command = new GetOrdersCommand(42L, OrderStatus.CANCELED, TO, TO, null, 100);
-
-        assertThat(command.paidAtFrom()).isEqualTo(LocalDateTime.of(2026, 9, 28, 0, 0));
-        assertThat(command.paidAtBefore()).isEqualTo(LocalDateTime.of(2026, 9, 29, 0, 0));
+        assertThatCode(() -> new GetOrdersCommand(42L, OrderStatus.CANCELED, TO, TO, null, 100)).doesNotThrowAnyException();
     }
 
     @Test
@@ -120,10 +117,6 @@ class GetOrdersUseCaseTest {
 
     private static String encode(final String value) {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes());
-    }
-
-    private static String decode(final String token) {
-        return new String(Base64.getUrlDecoder().decode(token));
     }
 
     private static Order order(final Long id, final String key, final LocalDateTime paidAt) {

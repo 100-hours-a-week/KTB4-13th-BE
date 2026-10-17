@@ -11,15 +11,18 @@ import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.GetOrderCommand;
 import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.OrderItemResult;
+import com.book.core.order.application.result.OrderPaymentResult;
+import com.book.core.order.application.service.OrderService;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.application.usecase.GetOrderItemUseCase;
-import com.book.core.order.application.usecase.GetOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderItemStatus;
 import com.book.core.order.domain.OrderStatus;
+import com.book.core.payment.domain.enums.PaymentMethod;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -58,7 +61,7 @@ class OrderRepositoryIntegrationTest {
     CancelOrderUseCase cancelOrder;
 
     @Autowired
-    GetOrderUseCase getOrder;
+    OrderService orderService;
 
     @Test
     void 주문_배송지_상품과_상태를_실제_테이블에_저장한다() {
@@ -200,7 +203,7 @@ class OrderRepositoryIntegrationTest {
     }
 
     @Test
-    void 전액_취소한_주문의_상세는_최초_주문상품_전체를_주문상품_ID와_상품_ID로_반환한다() {
+    void 전액_취소한_주문의_상세는_최초_주문상품_전체와_저장된_결제_환불_금액을_반환한다() {
         insertBook(9126L);
         insertBook(9127L);
         insertProduct(9226L, 9126L);
@@ -210,15 +213,28 @@ class OrderRepositoryIntegrationTest {
         final Order saved = orderRepository.save(order);
         jdbc.update("UPDATE orders SET status = 'CANCELED', paid_at = CURRENT_TIMESTAMP(6) WHERE id = ?", saved.id());
         jdbc.update("UPDATE order_item SET status = 'CANCELED', canceled_quantity = quantity WHERE order_id = ?", saved.id());
+        jdbc.update("""
+                INSERT INTO payment (created_at, updated_at, user_id, order_id, origin_amount, owned_coupon_id, coupon_discount,
+                    used_point, payer_user_id, paid_amount, state, method, paid_at)
+                VALUES (NOW(6), NOW(6), 42, ?, 19.00, 0, 0.00, 4.00, 42, 15.00, 'SUCCESS', 'CARD', '2026-09-28 10:00:00')
+                """, saved.id());
+        jdbc.update("""
+                INSERT INTO cancel_balance (created_at, updated_at, order_id, cancellable_paid_amount, cancellable_point_amount,
+                    cancellable_coupon_amount, cancelled_paid_amount, cancelled_point_amount, cancelled_coupon_amount)
+                VALUES (NOW(6), NOW(6), ?, 0.00, 0.00, 0.00, 15.00, 4.00, 0.00)
+                """, saved.id());
         final List<Long> orderItemIds =
             jdbc.queryForList("SELECT id FROM order_item WHERE order_id = ? ORDER BY id", Long.class, saved.id());
 
-        final GetOrderResult result = getOrder.execute(new GetOrderCommand(42L, "order_detail_canceled"));
+        final GetOrderResult result = orderService.getOrder(new GetOrderCommand(42L, "order_detail_canceled"));
 
         assertThat(result.status()).isEqualTo(OrderStatus.CANCELED);
         assertThat(result.items()).extracting(OrderItemResult::orderItemId, OrderItemResult::productId, OrderItemResult::canceledQuantity,
             OrderItemResult::status).containsExactly(tuple(orderItemIds.get(0), 9227L, 1L, OrderItemStatus.CANCELED),
                 tuple(orderItemIds.get(1), 9226L, 2L, OrderItemStatus.CANCELED));
+        assertThat(result.payment())
+            .isEqualTo(new OrderPaymentResult(new BigDecimal("0.00"), new BigDecimal("4.00"), new BigDecimal("15.00"), PaymentMethod.CARD,
+                LocalDateTime.of(2026, 9, 28, 10, 0), new BigDecimal("15.00"), new BigDecimal("0.00")));
     }
 
     @Test

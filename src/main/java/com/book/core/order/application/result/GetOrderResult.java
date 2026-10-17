@@ -15,11 +15,16 @@ public record GetOrderResult(
         LocalDateTime createdAt,
         LocalDateTime paidAt,
         List<OrderItemResult> items,
-        OrderAddressResult address) {
+        OrderAddressResult address,
+        OrderPaymentResult payment) {
     public static GetOrderResult from(final Order order) {
         final List<OrderItemResult> items = order.items().stream().filter(OrderItem::isActive).map(OrderItemResult::from).toList();
         return new GetOrderResult(order.key(), order.status(), order.totalPrice(), order.createdAt(), order.paidAt(), items,
-                OrderAddressResult.from(order.address()));
+                OrderAddressResult.from(order.address()), null);
+    }
+
+    public GetOrderResult withPayment(final OrderPaymentResult payment) {
+        return new GetOrderResult(key, status, totalPrice, createdAt, paidAt, items, address, payment);
     }
 }
 // @formatter:on

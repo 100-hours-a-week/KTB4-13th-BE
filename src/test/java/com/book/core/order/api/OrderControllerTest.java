@@ -27,9 +27,11 @@ import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
 import com.book.core.order.application.result.OrderAddressResult;
 import com.book.core.order.application.result.OrderItemResult;
+import com.book.core.order.application.result.OrderPaymentResult;
 import com.book.core.order.application.result.OrderSummaryResult;
 import com.book.core.order.application.service.OrderService;
 import com.book.core.order.domain.OrderStatus;
+import com.book.core.payment.domain.enums.PaymentMethod;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -116,11 +118,17 @@ class OrderControllerTest {
             .andExpect(jsonPath("$.data.orderKey").value("order_test")).andExpect(jsonPath("$.data.status").value("PARTIAL_CANCELED"))
             .andExpect(jsonPath("$.data.totalPrice").value(34.50)).andExpect(jsonPath("$.data.createdAt").value("2026-09-28T10:00:00"))
             .andExpect(jsonPath("$.data.address.postalCode").value("06236")).andExpect(jsonPath("$.data.name").doesNotExist())
-            .andExpect(jsonPath("$.data.paidAt").doesNotExist()).andExpect(jsonPath("$.data.items[0].orderItemId").value(17))
-            .andExpect(jsonPath("$.data.items[0].productId").value(701)).andExpect(jsonPath("$.data.items[0].itemId").doesNotExist())
-            .andExpect(jsonPath("$.data.items[0].itemName").value("상품 701")).andExpect(jsonPath("$.data.items[0].author").value("저자"))
-            .andExpect(jsonPath("$.data.items[0].unitPrice").value(17.25)).andExpect(jsonPath("$.data.items[0].totalPrice").value(34.50))
-            .andExpect(jsonPath("$.data.items[0].quantity").value(2)).andExpect(jsonPath("$.data.items[0].canceledQuantity").value(1))
+            .andExpect(jsonPath("$.data.paidAt").doesNotExist()).andExpect(jsonPath("$.data.payment.couponDiscount").value(1.00))
+            .andExpect(jsonPath("$.data.payment.usedPoint").value(2.00)).andExpect(jsonPath("$.data.payment.paidAmount").value(31.50))
+            .andExpect(jsonPath("$.data.payment.method").value("CARD"))
+            .andExpect(jsonPath("$.data.payment.paidAt").value("2026-09-28T10:05:00"))
+            .andExpect(jsonPath("$.data.payment.cancelledPaidAmount").value(15.75))
+            .andExpect(jsonPath("$.data.payment.cancellablePaidAmount").value(15.75))
+            .andExpect(jsonPath("$.data.items[0].orderItemId").value(17)).andExpect(jsonPath("$.data.items[0].productId").value(701))
+            .andExpect(jsonPath("$.data.items[0].itemId").doesNotExist()).andExpect(jsonPath("$.data.items[0].itemName").value("상품 701"))
+            .andExpect(jsonPath("$.data.items[0].author").value("저자")).andExpect(jsonPath("$.data.items[0].unitPrice").value(17.25))
+            .andExpect(jsonPath("$.data.items[0].totalPrice").value(34.50)).andExpect(jsonPath("$.data.items[0].quantity").value(2))
+            .andExpect(jsonPath("$.data.items[0].canceledQuantity").value(1))
             .andExpect(jsonPath("$.data.items[0].status").value("PARTIAL_CANCELED"));
 
         verify(orderService).getOrder(new GetOrderCommand(42L, "order_test"));
@@ -253,7 +261,9 @@ class OrderControllerTest {
         final OrderItemResult item = new OrderItemResult(17L, 701L, "상품 701", null, "저자", new BigDecimal("17.25"), new BigDecimal("34.50"),
             2, 1L, com.book.core.order.domain.OrderItemStatus.PARTIAL_CANCELED);
         return new GetOrderResult("order_test", OrderStatus.PARTIAL_CANCELED, new BigDecimal("34.50"), LocalDateTime.of(2026, 9, 28, 10, 0),
-            LocalDateTime.of(2026, 9, 28, 10, 5), List.of(item), new OrderAddressResult("06236", "서울 주소", "101호"));
+            LocalDateTime.of(2026, 9, 28, 10, 5), List.of(item), new OrderAddressResult("06236", "서울 주소", "101호"),
+            new OrderPaymentResult(new BigDecimal("1.00"), new BigDecimal("2.00"), new BigDecimal("31.50"), PaymentMethod.CARD,
+                LocalDateTime.of(2026, 9, 28, 10, 5), new BigDecimal("15.75"), new BigDecimal("15.75")));
     }
 
     private void authenticateAs(final Long userId) {

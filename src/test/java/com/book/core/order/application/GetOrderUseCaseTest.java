@@ -51,21 +51,23 @@ class GetOrderUseCaseTest {
     }
 
     @Test
-    void 부분_취소한_주문상품의_취소_수량과_상태를_반환한다() {
+    void 취소한_주문상품은_취소_수량과_상태로_반환하고_삭제된_주문상품은_제외한다() {
         final Order order = order(42L, "order_partial");
+        order.addItem(702L, "상품 702", null, "저자", BigDecimal.TEN, BigDecimal.ONE, 1);
+        order.addItem(703L, "삭제 상품", null, "저자", BigDecimal.TEN, BigDecimal.ONE, 1);
         order.paid();
-        order.items().getFirst().cancel(1L);
+        order.items().get(0).cancel(1L);
+        order.items().get(1).cancel(1L);
+        order.items().get(2).delete();
         order.partialCanceled();
         when(orderRepository.findActiveOrderByKey("order_partial")).thenReturn(Optional.of(order));
 
         final var result = useCase.execute(new GetOrderCommand(42L, "order_partial"));
 
         assertThat(result.status()).isEqualTo(OrderStatus.PARTIAL_CANCELED);
-        assertThat(result.items()).singleElement().satisfies((final var item) -> {
-            assertThat(item.quantity()).isEqualTo(2);
-            assertThat(item.canceledQuantity()).isEqualTo(1L);
-            assertThat(item.status()).isEqualTo(OrderItemStatus.PARTIAL_CANCELED);
-        });
+        assertThat(result.items())
+            .extracting(OrderItemResult::productId, OrderItemResult::quantity, OrderItemResult::canceledQuantity, OrderItemResult::status)
+            .containsExactly(tuple(701L, 2, 1L, OrderItemStatus.PARTIAL_CANCELED), tuple(702L, 1, 1L, OrderItemStatus.CANCELED));
     }
 
     @Test

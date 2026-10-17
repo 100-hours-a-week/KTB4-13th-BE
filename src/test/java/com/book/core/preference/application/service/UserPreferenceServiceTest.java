@@ -3,12 +3,16 @@ package com.book.core.preference.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.memory.application.command.DeleteUserMemoriesCommand;
 import com.book.core.memory.application.result.UserMemoryGroupResult;
+import com.book.core.memory.application.usecase.DeleteAllUserMemoriesUseCase;
+import com.book.core.memory.application.usecase.DeleteUserMemoriesUseCase;
 import com.book.core.memory.application.usecase.GetUserMemoriesUseCase;
 import com.book.core.memory.domain.UserMemoryType;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
@@ -19,6 +23,7 @@ import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase
 import com.book.core.onboarding.domain.OnboardingStatus;
 import java.time.LocalDate;
 import java.util.List;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 
 class UserPreferenceServiceTest {
@@ -26,17 +31,33 @@ class UserPreferenceServiceTest {
 
     private final GetOnboardingProgressUseCase getOnboardingProgressUseCase = mock(GetOnboardingProgressUseCase.class);
     private final GetUserMemoriesUseCase getUserMemoriesUseCase = mock(GetUserMemoriesUseCase.class);
-    private final UserPreferenceService userPreferenceService =
-        new UserPreferenceService(getOnboardingProgressUseCase, getUserMemoriesUseCase);
+    private final DeleteUserMemoriesUseCase deleteUserMemoriesUseCase = mock(DeleteUserMemoriesUseCase.class);
+    private final DeleteAllUserMemoriesUseCase deleteAllUserMemoriesUseCase = mock(DeleteAllUserMemoriesUseCase.class);
+    private final UserPreferenceService userPreferenceService = new UserPreferenceService(getOnboardingProgressUseCase,
+        getUserMemoriesUseCase, deleteUserMemoriesUseCase, deleteAllUserMemoriesUseCase);
 
     @Test
-    void 온보딩을_완료하지_않았으면_취향_기억을_조회하지_않고_409를_던진다() {
+    void 온보딩을_완료하지_않았으면_취향_조회와_삭제를_진행하지_않고_409를_던진다() {
         when(getOnboardingProgressUseCase.execute(new GetOnboardingProgressCommand(USER_ID)))
             .thenReturn(new OnboardingProgressResult(OnboardingStatus.IN_PROGRESS, null, List.of(), List.of()));
 
-        assertThatThrownBy(() -> userPreferenceService.getPreferences(USER_ID)).isInstanceOfSatisfying(CoreException.class,
-            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ONBOARDING_NOT_COMPLETED));
-        verifyNoInteractions(getUserMemoriesUseCase);
+        assertNotCompleted(() -> userPreferenceService.getPreferences(USER_ID));
+        assertNotCompleted(() -> userPreferenceService.deleteMemories(new DeleteUserMemoriesCommand(USER_ID, List.of(101L))));
+        assertNotCompleted(() -> userPreferenceService.deleteAllMemories(USER_ID));
+        verifyNoInteractions(getUserMemoriesUseCase, deleteUserMemoriesUseCase, deleteAllUserMemoriesUseCase);
+    }
+
+    @Test
+    void 온보딩을_완료했으면_선택_삭제와_전체_삭제를_UseCase로_전달한다() {
+        final var command = new DeleteUserMemoriesCommand(USER_ID, List.of(101L));
+        when(getOnboardingProgressUseCase.execute(new GetOnboardingProgressCommand(USER_ID)))
+            .thenReturn(new OnboardingProgressResult(OnboardingStatus.COMPLETED, null, List.of(), List.of()));
+
+        userPreferenceService.deleteMemories(command);
+        userPreferenceService.deleteAllMemories(USER_ID);
+
+        verify(deleteUserMemoriesUseCase).execute(command);
+        verify(deleteAllUserMemoriesUseCase).execute(USER_ID);
     }
 
     @Test
@@ -52,5 +73,10 @@ class UserPreferenceServiceTest {
 
         assertThat(result.onboarding()).isEqualTo(answers);
         assertThat(result.memories()).isEqualTo(memories);
+    }
+
+    private void assertNotCompleted(final ThrowingCallable call) {
+        assertThatThrownBy(call).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ONBOARDING_NOT_COMPLETED));
     }
 }

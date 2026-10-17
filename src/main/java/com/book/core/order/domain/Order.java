@@ -127,13 +127,4 @@ public class Order extends BaseTimeEntity {
     public int itemCount() {
         return items.size();
     }
-
-    public String name() {
-        final List<OrderItem> activeItems = items.stream().filter(OrderItem::isActive).toList();
-        if (activeItems.isEmpty()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-        final String firstName = activeItems.getFirst().itemName();
-        return activeItems.size() == 1 ? firstName : firstName + " 외 " + (activeItems.size() - 1) + "건";
-    }
 }

@@ -44,7 +44,8 @@ public interface OrderControllerSpec {
 
     @Operation(summary = "내 주문 상세 조회",
         description = "주문 소유권을 확인하고 주문 정보와 배송지 스냅샷, 취소된 상품을 포함한 최초 주문상품 전체(ID 오름차순)를 조회합니다. "
-            + "결제 이력이 있으면 payment에 결제 금액과 환불 완료·취소 가능 금액을, 없으면 null을 반환합니다.")
+            + "결제 이력이 있으면 payment에 결제 금액과 환불 완료·취소 가능 금액을, 없으면 null을 반환합니다. "
+            + "cancellations는 취소 기록을 canceledAt DESC, id DESC 순서로 반환하며 없으면 빈 배열입니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "주문 상세 조회 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식 오류(E400)"),

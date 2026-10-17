@@ -10,6 +10,7 @@ import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingRepositoryPort;
+import com.book.core.onboarding.application.result.OnboardingOptionResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
 import com.book.core.onboarding.domain.OnboardingOption;
@@ -68,6 +69,7 @@ class GetOnboardingProgressUseCaseTest {
         assertThat(result.answers()).hasSize(2);
         assertThat(result.answers().get(0).questionId()).isEqualTo(1L);
         assertThat(result.answers().get(0).optionIds()).containsExactly(1L, 2L);
+        assertThat(result.answers().get(0).options()).extracting(OnboardingOptionResult::content).containsExactly("아침", "점심");
         assertThat(result.answers().get(1).questionId()).isEqualTo(3L);
         assertThat(result.answers().get(1).optionIds()).containsExactly(9L);
     }

@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 interface UserMemoryJpaRepository extends JpaRepository<UserMemory, Long> {
+    List<UserMemory> findAllByUserIdAndDeletedAtIsNull(final Long userId);
+
     List<UserMemory> findAllByUserIdAndConversationIdAndDeletedAtIsNotNull(final Long userId, final String conversationId);
 
     @Modifying

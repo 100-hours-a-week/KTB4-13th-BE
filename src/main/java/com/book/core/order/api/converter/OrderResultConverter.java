@@ -26,8 +26,8 @@ public class OrderResultConverter {
     public OrderDetailResponse toOrderDetailResponse(final GetOrderResult result) {
         final OrderAddressResponse address = result.address() == null ? null
             : new OrderAddressResponse(result.address().postalCode(), result.address().address(), result.address().detailAddress());
-        return new OrderDetailResponse(result.key(), result.name(), result.totalPrice(), result.status(),
-            toOrderItemResponses(result.items()), address, result.createdAt());
+        return new OrderDetailResponse(result.key(), result.status(), result.totalPrice(), result.createdAt(), address,
+            toOrderItemResponses(result.items()));
     }
 
     public CreateOrderResponse toCreateOrderResponse(final CreateOrderResult result) {
@@ -37,7 +37,9 @@ public class OrderResultConverter {
     }
 
     private List<OrderItemResponse> toOrderItemResponses(final List<OrderItemResult> items) {
-        return items.stream().map(item -> new OrderItemResponse(item.productId(), item.itemName(), item.thumbnailUrl(), item.author(),
-            item.quantity(), item.unitPrice(), item.totalPrice())).toList();
+        return items.stream()
+            .map((final var item) -> new OrderItemResponse(item.orderItemId(), item.productId(), item.itemName(), item.thumbnailUrl(),
+                item.author(), item.unitPrice(), item.totalPrice(), item.quantity(), item.canceledQuantity(), item.status()))
+            .toList();
     }
 }

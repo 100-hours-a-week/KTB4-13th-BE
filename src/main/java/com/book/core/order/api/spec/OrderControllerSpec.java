@@ -42,7 +42,7 @@ public interface OrderControllerSpec {
         @RequestParam(value = "cursor", required = false) final String cursor,
         @RequestParam(value = "limit", required = false) final Integer limit);
 
-    @Operation(summary = "내 주문 상세 조회", description = "주문 소유권을 확인하고 주문 상품을 포함한 상세 정보를 조회합니다.")
+    @Operation(summary = "내 주문 상세 조회", description = "주문 소유권을 확인하고 주문 정보와 배송지 스냅샷, 취소된 상품을 포함한 최초 주문상품 전체(ID 오름차순)를 조회합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "주문 상세 조회 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식 오류(E400)"),

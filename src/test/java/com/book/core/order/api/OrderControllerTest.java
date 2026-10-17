@@ -68,15 +68,20 @@ class OrderControllerTest {
     @Test
     void 인증된_회원의_주문_목록을_반환한다() throws Exception {
         authenticateAs(42L);
-        when(orderService.getOrders(any())).thenReturn(GetOrdersResult.of(List.of(new OrderSummaryResult("order_new", "상품 701 외 1건",
-            OrderStatus.PAID, new BigDecimal("34.50"), LocalDateTime.of(2026, 9, 28, 10, 0))), "next-cursor"));
+        when(orderService.getOrders(any())).thenReturn(GetOrdersResult.of(List.of(new OrderSummaryResult("order_new", "대표 도서", 2, null,
+            new BigDecimal("34.50"), OrderStatus.PARTIAL_CANCELED, LocalDateTime.of(2026, 9, 28, 10, 0, 1))), "next-cursor"));
 
         mvc.perform(
             get("/api/v1/orders").param("status", "PAID").param("from", "2026-01-01").param("to", "2026-09-28").param("limit", "10"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.orders[0].key").value("order_new"))
-            .andExpect(jsonPath("$.data.orders[0].name").value("상품 701 외 1건")).andExpect(jsonPath("$.data.orders[0].status").value("PAID"))
-            .andExpect(jsonPath("$.data.orders[0].totalPrice").value(34.50));
+            .andExpect(jsonPath("$.data.orders[0].orderKey").value("order_new"))
+            .andExpect(jsonPath("$.data.orders[0].representativeBookName").value("대표 도서"))
+            .andExpect(jsonPath("$.data.orders[0].itemCount").value(2)).andExpect(jsonPath("$.data.orders[0].thumbnailUrl").isEmpty())
+            .andExpect(jsonPath("$.data.orders[0].totalPrice").value(34.50))
+            .andExpect(jsonPath("$.data.orders[0].status").value("PARTIAL_CANCELED"))
+            .andExpect(jsonPath("$.data.orders[0].paidAt").value("2026-09-28T10:00:01"))
+            .andExpect(jsonPath("$.data.orders[0].name").doesNotExist()).andExpect(jsonPath("$.data.orders[0].createdAt").doesNotExist())
+            .andExpect(jsonPath("$.data.nextCursor").value("next-cursor"));
 
         verify(orderService)
             .getOrders(new GetOrdersCommand(42L, OrderStatus.PAID, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 9, 28), null, 10));

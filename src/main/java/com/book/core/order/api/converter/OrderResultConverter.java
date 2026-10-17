@@ -17,8 +17,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class OrderResultConverter {
     public OrderListResponse toOrderListResponse(final GetOrdersResult result) {
-        final List<OrderSummaryResponse> orders = result.orders().stream()
-            .map(order -> new OrderSummaryResponse(order.key(), order.name(), order.totalPrice(), order.status())).toList();
+        final List<OrderSummaryResponse> orders =
+            result.orders().stream().map((final var order) -> new OrderSummaryResponse(order.key(), order.representativeBookName(),
+                order.itemCount(), order.thumbnailUrl(), order.totalPrice(), order.status(), order.paidAt())).toList();
         return new OrderListResponse(orders, result.nextCursor());
     }
 

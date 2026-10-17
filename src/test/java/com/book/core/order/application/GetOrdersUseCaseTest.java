@@ -13,6 +13,7 @@ import com.book.core.order.application.command.OrderListCursor;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.application.usecase.GetOrdersUseCase;
 import com.book.core.order.domain.Order;
+import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -42,7 +43,13 @@ class GetOrdersUseCaseTest {
 
         final var result = useCase.execute(command);
 
-        assertThat(result.orders()).extracting(summary -> summary.key()).containsExactly("order_new");
+        assertThat(result.orders()).singleElement().satisfies((final var summary) -> {
+            assertThat(summary.key()).isEqualTo("order_new");
+            assertThat(summary.representativeBookName()).isEqualTo("대표 도서");
+            assertThat(summary.itemCount()).isEqualTo(3);
+            assertThat(summary.thumbnailUrl()).isEqualTo("https://img.test/1.jpg");
+            assertThat(summary.paidAt()).isEqualTo(LocalDateTime.of(2026, 9, 28, 10, 0));
+        });
         assertThat(result.nextCursor()).isNull();
         verify(orderRepository).findPaidOrders(42L, OrderStatus.PAID, paidAtFrom, paidAtBefore, null, 21);
     }
@@ -120,10 +127,14 @@ class GetOrdersUseCaseTest {
     }
 
     private static Order order(final Long id, final String key, final LocalDateTime paidAt) {
+        final OrderItem representativeItem = mock(OrderItem.class);
+        when(representativeItem.itemName()).thenReturn("대표 도서");
+        when(representativeItem.thumbnailUrl()).thenReturn("https://img.test/1.jpg");
         final Order order = mock(Order.class);
         when(order.id()).thenReturn(id);
         when(order.key()).thenReturn(key);
-        when(order.name()).thenReturn("상품 701");
+        when(order.representativeItem()).thenReturn(representativeItem);
+        when(order.itemCount()).thenReturn(3);
         when(order.status()).thenReturn(OrderStatus.PAID);
         when(order.totalPrice()).thenReturn(BigDecimal.TEN);
         when(order.paidAt()).thenReturn(paidAt);

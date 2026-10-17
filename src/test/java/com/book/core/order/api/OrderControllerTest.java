@@ -32,10 +32,13 @@ import com.book.core.order.application.service.OrderService;
 import com.book.core.order.domain.OrderStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -68,14 +71,36 @@ class OrderControllerTest {
         when(orderService.getOrders(any())).thenReturn(GetOrdersResult.of(List.of(new OrderSummaryResult("order_new", "상품 701 외 1건",
             OrderStatus.PAID, new BigDecimal("34.50"), LocalDateTime.of(2026, 9, 28, 10, 0))), "next-cursor"));
 
-        mvc.perform(get("/api/v1/orders").param("status", "PAID").param("from", "2026-01-01T00:00:00").param("to", "2026-09-28T23:59:59")
-            .param("limit", "10")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+        mvc.perform(
+            get("/api/v1/orders").param("status", "PAID").param("from", "2026-01-01").param("to", "2026-09-28").param("limit", "10"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.orders[0].key").value("order_new"))
             .andExpect(jsonPath("$.data.orders[0].name").value("상품 701 외 1건")).andExpect(jsonPath("$.data.orders[0].status").value("PAID"))
             .andExpect(jsonPath("$.data.orders[0].totalPrice").value(34.50));
 
-        verify(orderService).getOrders(new GetOrdersCommand(42L, OrderStatus.PAID, LocalDateTime.of(2026, 1, 1, 0, 0),
-            LocalDateTime.of(2026, 9, 28, 23, 59, 59), null, 10));
+        verify(orderService)
+            .getOrders(new GetOrdersCommand(42L, OrderStatus.PAID, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 9, 28), null, 10));
+    }
+
+    @Test
+    void 주문_목록_필터가_없으면_기간_제한_없이_기본_limit으로_조회한다() throws Exception {
+        authenticateAs(42L);
+        when(orderService.getOrders(any())).thenReturn(GetOrdersResult.of(List.of(), null));
+
+        mvc.perform(get("/api/v1/orders")).andExpect(status().isOk()).andExpect(jsonPath("$.data.nextCursor").doesNotExist());
+
+        verify(orderService).getOrders(new GetOrdersCommand(42L, null, null, null, null, 20));
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = {"status=CREATED", "from=2026-09-29&to=2026-09-28", "limit=0", "limit=101", "to=2026-09-28T00:00:00", "cursor=MTIz"})
+    void 주문_목록_조회_조건이_잘못되면_서비스를_호출하지_않고_E400을_응답한다(final String query) throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(get("/api/v1/orders?" + query)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+
+        verify(orderService, never()).getOrders(any());
     }
 
     @Test

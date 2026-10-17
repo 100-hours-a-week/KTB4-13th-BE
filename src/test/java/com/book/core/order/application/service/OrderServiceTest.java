@@ -33,7 +33,6 @@ import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -150,8 +149,7 @@ class OrderServiceTest {
 
     @Test
     void 주문_목록_조회를_UseCase에_위임한다() {
-        final GetOrdersCommand command =
-            new GetOrdersCommand(42L, null, LocalDateTime.of(2025, 9, 28, 0, 0), LocalDateTime.of(2026, 9, 28, 0, 0), null, 20);
+        final GetOrdersCommand command = new GetOrdersCommand(42L, null, LocalDate.of(2025, 9, 28), LocalDate.of(2026, 9, 28), null, 20);
         final GetOrdersResult result = GetOrdersResult.of(List.of(), null);
         when(getOrdersUseCase.execute(command)).thenReturn(result);
 

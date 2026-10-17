@@ -70,6 +70,10 @@ public class UserMemory extends BaseEntity {
         this.conversationId = conversationId;
     }
 
+    public boolean isOwnedBy(final Long userId) {
+        return this.userId.equals(userId);
+    }
+
     public boolean hasSameKeywordAs(final UserMemory other) {
         return type == other.type && normalizedKeyword().equals(other.normalizedKeyword());
     }

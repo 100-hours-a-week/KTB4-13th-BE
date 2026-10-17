@@ -2,9 +2,12 @@ package com.book.core.memory.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doThrow;
 
 import com.book.core.memory.application.command.SaveUserMemoriesCommand;
 import com.book.core.memory.application.command.UserMemoryExtraction;
+import com.book.core.memory.application.port.UserMemoryRepositoryPort;
 import com.book.core.memory.domain.UserMemoryType;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,9 +16,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -37,6 +41,9 @@ class SaveUserMemoriesUseCaseIntegrationTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @MockitoSpyBean
+    UserMemoryRepositoryPort userMemoryRepository;
 
     @BeforeEach
     void setUp() {
@@ -89,11 +96,10 @@ class SaveUserMemoriesUseCaseIntegrationTest {
     @Test
     void 새_기억_저장에_실패하면_기존_활성_기억_삭제도_되돌린다() {
         useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.TOPIC, "추리 소설", List.of())));
-        final var tooLongValue =
-            new UserMemoryExtraction(UserMemoryType.TOPIC, "가".repeat(201), 2, List.of(), "로맨스 소설", List.of(0.054f, -0.25f), 2);
+        doThrow(new DataAccessResourceFailureException("save failed")).when(userMemoryRepository).saveAll(anyList());
 
-        assertThatThrownBy(() -> useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.MOOD, "잔잔한", List.of()), tooLongValue)))
-            .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.MOOD, "잔잔한", List.of()))))
+            .isInstanceOf(DataAccessResourceFailureException.class);
 
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NULL")).containsExactly("추리 소설");
     }

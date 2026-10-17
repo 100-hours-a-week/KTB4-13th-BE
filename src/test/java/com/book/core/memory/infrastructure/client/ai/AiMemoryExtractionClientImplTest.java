@@ -75,9 +75,11 @@ class AiMemoryExtractionClientImplTest {
         assertInvalidResponse();
     }
 
-    @Test
-    void JSON이_아닌_응답은_잘못된_응답으로_변환한다() {
-        server.expect(requestTo(EXTRACTION_URL)).andRespond(withSuccess("{\"data\":", MediaType.APPLICATION_JSON));
+    @ParameterizedTest
+    @ValueSource(strings = {"{\"data\":", "{\"message\":\"extract_failed\",\"data\":{\"extractions\":[],\"nothing_found\":true}}",
+        "{\"message\":\"extract_success\"}"})
+    void 응답_JSON이나_성공_메시지가_계약과_다르면_잘못된_응답으로_변환한다(final String body) {
+        server.expect(requestTo(EXTRACTION_URL)).andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
 
         assertInvalidResponse();
     }

@@ -4,7 +4,6 @@ import com.book.common.config.ai.AiRestClientConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.logging.TraceIdFilter;
-import com.book.core.memory.application.command.ConversationMessage;
 import com.book.core.memory.application.command.UserMemoryExtraction;
 import com.book.core.memory.application.port.AiMemoryExtractionClient;
 import com.book.core.memory.application.port.AiMemoryExtractionRequest;
@@ -27,6 +26,7 @@ import org.springframework.web.client.RestClientException;
 public class AiMemoryExtractionClientImpl implements AiMemoryExtractionClient {
     private static final String EXTRACTION_PATH = "/preferences/extractions";
     private static final String REQUEST_ID_HEADER = "X-Request-Id";
+    private static final String SUCCESS_MESSAGE = "extract_success";
 
     private final RestClient restClient;
 
@@ -38,8 +38,10 @@ public class AiMemoryExtractionClientImpl implements AiMemoryExtractionClient {
     public List<UserMemoryExtraction> extract(final AiMemoryExtractionRequest request) {
         final AiExtractionEnvelope envelope;
         try {
-            envelope = restClient.post().uri(EXTRACTION_PATH).header(REQUEST_ID_HEADER, currentRequestId())
-                .contentType(MediaType.APPLICATION_JSON).body(toAiRequest(request)).retrieve().body(AiExtractionEnvelope.class);
+            envelope =
+                restClient.post().uri(EXTRACTION_PATH).header(REQUEST_ID_HEADER, currentRequestId()).contentType(MediaType.APPLICATION_JSON)
+                    .body(new AiExtractionRequest(request.userId(), request.consented(), request.conversation(), request.conversationId()))
+                    .retrieve().body(AiExtractionEnvelope.class);
         } catch (final RestClientException exception) {
             if (exception.getCause() instanceof HttpMessageNotReadableException) {
                 throw new CoreException(ErrorCode.AI_MEMORY_EXTRACTION_INVALID_RESPONSE, exception);
@@ -49,15 +51,9 @@ public class AiMemoryExtractionClientImpl implements AiMemoryExtractionClient {
         return toExtractions(envelope, request.conversationId());
     }
 
-    private AiExtractionRequest toAiRequest(final AiMemoryExtractionRequest request) {
-        final List<AiExtractionMessage> conversation = request.conversation().stream()
-            .map((final ConversationMessage message) -> new AiExtractionMessage(message.role(), message.text())).toList();
-        return new AiExtractionRequest(request.userId(), request.consented(), conversation, request.conversationId());
-    }
-
     private List<UserMemoryExtraction> toExtractions(final AiExtractionEnvelope envelope, final String conversationId) {
-        if (envelope == null || envelope.data() == null || envelope.data().extractions() == null
-            || envelope.data().nothingFound() == null) {
+        if (envelope == null || !SUCCESS_MESSAGE.equals(envelope.message()) || envelope.data() == null
+            || envelope.data().extractions() == null || envelope.data().nothingFound() == null) {
             throw invalidResponse();
         }
         final List<AiExtraction> extractions = envelope.data().extractions();

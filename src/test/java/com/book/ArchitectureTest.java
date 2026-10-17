@@ -13,6 +13,7 @@ import com.book.core.category.domain.Category;
 import com.book.core.coupon.domain.Coupon;
 import com.book.core.coupon.domain.CouponTarget;
 import com.book.core.coupon.domain.OwnedCoupon;
+import com.book.core.memory.domain.UserMemory;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
@@ -87,5 +88,6 @@ class ArchitectureTest {
         assertThat(Review.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(User.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(UserProvider.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(UserMemory.class.isAnnotationPresent(Entity.class)).isTrue();
     }
 }

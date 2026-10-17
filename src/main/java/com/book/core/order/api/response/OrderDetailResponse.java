@@ -13,5 +13,6 @@ public record OrderDetailResponse(
         LocalDateTime createdAt,
         OrderAddressResponse address,
         OrderPaymentResponse payment,
-        List<OrderItemResponse> items) {}
+        List<OrderItemResponse> items,
+        List<OrderCancellationResponse> cancellations) {}
 // @formatter:on

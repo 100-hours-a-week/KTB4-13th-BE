@@ -10,6 +10,8 @@ import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.GetOrderCommand;
 import com.book.core.order.application.result.GetOrderResult;
+import com.book.core.order.application.result.OrderCancellationItemResult;
+import com.book.core.order.application.result.OrderCancellationResult;
 import com.book.core.order.application.result.OrderItemResult;
 import com.book.core.order.application.result.OrderPaymentResult;
 import com.book.core.order.application.service.OrderService;
@@ -203,7 +205,7 @@ class OrderRepositoryIntegrationTest {
     }
 
     @Test
-    void 전액_취소한_주문의_상세는_최초_주문상품_전체와_저장된_결제_환불_금액을_반환한다() {
+    void 전액_취소한_주문의_상세는_최초_주문상품_결제_환불_금액과_최신순_취소_이력을_반환한다() {
         insertBook(9126L);
         insertBook(9127L);
         insertProduct(9226L, 9126L);
@@ -225,6 +227,9 @@ class OrderRepositoryIntegrationTest {
                 """, saved.id());
         final List<Long> orderItemIds =
             jdbc.queryForList("SELECT id FROM order_item WHERE order_id = ? ORDER BY id", Long.class, saved.id());
+        insertPartialCancel(saved.id(), orderItemIds.get(0), "4.00", "2026-09-28 11:00:00");
+        insertPartialCancel(saved.id(), orderItemIds.get(1), "5.00", "2026-09-28 12:00:00");
+        insertPartialCancel(saved.id(), orderItemIds.get(1), "6.00", "2026-09-28 12:00:00");
 
         final GetOrderResult result = orderService.getOrder(new GetOrderCommand(42L, "order_detail_canceled"));
 
@@ -235,6 +240,19 @@ class OrderRepositoryIntegrationTest {
         assertThat(result.payment())
             .isEqualTo(new OrderPaymentResult(new BigDecimal("0.00"), new BigDecimal("4.00"), new BigDecimal("15.00"), PaymentMethod.CARD,
                 LocalDateTime.of(2026, 9, 28, 10, 0), new BigDecimal("15.00"), new BigDecimal("0.00")));
+        assertThat(result.cancellations()).extracting(OrderCancellationResult::refundedAmount).containsExactly(new BigDecimal("6.00"),
+            new BigDecimal("5.00"), new BigDecimal("4.00"));
+        assertThat(result.cancellations().getLast().items())
+            .containsExactly(new OrderCancellationItemResult(orderItemIds.get(0), 9227L, "주문 테스트 상품", 1L));
+    }
+
+    private void insertPartialCancel(final Long orderId, final Long orderItemId, final String paidAmount, final String canceledAt) {
+        jdbc.update("""
+                INSERT INTO `cancel` (created_at, updated_at, user_id, type, order_id, order_item_id, payment_id, origin_amount,
+                    owned_coupon_id, coupon_discount, used_point, paid_amount, canceled_quantity, canceled_paid_amount,
+                    canceled_point_amount, canceled_coupon_amount, external_cancel_key, canceled_at)
+                VALUES (NOW(6), NOW(6), 42, 'PARTIAL', ?, ?, 1, 19.00, 0, 0.00, 4.00, 15.00, 1, ?, 0.00, 0.00, 'cancel_key', ?)
+                """, orderId, orderItemId, new BigDecimal(paidAmount), canceledAt);
     }
 
     @Test

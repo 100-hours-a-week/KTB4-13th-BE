@@ -6,6 +6,8 @@ import com.book.core.address.application.result.GetAddressItemResult;
 import com.book.core.address.application.usecase.GetAddressUseCase;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cancel.application.usecase.GetCancelBalanceUseCase;
+import com.book.core.cancel.application.usecase.GetCancelsUseCase;
+import com.book.core.cancel.domain.Cancel;
 import com.book.core.cancel.domain.CancelBalance;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.order.application.command.CancelOrderCommand;
@@ -16,6 +18,7 @@ import com.book.core.order.application.command.GetOrdersCommand;
 import com.book.core.order.application.result.CreateOrderResult;
 import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
+import com.book.core.order.application.result.OrderCancellationResult;
 import com.book.core.order.application.result.OrderPaymentResult;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.application.usecase.CreateOrderUseCase;
@@ -30,6 +33,7 @@ import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -49,6 +53,7 @@ public class OrderService {
     private final GetOrderUseCase getOrderUseCase;
     private final GetPaymentUseCase getPaymentUseCase;
     private final GetCancelBalanceUseCase getCancelBalanceUseCase;
+    private final GetCancelsUseCase getCancelsUseCase;
 
     public GetOrdersResult getOrders(final GetOrdersCommand command) {
         return getOrdersUseCase.execute(command);
@@ -64,7 +69,9 @@ public class OrderService {
             throw new CoreException(ErrorCode.ORDER_DATA_INCONSISTENT);
         }
         final CancelBalance cancelBalance = requirePaidOrderData(() -> getCancelBalanceUseCase.execute(payment.orderId()));
-        return order.withPayment(OrderPaymentResult.of(payment, cancelBalance));
+        final List<OrderCancellationResult> cancellations = getCancelsUseCase.execute(payment.orderId()).stream()
+            .map((final Cancel cancel) -> OrderCancellationResult.of(cancel, order.items())).toList();
+        return order.withPayment(OrderPaymentResult.of(payment, cancelBalance), cancellations);
     }
 
     public void cancelOrder(final CancelOrderCommand command) {

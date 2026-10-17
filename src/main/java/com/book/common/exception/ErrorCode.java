@@ -40,6 +40,7 @@ public enum ErrorCode {
     USER_PROVIDER_USER_INACTIVE(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_INACTIVE", "회원 연결의 내부 회원이 비활성 상태입니다.",
         LogLevel.ERROR),
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "주문을 찾을 수 없습니다.", LogLevel.INFO),
+    ORDER_DATA_INCONSISTENT(HttpStatus.INTERNAL_SERVER_ERROR, "ORDER_DATA_INCONSISTENT", "주문 정보를 처리할 수 없습니다.", LogLevel.ERROR),
     ORDER_CANNOT_BE_CANCELED(HttpStatus.CONFLICT, "ORDER_CANNOT_BE_CANCELED", "현재 상태의 주문은 취소할 수 없습니다.", LogLevel.INFO),
     INVALID_AUTHORIZATION_CODE(HttpStatus.UNAUTHORIZED, "INVALID_AUTHORIZATION_CODE", "인가 코드가 유효하지 않습니다.", LogLevel.INFO),
     OAUTH_TOKEN_EXCHANGE_FAILURE(HttpStatus.INTERNAL_SERVER_ERROR, "OAUTH_TOKEN_EXCHANGE_FAILURE", "외부 인증 토큰을 발급할 수 없습니다.", LogLevel.ERROR),

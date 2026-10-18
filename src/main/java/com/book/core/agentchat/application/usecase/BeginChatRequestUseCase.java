@@ -47,12 +47,12 @@ public class BeginChatRequestUseCase {
             request.requireSameInput(command.fingerprint());
             if (request.completed()) {
                 final ChatMessage response = chats.responseFor(request.id()).orElseThrow(() -> new CoreException(ErrorCode.DEFAULT_ERROR));
-                return new ChatAttemptResult(request.id(), request.generation(), null, codec.decode(response.responsePayload()), null,
-                    null);
+                return new ChatAttemptResult(request.id(), request.generation(), null, codec.decode(response.responsePayload()), null, null,
+                    false);
             }
             if (!request.running()) {
                 return new ChatAttemptResult(request.id(), request.generation(), null, null, ErrorCode.valueOf(request.failureCode()),
-                    request.retryAfterSeconds());
+                    request.retryAfterSeconds(), false);
             }
             chats.findSessionForChange(session.id());
             session.requireActive(request.id());
@@ -84,7 +84,7 @@ public class BeginChatRequestUseCase {
             .map((final ChatMessage message) -> new RecommendationTurn(message.role(), contextText(message.text()))).toList();
         final ChatRecommendationCommand aiCommand =
             new ChatRecommendationCommand(command.userId(), command.consented(), spec, command.message(), recent, command.excludeBookIds());
-        return new ChatAttemptResult(request.id(), request.generation(), aiCommand, null, null, null);
+        return new ChatAttemptResult(request.id(), request.generation(), aiCommand, null, null, null, request.agentContext() != null);
     }
 
     private static String contextText(final String text) {

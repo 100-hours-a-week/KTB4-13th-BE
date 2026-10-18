@@ -145,6 +145,11 @@ class SaveOnboardingBooksUseCaseTest {
         }
 
         @Override
+        public void deleteByUserIdAndBookIdIn(final Long userId, final List<Long> bookIds) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public List<UserOnboardingBook> saveAll(final List<UserOnboardingBook> books) {
             savedBooks = books;
             return books;

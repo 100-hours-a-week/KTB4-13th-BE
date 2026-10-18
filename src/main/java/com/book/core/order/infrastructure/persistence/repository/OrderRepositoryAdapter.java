@@ -19,6 +19,11 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
     private final OrderItemJpaRepository orderItemJpaRepository;
 
     @Override
+    public Optional<OrderItem> findOrderItemById(final Long orderItemId) {
+        return orderItemJpaRepository.findWithOrderById(orderItemId);
+    }
+
+    @Override
     public Order save(final Order order) {
         return jpaRepository.save(order);
     }

@@ -1,6 +1,8 @@
 package com.book.core.library.domain;
 
 import com.book.common.domain.BaseEntity;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -27,6 +29,10 @@ public class UserLibraryBook extends BaseEntity {
 
     public UserLibraryBook(final Long id, final Long userId, final Long bookId, final LocalDateTime addedAt) {
         super(id);
+        if (userId == null || userId <= 0 || bookId == null || bookId <= 0) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        validateAddedAt(addedAt);
         this.userId = userId;
         this.bookId = bookId;
         this.addedAt = addedAt;
@@ -41,7 +47,14 @@ public class UserLibraryBook extends BaseEntity {
         if (isActive()) {
             return;
         }
+        validateAddedAt(now);
         active();
         this.addedAt = now;
+    }
+
+    private static void validateAddedAt(final LocalDateTime addedAt) {
+        if (addedAt == null) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
     }
 }

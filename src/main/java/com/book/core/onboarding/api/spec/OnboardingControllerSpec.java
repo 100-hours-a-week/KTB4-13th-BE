@@ -26,17 +26,24 @@ import org.springframework.web.bind.annotation.PathVariable;
 @Tag(name = "Onboarding", description = "온보딩 질문/응답 API")
 public interface OnboardingControllerSpec {
     @Operation(summary = "온보딩 질문 조회",
-        description = "questionId에 해당하는 온보딩 질문과 선택지를 조회합니다. " + "선행 질문(Question 3) 답변에 의존하는 질문(Question 4)은 선행 답변이 있는 대분류의 선택지만 반환합니다.")
+        description = "questionId에 해당하는 온보딩 질문과 선택지를 조회합니다. " + "선행 질문(Question 3) 답변에 의존하는 질문(Question 4)은 선행 답변이 있는 대분류의 선택지만 반환합니다. "
+            + "parentOptionIds를 전달하면 저장된 답변 대신 전달한 대분류 선택지 기준으로 Question 4 선택지를 반환합니다. "
+            + "parentOptionIds는 Question 4에만 전달할 수 있으며, 전달할 때는 1개 이상의 중복 없는 양수 ID여야 합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "온보딩 질문 조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 questionId"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",
+            description = "questionId가 양수가 아니거나, parentOptionIds가 비었거나 중복·0 이하 값을 포함하거나, Question 4가 아닌 질문에 전달됨"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "존재하지 않는 questionId 또는 존재하지 않는 parentOptionIds"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
-            description = "선행 질문(Question 3)에 대한 답변이 아직 없어 조회할 수 없음"),
+            description = "선행 질문(Question 3)에 대한 답변이 아직 없어 조회할 수 없거나, parentOptionIds가 Question 3 선택지가 아님"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
     ResponseEntity<ApiResponse<OnboardingQuestionResponse>> getQuestion(@Parameter(hidden = true) final Long userId,
-        @Parameter(in = ParameterIn.PATH, required = true, example = "1") @Positive @PathVariable("questionId") final Long questionId);
+        @Parameter(in = ParameterIn.PATH, required = true, example = "1") @Positive @PathVariable("questionId") final Long questionId,
+        @Parameter(in = ParameterIn.QUERY, required = false, description = "Question 4 선택지를 필터링할 Question 3 선택지 ID 목록. 생략하면 저장된 답변 기준으로 조회",
+            example = "9,10") final List<Long> parentOptionIds);
 
     @Operation(summary = "온보딩 진행 정보 조회", description = "요청 회원의 활성 온보딩 진행 상태, 질문별 응답, 선택 도서 목록을 조회합니다.")
     @SecurityRequirement(name = "bearerAuth")

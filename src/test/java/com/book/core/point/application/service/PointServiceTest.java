@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 
 class PointServiceTest {
     @Test
-    void 각_Command를_해당_UseCase에_전달한다() {
+    void 조회_Command와_적립_차감_인자를_해당_UseCase에_전달한다() {
         final GetPointUseCase get = mock(GetPointUseCase.class);
         final EarnPointUseCase earn = mock(EarnPointUseCase.class);
         final DeductPointUseCase deduct = mock(DeductPointUseCase.class);
@@ -35,7 +35,7 @@ class PointServiceTest {
         service.deduct(deductCommand);
 
         verify(get).execute(getCommand);
-        verify(earn).execute(earnCommand);
-        verify(deduct).execute(deductCommand);
+        verify(earn).execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN);
+        verify(deduct).execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN);
     }
 }

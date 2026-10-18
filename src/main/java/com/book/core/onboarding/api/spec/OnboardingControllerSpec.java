@@ -3,6 +3,7 @@ package com.book.core.onboarding.api.spec;
 import com.book.common.response.ApiResponse;
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
 import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
+import com.book.core.onboarding.api.request.PutOnboardingPreferencesRequest;
 import com.book.core.onboarding.api.response.OnboardingBookCandidatesResponse;
 import com.book.core.onboarding.api.response.OnboardingProgressResponse;
 import com.book.core.onboarding.api.response.OnboardingQuestionResponse;
@@ -98,6 +99,26 @@ public interface OnboardingControllerSpec {
         @RequestBody(description = "선택한 도서 ID 목록", required = true,
             content = @Content(schema = @Schema(implementation = PutOnboardingBooksRequest.class)))
         @Valid final PutOnboardingBooksRequest request);
+
+    @Operation(summary = "온보딩 취향 정보 전체 수정",
+        description = "온보딩을 완료(COMPLETED)한 회원의 Question 1~4 답변과 선택 도서 목록을 한 번에 수정합니다. "
+            + "answers에는 모든 질문을 한 번씩 포함해야 하며, Question 4 선택지의 부모는 같은 요청의 Question 3 선택지에 있어야 합니다. "
+            + "bookIds는 빈 배열을 허용합니다. 기존 데이터와 비교해 변경된 답변과 도서만 반영하고, 온보딩 상태·완료 시각·개인화 동의는 변경하지 않습니다. "
+            + "변경 사항이 있고 개인화 추천에 동의한 회원이면 수정이 저장된 뒤 AI 취향 프로필 갱신을 요청하며, AI 요청이 실패해도 수정 결과는 유지되고 성공으로 응답합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "온보딩 취향 정보 수정 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",
+            description = "요청 형식이 올바르지 않거나, 질문 구성이 누락·중복되었거나, 선택지 개수나 목록 형식이 올바르지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "온보딩 기록이 없거나 존재하지 않는 선택지·도서가 포함됨"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+            description = "온보딩이 완료되지 않았거나, 선택지가 해당 질문에 속하지 않거나, Question 4 선택지의 부모가 요청의 Question 3에 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<ApiResponse<Void>> updatePreferences(@Parameter(hidden = true) final Long userId,
+        @RequestBody(description = "Question 1~4 답변과 선택 도서 ID 목록", required = true,
+            content = @Content(schema = @Schema(implementation = PutOnboardingPreferencesRequest.class)))
+        @Valid final PutOnboardingPreferencesRequest request);
 
     @Operation(summary = "개인화 추천 동의 기록",
         description = "요청 회원의 개인화 추천 동의를 활성 개인화 약관에 기록합니다. 요청 본문은 없으며, 동의하지 않는 회원은 호출하지 않습니다. " + "이미 동의한 회원이 다시 호출해도 새 기록 없이 성공합니다.")

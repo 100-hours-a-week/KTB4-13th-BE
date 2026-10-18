@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-class CreatePersonalizationProfileUseCaseTest {
+class PersonalizationProfileUseCaseTest {
     private static final Long USER_ID = 42L;
     private static final Long TERM_ID = 7L;
 
@@ -30,7 +30,7 @@ class CreatePersonalizationProfileUseCaseTest {
     private final FakeOptionRepository optionRepository = new FakeOptionRepository();
     private final FakeBookRepository bookRepository = new FakeBookRepository();
     private final FakeProfileClient profileClient = new FakeProfileClient();
-    private final CreatePersonalizationProfileUseCase useCase = new CreatePersonalizationProfileUseCase(termRepository, agreementRepository,
+    private final PersonalizationProfileUseCase useCase = new PersonalizationProfileUseCase(termRepository, agreementRepository,
         answerRepository, optionRepository, bookRepository, profileClient);
 
     @Test

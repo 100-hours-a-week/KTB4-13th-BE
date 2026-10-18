@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 
 @UseCase
 @RequiredArgsConstructor
-public class CreatePersonalizationProfileUseCase {
+public class PersonalizationProfileUseCase {
     private static final Long READING_TIME_QUESTION_ID = 1L;
     private static final Long CRITERIA_QUESTION_ID = 2L;
     private static final Long CATEGORY_QUESTION_ID = 3L;

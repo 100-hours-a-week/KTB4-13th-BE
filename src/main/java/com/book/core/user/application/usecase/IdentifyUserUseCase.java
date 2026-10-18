@@ -4,7 +4,6 @@ import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.user.application.command.IdentifyUserCommand;
 import com.book.core.user.application.command.UserRegistrationCommand;
-import com.book.core.user.application.port.NicknameGeneratorPort;
 import com.book.core.user.application.port.UserProviderRepositoryPort;
 import com.book.core.user.application.port.UserRepositoryPort;
 import com.book.core.user.application.result.IdentifyUserResult;
@@ -17,11 +16,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class IdentifyUserUseCase {
-    private static final int MAX_NICKNAME_REGISTRATION_ATTEMPTS = 5;
-
     private final UserRepositoryPort userRepository;
     private final UserProviderRepositoryPort userProviderRepository;
-    private final NicknameGeneratorPort nicknameGenerator;
     private final UserRegistrationUseCase userRegistrationUseCase;
 
     public IdentifyUserResult execute(final IdentifyUserCommand command) {
@@ -43,18 +39,8 @@ public class IdentifyUserUseCase {
     }
 
     private IdentifyUserResult registerNewUser(final IdentifyUserCommand command) {
-        for (int attempt = 1; attempt <= MAX_NICKNAME_REGISTRATION_ATTEMPTS; attempt++) {
-            final String nickname = nicknameGenerator.generate();
-            final UserRegistrationCommand registrationCommand =
-                new UserRegistrationCommand(command.providerType(), command.providerUserId(), command.providerEmail(), nickname);
-            try {
-                return new IdentifyUserResult(userRegistrationUseCase.execute(registrationCommand));
-            } catch (final BusinessException exception) {
-                if (exception.errorCode() != ErrorCode.NICKNAME_CONFLICT) {
-                    throw exception;
-                }
-            }
-        }
-        throw new BusinessException(ErrorCode.NICKNAME_GENERATION_FAILED);
+        final UserRegistrationCommand registrationCommand =
+            new UserRegistrationCommand(command.providerType(), command.providerUserId(), command.providerEmail());
+        return new IdentifyUserResult(userRegistrationUseCase.execute(registrationCommand));
     }
 }

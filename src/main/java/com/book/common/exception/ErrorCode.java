@@ -32,8 +32,6 @@ public enum ErrorCode {
     INVALID_PROVIDER_TYPE(HttpStatus.BAD_REQUEST, "INVALID_PROVIDER_TYPE", "소셜 로그인 제공자 유형이 필요합니다.", LogLevel.INFO),
     INVALID_PROVIDER_USER_ID(HttpStatus.BAD_REQUEST, "INVALID_PROVIDER_USER_ID", "소셜 로그인 사용자 ID는 1자 이상 255자 이하여야 합니다.", LogLevel.INFO),
     INVALID_PROVIDER_EMAIL(HttpStatus.BAD_REQUEST, "INVALID_PROVIDER_EMAIL", "소셜 로그인 이메일은 254자 이하여야 합니다.", LogLevel.INFO),
-    NICKNAME_CONFLICT(HttpStatus.CONFLICT, "NICKNAME_CONFLICT", "동일한 활성 닉네임이 이미 존재합니다.", LogLevel.INFO),
-    NICKNAME_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "NICKNAME_GENERATION_FAILED", "닉네임을 생성하지 못했습니다.", LogLevel.ERROR),
     PROVIDER_IDENTITY_CONFLICT(HttpStatus.CONFLICT, "PROVIDER_IDENTITY_CONFLICT", "동일한 활성 소셜 로그인 계정이 이미 존재합니다.", LogLevel.INFO),
     USER_PROVIDER_USER_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "USER_PROVIDER_USER_NOT_FOUND", "회원 연결의 내부 회원을 찾을 수 없습니다.",
         LogLevel.ERROR),

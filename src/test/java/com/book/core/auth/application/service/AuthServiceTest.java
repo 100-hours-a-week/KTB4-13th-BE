@@ -90,8 +90,7 @@ class AuthServiceTest {
 
         service().login(command);
 
-        final InOrder order =
-            inOrder(userRegistrationUseCase, createCartUseCase, createPointBalanceUseCase, createLoginSessionUseCase);
+        final InOrder order = inOrder(userRegistrationUseCase, createCartUseCase, createPointBalanceUseCase, createLoginSessionUseCase);
         order.verify(userRegistrationUseCase).execute(registrationCommand);
         order.verify(createCartUseCase).execute(42L);
         order.verify(createPointBalanceUseCase).execute(42L);

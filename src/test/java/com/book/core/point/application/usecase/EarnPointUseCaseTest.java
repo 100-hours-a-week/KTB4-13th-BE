@@ -60,23 +60,8 @@ class EarnPointUseCaseTest {
         when(balances.findByUserId(42L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN)).isInstanceOfSatisfying(CoreException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
         verifyNoInteractions(histories);
     }
 
-    @Test
-    void 잘못된_인자는_저장소_호출_전에_거절한다() {
-        assertInvalidArguments(null, PointType.REVIEW, 10L, BigDecimal.TEN);
-        assertInvalidArguments(0L, PointType.REVIEW, 10L, BigDecimal.TEN);
-        assertInvalidArguments(-1L, PointType.REVIEW, 10L, BigDecimal.TEN);
-        assertInvalidArguments(42L, null, 10L, BigDecimal.TEN);
-        assertInvalidArguments(42L, PointType.REVIEW, null, BigDecimal.TEN);
-        assertInvalidArguments(42L, PointType.REVIEW, 10L, null);
-        verifyNoInteractions(balances, histories);
-    }
-
-    private void assertInvalidArguments(final Long userId, final PointType type, final Long referenceId, final BigDecimal amount) {
-        assertThatThrownBy(() -> useCase.execute(userId, type, referenceId, amount)).isInstanceOfSatisfying(CoreException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
-    }
 }

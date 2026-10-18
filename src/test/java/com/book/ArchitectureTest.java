@@ -58,6 +58,26 @@ class ArchitectureTest {
     }
 
     @Test
+    void 장바구니와_추천은_에이전트_대화에_의존하지_않는다() {
+        noClasses().that().resideInAnyPackage("com.book.core.cart..", "com.book.core.recommendation..").should().dependOnClassesThat()
+            .resideInAPackage("com.book.core.agentchat..").check(CLASSES);
+    }
+
+    @Test
+    void 에이전트는_다른_기능의_저장_Port를_직접_호출하지_않는다() {
+        noClasses().that().resideInAPackage("com.book.core.agentchat..").should().dependOnClassesThat()
+            .resideInAnyPackage("com.book.core.cart.application.port..", "com.book.core.product.application.port..",
+                "com.book.core.book.application.port..", "com.book.core.recommendation.application.port..")
+            .check(CLASSES);
+    }
+
+    @Test
+    void 에이전트_저장_모델은_다른_기능의_업무_모델을_저장_형식으로_사용하지_않는다() {
+        noClasses().that().resideInAPackage("com.book.core.agentchat.domain..").should().dependOnClassesThat()
+            .resideInAnyPackage("com.book.core.cart..", "com.book.core.recommendation..").check(CLASSES);
+    }
+
+    @Test
     void 공통_코드는_기능에_의존하지_않는다() {
         noClasses().that().resideInAPackage("com.book.common..").should().dependOnClassesThat().resideInAPackage("com.book.core..")
             .check(CLASSES);

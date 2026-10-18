@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "shopping.json",
+  "output": "shopping.html",
+  "specification": {
+    "sha256": "8a33fada0997c91d24558f9b427fba230d5af44299bc4a99a37ec04604847e91",
+    "bytes": 1570
+  },
+  "artifact": {
+    "sha256": "f03635b7eaf58b2db8ff9d6d8bb2ba3f6add51ab14b1fd11661072bb75d6d6eb",
+    "bytes": 799025
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

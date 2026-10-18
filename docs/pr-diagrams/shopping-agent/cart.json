@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "title": "장바구니 전체 변경과 충돌 검출",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1400,
+      790
+    ]
+  },
+  "participants": [
+    {
+      "id": "caller",
+      "type": "backend",
+      "label": "Cart 호출자"
+    },
+    {
+      "id": "cart",
+      "type": "backend",
+      "label": "Cart UseCase"
+    },
+    {
+      "id": "product",
+      "type": "backend",
+      "label": "Product UseCase"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL"
+    }
+  ],
+  "messages": [
+    {
+      "from": "caller",
+      "to": "cart",
+      "y": 170,
+      "label": "상품별 최초 기준·최종 수량 전달"
+    },
+    {
+      "from": "cart",
+      "to": "db",
+      "y": 260,
+      "label": "Cart 버전 조건부 갱신"
+    },
+    {
+      "from": "cart",
+      "to": "product",
+      "y": 350,
+      "label": "상품·책 일괄 조회와 버전 검사"
+    },
+    {
+      "from": "cart",
+      "to": "db",
+      "y": 440,
+      "label": "전체 검증 후 항목 변경·커밋"
+    },
+    {
+      "from": "cart",
+      "to": "caller",
+      "y": 530,
+      "label": "전체 적용 또는 전체 미적용",
+      "variant": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "동시성 경계",
+      "items": [
+        "일반 API·일괄 변경·주문 후 제거가 같은 버전 규약 참여",
+        "충돌은 전체 롤백, 자동 재시도 없음"
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "diagram_type": "sequence"
+}

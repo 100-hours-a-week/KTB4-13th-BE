@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "대화방 저장과 과거 화면 복원",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1400,
+      790
+    ]
+  },
+  "participants": [
+    {
+      "id": "p0",
+      "type": "frontend",
+      "label": "FE"
+    },
+    {
+      "id": "p1",
+      "type": "backend",
+      "label": "ChatSessionService"
+    },
+    {
+      "id": "p2",
+      "type": "external",
+      "label": "AI 서버"
+    },
+    {
+      "id": "p3",
+      "type": "database",
+      "label": "대화 저장소"
+    }
+  ],
+  "messages": [
+    {
+      "from": "p0",
+      "to": "p1",
+      "y": 170,
+      "label": "POST sessions/{id}/messages"
+    },
+    {
+      "from": "p1",
+      "to": "p3",
+      "y": 252,
+      "label": "요청 선점·최근20개·spec 조회"
+    },
+    {
+      "from": "p1",
+      "to": "p2",
+      "y": 334,
+      "label": "기존 추천 호출 · TX 밖"
+    },
+    {
+      "from": "p1",
+      "to": "p3",
+      "y": 416,
+      "label": "카드·발화쌍·완료 결과 함께 저장"
+    },
+    {
+      "from": "p1",
+      "to": "p0",
+      "y": 498,
+      "label": "저장 응답 반환 · 같은 키 재생",
+      "variant": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "처리 경계",
+      "items": [
+        "전체 경로: /api/v1/recommend/chat/sessions",
+        "과거 문장·카드·가격·버튼 복원, 실패 발화쌍 제외"
+      ]
+    }
+  ]
+}

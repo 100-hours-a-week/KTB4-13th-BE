@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "proposal.json",
+  "output": "proposal.html",
+  "specification": {
+    "sha256": "15a9a25d16c637b067b1ea0c577856a35913d9039e9e4eb85f8cd518de157047",
+    "bytes": 1510
+  },
+  "artifact": {
+    "sha256": "3bd78259a22923ba70416ba085d0c85a2ba1c4a291a9ce726adf5997fc08785b",
+    "bytes": 799003
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

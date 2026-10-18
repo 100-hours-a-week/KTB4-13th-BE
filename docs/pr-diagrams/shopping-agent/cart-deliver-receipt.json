@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "cart.json",
+  "output": "cart.html",
+  "specification": {
+    "sha256": "94d0784a3704f7dc1bc5300be176a99d630928a3f167e2357640a264e705b8e7",
+    "bytes": 1562
+  },
+  "artifact": {
+    "sha256": "a7d1978d724da1c78f6e54e69b7b5b8e09c31b29fa32d2e42e19c14055cfac94",
+    "bytes": 799049
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

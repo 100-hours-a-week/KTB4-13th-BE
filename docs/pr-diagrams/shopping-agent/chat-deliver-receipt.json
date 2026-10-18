@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "chat.json",
+  "output": "chat.html",
+  "specification": {
+    "sha256": "1d1151d69c2e7ea6c8f359e32c55c9d2519ec5e3aaeeb55ab765d6d50b57574a",
+    "bytes": 1507
+  },
+  "artifact": {
+    "sha256": "e18da5188f90670791b8f7f5df77144cf3d326f7ebadf4ae528f6db7cfb9084c",
+    "bytes": 799186
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

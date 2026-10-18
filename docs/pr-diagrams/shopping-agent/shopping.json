@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "명확한 쇼핑 지시와 대화 원자 완료",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1400,
+      790
+    ]
+  },
+  "participants": [
+    {
+      "id": "p0",
+      "type": "backend",
+      "label": "ChatSessionService"
+    },
+    {
+      "id": "p1",
+      "type": "external",
+      "label": "AI 서버"
+    },
+    {
+      "id": "p2",
+      "type": "backend",
+      "label": "완료 UseCase"
+    },
+    {
+      "id": "p3",
+      "type": "backend",
+      "label": "Cart UseCase"
+    }
+  ],
+  "messages": [
+    {
+      "from": "p0",
+      "to": "p1",
+      "y": 170,
+      "label": "관측 저장 후 POST /recommendations/chat"
+    },
+    {
+      "from": "p1",
+      "to": "p0",
+      "y": 252,
+      "label": "actions 후보 (직접 지시)",
+      "variant": "return"
+    },
+    {
+      "from": "p0",
+      "to": "p2",
+      "y": 334,
+      "label": "검증 후보 저장 후 완료 요청"
+    },
+    {
+      "from": "p2",
+      "to": "p3",
+      "y": 416,
+      "label": "수량·가격·재고 검증과 전체 변경"
+    },
+    {
+      "from": "p2",
+      "to": "p0",
+      "y": 498,
+      "label": "변경·실행·실제 대화 함께 확정",
+      "variant": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "처리 경계",
+      "items": [
+        "쇼핑은 기본 비활성 · AI/FE 확인 후 전환",
+        "선택 조합은 제안만 저장 · 실행은 사용자 확인 후"
+      ]
+    }
+  ]
+}

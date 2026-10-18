@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "확인 제안 실행과 성공 결과 재생",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1400,
+      790
+    ]
+  },
+  "participants": [
+    {
+      "id": "p0",
+      "type": "frontend",
+      "label": "FE"
+    },
+    {
+      "id": "p1",
+      "type": "backend",
+      "label": "AgentCartService"
+    },
+    {
+      "id": "p2",
+      "type": "backend",
+      "label": "실행 UseCase"
+    },
+    {
+      "id": "p3",
+      "type": "backend",
+      "label": "Cart UseCase"
+    }
+  ],
+  "messages": [
+    {
+      "from": "p0",
+      "to": "p1",
+      "y": 170,
+      "label": "POST /agent/cart/executions"
+    },
+    {
+      "from": "p1",
+      "to": "p2",
+      "y": 252,
+      "label": "소유권·제안·요청 키 검사"
+    },
+    {
+      "from": "p2",
+      "to": "p3",
+      "y": 334,
+      "label": "최초 기준 비교·전체 변경"
+    },
+    {
+      "from": "p2",
+      "to": "p1",
+      "y": 416,
+      "label": "변경·제안 소비·성공 기록 커밋",
+      "variant": "return"
+    },
+    {
+      "from": "p1",
+      "to": "p0",
+      "y": 498,
+      "label": "최초201 · 재생200 + Location",
+      "variant": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "처리 경계",
+      "items": [
+        "실제 공통 경로: /api/v1/agent/cart",
+        "만료·가격/수량 충돌은 전체 미적용, 타인404"
+      ]
+    }
+  ]
+}

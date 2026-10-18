@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "추천 카드 일괄 보강과 저장 결과",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1400,
+      790
+    ]
+  },
+  "participants": [
+    {
+      "id": "p0",
+      "type": "backend",
+      "label": "추천 UseCase"
+    },
+    {
+      "id": "p1",
+      "type": "external",
+      "label": "AI 서버"
+    },
+    {
+      "id": "p2",
+      "type": "backend",
+      "label": "Book · Product"
+    },
+    {
+      "id": "p3",
+      "type": "database",
+      "label": "카드 저장소"
+    }
+  ],
+  "messages": [
+    {
+      "from": "p0",
+      "to": "p1",
+      "y": 170,
+      "label": "POST /recommendations/chat"
+    },
+    {
+      "from": "p1",
+      "to": "p0",
+      "y": 252,
+      "label": "추천 후보와 응답",
+      "variant": "return"
+    },
+    {
+      "from": "p0",
+      "to": "p2",
+      "y": 334,
+      "label": "활성 책·상품 일괄 보강"
+    },
+    {
+      "from": "p0",
+      "to": "p3",
+      "y": 416,
+      "label": "카드 저장과 공개 Result 반환"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "처리 경계",
+      "items": [
+        "기존 추천 HTTP·표시 순서·누락 가격 정책 유지",
+        "카드1개/3개 모두 보강 조회2회"
+      ]
+    }
+  ]
+}

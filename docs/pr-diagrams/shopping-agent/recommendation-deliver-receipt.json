@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "recommendation.json",
+  "output": "recommendation.html",
+  "specification": {
+    "sha256": "c37bdfec2e03a71ec034b1b86eacd5c2a24ce59638ee7dea20f89c4d07c7b8d3",
+    "bytes": 1356
+  },
+  "artifact": {
+    "sha256": "238fa21aea98b8c5518ae393d644866afa885b8c7b639778fb49bb3933316c19",
+    "bytes": 798258
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

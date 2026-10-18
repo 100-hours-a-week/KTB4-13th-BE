@@ -45,11 +45,15 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -346,6 +350,159 @@ class CartChangeIntegrationTest {
         final CartChangeResult applied = execute.execute(userId, requestId);
         assertNotFound(() -> getExecution.execute(otherUserId, applied.executionId()));
         assertThat(executionCount()).isEqualTo(1);
+    }
+
+    @Test
+    void ISBN이_없고_상품과_도서가_삭제되어도_가격과_재고_없이_제거한다() {
+        add.execute(new AddCartItemCommand(userId, firstProductId, 3));
+        jdbc.update("UPDATE products SET deleted_at = CURRENT_TIMESTAMP(6), stock_quantity = 0 WHERE id = ?", firstProductId);
+        jdbc.update("UPDATE books SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", firstProductId + 1000000);
+        final Long requestId = prepare.prepareDirect(
+            command("remove-deleted", List.of(new CartChangeLine(CartChangeOperation.REMOVE, firstProductId, 3, null, null))));
+
+        final CartChangeResult result = execute.execute(userId, requestId);
+
+        assertThat(result.rejection()).isNull();
+        assertThat(result.executionId()).isNotNull();
+        assertThat(getCart.execute(userId).items()).isEmpty();
+        assertThat(executionCount()).isEqualTo(1);
+    }
+
+    @Test
+    void 실행기록_저장이_실패하면_항목변경과_제안소비를_롤백하고_재시도할_수_있다() {
+        final Long proposalId = prepare.createProposal(command("rollback",
+            List.of(line(CartChangeOperation.ADD, firstProductId, 0, 2), line(CartChangeOperation.ADD, secondProductId, 0, 1))));
+        jdbc.execute("ALTER TABLE cart_executions ADD CONSTRAINT fail_test_execution CHECK (user_id <> " + userId + ")");
+        try {
+            assertThatThrownBy(() -> execute.confirm(userId, proposalId, "confirm-rollback")).isInstanceOf(DataAccessException.class);
+        } finally {
+            jdbc.execute("ALTER TABLE cart_executions DROP CHECK fail_test_execution");
+        }
+
+        assertThat(getCart.execute(userId).items()).isEmpty();
+        assertThat(getProposal.execute(userId, proposalId).status()).isEqualTo("PENDING");
+        assertThat(executionCount()).isZero();
+        final CartChangeResult retried = execute.confirm(userId, proposalId, "confirm-rollback");
+        assertThat(retried.rejection()).isNull();
+        assertThat(getCart.execute(userId).items()).extracting(GetCartItemResult::productId, GetCartItemResult::quantity)
+            .containsExactlyInAnyOrder(tuple(firstProductId, 2), tuple(secondProductId, 1));
+        assertThat(getProposal.execute(userId, proposalId).status()).isEqualTo("EXECUTED");
+        assertThat(executionCount()).isEqualTo(1);
+    }
+
+    @Test
+    void 같은_원본을_직접_지시와_확인_제안으로_바꿔_실행하지_못한다() {
+        final PrepareCartChangeCommand proposalCommand =
+            command("frozen-proposal", List.of(line(CartChangeOperation.ADD, firstProductId, 0, 2)));
+        prepare.createProposal(proposalCommand);
+        assertThatThrownBy(() -> prepare.prepareDirect(proposalCommand)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException error) -> assertThat(error.errorCode()).isEqualTo(ErrorCode.IDEMPOTENCY_CONFLICT));
+        final PrepareCartChangeCommand directCommand =
+            command("frozen-direct", List.of(line(CartChangeOperation.ADD, firstProductId, 0, 2)));
+        prepare.prepareDirect(directCommand);
+        assertThatThrownBy(() -> prepare.createProposal(directCommand)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException error) -> assertThat(error.errorCode()).isEqualTo(ErrorCode.IDEMPOTENCY_CONFLICT));
+    }
+
+    @Test
+    void 잠금_후_최종_검증_시각에_만료했다면_변경하지_않고_거절을_확정한다() {
+        final Long proposalId =
+            prepare.createProposal(command("expires-during-lock", List.of(line(CartChangeOperation.ADD, firstProductId, 0, 2))));
+        when(clock.instant()).thenReturn(NOW.plusSeconds(599), NOW.plusSeconds(600));
+        final CartChangeResult result = execute.confirm(userId, proposalId, "expired-confirmation");
+        assertThat(result.rejection()).isEqualTo(ErrorCode.PROPOSAL_NOT_EXECUTABLE);
+        assertThat(getCart.execute(userId).items()).isEmpty();
+        assertThat(execute.confirm(userId, proposalId, "expired-confirmation").replayed()).isTrue();
+    }
+
+    @Test
+    void 항목_DB제약은_ADD_UPDATE의_null_수량을_거절한다() {
+        final Long requestId = prepare.prepareDirect(command("db-quantity", List.of(line(CartChangeOperation.ADD, firstProductId, 0, 2))));
+        assertThatThrownBy(() -> jdbc.update("UPDATE cart_change_request_items SET quantity = NULL WHERE request_id = ?", requestId))
+            .isInstanceOf(DataAccessException.class);
+        final Long proposalId =
+            prepare.createProposal(command("db-proposal", List.of(line(CartChangeOperation.ADD, firstProductId, 0, 2))));
+        assertThatThrownBy(() -> jdbc.update("UPDATE cart_proposal_items SET quantity = NULL WHERE proposal_id = ?", proposalId))
+            .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void 오래된_스냅샷에서_새_READY와_제안은_충돌하고_새_트랜잭션에서_복구한다() {
+        final TransactionTemplate outer = new TransactionTemplate(transactionManager);
+        final TransactionTemplate independent = new TransactionTemplate(transactionManager);
+        independent.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        final AtomicLong requestId = new AtomicLong();
+        assertThatThrownBy(() -> outer.executeWithoutResult((final TransactionStatus status) -> {
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cart_change_requests WHERE user_id = ?", Integer.class, userId)).isZero();
+            requestId.set(independent.execute((final TransactionStatus other) -> prepare
+                .prepareDirect(command("new-ready", List.of(line(CartChangeOperation.ADD, firstProductId, 0, 2))))));
+            execute.execute(userId, requestId.get());
+        })).isInstanceOf(OptimisticLockingFailureException.class);
+        assertThat(execute.execute(userId, requestId.get()).rejection()).isNull();
+        final AtomicLong proposalId = new AtomicLong();
+        assertThatThrownBy(() -> outer.executeWithoutResult((final TransactionStatus status) -> {
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cart_proposals WHERE user_id = ?", Integer.class, userId)).isZero();
+            proposalId.set(independent.execute((final TransactionStatus other) -> prepare
+                .createProposal(command("new-proposal", List.of(line(CartChangeOperation.ADD, secondProductId, 0, 1))))));
+            execute.confirm(userId, proposalId.get(), "new-confirm");
+        })).isInstanceOf(OptimisticLockingFailureException.class);
+        assertThat(execute.confirm(userId, proposalId.get(), "new-confirm").rejection()).isNull();
+        assertThat(getCart.execute(userId).items()).hasSize(2);
+    }
+
+    @Test
+    void 캐시된_READY는_경합하면_롤백하고_새_트랜잭션은_성공을_재생한다() {
+        final Long requestId =
+            prepare.prepareDirect(command("cached-request", List.of(line(CartChangeOperation.ADD, firstProductId, 0, 2))));
+        final TransactionTemplate outer = new TransactionTemplate(transactionManager);
+        final TransactionTemplate independent = new TransactionTemplate(transactionManager);
+        independent.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        final AtomicLong executionId = new AtomicLong();
+        assertThatThrownBy(() -> outer.executeWithoutResult((final TransactionStatus status) -> {
+            assertThat(changes.findRequest(userId, requestId).orElseThrow().executionId()).isNull();
+            executionId.set(independent.execute((final TransactionStatus other) -> execute.execute(userId, requestId)).executionId());
+            execute.execute(userId, requestId);
+        })).isInstanceOf(OptimisticLockingFailureException.class);
+        final CartChangeResult replayed = execute.execute(userId, requestId);
+        assertThat(replayed.executionId()).isEqualTo(executionId.get());
+        assertThat(replayed.replayed()).isTrue();
+        assertThat(executionCount()).isEqualTo(1);
+    }
+
+    @Test
+    void 종류_한도는_여러_상품의_최종_상태로_검증한다() {
+        for (int index = 0; index < 30; index++) {
+            final long productId = userId + 100 + index;
+            createProduct(productId, 100);
+            add.execute(new AddCartItemCommand(userId, productId, 1));
+        }
+        final Long overLimit = prepare.prepareDirect(command("over-limit", List.of(line(CartChangeOperation.ADD, firstProductId, 0, 2))));
+        assertThat(execute.execute(userId, overLimit).rejection()).isEqualTo(ErrorCode.CART_ITEM_LIMIT_EXCEEDED);
+        assertThat(getCart.execute(userId).items()).hasSize(30);
+
+        final Long replace =
+            prepare.prepareDirect(command("free-slot", List.of(new CartChangeLine(CartChangeOperation.REMOVE, userId + 100, 1, null, null),
+                line(CartChangeOperation.ADD, firstProductId, 0, 2))));
+        assertThat(execute.execute(userId, replace).rejection()).isNull();
+        assertThat(getCart.execute(userId).items()).hasSize(30);
+    }
+
+    @Test
+    void 상품_커밋_충돌은_장바구니_제안소비_성공기록을_함께_롤백한다() {
+        final Long proposalId = prepare.createProposal(command("commit-conflict",
+            List.of(line(CartChangeOperation.ADD, firstProductId, 0, 2), line(CartChangeOperation.ADD, secondProductId, 0, 1))));
+        final TransactionTemplate independent = new TransactionTemplate(transactionManager);
+        independent.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        assertThatThrownBy(() -> new TransactionTemplate(transactionManager).executeWithoutResult((final TransactionStatus status) -> {
+            assertThat(execute.confirm(userId, proposalId, "commit-key").rejection()).isNull();
+            independent.executeWithoutResult((final TransactionStatus other) -> jdbc
+                .update("UPDATE products SET discounted_price = 19000, version = version + 1 WHERE id = ?", secondProductId));
+        })).isInstanceOf(OptimisticLockingFailureException.class);
+        assertThat(getCart.execute(userId).items()).isEmpty();
+        assertThat(executionCount()).isZero();
+        assertThat(getProposal.execute(userId, proposalId).status()).isEqualTo("PENDING");
+        assertThat(execute.confirm(userId, proposalId, "commit-key").rejection()).isEqualTo(ErrorCode.CART_PRICE_CHANGED);
+        assertThat(getCart.execute(userId).items()).isEmpty();
     }
 
     private PrepareCartChangeCommand command(final String key, final List<CartChangeLine> items) {

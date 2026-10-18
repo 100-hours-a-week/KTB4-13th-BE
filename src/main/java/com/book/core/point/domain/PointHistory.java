@@ -1,8 +1,6 @@
 package com.book.core.point.domain;
 
 import com.book.common.domain.BaseEntity;
-import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorCode;
 import com.book.core.point.domain.enums.PointType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -30,9 +28,6 @@ public class PointHistory extends BaseEntity {
     public PointHistory(final Long id, final Long userId, final PointType type, final Long referenceId, final BigDecimal amount,
         final BigDecimal balanceAfter) {
         super(id);
-        if (userId == null || userId <= 0 || type == null || referenceId == null || amount == null || balanceAfter == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
         this.userId = userId;
         this.type = type;
         this.referenceId = referenceId;

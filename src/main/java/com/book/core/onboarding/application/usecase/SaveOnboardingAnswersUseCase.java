@@ -32,7 +32,7 @@ public class SaveOnboardingAnswersUseCase {
         final OnboardingQuestion question =
             questionRepository.findById(command.questionId()).orElseThrow(() -> new CoreException(ErrorCode.ONBOARDING_QUESTION_NOT_FOUND));
 
-        validateSelectionCount(question, command.optionIds());
+        question.validateSelectionCount(command.optionIds().size());
 
         final List<OnboardingOption> selectedOptions = optionRepository.findAllByIdIn(command.optionIds());
         if (selectedOptions.size() != command.optionIds().size()) {
@@ -54,15 +54,6 @@ public class SaveOnboardingAnswersUseCase {
         final List<UserOnboardingAnswer> newAnswers =
             command.optionIds().stream().map(optionId -> UserOnboardingAnswer.of(command.userId(), optionId)).toList();
         answerRepository.saveAll(newAnswers);
-    }
-
-    private void validateSelectionCount(final OnboardingQuestion question, final List<Long> optionIds) {
-        if (optionIds.size() < question.minSelection()) {
-            throw new CoreException(ErrorCode.INVALID_ONBOARDING_ANSWER_SELECTION);
-        }
-        if (question.maxSelection() != null && optionIds.size() > question.maxSelection()) {
-            throw new CoreException(ErrorCode.INVALID_ONBOARDING_ANSWER_SELECTION);
-        }
     }
 
     private void validateParentAnswered(final Long userId, final List<OnboardingOption> selectedOptions) {

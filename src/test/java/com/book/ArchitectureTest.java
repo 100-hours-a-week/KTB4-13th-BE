@@ -5,12 +5,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.core.address.domain.Address;
 import com.book.core.book.domain.Book;
+import com.book.core.cancel.domain.Cancel;
+import com.book.core.cancel.domain.CancelBalance;
 import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
 import com.book.core.category.domain.Category;
+import com.book.core.coupon.domain.Coupon;
+import com.book.core.coupon.domain.CouponTarget;
+import com.book.core.coupon.domain.OwnedCoupon;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
+import com.book.core.payment.domain.Payment;
+import com.book.core.payment.domain.PaymentHistory;
 import com.book.core.point.domain.PointBalance;
 import com.book.core.point.domain.PointHistory;
 import com.book.core.product.domain.Product;
@@ -64,12 +71,19 @@ class ArchitectureTest {
 
     @Test
     void 업무_모델은_JPA_Entity를_겸한다() {
+        assertThat(Payment.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(PaymentHistory.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(Cancel.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(CancelBalance.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Address.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Cart.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(CartItem.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(PointBalance.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(PointHistory.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Category.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(Coupon.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(CouponTarget.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(OwnedCoupon.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Book.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Product.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(ProductCategory.class.isAnnotationPresent(Entity.class)).isTrue();

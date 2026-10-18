@@ -20,9 +20,8 @@ public class OnboardingCommandConverter {
         return new GetOnboardingBookCandidatesCommand(subcategoryCodes);
     }
 
-    public GetOnboardingQuestionCommand toGetOnboardingQuestionCommand(final Long userId, final Long questionId,
-        final List<Long> parentOptionIds) {
-        return new GetOnboardingQuestionCommand(userId, questionId, parentOptionIds);
+    public GetOnboardingQuestionCommand toGetOnboardingQuestionCommand(final Long userId, final Long questionId) {
+        return new GetOnboardingQuestionCommand(userId, questionId);
     }
 
     public GetOnboardingProgressCommand toGetOnboardingProgressCommand(final Long userId) {

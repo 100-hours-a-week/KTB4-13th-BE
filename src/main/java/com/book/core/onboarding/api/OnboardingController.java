@@ -39,9 +39,8 @@ class OnboardingController implements OnboardingControllerSpec {
     @Override
     @GetMapping("/questions/{questionId}")
     public ResponseEntity<ApiResponse<OnboardingQuestionResponse>> getQuestion(@UserId final Long userId,
-        @Positive @PathVariable("questionId") final Long questionId,
-        @RequestParam(value = "parentOptionIds", required = false) final List<Long> parentOptionIds) {
-        final var command = commandConverter.toGetOnboardingQuestionCommand(userId, questionId, parentOptionIds);
+        @Positive @PathVariable("questionId") final Long questionId) {
+        final var command = commandConverter.toGetOnboardingQuestionCommand(userId, questionId);
         final var response = resultConverter.toOnboardingQuestionResponse(onboardingService.getQuestion(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
     }

@@ -89,55 +89,6 @@ class GetOnboardingQuestionUseCaseTest {
         assertThat(result.options()).extracting("optionId").containsExactly(23L, 24L);
     }
 
-    @Test
-    void 부모_선택지를_전달하면_저장된_답변과_무관하게_전달한_대분류의_하위_선택지만_반환한다() {
-        givenCategoryQuestions();
-        answerRepository.answersByUserId.put(42L, List.of(UserOnboardingAnswer.of(42L, 9L)));
-
-        final OnboardingQuestionResult replaced = useCase.execute(new GetOnboardingQuestionCommand(42L, 4L, List.of(10L)));
-        final OnboardingQuestionResult withoutAnswers = useCase.execute(new GetOnboardingQuestionCommand(43L, 4L, List.of(9L, 10L)));
-
-        assertThat(replaced.options()).extracting("optionId").containsExactly(28L);
-        assertThat(withoutAnswers.options()).extracting("optionId").containsExactly(23L, 24L, 28L);
-    }
-
-    @Test
-    void 존재하지_않는_부모_선택지를_전달하면_예외를_던진다() {
-        givenCategoryQuestions();
-
-        assertThatThrownBy(() -> useCase.execute(new GetOnboardingQuestionCommand(42L, 4L, List.of(9L, 999L))))
-            .isInstanceOf(CoreException.class).extracting("errorCode").isEqualTo(ErrorCode.ONBOARDING_OPTION_NOT_FOUND);
-    }
-
-    @Test
-    void 대분류_질문의_선택지가_아닌_ID를_부모로_전달하면_예외를_던진다() {
-        givenCategoryQuestions();
-
-        assertThatThrownBy(() -> useCase.execute(new GetOnboardingQuestionCommand(42L, 4L, List.of(9L, 23L))))
-            .isInstanceOf(CoreException.class).extracting("errorCode").isEqualTo(ErrorCode.ONBOARDING_OPTION_QUESTION_MISMATCH);
-    }
-
-    @Test
-    void 부모_선택지에_의존하지_않는_질문에_부모_선택지를_전달하면_예외를_던진다() {
-        givenCategoryQuestions();
-        questionRepository.questions.put(1L, new OnboardingQuestion(1L, "reading-time", "Q1", 1, 5, 1));
-        optionRepository.optionsByQuestionId.put(1L, List.of(new OnboardingOption(1L, 1L, null, "morning", "아침", 1)));
-
-        for (final Long questionId : List.of(1L, 3L)) {
-            assertThatThrownBy(() -> useCase.execute(new GetOnboardingQuestionCommand(42L, questionId, List.of(9L))))
-                .isInstanceOf(CoreException.class).extracting("errorCode").isEqualTo(ErrorCode.INVALID_REQUEST);
-        }
-    }
-
-    private void givenCategoryQuestions() {
-        questionRepository.questions.put(3L, new OnboardingQuestion(3L, "main-category", "Q3", 1, 3, 3));
-        questionRepository.questions.put(4L, new OnboardingQuestion(4L, "subcategory", "Q4", 1, 9, 4));
-        optionRepository.optionsByQuestionId.put(3L,
-            List.of(new OnboardingOption(9L, 3L, null, "novel", "소설", 1), new OnboardingOption(10L, 3L, null, "humanities", "인문", 2)));
-        optionRepository.optionsByQuestionId.put(4L, List.of(new OnboardingOption(23L, 4L, 9L, "novel-thriller", "추리/스릴러", 1),
-            new OnboardingOption(24L, 4L, 9L, "novel-sf", "SF", 2), new OnboardingOption(28L, 4L, 10L, "humanities-psychology", "심리학", 1)));
-    }
-
     private static final class FakeOnboardingQuestionRepository implements OnboardingQuestionRepositoryPort {
         private final Map<Long, OnboardingQuestion> questions = new HashMap<>();
         private final Map<Integer, Optional<OnboardingQuestion>> nextByDisplayOrder = new HashMap<>();
@@ -168,7 +119,7 @@ class GetOnboardingQuestionUseCaseTest {
 
         @Override
         public List<OnboardingOption> findAllByIdIn(final List<Long> ids) {
-            return optionsByQuestionId.values().stream().flatMap(List::stream).filter(option -> ids.contains(option.id())).toList();
+            return new ArrayList<>();
         }
     }
 

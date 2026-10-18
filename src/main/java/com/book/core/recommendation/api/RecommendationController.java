@@ -9,7 +9,12 @@ import com.book.core.recommendation.api.response.ChatRecommendationResponse;
 import com.book.core.recommendation.api.response.RecommendationCardDetailResponse;
 import com.book.core.recommendation.api.response.RecommendationFeedResponse;
 import com.book.core.recommendation.api.spec.RecommendationControllerSpec;
+import com.book.core.recommendation.application.command.ChatRecommendationCommand;
+import com.book.core.recommendation.application.command.GetRecommendationCardCommand;
+import com.book.core.recommendation.application.command.GetRecommendationFeedCommand;
+import com.book.core.recommendation.application.result.ChatRecommendationResult;
 import com.book.core.recommendation.application.result.GetRecommendationFeedResult;
+import com.book.core.recommendation.application.result.RecommendationCardDetailResult;
 import com.book.core.recommendation.application.service.RecommendationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -40,9 +45,9 @@ class RecommendationController implements RecommendationControllerSpec {
     @PostMapping("/chat")
     public ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@UserId final Long userId,
         @Valid @RequestBody final ChatRecommendationRequest request) {
-        final var command = commandConverter.toChatRecommendationCommand(userId, request);
-        final var result = recommendationService.chat(command);
-        final var response = resultConverter.toChatRecommendationResponse(result);
+        final ChatRecommendationCommand command = commandConverter.toChatRecommendationCommand(userId, request);
+        final ChatRecommendationResult result = recommendationService.chat(command);
+        final ChatRecommendationResponse response = resultConverter.toChatRecommendationResponse(result);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
@@ -50,9 +55,9 @@ class RecommendationController implements RecommendationControllerSpec {
     @GetMapping("/cards/{recommendationCardId}")
     public ResponseEntity<ApiResponse<RecommendationCardDetailResponse>> getCard(@UserId final Long userId,
         @Positive @PathVariable("recommendationCardId") final Long recommendationCardId) {
-        final var command = commandConverter.toGetRecommendationCardCommand(userId, recommendationCardId);
-        final var result = recommendationService.getCard(command);
-        final var response = resultConverter.toRecommendationCardDetailResponse(result);
+        final GetRecommendationCardCommand command = commandConverter.toGetRecommendationCardCommand(userId, recommendationCardId);
+        final RecommendationCardDetailResult result = recommendationService.getCard(command);
+        final RecommendationCardDetailResponse response = resultConverter.toRecommendationCardDetailResponse(result);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
@@ -68,10 +73,10 @@ class RecommendationController implements RecommendationControllerSpec {
         @Positive @RequestParam(value = "pubYearFrom", required = false) final Integer pubYearFrom,
         @Positive @RequestParam(value = "pubYearTo", required = false) final Integer pubYearTo,
         @Min(0) @Max(100) @RequestParam(value = "matchScoreMin", required = false) final Integer matchScoreMin) {
-        final var command = commandConverter.toGetRecommendationFeedCommand(userId, surface, size, cursor, sort, category, pubYearFrom,
-            pubYearTo, matchScoreMin);
+        final GetRecommendationFeedCommand command = commandConverter.toGetRecommendationFeedCommand(userId, surface, size, cursor, sort,
+            category, pubYearFrom, pubYearTo, matchScoreMin);
         final GetRecommendationFeedResult result = recommendationService.getFeed(command);
-        final var response = resultConverter.toRecommendationFeedResponse(result);
+        final RecommendationFeedResponse response = resultConverter.toRecommendationFeedResponse(result);
 
         final ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok();
         if (result.degraded() != null) {

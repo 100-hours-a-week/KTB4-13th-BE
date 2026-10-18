@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/tmp/book-notification-diagrams/read.json",
+  "output": "/tmp/book-notification-diagrams/read.html",
+  "specification": {
+    "sha256": "d29eb6d0c487118e130300dd45fefdd29ca2b4adef5009890b9773e5488ab888",
+    "bytes": 1488
+  },
+  "artifact": {
+    "sha256": "595ec4b798f975abc1dcbd54cea2d3925f2fd3461e8be505fdc4755ee85deb64",
+    "bytes": 799516
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/tmp/book-notification-diagrams/poll.json",
+  "output": "/tmp/book-notification-diagrams/poll.html",
+  "specification": {
+    "sha256": "49323e0014b58abe839785d150afdab0184a9d779b93cded8fc4b81d6c2a6c36",
+    "bytes": 1364
+  },
+  "artifact": {
+    "sha256": "3f117ba1fcb908ed8d877aeabae2bb81f67a8fcc73254b11d17825152fc63a49",
+    "bytes": 798881
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

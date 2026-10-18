@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "본인 알림 숏 폴링",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1250,
+      650
+    ]
+  },
+  "participants": [
+    {
+      "id": "p0",
+      "type": "backend",
+      "label": "클라이언트"
+    },
+    {
+      "id": "p1",
+      "type": "backend",
+      "label": "API / Service"
+    },
+    {
+      "id": "p2",
+      "type": "backend",
+      "label": "GetUseCase"
+    },
+    {
+      "id": "p3",
+      "type": "backend",
+      "label": "Port / MySQL"
+    }
+  ],
+  "messages": [
+    {
+      "id": "m0",
+      "from": "p0",
+      "to": "p1",
+      "y": 180,
+      "label": "GET /notifications"
+    },
+    {
+      "id": "m1",
+      "from": "p1",
+      "to": "p2",
+      "y": 238,
+      "label": "인증 userId 전달"
+    },
+    {
+      "id": "m2",
+      "from": "p2",
+      "to": "p3",
+      "y": 296,
+      "label": "최근 20개 + 전체 미읽음"
+    },
+    {
+      "id": "m3",
+      "from": "p3",
+      "to": "p2",
+      "y": 354,
+      "label": "동일 조회 트랜잭션"
+    },
+    {
+      "id": "m4",
+      "from": "p2",
+      "to": "p1",
+      "y": 412,
+      "label": "목록과 unreadCount"
+    },
+    {
+      "id": "m5",
+      "from": "p1",
+      "to": "p0",
+      "y": 470,
+      "label": "200 / 캐시 금지"
+    }
+  ]
+}

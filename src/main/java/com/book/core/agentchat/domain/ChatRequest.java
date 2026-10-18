@@ -5,6 +5,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.time.Duration;
 import java.time.Instant;
@@ -34,6 +35,13 @@ public class ChatRequest extends BaseEntity {
     private Instant leaseUntil;
     @Column(name = "failure_code", length = 80)
     private String failureCode;
+
+    @Lob
+    @Column(name = "agent_context", columnDefinition = "LONGTEXT")
+    private String agentContext;
+    @Lob
+    @Column(name = "agent_decision", columnDefinition = "LONGTEXT")
+    private String agentDecision;
 
     @Column(name = "retry_after_seconds")
     private Long retryAfterSeconds;
@@ -112,7 +120,19 @@ public class ChatRequest extends BaseEntity {
         state = "FAILED";
     }
 
+    public void saveAgentContext(final String payload) {
+        if (agentContext != null || payload == null || payload.isBlank()) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        agentContext = payload;
+    }
 
+    public void saveAgentDecision(final String payload) {
+        if (agentContext == null || agentDecision != null || payload == null || payload.isBlank()) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        agentDecision = payload;
+    }
 
     private static Instant deadline(final Instant now, final Duration lease) {
         if (now == null || lease == null || lease.isNegative() || lease.isZero()) {

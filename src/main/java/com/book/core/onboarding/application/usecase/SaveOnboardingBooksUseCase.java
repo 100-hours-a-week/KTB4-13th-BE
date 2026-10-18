@@ -26,7 +26,7 @@ public class SaveOnboardingBooksUseCase {
 
     @Transactional
     public SaveOnboardingBooksResult execute(final PutOnboardingBooksCommand command) {
-        final UserOnboarding userOnboarding = userOnboardingRepository.findActiveByUserId(command.userId())
+        final UserOnboarding userOnboarding = userOnboardingRepository.findActiveByUserIdForUpdate(command.userId())
             .orElseThrow(() -> new CoreException(ErrorCode.ONBOARDING_NOT_FOUND));
 
         if (!command.bookIds().isEmpty()) {

@@ -174,6 +174,11 @@ class SaveOnboardingAnswersUseCaseTest {
         }
 
         @Override
+        public Optional<UserOnboarding> findActiveByUserIdForUpdate(final Long userId) {
+            return findActiveByUserId(userId);
+        }
+
+        @Override
         public UserOnboarding save(final UserOnboarding userOnboarding) {
             byUserId.put(userOnboarding.userId(), userOnboarding);
             return userOnboarding;

@@ -4,12 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.book.core.library.application.usecase.AddLibraryBooksUseCase;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.port.TermRepositoryPort;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,6 +92,30 @@ class OnboardingProfileFailureIsolationIntegrationTest {
         assertThat(jdbc.queryForList("SELECT book_id FROM user_onboarding_books WHERE user_id = ?", Long.class, userId))
             .containsExactly(bookId);
         assertThat(activeLibraryBookIds(userId)).isEmpty();
+    }
+
+    @Test
+    void 같은_회원의_동시_완료_요청은_한_요청만_최초_완료로_처리해_그_도서만_도서관에_추가한다() throws Exception {
+        final Long userId = startOnboarding("동시완료회원");
+        final List<Long> bookIds = List.of(insertBook(920201L), insertBook(920202L), insertBook(920203L), insertBook(920204L));
+        final CyclicBarrier barrier = new CyclicBarrier(bookIds.size());
+        final List<Callable<Void>> requests = bookIds.stream().map((final Long bookId) -> (Callable<Void>) () -> {
+            barrier.await();
+            onboardingService.saveBooks(new PutOnboardingBooksCommand(userId, List.of(bookId)));
+            return null;
+        }).toList();
+
+        final ExecutorService executor = Executors.newFixedThreadPool(bookIds.size());
+        try {
+            for (final Future<Void> result : executor.invokeAll(requests)) {
+                assertThatCode(result::get).doesNotThrowAnyException();
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+
+        verify(addLibraryBooksUseCase, times(1)).execute(any());
+        assertThat(activeLibraryBookIds(userId)).hasSize(1).isSubsetOf(bookIds);
     }
 
     private Long startOnboarding(final String nickname) {

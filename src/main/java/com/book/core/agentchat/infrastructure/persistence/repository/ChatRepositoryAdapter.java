@@ -69,7 +69,10 @@ public class ChatRepositoryAdapter implements ChatRepositoryPort {
         return messages.findBySessionIdAndSequenceGreaterThanOrderBySequenceAsc(sessionId, afterSequence, PageRequest.ofSize(limit));
     }
 
-
+    @Override
+    public Optional<ChatMessage> latestCardResponse(final Long sessionId) {
+        return messages.latestCardResponse(sessionId);
+    }
 
     @Override
     public Optional<ChatMessage> responseFor(final Long requestId) {

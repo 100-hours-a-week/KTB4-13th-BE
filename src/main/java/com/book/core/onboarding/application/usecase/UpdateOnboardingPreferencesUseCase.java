@@ -70,7 +70,7 @@ public class UpdateOnboardingPreferencesUseCase {
         if (!requestedQuestionIds.equals(questionsById.keySet())) {
             throw new CoreException(ErrorCode.INVALID_ONBOARDING_PREFERENCES);
         }
-        answers.forEach(answer -> validateSelectionCount(questionsById.get(answer.questionId()), answer.optionIds()));
+        answers.forEach(answer -> questionsById.get(answer.questionId()).validateSelectionCount(answer.optionIds().size()));
 
         final List<Long> requestedOptionIds = answers.stream().flatMap(answer -> answer.optionIds().stream()).distinct().toList();
         final Map<Long, OnboardingOption> optionsById = optionRepository.findAllByIdIn(requestedOptionIds).stream()
@@ -88,15 +88,6 @@ public class UpdateOnboardingPreferencesUseCase {
             .anyMatch(parentOptionId -> !optionsById.containsKey(parentOptionId));
         if (parentMissing) {
             throw new CoreException(ErrorCode.ONBOARDING_PARENT_QUESTION_NOT_ANSWERED);
-        }
-    }
-
-    private void validateSelectionCount(final OnboardingQuestion question, final List<Long> optionIds) {
-        if (optionIds.size() < question.minSelection()) {
-            throw new CoreException(ErrorCode.INVALID_ONBOARDING_ANSWER_SELECTION);
-        }
-        if (question.maxSelection() != null && optionIds.size() > question.maxSelection()) {
-            throw new CoreException(ErrorCode.INVALID_ONBOARDING_ANSWER_SELECTION);
         }
     }
 

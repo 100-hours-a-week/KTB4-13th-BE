@@ -17,13 +17,16 @@ import com.book.core.agentchat.application.result.ChatResponseSnapshot;
 import com.book.core.agentchat.application.usecase.BeginChatRequestUseCase;
 import com.book.core.agentchat.application.usecase.CompleteChatRequestUseCase;
 import com.book.core.agentchat.application.usecase.CreateChatSessionUseCase;
+import com.book.core.agentchat.application.usecase.ExecuteCartChangeUseCase;
 import com.book.core.agentchat.application.usecase.FailChatRequestUseCase;
 import com.book.core.agentchat.application.usecase.GetChatHistoryUseCase;
+import com.book.core.agentchat.application.usecase.PrepareCartChangeUseCase;
 import com.book.core.agentchat.domain.ChatMessage;
 import com.book.core.agentchat.domain.ChatRequest;
 import com.book.core.agentchat.domain.ChatSession;
 import com.book.core.agentchat.infrastructure.persistence.mapper.JacksonChatResponseCodec;
 import com.book.core.recommendation.application.result.ChatRecommendationAiOutcome;
+import com.book.core.recommendation.application.usecase.ChatRecommendationUseCase;
 import com.book.core.recommendation.application.usecase.SaveRecommendationCardsUseCase;
 import java.time.Clock;
 import java.time.Duration;
@@ -49,7 +52,8 @@ class ChatSessionUseCaseTest {
     private final SaveRecommendationCardsUseCase saveCards = mock(SaveRecommendationCardsUseCase.class);
     private final JacksonChatResponseCodec codec = new JacksonChatResponseCodec(JsonMapper.builder().build());
     private final BeginChatRequestUseCase begin = new BeginChatRequestUseCase(chats, codec, clock);
-    private final CompleteChatRequestUseCase complete = new CompleteChatRequestUseCase(chats, codec, saveCards, clock);
+    private final CompleteChatRequestUseCase complete = new CompleteChatRequestUseCase(chats, codec, saveCards, clock,
+        mock(PrepareCartChangeUseCase.class), mock(ExecuteCartChangeUseCase.class), mock(ChatRecommendationUseCase.class));
     private final FailChatRequestUseCase fail = new FailChatRequestUseCase(chats);
     private final GetChatHistoryUseCase history = new GetChatHistoryUseCase(chats, codec);
     private final List<ChatMessage> messages = new ArrayList<>();

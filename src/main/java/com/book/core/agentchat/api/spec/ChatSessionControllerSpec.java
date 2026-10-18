@@ -3,7 +3,7 @@ package com.book.core.agentchat.api.spec;
 import com.book.common.response.ApiResponse;
 import com.book.core.agentchat.api.request.SendChatMessageRequest;
 import com.book.core.agentchat.api.response.ChatHistoryResponse;
-import com.book.core.agentchat.api.response.ChatSessionReplyResponse;
+import com.book.core.agentchat.api.response.ChatReplyResponse;
 import com.book.core.agentchat.api.response.ChatSessionCreatedResponse;
 import com.book.core.agentchat.api.response.ChatSessionListResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,6 +54,6 @@ public interface ChatSessionControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "502", description = "AI 응답 또는 인증 오류"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI 일시 불가, Retry-After 제공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "504", description = "AI 시간 초과")})
-    ResponseEntity<ApiResponse<ChatSessionReplyResponse>> send(@Parameter(hidden = true) Long userId, @Positive Long sessionId,
+    ResponseEntity<ApiResponse<ChatReplyResponse>> send(@Parameter(hidden = true) Long userId, @Positive Long sessionId,
         @Valid SendChatMessageRequest request);
 }

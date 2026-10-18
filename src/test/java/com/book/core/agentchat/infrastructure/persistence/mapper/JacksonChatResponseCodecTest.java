@@ -16,6 +16,6 @@ class JacksonChatResponseCodecTest {
         assertThat(codec.decode(oldPayload).schemaVersion()).isEqualTo(1);
         assertThat(codec.decode(oldPayload).reply()).isEqualTo("당시 답변");
         assertThat(codec.decode(oldPayload).buttons()).containsExactly("다른 책");
-
+        assertThat(codec.decode(oldPayload).agentButtons()).isEmpty();
     }
 }

@@ -96,7 +96,8 @@ public interface OnboardingControllerSpec {
     @Operation(summary = "온보딩 취향 정보 전체 수정",
         description = "온보딩을 완료(COMPLETED)한 회원의 Question 1~4 답변과 선택 도서 목록을 한 번에 수정합니다. "
             + "answers에는 모든 질문을 한 번씩 포함해야 하며, Question 4 선택지의 부모는 같은 요청의 Question 3 선택지에 있어야 합니다. "
-            + "bookIds는 빈 배열을 허용합니다. 기존 데이터와 비교해 변경된 답변과 도서만 반영하고, 온보딩 상태·완료 시각·개인화 동의는 변경하지 않습니다.")
+            + "bookIds는 빈 배열을 허용합니다. 기존 데이터와 비교해 변경된 답변과 도서만 반영하고, 온보딩 상태·완료 시각·개인화 동의는 변경하지 않습니다. "
+            + "변경 사항이 있고 개인화 추천에 동의한 회원이면 수정이 저장된 뒤 AI 취향 프로필 갱신을 요청하며, AI 요청이 실패해도 수정 결과는 유지되고 성공으로 응답합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "온보딩 취향 정보 수정 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",

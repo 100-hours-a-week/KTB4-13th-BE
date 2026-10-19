@@ -10,7 +10,11 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
   endpoint:
     health:
       show-components: never
@@ -31,6 +35,7 @@ auth:
   kakao:
     rest-api-key: ${KAKAO_REST_API_KEY}
     client-secret: ${KAKAO_CLIENT_SECRET:}
+    admin-key: ${KAKAO_ADMIN_KEY:}
     redirect-uri: ${KAKAO_REDIRECT_URI}
   token:
     secret: ${JWT_SECRET}

@@ -9,8 +9,10 @@ import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryP
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingRepositoryPort;
 import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
+import com.book.core.onboarding.application.result.OnboardingOptionResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.domain.OnboardingOption;
+import com.book.core.onboarding.domain.OnboardingStatus;
 import com.book.core.onboarding.domain.UserOnboarding;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
@@ -19,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,27 +42,34 @@ public class GetOnboardingProgressUseCase {
         final List<UserOnboardingAnswer> answers = answerRepository.findByUserId(command.userId());
         final List<Long> answeredOptionIds = answers.stream().map(UserOnboardingAnswer::onboardingOptionId).toList();
         final List<OnboardingOption> options = optionRepository.findAllByIdIn(answeredOptionIds);
-        final Map<Long, Long> optionIdToQuestionId =
-            options.stream().collect(Collectors.toMap(OnboardingOption::id, OnboardingOption::onboardingQuestionId));
-        final Map<Long, Integer> optionIdToDisplayOrder =
-            options.stream().collect(Collectors.toMap(OnboardingOption::id, OnboardingOption::displayOrder));
+        final Map<Long, OnboardingOption> optionsById =
+            options.stream().collect(Collectors.toMap(OnboardingOption::id, Function.identity()));
 
-        final Map<Long, List<Long>> optionIdsByQuestionId = new TreeMap<>();
+        final Map<Long, List<OnboardingOption>> optionsByQuestionId = new TreeMap<>();
         for (final Long optionId : answeredOptionIds) {
-            final Long questionId = optionIdToQuestionId.get(optionId);
-            if (questionId == null) {
+            final OnboardingOption option = optionsById.get(optionId);
+            if (option == null) {
                 continue;
             }
-            optionIdsByQuestionId.computeIfAbsent(questionId, key -> new ArrayList<>()).add(optionId);
+            optionsByQuestionId.computeIfAbsent(option.onboardingQuestionId(), key -> new ArrayList<>()).add(option);
         }
 
         final List<OnboardingAnswerGroupResult> answerGroups =
-            optionIdsByQuestionId.entrySet().stream().map(entry -> new OnboardingAnswerGroupResult(entry.getKey(),
-                entry.getValue().stream().sorted(Comparator.comparing(optionIdToDisplayOrder::get)).toList())).toList();
+            optionsByQuestionId.entrySet().stream().map(entry -> new OnboardingAnswerGroupResult(entry.getKey(), entry.getValue().stream()
+                .sorted(Comparator.comparingInt(OnboardingOption::displayOrder)).map(OnboardingOptionResult::from).toList())).toList();
 
         final List<Long> bookIds = bookRepository.findByUserId(command.userId()).stream().map(UserOnboardingBook::bookId)
             .sorted(Comparator.naturalOrder()).toList();
 
         return new OnboardingProgressResult(userOnboarding.onboardingStatus(), userOnboarding.completedAt(), answerGroups, bookIds);
+    }
+
+    @Transactional(readOnly = true)
+    public OnboardingProgressResult executeCompleted(final GetOnboardingProgressCommand command) {
+        final OnboardingProgressResult progress = execute(command);
+        if (progress.status() != OnboardingStatus.COMPLETED) {
+            throw new CoreException(ErrorCode.ONBOARDING_NOT_COMPLETED);
+        }
+        return progress;
     }
 }

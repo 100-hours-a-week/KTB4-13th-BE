@@ -14,6 +14,7 @@ import org.testcontainers.mysql.MySQLContainer;
 
 @Testcontainers
 @Tag("integration")
+@Tag("mysql-migration")
 class PointBalanceVersionMigrationTest {
     @Container
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");

@@ -1,21 +1,48 @@
 package com.book.core.product.infrastructure.persistence.repository;
 
-import com.book.core.product.application.port.ProductRepositoryPort;
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
-import com.book.core.product.domain.Product;
+import com.book.core.product.application.port.CartChangeProductRepositoryPort;
+import com.book.core.product.application.port.ProductRepositoryPort;
+import com.book.core.product.application.result.CartChangeProductResult;
 import com.book.core.product.application.result.ProductListItem;
-import java.util.List;
+import com.book.core.product.domain.Product;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+
 @Repository
 @RequiredArgsConstructor
-public class ProductRepositoryAdapter implements ProductRepositoryPort {
+public class ProductRepositoryAdapter implements ProductRepositoryPort, CartChangeProductRepositoryPort {
     private final ProductJpaRepository jpaRepository;
     private final ProductQueryRepository queryRepository;
+    private final EntityManager entityManager;
+
+    @Override
+    public Map<Long, CartChangeProductResult> findByIdsForChange(final List<Long> productIds) {
+        if (productIds.isEmpty()) {
+            return Map.of();
+        }
+        final List<Product> found = jpaRepository.findByIdInWithBook(productIds);
+        final Map<Long, CartChangeProductResult> products = new LinkedHashMap<>();
+        for (final Product product : found.stream().sorted(Comparator.comparing(Product::id)).toList()) {
+            entityManager.lock(product, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+            products.put(product.id(), new CartChangeProductResult(product.id(), product.discountedPrice(), product.stockQuantity(),
+                product.isActive() && product.book().isActive()));
+        }
+        for (final Product product : found.stream().sorted(Comparator.comparing((final Product value) -> value.book().id())).toList()) {
+            entityManager.lock(product.book(), LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+        }
+        return Map.copyOf(products);
+    }
 
     @Override
     public List<Product> findByIds(final List<Long> productIds) {

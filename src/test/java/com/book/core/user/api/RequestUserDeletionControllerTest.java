@@ -35,7 +35,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import({UserCommandConverter.class, UserIdMvcConfig.class, RefreshTokenCookieFactory.class})
 @EnableConfigurationProperties(AuthCookieProperties.class)
 @ActiveProfiles("test")
-class RequestWithdrawalControllerTest {
+class RequestUserDeletionControllerTest {
     @Autowired
     MockMvc mvc;
 
@@ -58,14 +58,14 @@ class RequestWithdrawalControllerTest {
         final String setCookie = mvc.perform(delete("/api/v1/users/me")).andExpect(status().isOk())
             .andExpect(content().json("{\"success\":true}", true)).andReturn().getResponse().getHeader(HttpHeaders.SET_COOKIE);
 
-        verify(userService).requestWithdrawal(42L);
+        verify(userService).requestUserDeletion(42L);
         assertThat(setCookie).contains("refreshToken=").contains("Path=/api/v1/auth").contains("Max-Age=0").contains("HttpOnly")
             .contains("SameSite=Lax").doesNotContain("Secure");
     }
 
     @Test
     void 탈퇴_신청이_실패하면_실패를_응답하고_쿠키를_만료하지_않는다() throws Exception {
-        doThrow(new BusinessException(ErrorCode.USER_NOT_FOUND)).when(userService).requestWithdrawal(42L);
+        doThrow(new BusinessException(ErrorCode.USER_NOT_FOUND)).when(userService).requestUserDeletion(42L);
 
         mvc.perform(delete("/api/v1/users/me")).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("USER_NOT_FOUND"))
             .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));

@@ -58,6 +58,12 @@ class ArchitectureTest {
     }
 
     @Test
+    void 인증과_회원_UseCase는_다른_UseCase를_호출하지_않는다() {
+        noClasses().that().resideInAnyPackage("com.book.core.auth.application.usecase..", "com.book.core.user.application.usecase..")
+            .should().dependOnClassesThat().resideInAPackage("com.book.core..application.usecase..").check(CLASSES);
+    }
+
+    @Test
     void 공통_코드는_기능에_의존하지_않는다() {
         noClasses().that().resideInAPackage("com.book.common..").should().dependOnClassesThat().resideInAPackage("com.book.core..")
             .check(CLASSES);

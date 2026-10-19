@@ -45,8 +45,8 @@ class UserController implements UserControllerSpec {
 
     @Override
     @DeleteMapping("/me")
-    public ResponseEntity<ApiResponse<Void>> requestWithdrawal(@UserId final Long userId) {
-        userService.requestWithdrawal(userId);
+    public ResponseEntity<ApiResponse<Void>> requestUserDeletion(@UserId final Long userId) {
+        userService.requestUserDeletion(userId);
         final String expiredRefreshCookie = refreshTokenCookieFactory.expire().toString();
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, expiredRefreshCookie).body(ApiResponse.ok());
     }

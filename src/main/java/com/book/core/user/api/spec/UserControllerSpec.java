@@ -45,5 +45,5 @@ public interface UserControllerSpec {
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않거나 탈퇴 신청·비활성 회원"),
         @ApiResponse(responseCode = "404", description = "회원을 찾을 수 없음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<Void>> requestWithdrawal(@Parameter(hidden = true) final Long userId);
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> requestUserDeletion(@Parameter(hidden = true) final Long userId);
 }

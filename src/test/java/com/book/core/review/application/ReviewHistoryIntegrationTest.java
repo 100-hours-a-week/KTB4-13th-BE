@@ -27,25 +27,16 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
 @Tag("integration")
 class ReviewHistoryIntegrationTest {
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
-
     @Autowired
     ReviewService service;
 
@@ -112,7 +103,7 @@ class ReviewHistoryIntegrationTest {
             assertThatThrownBy(() -> updateReview(42L, review.id(), content("1.0", "수정 실패", true))).isInstanceOf(DataAccessException.class);
             assertThatThrownBy(() -> removeReview(42L, review.id())).isInstanceOf(DataAccessException.class);
         } finally {
-            jdbc.execute("ALTER TABLE review_history DROP CHECK chk_synthetic_history_failure");
+            jdbc.execute("ALTER TABLE review_history DROP CONSTRAINT chk_synthetic_history_failure");
         }
 
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM reviews WHERE review_key = 'history-rollback-create'", Integer.class))

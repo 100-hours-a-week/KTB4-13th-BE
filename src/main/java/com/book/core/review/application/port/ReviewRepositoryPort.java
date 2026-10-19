@@ -17,7 +17,10 @@ public interface ReviewRepositoryPort {
 
     Optional<Review> findActiveById(final Long reviewId);
 
-    Optional<Review> findActiveByIdForUpdate(final Long reviewId);
+    Optional<Review> findByIdIncludingDeleted(final Long reviewId);
+
+    /** 동시 수정·삭제가 오래된 상태를 이력에 남기지 않도록 리뷰 행을 먼저 잠가 최신 상태를 읽습니다. */
+    Optional<Review> findActiveByIdWithLock(final Long reviewId);
 
     boolean existsByUserIdAndReviewKey(final Long userId, final String reviewKey);
 

@@ -26,7 +26,6 @@ import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.GetReviewsUseCase;
 import com.book.core.review.application.usecase.UpdateReviewUseCase;
 import com.book.core.review.application.usecase.ValidateReviewPolicyUseCase;
-import com.book.core.review.domain.Review;
 import com.book.core.review.domain.ReviewContent;
 import com.book.core.review.domain.ReviewKey;
 import com.book.core.review.domain.ReviewTarget;
@@ -65,47 +64,41 @@ class ReviewServiceTest {
     @Test
     void 리뷰와_이력을_기록한_뒤_포인트를_적립하고_ID를_반환한다() {
         final ReviewKey reviewKey = new ReviewKey(42L, "ORDER_ITEM_42");
-        final Review review = mock(Review.class);
-        when(review.id()).thenReturn(801L);
         when(validateReviewPolicy.validateNew(42L, target)).thenReturn(reviewKey);
-        when(addReview.execute(target, reviewKey, content)).thenReturn(review);
+        when(addReview.execute(target, reviewKey, content)).thenReturn(801L);
 
         assertThat(service.addReview(addCommand)).isEqualTo(801L);
 
         final var order = inOrder(validateReviewPolicy, addReview, historyRecorder, earnPoint);
         order.verify(validateReviewPolicy).validateNew(42L, target);
         order.verify(addReview).execute(target, reviewKey, content);
-        order.verify(historyRecorder).record(review, ReviewEventType.CREATE);
+        order.verify(historyRecorder).record(801L, ReviewEventType.CREATE);
         order.verify(earnPoint).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
         verifyNoInteractions(deductPoint);
     }
 
     @Test
     void 리뷰_수정과_이력을_기록하고_ID를_반환한다() {
-        final Review review = mock(Review.class);
-        when(review.id()).thenReturn(801L);
-        when(updateReview.execute(42L, 801L, content)).thenReturn(review);
+        when(updateReview.execute(42L, 801L, content)).thenReturn(801L);
 
         assertThat(service.updateReview(updateCommand)).isEqualTo(801L);
 
         final var order = inOrder(validateReviewPolicy, updateReview, historyRecorder);
         order.verify(validateReviewPolicy).validateUpdate(42L, 801L);
         order.verify(updateReview).execute(42L, 801L, content);
-        order.verify(historyRecorder).record(review, ReviewEventType.UPDATE);
+        order.verify(historyRecorder).record(801L, ReviewEventType.UPDATE);
         verifyNoInteractions(earnPoint, deductPoint);
     }
 
     @Test
     void 삭제_이력을_기록한_뒤_포인트를_차감하고_ID를_반환한다() {
-        final Review review = mock(Review.class);
-        when(review.id()).thenReturn(801L);
-        when(deleteReview.execute(42L, 801L)).thenReturn(review);
+        when(deleteReview.execute(42L, 801L)).thenReturn(801L);
 
         assertThat(service.removeReview(removeCommand)).isEqualTo(801L);
 
         final var order = inOrder(deleteReview, historyRecorder, deductPoint);
         order.verify(deleteReview).execute(42L, 801L);
-        order.verify(historyRecorder).record(review, ReviewEventType.DELETE);
+        order.verify(historyRecorder).record(801L, ReviewEventType.DELETE);
         order.verify(deductPoint).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
         verifyNoInteractions(earnPoint);
     }
@@ -123,17 +116,15 @@ class ReviewServiceTest {
     @Test
     void 포인트_적립_실패를_호출자에게_전파한다() {
         final ReviewKey reviewKey = new ReviewKey(42L, "ORDER_ITEM_42");
-        final Review review = mock(Review.class);
-        when(review.id()).thenReturn(801L);
         when(validateReviewPolicy.validateNew(42L, target)).thenReturn(reviewKey);
-        when(addReview.execute(target, reviewKey, content)).thenReturn(review);
+        when(addReview.execute(target, reviewKey, content)).thenReturn(801L);
         doThrow(new CoreException(ErrorCode.NOT_FOUND_DATA)).when(earnPoint).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
 
         assertThatThrownBy(() -> service.addReview(addCommand)).isInstanceOf(CoreException.class);
 
         final var order = inOrder(addReview, historyRecorder, earnPoint);
         order.verify(addReview).execute(target, reviewKey, content);
-        order.verify(historyRecorder).record(review, ReviewEventType.CREATE);
+        order.verify(historyRecorder).record(801L, ReviewEventType.CREATE);
         order.verify(earnPoint).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
     }
 }

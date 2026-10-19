@@ -20,9 +20,11 @@ import org.springframework.stereotype.Repository;
 class ReviewQueryRepository {
     private final JPAQueryFactory queryFactory;
 
-    Optional<Review> findActiveByIdForUpdate(final Long reviewId) {
-        return Optional.ofNullable(queryFactory.selectFrom(review).where(review.id.eq(reviewId), review.deletedAt.isNull())
-            .setLockMode(LockModeType.PESSIMISTIC_WRITE).fetchOne());
+    Optional<Review> findActiveByIdWithLock(final Long reviewId) {
+        final var activeReview = review.id.eq(reviewId).and(review.deletedAt.isNull());
+        final var reviewQuery = queryFactory.selectFrom(review).where(activeReview);
+        reviewQuery.setLockMode(LockModeType.PESSIMISTIC_WRITE);
+        return Optional.ofNullable(reviewQuery.fetchOne());
     }
 
     Page<ReviewItemResult> findActiveReviews(final ReviewTarget target, final OffsetLimit offsetLimit) {

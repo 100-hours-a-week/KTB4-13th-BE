@@ -43,11 +43,10 @@ class ReviewHistoryRepositoryIntegrationTest {
     JdbcTemplate jdbc;
 
     @Test
-    void 원본_수정과_삭제_후에도_전체_상태와_마이크로초_시각을_보존한다() {
+    void 원본_수정과_삭제_후에도_전체_상태와_생성_시각을_보존한다() {
         final var review = reviews.save(Review.create(new ReviewKey(42L, "history-mapping"),
             new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new ReviewContent(new BigDecimal("4.5"), "최초 본문", false)));
-        final var changedAt = LocalDateTime.of(2026, 10, 14, 12, 0, 0, 123456000);
-        histories.append(new ReviewHistory(review, ReviewEventType.CREATE, changedAt));
+        histories.append(new ReviewHistory(review, ReviewEventType.CREATE));
         review.updateContent(new ReviewContent(new BigDecimal("1.0"), "수정 본문", true));
         review.delete();
         reviews.save(review);
@@ -56,11 +55,13 @@ class ReviewHistoryRepositoryIntegrationTest {
         assertThat(row).containsEntry("user_id", 42L).containsEntry("target_type", "PRODUCT").containsEntry("target_id", 10L)
             .containsEntry("event_type", "CREATE").containsEntry("content", "최초 본문");
         assertThat((BigDecimal) row.get("rate")).isEqualByComparingTo("4.5");
-        assertThat(jdbc.queryForObject("SELECT changed_at FROM review_history WHERE review_id = ?", LocalDateTime.class, review.id()))
-            .isEqualTo(changedAt);
+        final var createdAt =
+            jdbc.queryForObject("SELECT created_at FROM review_history WHERE review_id = ?", LocalDateTime.class, review.id());
+        assertThat(createdAt).isNotNull();
+        assertThat(createdAt.getNano() % 1000).isZero();
         assertThat(row).containsKeys("created_at", "updated_at", "deleted_at");
         assertThat(row.get("created_at")).isNotNull();
         assertThat(row.get("updated_at")).isNotNull();
-        assertThat(row).doesNotContainKeys("is_spoiler", "version", "request_ip");
+        assertThat(row).doesNotContainKeys("changed_at", "is_spoiler", "version", "request_ip");
     }
 }

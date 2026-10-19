@@ -18,16 +18,16 @@ public class UpdateReviewUseCase {
     private final ReviewRepositoryPort reviewRepository;
 
     @Transactional
-    public Review execute(final Long userId, final Long reviewId, final ReviewContent content) {
+    public Long execute(final Long userId, final Long reviewId, final ReviewContent content) {
         log.debug("리뷰 수정 처리를 시작합니다. reviewId={}, traceId={}", reviewId, MDC.get("traceId"));
         final Review review =
-            reviewRepository.findActiveByIdForUpdate(reviewId).orElseThrow(() -> new CoreException(ErrorCode.REVIEW_NOT_FOUND));
+            reviewRepository.findActiveByIdWithLock(reviewId).orElseThrow(() -> new CoreException(ErrorCode.REVIEW_NOT_FOUND));
         if (!review.userId().equals(userId)) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         review.updateContent(content);
         reviewRepository.save(review);
         log.info("리뷰 수정 처리를 마쳤습니다. reviewId={}, traceId={}", reviewId, MDC.get("traceId"));
-        return review;
+        return review.id();
     }
 }

@@ -7,12 +7,11 @@ CREATE TABLE review_history (
     event_type VARCHAR(16) NOT NULL,
     content VARCHAR(255) NOT NULL,
     rate DECIMAL(3, 1) NOT NULL,
-    changed_at DATETIME(6) NOT NULL,
     created_at DATETIME(6) NOT NULL,
     updated_at DATETIME(6) NOT NULL,
     deleted_at DATETIME(6),
     PRIMARY KEY (id),
-    INDEX idx_review_history_review_order (review_id, changed_at, id),
+    INDEX idx_review_history_review_order (review_id, id),
     INDEX idx_review_history_user (user_id),
     CONSTRAINT chk_review_history_event_type CHECK (event_type IN ('CREATE', 'UPDATE', 'DELETE')),
     CONSTRAINT chk_review_history_rate CHECK (rate BETWEEN 0.5 AND 5.0 AND MOD(rate * 10, 5) = 0)

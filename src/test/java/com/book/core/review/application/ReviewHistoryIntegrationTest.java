@@ -77,7 +77,7 @@ class ReviewHistoryIntegrationTest {
         updateReview(42L, id, content("1.0", "수정 본문", null));
         removeReview(42L, id);
 
-        final var rows = jdbc.queryForList("SELECT * FROM review_history WHERE review_id = ? ORDER BY changed_at DESC, id DESC", id);
+        final var rows = jdbc.queryForList("SELECT * FROM review_history WHERE review_id = ? ORDER BY id DESC", id);
         assertThat(rows).extracting((final var row) -> row.get("event_type")).containsExactly("DELETE", "UPDATE", "UPDATE", "UPDATE",
             "CREATE");
         assertThat(rows).extracting((final var row) -> row.get("content")).containsExactly("수정 본문", "수정 본문", "최초 본문", "최초 본문", "최초 본문");
@@ -158,8 +158,8 @@ class ReviewHistoryIntegrationTest {
         }
         removeReview(42L, first.id());
 
-        final var rows = jdbc.queryForList(
-            "SELECT event_type, content FROM review_history WHERE review_id = ? " + "ORDER BY changed_at DESC, id DESC", first.id());
+        final var rows =
+            jdbc.queryForList("SELECT event_type, content FROM review_history WHERE review_id = ? ORDER BY id DESC", first.id());
         assertThat(rows).extracting((final var row) -> row.get("event_type")).containsExactly("DELETE", "UPDATE");
         assertThat(rows).extracting((final var row) -> row.get("content")).containsExactly("잠금 안의 수정", "잠금 안의 수정");
         assertThat(reviews.findActiveById(first.id())).isEmpty();
@@ -194,8 +194,8 @@ class ReviewHistoryIntegrationTest {
             }
         }
 
-        final var rows = jdbc.queryForList(
-            "SELECT id, event_type, content FROM review_history WHERE review_id = ? " + "ORDER BY changed_at DESC, id DESC", review.id());
+        final var rows =
+            jdbc.queryForList("SELECT id, event_type, content FROM review_history WHERE review_id = ? ORDER BY id DESC", review.id());
         assertThat(rows).extracting((final var row) -> row.get("event_type")).containsExactly("DELETE", "UPDATE");
         assertThat(rows).extracting((final var row) -> row.get("content")).containsExactly("삭제 전에 수정된 본문", "삭제 전에 수정된 본문");
         assertThat((Long) rows.getFirst().get("id")).isGreaterThan((Long) rows.getLast().get("id"));

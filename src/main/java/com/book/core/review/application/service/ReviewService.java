@@ -16,7 +16,6 @@ import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.GetReviewsUseCase;
 import com.book.core.review.application.usecase.UpdateReviewUseCase;
 import com.book.core.review.application.usecase.ValidateReviewPolicyUseCase;
-import com.book.core.review.domain.Review;
 import com.book.core.review.domain.ReviewFormat;
 import com.book.core.review.domain.ReviewKey;
 import com.book.core.review.domain.enums.ReviewEventType;
@@ -43,9 +42,9 @@ public class ReviewService {
     @Transactional
     public Long addReview(final AddReviewCommand command) {
         final ReviewKey reviewKey = validateReviewPolicyUseCase.validateNew(command.userId(), command.target());
-        final Review review = addReviewUseCase.execute(command.target(), reviewKey, command.content());
-        historyRecorder.record(review, ReviewEventType.CREATE);
-        final ReviewProcessResult result = new ReviewProcessResult(review.id(), ReviewFormat.TEXT);
+        final Long reviewId = addReviewUseCase.execute(command.target(), reviewKey, command.content());
+        historyRecorder.record(reviewId, ReviewEventType.CREATE);
+        final ReviewProcessResult result = new ReviewProcessResult(reviewId, ReviewFormat.TEXT);
         earnPointUseCase.execute(command.userId(), PointType.REVIEW, result.id(), result.pointAmount());
         return result.id();
     }
@@ -53,16 +52,16 @@ public class ReviewService {
     @Transactional
     public Long updateReview(final UpdateReviewCommand command) {
         validateReviewPolicyUseCase.validateUpdate(command.userId(), command.reviewId());
-        final Review review = updateReviewUseCase.execute(command.userId(), command.reviewId(), command.content());
-        historyRecorder.record(review, ReviewEventType.UPDATE);
-        return review.id();
+        final Long reviewId = updateReviewUseCase.execute(command.userId(), command.reviewId(), command.content());
+        historyRecorder.record(reviewId, ReviewEventType.UPDATE);
+        return reviewId;
     }
 
     @Transactional
     public Long removeReview(final RemoveReviewCommand command) {
-        final Review review = deleteReviewUseCase.execute(command.userId(), command.reviewId());
-        historyRecorder.record(review, ReviewEventType.DELETE);
-        final ReviewProcessResult result = new ReviewProcessResult(review.id(), ReviewFormat.TEXT);
+        final Long reviewId = deleteReviewUseCase.execute(command.userId(), command.reviewId());
+        historyRecorder.record(reviewId, ReviewEventType.DELETE);
+        final ReviewProcessResult result = new ReviewProcessResult(reviewId, ReviewFormat.TEXT);
         deductPointUseCase.execute(command.userId(), PointType.REVIEW, result.id(), result.pointAmount());
         return result.id();
     }

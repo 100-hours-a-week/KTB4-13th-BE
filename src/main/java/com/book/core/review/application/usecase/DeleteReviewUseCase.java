@@ -17,16 +17,16 @@ public class DeleteReviewUseCase {
     private final ReviewRepositoryPort reviewRepository;
 
     @Transactional
-    public Review execute(final Long userId, final Long reviewId) {
+    public Long execute(final Long userId, final Long reviewId) {
         log.debug("리뷰 삭제 처리를 시작합니다. reviewId={}, traceId={}", reviewId, MDC.get("traceId"));
         final Review review =
-            reviewRepository.findActiveByIdForUpdate(reviewId).orElseThrow(() -> new CoreException(ErrorCode.REVIEW_NOT_FOUND));
+            reviewRepository.findActiveByIdWithLock(reviewId).orElseThrow(() -> new CoreException(ErrorCode.REVIEW_NOT_FOUND));
         if (!review.userId().equals(userId)) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         review.delete();
         reviewRepository.save(review);
         log.info("리뷰 삭제 처리를 마쳤습니다. reviewId={}, traceId={}", reviewId, MDC.get("traceId"));
-        return review;
+        return review.id();
     }
 }

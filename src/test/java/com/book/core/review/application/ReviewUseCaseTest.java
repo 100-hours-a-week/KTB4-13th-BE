@@ -44,7 +44,7 @@ class ReviewUseCaseTest {
 
         final var result = create.execute(target, key, new ReviewContent(new BigDecimal("4.5"), "본문", false));
 
-        assertThat(result.id()).isEqualTo(801L);
+        assertThat(result).isEqualTo(801L);
 
         final var capture = ArgumentCaptor.forClass(Review.class);
         verify(repository).save(capture.capture());
@@ -67,9 +67,9 @@ class ReviewUseCaseTest {
     @Test
     void 리뷰_수정은_별점과_본문_VO를_적용한다() {
         final var review = review();
-        when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.of(review));
+        when(repository.findActiveByIdWithLock(801L)).thenReturn(Optional.of(review));
 
-        assertThat(update.execute(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정", true))).isSameAs(review);
+        assertThat(update.execute(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정", true))).isEqualTo(801L);
 
         assertThat(review.content()).isEqualTo("수정");
         assertThat(review.rate()).isEqualByComparingTo("4.5");
@@ -80,7 +80,7 @@ class ReviewUseCaseTest {
     @Test
     void 소유자가_아니면_수정과_삭제를_거부한다() {
         final var review = review();
-        when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.of(review));
+        when(repository.findActiveByIdWithLock(801L)).thenReturn(Optional.of(review));
 
         assertThatThrownBy(() -> update.execute(999L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정", true)))
             .isInstanceOfSatisfying(CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.FORBIDDEN));
@@ -94,18 +94,18 @@ class ReviewUseCaseTest {
     @Test
     void 삭제는_활성_리뷰를_소프트_삭제한다() {
         final var review = review();
-        when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.of(review));
+        when(repository.findActiveByIdWithLock(801L)).thenReturn(Optional.of(review));
 
         final var result = delete.execute(42L, 801L);
 
-        assertThat(result.id()).isEqualTo(801L);
+        assertThat(result).isEqualTo(801L);
         assertThat(review.isDeleted()).isTrue();
         verify(repository).save(review);
     }
 
     @Test
     void 존재하지_않거나_삭제된_리뷰를_수정하거나_삭제할_수_없다() {
-        when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.empty());
+        when(repository.findActiveByIdWithLock(801L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> update.execute(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정", null))).isInstanceOfSatisfying(
             CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_NOT_FOUND));
         assertThatThrownBy(() -> delete.execute(42L, 801L)).isInstanceOfSatisfying(CoreException.class,
@@ -115,7 +115,7 @@ class ReviewUseCaseTest {
     @Test
     void 스포일러만_변경되어도_리뷰를_수정한다() {
         final var review = review();
-        when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.of(review));
+        when(repository.findActiveByIdWithLock(801L)).thenReturn(Optional.of(review));
 
         update.execute(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "본문", true));
 

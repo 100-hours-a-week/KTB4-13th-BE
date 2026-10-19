@@ -86,6 +86,20 @@ public class Order extends BaseTimeEntity {
         this.totalPrice = this.totalPrice.add(orderItem.totalPrice());
     }
 
+    public void paid() {
+        status = OrderStatus.PAID;
+        paidAt = LocalDateTime.now();
+        items.forEach(OrderItem::paid);
+    }
+
+    public void canceled() {
+        status = OrderStatus.CANCELED;
+    }
+
+    public void partialCanceled() {
+        status = OrderStatus.PARTIAL_CANCELED;
+    }
+
     public void cancel() {
         if (status != OrderStatus.CREATED || items.stream().anyMatch(item -> item.status() != OrderItemStatus.CREATED)) {
             throw new CoreException(ErrorCode.ORDER_CANNOT_BE_CANCELED);

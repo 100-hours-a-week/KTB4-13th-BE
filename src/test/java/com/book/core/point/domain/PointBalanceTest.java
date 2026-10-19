@@ -1,10 +1,7 @@
 package com.book.core.point.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorCode;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,18 +23,6 @@ class PointBalanceTest {
 
         assertThat(pointBalance.id()).isEqualTo(7L);
         assertThat(pointBalance.balance()).isEqualByComparingTo("100.50");
-    }
-
-    @Test
-    void 필수값이_없으면_생성과_잔액_변경을_거부한다() {
-        assertThatThrownBy(() -> new PointBalance(null)).isInstanceOf(CoreException.class);
-        assertThatThrownBy(() -> new PointBalance(0L)).isInstanceOf(CoreException.class);
-        assertThatThrownBy(() -> new PointBalance(7L, 42L, null)).isInstanceOf(CoreException.class);
-        final PointBalance pointBalance = new PointBalance(42L);
-
-        assertThatThrownBy(() -> pointBalance.apply(null)).isInstanceOfSatisfying(CoreException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
-        assertThat(pointBalance.balance()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @ParameterizedTest

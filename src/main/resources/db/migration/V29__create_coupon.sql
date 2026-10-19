@@ -1,0 +1,13 @@
+CREATE TABLE coupon (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(32) NOT NULL,
+    discount DECIMAL(38, 2) NOT NULL,
+    max_use_count BIGINT NOT NULL,
+    min_order_amount DECIMAL(38, 2) NOT NULL,
+    expired_at DATETIME(6) NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6) NULL,
+    PRIMARY KEY (id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;

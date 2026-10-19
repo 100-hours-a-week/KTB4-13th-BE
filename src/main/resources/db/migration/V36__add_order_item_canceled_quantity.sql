@@ -1,0 +1,1 @@
+ALTER TABLE order_item ADD COLUMN canceled_quantity BIGINT NOT NULL DEFAULT 0;

@@ -8,18 +8,20 @@ import com.book.core.onboarding.application.command.GetOnboardingProgressCommand
 import com.book.core.onboarding.application.command.GetOnboardingQuestionCommand;
 import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
+import com.book.core.onboarding.application.command.PutOnboardingPreferencesCommand;
 import com.book.core.onboarding.application.command.RecordPersonalizationAgreementCommand;
 import com.book.core.onboarding.application.result.OnboardingBookCandidateResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.result.OnboardingQuestionResult;
 import com.book.core.onboarding.application.result.SaveOnboardingBooksResult;
-import com.book.core.onboarding.application.usecase.CreatePersonalizationProfileUseCase;
+import com.book.core.onboarding.application.usecase.PersonalizationProfileUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingBookCandidatesUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingQuestionUseCase;
 import com.book.core.onboarding.application.usecase.RecordPersonalizationAgreementUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingAnswersUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
+import com.book.core.onboarding.application.usecase.UpdateOnboardingPreferencesUseCase;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +43,8 @@ public class OnboardingService {
     private final SaveOnboardingBooksUseCase saveOnboardingBooksUseCase;
     private final GetOnboardingBookCandidatesUseCase getOnboardingBookCandidatesUseCase;
     private final RecordPersonalizationAgreementUseCase recordPersonalizationAgreementUseCase;
-    private final CreatePersonalizationProfileUseCase createPersonalizationProfileUseCase;
+    private final PersonalizationProfileUseCase personalizationProfileUseCase;
+    private final UpdateOnboardingPreferencesUseCase updateOnboardingPreferencesUseCase;
     private final AddLibraryBooksUseCase addLibraryBooksUseCase;
 
     public OnboardingQuestionResult getQuestion(final GetOnboardingQuestionCommand command) {
@@ -62,6 +65,12 @@ public class OnboardingService {
             addLibraryBooks(command.userId(), command.bookIds());
         }
         createPersonalizationProfile(command.userId());
+    }
+
+    public void updatePreferences(final PutOnboardingPreferencesCommand command) {
+        if (updateOnboardingPreferencesUseCase.execute(command)) {
+            updatePersonalizationProfile(command.userId());
+        }
     }
 
     public List<OnboardingBookCandidateResult> getBookCandidates(final GetOnboardingBookCandidatesCommand command) {
@@ -91,9 +100,17 @@ public class OnboardingService {
 
     private void createPersonalizationProfile(final Long userId) {
         try {
-            createPersonalizationProfileUseCase.execute(userId);
+            personalizationProfileUseCase.execute(userId);
         } catch (final CoreException | DataAccessException | TransactionException exception) {
             log.warn("AI 취향 프로필 생성에 실패했습니다. userId={}", userId, exception);
+        }
+    }
+
+    private void updatePersonalizationProfile(final Long userId) {
+        try {
+            personalizationProfileUseCase.executeUpdate(userId);
+        } catch (final CoreException | DataAccessException | TransactionException exception) {
+            log.warn("AI 취향 프로필 갱신에 실패했습니다. userId={}", userId, exception);
         }
     }
 }

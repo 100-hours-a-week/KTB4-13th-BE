@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface OrderRepositoryPort {
+
+    Optional<OrderItem> findOrderItemById(final Long orderItemId);
+
     Order save(final Order order);
 
     Optional<Order> findActiveOrderByKeyForUpdate(final String orderKey);

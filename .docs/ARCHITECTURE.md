@@ -60,7 +60,7 @@ Controller → {Feature}CommandConverter → {Feature}Service → {Action}UseCas
 - Application은 Domain과 자신이 정의한 Port에 의존합니다. JPA·HTTP·외부 SDK 타입을 사용하지 않습니다.
 - Domain 모델은 Application, API, Infrastructure, Spring, Jackson을 참조하지 않습니다. JPA 매핑과 `common/domain`의 공통 기반 타입(`BaseEntity`, `BaseTimeEntity`)은 허용합니다.
 - Infrastructure는 Port를 구현하며 업무 모델을 직접 저장합니다. 도메인 대응 타입이 없는 실제 요구의 영속 전용 모델만 Entity로 분리하고, 예상 기능을 위한 Entity·테이블은 만들지 않습니다.
-- 기능 간 협력은 공개 UseCase 계약으로 수행합니다. 다른 기능의 Repository 구현을 직접 참조하거나 순환 의존을 만들지 않습니다.
+- 기능 간 협력은 Service가 각 기능의 공개 UseCase를 호출해 조율합니다. UseCase는 다른 UseCase를 직접 호출하지 않고, 다른 기능의 Repository 구현을 직접 참조하거나 순환 의존을 만들지 않습니다.
 
 멀티모듈의 컴파일 격리 대신 `ArchitectureTest`로 핵심 패키지 의존 방향을 검사합니다.
 패키지 배치만으로 의존 방향이 강제되지는 않습니다.

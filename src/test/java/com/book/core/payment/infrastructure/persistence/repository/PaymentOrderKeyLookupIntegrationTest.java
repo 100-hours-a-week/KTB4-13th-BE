@@ -13,21 +13,13 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
 @Tag("integration")
 class PaymentOrderKeyLookupIntegrationTest {
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
     @Autowired
     private OrderRepositoryPort orders;
     @Autowired
@@ -57,10 +49,12 @@ class PaymentOrderKeyLookupIntegrationTest {
     private Order order(final Long userId) {
         final long bookId = 700000L + userId;
         final long productId = 800000L + userId;
-        jdbc.update("INSERT INTO books (id, title, author, publisher, category, published_at) VALUES (?, ?, ?, ?, ?, ?)", bookId,
-            "결제 조회 도서", "저자", "출판사", "소설", "2026-01-01");
-        jdbc.update("INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?)", productId, bookId, "결제 조회 상품", BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, 10);
+        jdbc.update("INSERT INTO books (id, title, author, publisher, category, published_at, created_at, updated_at) "
+            + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", bookId, "결제 조회 도서", "저자", "출판사", "소설", "2026-01-01");
+        jdbc.update(
+            "INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            productId, bookId, "결제 조회 상품", BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, 10);
         final Order order = Order.create(userId, "payment-lookup-" + UUID.randomUUID(), null);
         order.addItem(productId, "책", "", "저자", BigDecimal.TEN, BigDecimal.TEN, 1);
         return orders.save(order);

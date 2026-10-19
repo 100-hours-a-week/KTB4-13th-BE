@@ -28,7 +28,7 @@ class UserProviderRepositoryAdapterTest {
     }
 
     @Test
-    void provider_identity_UNIQUE_위반을_provider_충돌로_변환한다() {
+    void provider_identity_UNIQUE_위반을_가입_완료_충돌로_변환한다() {
         final UserProviderJpaRepository jpaRepository = mock(UserProviderJpaRepository.class);
         final var adapter = new UserProviderRepositoryAdapter(jpaRepository);
         final var hibernateException = new ConstraintViolationException("duplicate", new SQLException("duplicate", "23000", 1062),
@@ -36,8 +36,7 @@ class UserProviderRepositoryAdapterTest {
         when(jpaRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("duplicate", hibernateException));
 
         assertThatThrownBy(() -> adapter.save(UserProvider.create(42L, ProviderType.KAKAO, "123", null))).isInstanceOfSatisfying(
-            BusinessException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
+            BusinessException.class, (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ALREADY_REGISTERED));
     }
 
     @Test

@@ -29,7 +29,9 @@ public class GetOnboardingQuestionUseCase {
         final OnboardingQuestion question =
             questionRepository.findById(command.questionId()).orElseThrow(() -> new CoreException(ErrorCode.ONBOARDING_QUESTION_NOT_FOUND));
 
-        final List<OnboardingOption> options = resolveOptions(command.userId(), question);
+        final List<OnboardingOption> options =
+            command.parentOptionIds().map(parentOptionIds -> resolveOptionsByRequestedParents(question, parentOptionIds))
+                .orElseGet(() -> resolveOptions(command.userId(), question));
         final Long nextQuestionId =
             questionRepository.findFirstByDisplayOrderGreaterThan(question.displayOrder()).map(OnboardingQuestion::id).orElse(null);
 
@@ -53,5 +55,30 @@ public class GetOnboardingQuestionUseCase {
         }
 
         return allOptions.stream().filter(option -> matchedParentOptionIds.contains(option.parentOptionId())).toList();
+    }
+
+    private List<OnboardingOption> resolveOptionsByRequestedParents(final OnboardingQuestion question,
+        final List<Long> requestedParentOptionIds) {
+        final List<OnboardingOption> allOptions = optionRepository.findByQuestionId(question.id());
+        final List<Long> parentOptionIds =
+            allOptions.stream().map(OnboardingOption::parentOptionId).filter(Objects::nonNull).distinct().toList();
+        if (parentOptionIds.isEmpty()) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+
+        final Set<Long> parentQuestionIds = optionRepository.findAllByIdIn(parentOptionIds).stream()
+            .map(OnboardingOption::onboardingQuestionId).collect(Collectors.toSet());
+        final List<OnboardingOption> requestedParentOptions = optionRepository.findAllByIdIn(requestedParentOptionIds);
+        if (requestedParentOptions.size() != requestedParentOptionIds.size()) {
+            throw new CoreException(ErrorCode.ONBOARDING_OPTION_NOT_FOUND);
+        }
+        final boolean mismatched =
+            requestedParentOptions.stream().anyMatch(option -> !parentQuestionIds.contains(option.onboardingQuestionId()));
+        if (mismatched) {
+            throw new CoreException(ErrorCode.ONBOARDING_OPTION_QUESTION_MISMATCH);
+        }
+
+        final Set<Long> requestedParentOptionIdSet = Set.copyOf(requestedParentOptionIds);
+        return allOptions.stream().filter(option -> requestedParentOptionIdSet.contains(option.parentOptionId())).toList();
     }
 }

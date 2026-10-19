@@ -1,25 +1,36 @@
 package com.book.core.auth.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.book.core.auth.application.port.OAuthIdentity;
 import com.book.core.auth.application.port.OAuthProviderClient;
 import com.book.core.auth.application.port.OAuthTokenClient;
 import com.book.core.auth.application.port.RefreshTokenHasher;
+import com.book.core.auth.application.result.OAuthUserInfo;
+import com.book.core.cart.application.port.CartRepositoryPort;
+import com.book.core.cart.domain.Cart;
+import com.book.core.point.application.port.PointBalanceRepositoryPort;
+import com.book.core.point.domain.PointBalance;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -29,6 +40,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.junit.jupiter.Container;
@@ -64,40 +76,86 @@ class AuthLoginIntegrationTest {
     @MockitoBean
     OAuthTokenClient oAuthTokenClient;
 
+    @MockitoSpyBean
+    CartRepositoryPort cartRepository;
+
+    @MockitoSpyBean
+    PointBalanceRepositoryPort pointBalanceRepository;
+
     @Test
     void 로그인_HTTP_요청이_회원과_RefreshSession_저장과_Cookie_응답까지_연결된다() throws Exception {
-        when(oAuthTokenClient.exchangeForIdToken("authorization-code", "code-verifier")).thenReturn("kakao-id-token");
-        when(oAuthProviderClient.verify("kakao-id-token", "nonce")).thenReturn(new OAuthIdentity("provider-123", "reader@example.com"));
+        givenKakaoUser("provider-123");
 
-        final MvcResult firstLogin = login();
+        final MvcResult firstLogin = login("provider-123");
         final String firstRefreshToken = firstLogin.getResponse().getCookie("refreshToken").getValue();
 
-        final MvcResult secondLogin = login();
+        final MvcResult secondLogin = login("provider-123");
         final String secondRefreshToken = secondLogin.getResponse().getCookie("refreshToken").getValue();
         final String secondTokenHash = refreshTokenHasher.hash(secondRefreshToken);
         final Jwt decodedRefreshToken = refreshDecoder().decode(secondRefreshToken);
 
+        final Long userId = userIdOf("provider-123");
         assertThat(secondRefreshToken).isNotEqualTo(firstRefreshToken);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_providers", Integer.class)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM refresh_sessions", Integer.class)).isEqualTo(2);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM refresh_sessions WHERE revoked_at IS NOT NULL", Integer.class)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM refresh_sessions WHERE active_flag = 1", Integer.class)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT token_hash FROM refresh_sessions WHERE active_flag = 1", String.class))
+        assertThat(count("SELECT COUNT(*) FROM user_providers WHERE provider_user_id = ?", "provider-123")).isEqualTo(1);
+        assertThat(count("SELECT COUNT(*) FROM carts WHERE user_id = ?", userId)).isEqualTo(1);
+        assertThat(count("SELECT COUNT(*) FROM point_balance WHERE user_id = ? AND balance = 0", userId)).isEqualTo(1);
+        assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ?", userId)).isEqualTo(2);
+        assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ? AND revoked_at IS NOT NULL", userId)).isEqualTo(1);
+        assertThat(
+            jdbc.queryForObject("SELECT token_hash FROM refresh_sessions WHERE user_id = ? AND active_flag = 1", String.class, userId))
             .isEqualTo(secondTokenHash).isNotEqualTo(secondRefreshToken);
-        assertThat(jdbc.queryForObject("SELECT expires_at FROM refresh_sessions WHERE active_flag = 1", LocalDateTime.class))
-            .isEqualTo(LocalDateTime.ofInstant(decodedRefreshToken.getExpiresAt(), ZoneOffset.UTC));
+        assertThat(jdbc.queryForObject("SELECT expires_at FROM refresh_sessions WHERE user_id = ? AND active_flag = 1", LocalDateTime.class,
+            userId)).isEqualTo(LocalDateTime.ofInstant(decodedRefreshToken.getExpiresAt(), ZoneOffset.UTC));
     }
 
-    private MvcResult login() throws Exception {
+    @ParameterizedTest
+    @CsvSource({"cart-failure, true", "point-failure, false"})
+    void 신규_회원_초기화가_실패하면_회원_등록까지_모두_Rollback하고_가입을_실패한다(final String providerUserId, final boolean cartFails) throws Exception {
+        givenKakaoUser(providerUserId);
+        if (cartFails) {
+            doThrow(new DataAccessResourceFailureException("cart")).when(cartRepository).save(any(Cart.class));
+        } else {
+            doThrow(new DataAccessResourceFailureException("point")).when(pointBalanceRepository).save(any(PointBalance.class));
+        }
+        final List<Integer> before = rowCounts();
+
+        mvc.perform(post("/api/v1/auth/kakao/login").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"authorizationCode\":\"" + providerUserId + "-code\",\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}"))
+            .andExpect(status().isInternalServerError()).andExpect(jsonPath("$.success").value(false))
+            .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
+
+        assertThat(count("SELECT COUNT(*) FROM user_providers WHERE provider_user_id = ?", providerUserId)).isZero();
+        assertThat(rowCounts()).isEqualTo(before);
+    }
+
+    private void givenKakaoUser(final String providerUserId) {
+        when(oAuthTokenClient.exchangeForIdToken(providerUserId + "-code", "code-verifier")).thenReturn(providerUserId + "-id-token");
+        when(oAuthProviderClient.verify(providerUserId + "-id-token", "nonce")).thenReturn(new OAuthUserInfo(providerUserId, null));
+    }
+
+    private MvcResult login(final String providerUserId) throws Exception {
         final MvcResult result = mvc
             .perform(post("/api/v1/auth/kakao/login").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"authorizationCode\":\"authorization-code\"," + "\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}"))
+                .content("{\"authorizationCode\":\"" + providerUserId + "-code\",\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data.accessToken").isString())
             .andReturn();
         assertThat(result.getResponse().getHeader(HttpHeaders.SET_COOKIE)).contains("Path=/api/v1/auth").contains("HttpOnly")
             .contains("SameSite=Lax").doesNotContain("Secure");
         return result;
+    }
+
+    private Long userIdOf(final String providerUserId) {
+        return jdbc.queryForObject("SELECT user_id FROM user_providers WHERE provider_user_id = ? AND deleted_at IS NULL", Long.class,
+            providerUserId);
+    }
+
+    private List<Integer> rowCounts() {
+        return List.of("users", "user_providers", "carts", "point_balance", "refresh_sessions").stream()
+            .map((final String table) -> jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).toList();
+    }
+
+    private Integer count(final String sql, final Object arg) {
+        return jdbc.queryForObject(sql, Integer.class, arg);
     }
 
     private NimbusJwtDecoder refreshDecoder() {

@@ -73,7 +73,7 @@ class FindOAuthUserUseCaseTest {
         when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "withdrawal-provider"))
             .thenReturn(Optional.of(UserProvider.restore(7L, 42L, ProviderType.KAKAO, "withdrawal-provider", null)));
         final User user = User.restore(42L, "북적이");
-        user.requestWithdrawal(LocalDateTime.of(2030, 1, 1, 0, 0));
+        user.requestUserDeletion(LocalDateTime.of(2030, 1, 1, 0, 0));
         when(userRepository.findById(42L)).thenReturn(Optional.of(user));
 
         assertThat(useCase().execute(ProviderType.KAKAO, "withdrawal-provider")).contains(new OAuthUserResult(42L, true));

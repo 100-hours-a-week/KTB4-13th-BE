@@ -13,6 +13,7 @@ import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,6 +68,25 @@ class UserRepositoryIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT active_flag FROM users WHERE id = ?", Integer.class, user.id())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT active_flag FROM user_providers WHERE id = ?", Integer.class, userProvider.id()))
             .isEqualTo(1);
+    }
+
+    @Test
+    void 연결_해제_시각은_미해제_활성_provider에만_처음_한_번_기록한다() {
+        final User user = userRepository.save(User.create("해제회원"));
+        final UserProvider active =
+            userProviderRepository.save(UserProvider.create(user.id(), ProviderType.KAKAO, "unlink-provider", null));
+        final UserProvider deleted =
+            userProviderRepository.save(UserProvider.create(user.id(), ProviderType.KAKAO, "deleted-provider", null));
+        jdbc.update("UPDATE user_providers SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", deleted.id());
+        final LocalDateTime firstUnlinkedAt = LocalDateTime.of(2030, 1, 1, 4, 0);
+
+        userProviderRepository.markUnlinked(active.id(), firstUnlinkedAt);
+        userProviderRepository.markUnlinked(active.id(), firstUnlinkedAt.plusDays(1));
+        userProviderRepository.markUnlinked(deleted.id(), firstUnlinkedAt);
+
+        assertThat(jdbc.queryForObject("SELECT unlinked_at FROM user_providers WHERE id = ?", LocalDateTime.class, active.id()))
+            .isEqualTo(firstUnlinkedAt);
+        assertThat(jdbc.queryForObject("SELECT unlinked_at FROM user_providers WHERE id = ?", LocalDateTime.class, deleted.id())).isNull();
     }
 
     @Test

@@ -1,9 +1,11 @@
 package com.book;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.core.address.domain.Address;
+import com.book.core.auth.application.service.SignUpService;
 import com.book.core.book.domain.Book;
 import com.book.core.cancel.domain.Cancel;
 import com.book.core.cancel.domain.CancelBalance;
@@ -29,6 +31,7 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import jakarta.persistence.Entity;
+import org.springframework.transaction.annotation.Transactional;
 import org.junit.jupiter.api.Test;
 
 class ArchitectureTest {
@@ -61,6 +64,15 @@ class ArchitectureTest {
     void 인증과_회원_UseCase는_다른_UseCase를_호출하지_않는다() {
         noClasses().that().resideInAnyPackage("com.book.core.auth.application.usecase..", "com.book.core.user.application.usecase..")
             .should().dependOnClassesThat().resideInAPackage("com.book.core..application.usecase..").check(CLASSES);
+    }
+
+    @Test
+    void Service는_회원가입_조율을_제외하고_트랜잭션을_소유하지_않는다() {
+        noClasses().that().resideInAPackage("com.book.core..application.service..").should().beAnnotatedWith(Transactional.class)
+            .check(CLASSES);
+        noMethods().that().areDeclaredInClassesThat().resideInAPackage("com.book.core..application.service..").and()
+            .areDeclaredInClassesThat().doNotHaveFullyQualifiedName(SignUpService.class.getName()).should()
+            .beAnnotatedWith(Transactional.class).check(CLASSES);
     }
 
     @Test

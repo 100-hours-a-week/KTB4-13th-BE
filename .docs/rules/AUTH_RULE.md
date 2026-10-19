@@ -54,9 +54,8 @@ Kakao ID Token은 다음 조건을 모두 만족해야 합니다.
 회원 가입(providerType, authorizationCode, codeVerifier, nonce):
   1. OAuth 인증을 수행한다.
   2. 회원 도메인에서 활성 회원을 조회하고, 있으면 409 ALREADY_REGISTERED로 거부한다.
-  3. 회원 도메인에서 User와 UserProvider를 등록한다.
-  4. 장바구니를 생성하고, 이어서 포인트 잔액을 생성한다.
-  5. 토큰을 발급하고 Refresh Session을 등록한다.
+  3. 하나의 트랜잭션에서 User와 UserProvider를 등록하고 장바구니와 포인트 잔액을 차례로 생성한다.
+  4. 토큰을 발급하고 Refresh Session을 등록한다.
 
 토큰 발급과 Session 등록:
   1. 내부 userId를 subject로 하는 Access Token과 Refresh Token을 발급한다.
@@ -64,9 +63,10 @@ Kakao ID Token은 다음 조건을 모두 만족해야 합니다.
   3. Access Token은 응답 body로, Refresh Token은 HttpOnly cookie로 반환한다.
 ```
 
-- 장바구니와 포인트 잔액 생성은 각 UseCase의 독립 트랜잭션에서 실행합니다. 하나가 실패해도 나머지를 시도하며, 실패는 작업별로 error 로그를 남기고 가입과 자동 로그인을 계속 진행합니다. 실패한 초기화는 현재 자동으로 복구하지 않습니다.
+- 회원 가입은 `SignUpService`가 하나의 트랜잭션으로 처리합니다. 회원·OAuth 연결 등록, 장바구니와 포인트 잔액 생성 중 하나라도 실패하면 모두 Rollback하고 가입을 실패로 응답합니다. 로그인에서는 초기화를 실행하지 않습니다.
+- 외부 OAuth 인증은 가입 트랜잭션 시작 전에, 토큰 발급과 Refresh Session 등록은 가입 트랜잭션 커밋 후에 실행합니다.
 - OAuth 인증, 회원 등록, 토큰 발급과 Refresh Session 등록의 실패는 격리하지 않고 오류로 응답합니다.
-- 회원 등록이 실패하면 장바구니·포인트 초기화와 토큰 발급을 실행하지 않습니다.
+- 가입이 실패하면 토큰 발급을 실행하지 않습니다.
 - 회원 등록 이후 토큰 발급이나 Refresh Session 등록이 실패하면 회원과 초기화 데이터는 남습니다. 이 회원은 다시 가입하면 `ALREADY_REGISTERED`로 거부되고, 새 인가 코드로 로그인할 수 있습니다.
 
 ## 4. 서비스 토큰 정책

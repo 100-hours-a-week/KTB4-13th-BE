@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 @Accessors(fluent = true)
 public enum ErrorCode {
     DEFAULT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E500", "알 수 없는 오류가 발생했습니다.", LogLevel.ERROR),
+    CONCURRENT_CHANGE(HttpStatus.CONFLICT, "CONCURRENT_CHANGE", "다른 요청이 먼저 변경했습니다. 상태를 확인한 후 다시 요청해 주세요.", LogLevel.INFO),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "E400", "요청 형식이 올바르지 않습니다.", LogLevel.INFO),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "E401", "인증 정보가 유효하지 않습니다.", LogLevel.INFO),
     FORBIDDEN(HttpStatus.FORBIDDEN, "E403", "올바르지 않은 접근입니다.", LogLevel.INFO),
@@ -19,6 +20,8 @@ public enum ErrorCode {
     INVALID_CART_ITEM_QUANTITY(HttpStatus.BAD_REQUEST, "E400", "장바구니 상품 수량은 1 이상 500 이하여야 합니다.", LogLevel.INFO),
     CART_NOT_FOUND(HttpStatus.NOT_FOUND, "E401", "장바구니를 찾을 수 없습니다.", LogLevel.INFO),
     CART_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "E401", "장바구니 상품을 찾을 수 없습니다.", LogLevel.INFO),
+    CART_STATE_CHANGED(HttpStatus.CONFLICT, "CART_STATE_CHANGED", "장바구니 수량이 변경되었습니다. 다시 확인해 주세요.", LogLevel.INFO),
+    CART_PRICE_CHANGED(HttpStatus.CONFLICT, "CART_PRICE_CHANGED", "가격이 변경되었습니다. 다시 확인해 주세요.", LogLevel.INFO),
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "상품을 찾을 수 없습니다.", LogLevel.INFO),
     PRODUCT_MISMATCH_IN_ORDER(HttpStatus.BAD_REQUEST, "E3000", "요청한 상품 정보와 일치하지 않습니다.", LogLevel.INFO),
     ORDER_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "주문 상품을 찾을 수 없습니다.", LogLevel.INFO),

@@ -7,9 +7,11 @@ import com.book.core.cart.application.port.CartItemRepositoryPort;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.result.GetCartResult;
+import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
 import com.book.core.product.application.usecase.FindProductsByIdsUseCase;
 import com.book.core.product.domain.Product;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -28,15 +30,15 @@ public class GetCartUseCase {
         if (userId == null || userId <= 0) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        return cartRepository.findByUserId(userId).map((final var cart) -> {
-            final var cartItems = cartItemRepository.findActiveByCartId(cart.id());
+        return cartRepository.findByUserId(userId).map((final Cart cart) -> {
+            final List<CartItem> cartItems = cartItemRepository.findActiveByCartId(cart.id());
             if (cartItems.isEmpty()) {
                 return GetCartResult.empty();
             }
             final Map<Long, Product> productsById = findProductsByIdsUseCase.execute(cartItems.stream().map(CartItem::productId).toList())
                 .stream().collect(Collectors.toMap(Product::id, Function.identity()));
             return GetCartResult
-                .of(cartItems.stream().map((final var item) -> toResult(item, productsById.get(item.productId()))).toList());
+                .of(cartItems.stream().map((final CartItem item) -> toResult(item, productsById.get(item.productId()))).toList());
         }).orElseGet(GetCartResult::empty);
     }
 

@@ -2,6 +2,7 @@ package com.book.core.cart.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.book.core.book.domain.Book;
 import com.book.core.cart.application.port.CartItemRepositoryPort;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.application.result.GetCartItemResult;
@@ -9,7 +10,6 @@ import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
-import com.book.core.book.domain.Book;
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.ProductRepositoryPort;
@@ -100,7 +100,7 @@ class GetCartUseCaseTest {
         @Override
         public List<Product> findByIds(final List<Long> productIds) {
             requestedProductIds = productIds;
-            return products.stream().filter((final var product) -> productIds.contains(product.id())).toList();
+            return products.stream().filter((final Product product) -> productIds.contains(product.id())).toList();
         }
 
         @Override
@@ -135,7 +135,7 @@ class GetCartUseCaseTest {
         }
 
         @Override
-        public Optional<Cart> findByUserIdWithLock(final Long userId) {
+        public Optional<Cart> findByUserIdForChange(final Long userId) {
             return Optional.ofNullable(cart);
         }
 
@@ -148,6 +148,11 @@ class GetCartUseCaseTest {
     private static final class FakeCartItemRepository implements CartItemRepositoryPort {
         private List<CartItem> items = List.of();
         private Long requestedCartId;
+
+        @Override
+        public List<CartItem> findAllByCartIdForChange(final Long cartId) {
+            return items.stream().filter((final CartItem item) -> item.cartId().equals(cartId)).toList();
+        }
 
         @Override
         public Optional<CartItem> findActiveByUserIdAndId(final Long userId, final Long cartItemId) {

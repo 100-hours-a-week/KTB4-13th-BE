@@ -15,13 +15,15 @@ import com.book.core.cart.domain.CartItem;
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.ProductRepositoryPort;
-import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.application.result.ProductListItem;
+import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.domain.Product;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class CartAddUseCaseTest {
@@ -34,12 +36,12 @@ class CartAddUseCaseTest {
     @Test
     void 장바구니가_없으면_찾을_수_없다는_오류를_반환한다() {
         assertThatThrownBy(() -> useCase.execute(new AddCartItemCommand(1L, 20L, 2))).isInstanceOfSatisfying(CoreException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_NOT_FOUND));
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_NOT_FOUND));
     }
 
     @Test
     void 기존_장바구니에_새_상품을_추가한다() {
-        final var cart = new Cart(1L, 1L);
+        final Cart cart = new Cart(1L, 1L);
         cartRepository.cart = cart;
 
         useCase.execute(new AddCartItemCommand(1L, 20L, 2));
@@ -52,8 +54,8 @@ class CartAddUseCaseTest {
 
     @Test
     void 기존_상품의_수량을_대체하고_삭제된_상품은_활성화한다() {
-        final var cart = new Cart(1L, 1L);
-        final var item = CartItem.from(1L, 20L, 2);
+        final Cart cart = new Cart(1L, 1L);
+        final CartItem item = CartItem.from(1L, 20L, 2);
         item.delete();
         cartRepository.cart = cart;
         cartItemRepository.item = Optional.of(item);
@@ -66,38 +68,38 @@ class CartAddUseCaseTest {
 
     @Test
     void 새_상품의_잘못된_수량은_상품을_추가하지_않는다() {
-        final var cart = new Cart(1L, 1L);
+        final Cart cart = new Cart(1L, 1L);
         cartRepository.cart = cart;
 
         assertThatThrownBy(() -> useCase.execute(new AddCartItemCommand(1L, 20L, 501))).isInstanceOfSatisfying(CoreException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_CART_ITEM_QUANTITY));
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_CART_ITEM_QUANTITY));
 
         assertThat(cartItemRepository.savedItem).isNull();
     }
 
     @Test
     void 활성_상품이_30개면_새_상품을_추가하지_않는다() {
-        final var cart = new Cart(1L, 1L);
+        final Cart cart = new Cart(1L, 1L);
         cartRepository.cart = cart;
         cartItemRepository.activeItemCount = 30;
 
         assertThatThrownBy(() -> useCase.execute(new AddCartItemCommand(1L, 21L, 1))).isInstanceOfSatisfying(CoreException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_LIMIT_EXCEEDED));
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_LIMIT_EXCEEDED));
 
         assertThat(cartItemRepository.savedItem).isNull();
     }
 
     @Test
     void 활성_상품이_30개면_삭제된_상품을_복구하지_않는다() {
-        final var cart = new Cart(1L, 1L);
-        final var item = CartItem.from(1L, 20L, 2);
+        final Cart cart = new Cart(1L, 1L);
+        final CartItem item = CartItem.from(1L, 20L, 2);
         item.delete();
         cartRepository.cart = cart;
         cartItemRepository.item = Optional.of(item);
         cartItemRepository.activeItemCount = 30;
 
         assertThatThrownBy(() -> useCase.execute(new AddCartItemCommand(1L, 20L, 4))).isInstanceOfSatisfying(CoreException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_LIMIT_EXCEEDED));
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_LIMIT_EXCEEDED));
 
         assertThat(item.isDeleted()).isTrue();
     }
@@ -115,8 +117,8 @@ class CartAddUseCaseTest {
 
     @Test
     void 요청_수량이_재고보다_많으면_기존_장바구니_상품을_변경하지_않는다() {
-        final var cart = new Cart(1L, 1L);
-        final var item = CartItem.from(1L, 20L, 2);
+        final Cart cart = new Cart(1L, 1L);
+        final CartItem item = CartItem.from(1L, 20L, 2);
         cartRepository.cart = cart;
         cartItemRepository.item = Optional.of(item);
         productRepository.product = product(2);
@@ -130,8 +132,8 @@ class CartAddUseCaseTest {
 
     @Test
     void 상품이_없으면_장바구니를_변경하지_않는다() {
-        final var cart = new Cart(1L, 1L);
-        final var item = CartItem.from(1L, 20L, 2);
+        final Cart cart = new Cart(1L, 1L);
+        final CartItem item = CartItem.from(1L, 20L, 2);
         item.delete();
         cartRepository.cart = cart;
         cartItemRepository.item = Optional.of(item);
@@ -145,7 +147,7 @@ class CartAddUseCaseTest {
     }
 
     private static Product product(final int stockQuantity) {
-        final var book = new Book(10L, null, null, "도서명", "작가", null, "출판사", "소설", LocalDate.of(2026, 1, 1), null);
+        final Book book = new Book(10L, null, null, "도서명", "작가", null, "출판사", "소설", LocalDate.of(2026, 1, 1), null);
         return new Product(20L, book, "상품명", null, new BigDecimal("20000.00"), new BigDecimal("18000.00"), new BigDecimal("12000.00"),
             stockQuantity);
     }
@@ -190,7 +192,7 @@ class CartAddUseCaseTest {
         }
 
         @Override
-        public Optional<Cart> findByUserIdWithLock(final Long userId) {
+        public Optional<Cart> findByUserIdForChange(final Long userId) {
             return Optional.ofNullable(cart);
         }
 
@@ -204,6 +206,13 @@ class CartAddUseCaseTest {
         private Optional<CartItem> item = Optional.empty();
         private CartItem savedItem;
         private int activeItemCount;
+
+        @Override
+        public List<CartItem> findAllByCartIdForChange(final Long cartId) {
+            final Stream<CartItem> activeItems =
+                IntStream.range(0, activeItemCount).mapToObj((final int index) -> CartItem.from(cartId, 1000L + index, 1));
+            return Stream.concat(activeItems, item.stream()).toList();
+        }
 
         @Override
         public Optional<CartItem> findActiveByUserIdAndId(final Long userId, final Long cartItemId) {

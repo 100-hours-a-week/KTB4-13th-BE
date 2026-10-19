@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class CancelCommandConverter {
 
-    public CancelCommand toCancelCommand(final Long userId, final CancelRequest request) {
-        return new CancelCommand(userId, new CancelAction(request.orderKey()));
+    public CancelCommand toCancelCommand(final Long userId, final String requestKey, final CancelRequest request) {
+        return new CancelCommand(userId, new CancelAction(request.orderKey()), requestKey);
     }
 
     public PartialCancelCommand toPartialCancelCommand(final Long userId, final PartialCancelRequest request) {

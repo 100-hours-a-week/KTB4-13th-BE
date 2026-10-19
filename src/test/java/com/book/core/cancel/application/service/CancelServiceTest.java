@@ -11,7 +11,9 @@ import static org.mockito.Mockito.when;
 import com.book.core.cancel.application.command.CancelCommand;
 import com.book.core.cancel.application.command.PartialCancelCommand;
 import com.book.core.cancel.application.usecase.CalculatePartialCancelUseCase;
-import com.book.core.cancel.application.usecase.CancelPaymentUseCase;
+import com.book.core.cancel.application.usecase.CancelPgPaymentUseCase;
+import com.book.core.payment.application.usecase.PreparePgOperationUseCase;
+import com.book.core.payment.application.usecase.RejectPgOperationUseCase;
 import com.book.core.cancel.application.usecase.PartialCancelPaymentUseCase;
 import com.book.core.cancel.application.usecase.ValidateCancelUseCase;
 import com.book.core.cancel.domain.CancelAction;
@@ -23,19 +25,21 @@ import org.mockito.InOrder;
 
 class CancelServiceTest {
     private final ValidateCancelUseCase validate = mock(ValidateCancelUseCase.class);
-    private final CancelPaymentUseCase cancel = mock(CancelPaymentUseCase.class);
+    private final CancelPgPaymentUseCase cancel = mock(CancelPgPaymentUseCase.class);
+    private final PreparePgOperationUseCase prepare = mock(PreparePgOperationUseCase.class);
+    private final RejectPgOperationUseCase reject = mock(RejectPgOperationUseCase.class);
     private final CalculatePartialCancelUseCase calculate = mock(CalculatePartialCancelUseCase.class);
     private final PartialCancelPaymentUseCase partial = mock(PartialCancelPaymentUseCase.class);
-    private final CancelService service = new CancelService(validate, cancel, calculate, partial);
+    private final CancelService service = new CancelService(validate, cancel, prepare, reject, calculate, partial);
 
     @Test
     void 전체취소는_검증_후_쓰기를_실행한다() {
         final CancelAction action = new CancelAction("order");
-        when(cancel.execute(action)).thenReturn(10L);
-        assertThat(service.cancel(new CancelCommand(1L, action))).isEqualTo(10L);
-        final InOrder sequence = inOrder(validate, cancel);
-        sequence.verify(validate).validate(1L, action);
-        sequence.verify(cancel).execute(action);
+        when(cancel.execute(new CancelCommand(1L, action, "request"))).thenReturn(10L);
+        assertThat(service.cancel(new CancelCommand(1L, action, "request"))).isEqualTo(10L);
+        final InOrder sequence = inOrder(prepare, cancel);
+        sequence.verify(prepare).execute(new CancelCommand(1L, action, "request").operation());
+        sequence.verify(cancel).execute(new CancelCommand(1L, action, "request"));
         verifyNoInteractions(calculate, partial);
     }
 

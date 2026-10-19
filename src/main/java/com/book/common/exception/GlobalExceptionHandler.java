@@ -6,7 +6,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.MissingRequestValueException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -27,7 +27,7 @@ class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
-        MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class, ConstraintViolationException.class})
+        MethodArgumentTypeMismatchException.class, MissingRequestValueException.class, ConstraintViolationException.class})
     ResponseEntity<ErrorResponse> handleInvalidRequest(final Exception exception) {
         final var errorCode = ErrorCode.INVALID_REQUEST;
         return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode));

@@ -16,6 +16,8 @@ import com.book.core.coupon.domain.Coupon;
 import com.book.core.coupon.domain.CouponTarget;
 import com.book.core.coupon.domain.OwnedCoupon;
 import com.book.core.memory.domain.UserMemory;
+import com.book.core.merchant.domain.Merchant;
+import com.book.core.merchant.domain.MerchantProductMapping;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
@@ -106,6 +108,8 @@ class ArchitectureTest {
 
     @Test
     void 업무_모델은_JPA_Entity를_겸한다() {
+        assertThat(Merchant.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(MerchantProductMapping.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Payment.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(PaymentHistory.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Cancel.class.isAnnotationPresent(Entity.class)).isTrue();

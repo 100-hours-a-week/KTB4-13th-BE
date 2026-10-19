@@ -23,6 +23,6 @@ public record UpdateReviewRequest(@NotNull @DecimalMin("0.5") @DecimalMax("5.0")
         if (content.isEmpty()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        return new ReviewContent(rate, content);
+        return new ReviewContent(rate, content, isSpoiler);
     }
 }

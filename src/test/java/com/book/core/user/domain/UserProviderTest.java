@@ -74,4 +74,14 @@ class UserProviderTest {
             BusinessException.class,
             (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_USER_PROVIDER_ID));
     }
+
+    @Test
+    void 최종_탈퇴하면_카카오_식별자를_복원할_수_없는_값으로_바꾸고_이메일을_파기한다() {
+        final UserProvider userProvider = UserProvider.restore(7L, 42L, ProviderType.KAKAO, "123456789", "reader@example.com");
+        userProvider.withdraw();
+
+        assertThat(userProvider.providerUserId()).startsWith("withdrawn:").doesNotContain("123456789");
+        assertThat(userProvider.providerEmail()).isNull();
+        assertThat(userProvider.isDeleted()).isTrue();
+    }
 }

@@ -59,33 +59,21 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 리뷰_작성은_인증된_userId와_요청_targetId를_Command로_변환한다() throws Exception {
+    void 회원은_리뷰를_생성할_수_있다() throws Exception {
         authenticateAs(42L);
         when(reviewService.addReview(new AddReviewCommand(42L, new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
-            new ReviewContent(new BigDecimal("4.5"), "본문"), false))).thenReturn(801L);
-
-        mvc.perform(post("/api/v1/reviews").contentType(MediaType.APPLICATION_JSON)
-            .content("{\"targetType\":\"PRODUCT\",\"targetId\":701,\"rate\":4.5,\"content\":\"본문\",\"isSpoiler\":false}"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").value(801));
-
-        verify(reviewService).addReview(new AddReviewCommand(42L, new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
-            new ReviewContent(new BigDecimal("4.5"), "본문"), false));
-    }
-
-    @Test
-    void 요청_body에_userId를_전달해도_무시되고_인증된_userId가_사용된다() throws Exception {
-        authenticateAs(42L);
+            new ReviewContent(new BigDecimal("4.5"), "본문", false)))).thenReturn(801L);
 
         mvc.perform(post("/api/v1/reviews").contentType(MediaType.APPLICATION_JSON)
             .content("{\"userId\":999,\"targetType\":\"PRODUCT\",\"targetId\":701,\"rate\":4.5,\"content\":\"본문\",\"isSpoiler\":false}"))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").value(801));
 
         verify(reviewService).addReview(new AddReviewCommand(42L, new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
-            new ReviewContent(new BigDecimal("4.5"), "본문"), false));
+            new ReviewContent(new BigDecimal("4.5"), "본문", false)));
     }
 
     @Test
-    void 필수_작성값이_없거나_평점이_범위를_벗어나면_Service를_호출하지_않는다() throws Exception {
+    void 회원은_유효하지_않은_요청값으로_리뷰를_생성할_수_없다() throws Exception {
         authenticateAs(42L);
 
         mvc.perform(post("/api/v1/reviews").contentType(MediaType.APPLICATION_JSON)
@@ -95,35 +83,6 @@ class ReviewControllerTest {
         mvc.perform(post("/api/v1/reviews").contentType(MediaType.APPLICATION_JSON)
             .content("{\"targetType\":\"PRODUCT\",\"targetId\":701,\"rate\":10.1,\"content\":\"본문\",\"isSpoiler\":false}"))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
-
-        verifyNoInteractions(reviewService);
-    }
-
-    @Test
-    void 리뷰_수정은_인증된_userId와_reviewId를_Command로_전달한다() throws Exception {
-        authenticateAs(42L);
-        when(reviewService.updateReview(new UpdateReviewCommand(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정"), null)))
-            .thenReturn(801L);
-
-        mvc.perform(patch("/api/v1/reviews/801").contentType(MediaType.APPLICATION_JSON).content("{\"rate\":4.5,\"content\":\"수정\"}"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").value(801));
-
-        verify(reviewService).updateReview(new UpdateReviewCommand(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정"), null));
-    }
-
-    @Test
-    void 다른_사용자의_리뷰_수정_시도는_403을_응답한다() throws Exception {
-        authenticateAs(999L);
-        doThrow(new CoreException(ErrorCode.FORBIDDEN)).when(reviewService)
-            .updateReview(new UpdateReviewCommand(999L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정"), null));
-
-        mvc.perform(patch("/api/v1/reviews/801").contentType(MediaType.APPLICATION_JSON).content("{\"rate\":4.5,\"content\":\"수정\"}"))
-            .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("E403"));
-    }
-
-    @Test
-    void 반점_단위가_아닌_별점과_공백_본문을_거부한다() throws Exception {
-        authenticateAs(42L);
         mvc.perform(post("/api/v1/reviews").contentType(MediaType.APPLICATION_JSON)
             .content("{\"targetType\":\"PRODUCT\",\"targetId\":701,\"rate\":4.1,\"content\":\"본문\",\"isSpoiler\":false}"))
             .andExpect(status().isBadRequest());
@@ -134,7 +93,29 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 수정할_별점이나_본문이_누락되면_거부한다() throws Exception {
+    void 회원은_자신의_리뷰를_수정할_수_있다() throws Exception {
+        authenticateAs(42L);
+        when(reviewService.updateReview(new UpdateReviewCommand(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정", null))))
+            .thenReturn(801L);
+
+        mvc.perform(patch("/api/v1/reviews/801").contentType(MediaType.APPLICATION_JSON).content("{\"rate\":4.5,\"content\":\"수정\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").value(801));
+
+        verify(reviewService).updateReview(new UpdateReviewCommand(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정", null)));
+    }
+
+    @Test
+    void 회원은_다른_회원의_리뷰를_수정할_수_없다() throws Exception {
+        authenticateAs(999L);
+        doThrow(new CoreException(ErrorCode.FORBIDDEN)).when(reviewService)
+            .updateReview(new UpdateReviewCommand(999L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정", null)));
+
+        mvc.perform(patch("/api/v1/reviews/801").contentType(MediaType.APPLICATION_JSON).content("{\"rate\":4.5,\"content\":\"수정\"}"))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("E403"));
+    }
+
+    @Test
+    void 회원은_필수_수정_요청값이_없으면_리뷰를_수정할_수_없다() throws Exception {
         authenticateAs(42L);
         mvc.perform(patch("/api/v1/reviews/801").contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"수정\"}"))
             .andExpect(status().isBadRequest());
@@ -144,7 +125,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 리뷰_삭제는_인증된_userId와_reviewId를_Service에_전달한다() throws Exception {
+    void 회원은_자신의_리뷰를_삭제할_수_있다() throws Exception {
         authenticateAs(42L);
 
         when(reviewService.removeReview(new RemoveReviewCommand(42L, 801L))).thenReturn(801L);
@@ -156,7 +137,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 다른_사용자의_리뷰_삭제_시도는_403을_응답한다() throws Exception {
+    void 회원은_다른_회원의_리뷰를_삭제할_수_없다() throws Exception {
         authenticateAs(999L);
         doThrow(new CoreException(ErrorCode.FORBIDDEN)).when(reviewService).removeReview(new RemoveReviewCommand(999L, 801L));
 
@@ -164,7 +145,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 양수가_아닌_reviewId는_400을_응답한다() throws Exception {
+    void 회원은_양수가_아닌_리뷰_ID로_리뷰를_삭제할_수_없다() throws Exception {
         authenticateAs(42L);
 
         mvc.perform(delete("/api/v1/reviews/0")).andExpect(status().isBadRequest());
@@ -173,10 +154,10 @@ class ReviewControllerTest {
     }
 
     @Test
-    void UseCase_오류는_기존_ErrorResponse_HTTP_계약을_따른다() throws Exception {
+    void 리뷰_작성에_실패하면_업무_오류를_HTTP_오류_응답으로_반환한다() throws Exception {
         authenticateAs(42L);
         doThrow(new CoreException(ErrorCode.REVIEW_ALREADY_REVIEWED)).when(reviewService).addReview(new AddReviewCommand(42L,
-            new ReviewTarget(ReviewTargetType.PRODUCT, 701L), new ReviewContent(new BigDecimal("4.5"), "본문"), false));
+            new ReviewTarget(ReviewTargetType.PRODUCT, 701L), new ReviewContent(new BigDecimal("4.5"), "본문", false)));
 
         mvc.perform(post("/api/v1/reviews").contentType(MediaType.APPLICATION_JSON)
             .content("{\"targetType\":\"PRODUCT\",\"targetId\":701,\"rate\":4.5,\"content\":\"본문\",\"isSpoiler\":false}"))
@@ -184,7 +165,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 리뷰_조회는_단일_경로와_실제_offset을_사용하고_DTO를_반환한다() throws Exception {
+    void 회원은_대상별_리뷰_페이지를_조회할_수_있다() throws Exception {
         final var target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
         final var paging = new OffsetLimit(3, 2);
         final var item = new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문", true);
@@ -201,7 +182,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 기본_페이징으로_빈_목록을_반환한다() throws Exception {
+    void 리뷰가_없으면_회원에게_빈_페이지를_반환한다() throws Exception {
         final var target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
         final var paging = new OffsetLimit(0, 20);
         when(reviewService.findReviews(new GetReviewsCommand(target, paging))).thenReturn(new Page<>(List.of(), false));
@@ -211,7 +192,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 잘못된_조회_입력은_Service를_호출하지_않는다() throws Exception {
+    void 회원은_유효하지_않은_조회_요청으로_리뷰를_조회할_수_없다() throws Exception {
         mvc.perform(get("/api/v1/reviews").param("targetType", "UNKNOWN").param("targetId", "10")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "0")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("offset", "-1"))

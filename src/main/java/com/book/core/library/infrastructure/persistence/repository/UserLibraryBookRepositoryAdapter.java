@@ -26,6 +26,11 @@ class UserLibraryBookRepositoryAdapter implements UserLibraryBookRepositoryPort 
         return jpaRepository.findByUserIdAndIdInAndDeletedAtIsNull(userId, libraryBookIds);
     }
 
+    @Override
+    public List<UserLibraryBook> findActiveByUserId(final Long userId) {
+        return jpaRepository.findByUserIdAndDeletedAtIsNull(userId);
+    }
+
     /** 동시 추가로 회원·도서 UNIQUE 제약을 위반하면 재시도할 수 있도록 {@link DuplicateKeyException}으로 구분합니다. */
     @Override
     public List<UserLibraryBook> saveAll(final List<UserLibraryBook> libraryBooks) {

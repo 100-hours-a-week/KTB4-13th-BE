@@ -40,11 +40,15 @@ class AuthController implements AuthControllerSpec {
     public ResponseEntity<ApiResponse<AuthLoginResponse>> login(@PathVariable final ProviderType providerType,
         @Valid @RequestBody final AuthLoginRequest request) {
         final AuthLoginCommand command = commandConverter.toAuthLoginCommand(providerType, request);
-        final AuthLoginResult result = authService.login(command);
-        final Duration refreshMaxAge = Duration.between(Instant.now(), result.refreshExpiresAt());
-        final String refreshCookie = refreshTokenCookieFactory.create(result.refreshToken(), refreshMaxAge).toString();
-        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, refreshCookie)
-            .body(ApiResponse.ok(new AuthLoginResponse(result.accessToken())));
+        return loginResponse(authService.login(command));
+    }
+
+    @PostMapping("/{providerType}/signup")
+    @Override
+    public ResponseEntity<ApiResponse<AuthLoginResponse>> signup(@PathVariable final ProviderType providerType,
+        @Valid @RequestBody final AuthLoginRequest request) {
+        final AuthLoginCommand command = commandConverter.toAuthLoginCommand(providerType, request);
+        return loginResponse(authService.signup(command));
     }
 
     @PostMapping("/reissue")
@@ -64,5 +68,12 @@ class AuthController implements AuthControllerSpec {
         authService.logout(userId);
         final String expiredRefreshCookie = refreshTokenCookieFactory.expire().toString();
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, expiredRefreshCookie).build();
+    }
+
+    private ResponseEntity<ApiResponse<AuthLoginResponse>> loginResponse(final AuthLoginResult result) {
+        final Duration refreshMaxAge = Duration.between(Instant.now(), result.refreshExpiresAt());
+        final String refreshCookie = refreshTokenCookieFactory.create(result.refreshToken(), refreshMaxAge).toString();
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, refreshCookie)
+            .body(ApiResponse.ok(new AuthLoginResponse(result.accessToken())));
     }
 }

@@ -123,11 +123,6 @@ public class Order extends BaseTimeEntity {
         return items.getFirst();
     }
 
-    /** 취소된 상품을 포함한 최초 주문상품 항목 수입니다. */
-    public int itemCount() {
-        return items.size();
-    }
-
     public String name() {
         final List<OrderItem> activeItems = items.stream().filter(OrderItem::isActive).toList();
         if (activeItems.isEmpty()) {

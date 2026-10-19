@@ -46,14 +46,13 @@ class OrderTest {
     }
 
     @Test
-    void 대표_상품은_취소_여부와_무관하게_첫_주문상품이고_항목_수는_최초_주문상품_수다() {
+    void 대표_상품은_취소_여부와_무관하게_첫_주문상품이다() {
         final Order order = Order.create(42L, "order_representative", null);
         addOrderItem(order, 101L, 1, BigDecimal.TEN);
         addOrderItem(order, 102L, 2, BigDecimal.TEN);
         order.items().getFirst().cancel(1L);
 
         assertThat(order.representativeItem().itemName()).isEqualTo("상품 101");
-        assertThat(order.itemCount()).isEqualTo(2);
     }
 
     @Test

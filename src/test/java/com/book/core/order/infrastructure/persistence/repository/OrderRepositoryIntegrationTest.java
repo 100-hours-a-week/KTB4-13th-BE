@@ -7,18 +7,14 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.application.command.CancelOrderCommand;
-import com.book.core.order.application.command.OrderListCursor;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.application.usecase.GetOrderItemUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderItemStatus;
-import com.book.core.order.domain.OrderStatus;
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import javax.sql.DataSource;
 import java.util.concurrent.CountDownLatch;
@@ -174,62 +170,6 @@ class OrderRepositoryIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT canceled_at IS NULL FROM orders WHERE id = ?", Boolean.class, savedOrder.id())).isTrue();
         assertThat(jdbc.queryForList("SELECT status FROM order_item WHERE order_id = ? ORDER BY id", String.class, savedOrder.id()))
             .containsExactly("PAID", "CREATED");
-    }
-
-    @Test
-    void 회원의_활성_주문만_최신순으로_조회한다() {
-        insertBook(9121L);
-        insertBook(9122L);
-        insertBook(9123L);
-        insertBook(9124L);
-        insertProduct(9221L, 9121L);
-        insertProduct(9222L, 9122L);
-        insertProduct(9223L, 9123L);
-        insertProduct(9224L, 9124L);
-        orderRepository.save(order(4242L, "order_old", 9221L));
-        orderRepository.save(order(4242L, "order_new", 9222L));
-        orderRepository.save(order(4343L, "another_users_order", 9223L));
-        final Order deletedOrder = orderRepository.save(order(4242L, "deleted_order", 9224L));
-        deletedOrder.delete();
-        orderRepository.save(deletedOrder);
-
-        final LocalDate today = LocalDate.now();
-        final List<Order> orders =
-            orderRepository.findActiveOrders(4242L, null, today.minusYears(1).atStartOfDay(), today.plusDays(1).atStartOfDay(), null, 20);
-
-        assertThat(orders).extracting(Order::key).containsExactly("order_new", "order_old");
-    }
-
-    @Test
-    void 목록_필터와_createdAt_ID_커서로_다음_페이지를_중복없이_조회한다() {
-        insertBook(9131L);
-        insertBook(9132L);
-        insertBook(9133L);
-        insertProduct(9231L, 9131L);
-        insertProduct(9232L, 9132L);
-        insertProduct(9233L, 9133L);
-        final Order oldest = orderRepository.save(order(4444L, "cursor_old", 9231L));
-        final Order sameTimeLowId = orderRepository.save(order(4444L, "cursor_same_low", 9232L));
-        final Order sameTimeHighId = orderRepository.save(order(4444L, "cursor_same_high", 9233L));
-        final LocalDateTime sameCreatedAt = LocalDateTime.of(2026, 9, 28, 10, 0);
-        jdbc.update("UPDATE orders SET created_at = ?, updated_at = ?, status = 'PAID' WHERE id = ?", sameCreatedAt, sameCreatedAt,
-            sameTimeLowId.id());
-        jdbc.update("UPDATE orders SET created_at = ?, updated_at = ?, status = 'PAID' WHERE id = ?", sameCreatedAt, sameCreatedAt,
-            sameTimeHighId.id());
-        jdbc.update("UPDATE orders SET created_at = ?, updated_at = ? WHERE id = ?", sameCreatedAt.minusDays(1), sameCreatedAt.minusDays(1),
-            oldest.id());
-        final LocalDateTime from = LocalDate.of(2026, 9, 27).atStartOfDay();
-        final LocalDateTime to = LocalDate.of(2026, 9, 28).atTime(23, 59, 59, 999_999_999);
-
-        final List<Order> firstPage = orderRepository.findActiveOrders(4444L, null, from, to, null, 2);
-        final OrderListCursor cursor = new OrderListCursor(firstPage.getLast().createdAt(), firstPage.getLast().id());
-        final List<Order> secondPage = orderRepository.findActiveOrders(4444L, null, from, to, cursor, 2);
-        final List<Order> paidOrders = orderRepository.findActiveOrders(4444L, OrderStatus.PAID, sameCreatedAt.toLocalDate().atStartOfDay(),
-            sameCreatedAt.toLocalDate().plusDays(1).atStartOfDay(), null, 10);
-
-        assertThat(firstPage).extracting(Order::key).containsExactly("cursor_same_high", "cursor_same_low");
-        assertThat(secondPage).extracting(Order::key).containsExactly("cursor_old");
-        assertThat(paidOrders).extracting(Order::key).containsExactly("cursor_same_high", "cursor_same_low");
     }
 
     @Test

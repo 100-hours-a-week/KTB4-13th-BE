@@ -46,6 +46,24 @@ class OrderTest {
     }
 
     @Test
+    void 대표_상품은_취소_여부와_무관하게_첫_주문상품이다() {
+        final Order order = Order.create(42L, "order_representative", null);
+        addOrderItem(order, 101L, 1, BigDecimal.TEN);
+        addOrderItem(order, 102L, 2, BigDecimal.TEN);
+        order.items().getFirst().cancel(1L);
+
+        assertThat(order.representativeItem().itemName()).isEqualTo("상품 101");
+    }
+
+    @Test
+    void 주문상품이_없는_주문의_대표_상품은_정합성_오류다() {
+        final Order order = Order.create(42L, "order_without_items", null);
+
+        assertThatThrownBy(order::representativeItem).isInstanceOf(CoreException.class)
+            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.ORDER_DATA_INCONSISTENT);
+    }
+
+    @Test
     void 주문상품_수량이_범위를_벗어나면_주문에_추가하지_않는다() {
         final Order order = Order.create(42L, "order_test", OrderAddress.from("06236", "서울 주소", null));
 

@@ -27,7 +27,7 @@ public interface ChatRepositoryPort {
 
     List<ChatMessage> messagesAfter(Long sessionId, long afterSequence, int limit);
 
-
+    Optional<ChatMessage> latestCardResponse(Long sessionId);
 
     Optional<ChatMessage> responseFor(Long requestId);
 }

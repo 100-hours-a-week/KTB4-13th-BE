@@ -1,14 +1,18 @@
 package com.book.core.order.api.response;
 
+import com.book.core.order.domain.OrderItemStatus;
 import java.math.BigDecimal;
 
 // @formatter:off
 public record OrderItemResponse(
-        Long itemId,
+        Long orderItemId,
+        Long productId,
         String itemName,
         String thumbnailUrl,
         String author,
-        Integer quantity,
         BigDecimal unitPrice,
-        BigDecimal totalPrice) {}
+        BigDecimal totalPrice,
+        Integer quantity,
+        long canceledQuantity,
+        OrderItemStatus status) {}
 // @formatter:on

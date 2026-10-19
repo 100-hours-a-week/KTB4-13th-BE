@@ -49,11 +49,10 @@ class OnboardingServiceTest {
     private final GetOnboardingBookCandidatesUseCase getBookCandidatesUseCase = mock(GetOnboardingBookCandidatesUseCase.class);
     private final UpdateOnboardingPreferencesUseCase updateOnboardingPreferencesUseCase = mock(UpdateOnboardingPreferencesUseCase.class);
     private final AddLibraryBooksUseCase addLibraryBooksUseCase = mock(AddLibraryBooksUseCase.class);
-    private final OnboardingService onboardingService =
-        new OnboardingService(mock(GetOnboardingQuestionUseCase.class), mock(GetOnboardingProgressUseCase.class),
-            mock(SaveOnboardingAnswersUseCase.class), saveOnboardingBooksUseCase, getBookCandidatesUseCase,
-            mock(RecordPersonalizationAgreementUseCase.class), personalizationProfileUseCase, updateOnboardingPreferencesUseCase,
-            addLibraryBooksUseCase);
+    private final OnboardingService onboardingService = new OnboardingService(mock(GetOnboardingQuestionUseCase.class),
+        mock(GetOnboardingProgressUseCase.class), mock(SaveOnboardingAnswersUseCase.class), saveOnboardingBooksUseCase,
+        getBookCandidatesUseCase, mock(RecordPersonalizationAgreementUseCase.class), personalizationProfileUseCase,
+        updateOnboardingPreferencesUseCase, addLibraryBooksUseCase);
 
     @BeforeEach
     void completeOnboardingForTheFirstTime() {

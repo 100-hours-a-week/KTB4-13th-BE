@@ -7,4 +7,6 @@ public interface UserRepositoryPort {
     User save(final User user);
 
     Optional<User> findById(final Long id);
+
+    Optional<User> findByIdForUpdate(final Long id);
 }

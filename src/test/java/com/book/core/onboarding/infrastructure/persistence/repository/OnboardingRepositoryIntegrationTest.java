@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ConnectionCallback;
@@ -29,19 +28,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
 @Tag("integration")
 class OnboardingRepositoryIntegrationTest {
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
-
     @Autowired
     OnboardingQuestionRepositoryPort questionRepository;
 
@@ -284,8 +275,9 @@ class OnboardingRepositoryIntegrationTest {
         assertThat(seedCandidateCount()).isZero();
 
         jdbc.update("""
-            UPDATE books JOIN onboarding_candidate_seed seed ON books.id = seed.book_id
-            SET books.title = seed.title
+            UPDATE books
+            SET title = (SELECT seed.title FROM onboarding_candidate_seed seed WHERE seed.book_id = books.id)
+            WHERE id IN (SELECT book_id FROM onboarding_candidate_seed)
             """);
         importCandidateSeed();
         assertThat(seedCandidateCount()).isEqualTo(490);

@@ -42,11 +42,16 @@ Kakao 로그인(providerType, authorizationCode, codeVerifier, nonce):
 1. Kakao Token API에 authorizationCode와 codeVerifier를 전달해 ID Token을 받는다.
 2. ID Token의 서명, issuer, audience, 만료, sub와 nonce를 검증한다.
 3. sub를 providerUserId로, 선택적 email을 providerEmail로 변환한다.
-4. 회원 도메인에서 providerType과 providerUserId로 기존 회원을 조회하거나 신규 회원을 생성한다.
-5. 내부 userId를 subject로 하는 Access Token과 Refresh Token을 발급한다.
-6. 기존 활성 Refresh Session이 있으면 폐기하고 새 Refresh Session을 저장한다.
-7. Access Token은 응답 body로, Refresh Token은 HttpOnly cookie로 반환한다.
+4. 회원 도메인에서 providerType과 providerUserId로 기존 회원을 조회한다.
+5. 기존 회원이 없으면 회원 도메인에서 신규 회원을 등록하고, 장바구니와 포인트 잔액을 차례로 생성한다.
+6. 내부 userId를 subject로 하는 Access Token과 Refresh Token을 발급한다.
+7. 기존 활성 Refresh Session이 있으면 폐기하고 새 Refresh Session을 저장한다.
+8. Access Token은 응답 body로, Refresh Token은 HttpOnly cookie로 반환한다.
 ```
+
+- `AuthService`가 위 순서를 조율합니다. UseCase는 다른 UseCase를 호출하지 않습니다.
+- 장바구니와 포인트 잔액 생성은 각 UseCase의 독립 트랜잭션에서 실행합니다. 하나가 실패해도 나머지를 시도하며, 실패는 작업별로 error 로그를 남기고 로그인을 계속 진행합니다. 실패한 초기화는 현재 자동으로 복구하지 않습니다.
+- OAuth 인증, 회원 등록, 토큰 발급과 Refresh Session 등록의 실패는 격리하지 않고 오류로 응답합니다. 회원 등록이 실패하면 초기화와 토큰 발급을 실행하지 않습니다.
 
 ## 4. 서비스 토큰 정책
 

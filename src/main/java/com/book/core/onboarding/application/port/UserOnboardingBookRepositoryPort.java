@@ -8,5 +8,7 @@ public interface UserOnboardingBookRepositoryPort {
 
     void deleteByUserId(final Long userId);
 
+    void deleteByUserIdAndBookIdIn(final Long userId, final List<Long> bookIds);
+
     List<UserOnboardingBook> saveAll(final List<UserOnboardingBook> books);
 }

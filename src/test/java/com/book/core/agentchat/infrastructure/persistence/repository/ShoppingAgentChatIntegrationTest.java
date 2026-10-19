@@ -63,9 +63,10 @@ import org.testcontainers.mysql.MySQLContainer;
 import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "mysql-test"})
 @Testcontainers
 @Tag("integration")
+@Tag("mysql-migration")
 class ShoppingAgentChatIntegrationTest {
     private static final AtomicLong IDS = new AtomicLong(2800000);
     private static final Instant NOW = Instant.parse("2026-10-19T00:00:00Z");

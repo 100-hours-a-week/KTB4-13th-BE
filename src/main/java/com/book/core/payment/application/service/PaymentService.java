@@ -13,6 +13,7 @@ import com.book.core.payment.application.command.FailPaymentCommand;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.payment.application.usecase.ApprovePgPaymentUseCase;
+import com.book.core.payment.application.result.PaymentCompletionResult;
 import com.book.core.payment.application.usecase.PreparePgOperationUseCase;
 import com.book.core.payment.application.usecase.RejectPgOperationUseCase;
 import com.book.core.payment.application.usecase.CreatePaymentUseCase;
@@ -60,17 +61,19 @@ public class PaymentService {
 
     public Long success(final ApprovePaymentCommand command) {
         preparePgOperationUseCase.execute(command.operation());
-        final Long paymentId;
+        final PaymentCompletionResult result;
         try {
-            paymentId = approvePgPaymentUseCase.execute(command);
+            result = approvePgPaymentUseCase.execute(command);
         } catch (final CoreException exception) {
             if (exception.errorCode() == ErrorCode.PG_REJECTED) {
                 rejectPgOperationUseCase.execute(command.operation());
             }
             throw exception;
         }
-        postProcessPaymentUseCase.execute(paymentId, command.orderKey());
-        return paymentId;
+        if (result.completedNow()) {
+            postProcessPaymentUseCase.execute(result.paymentId(), command.orderKey());
+        }
+        return result.paymentId();
     }
 
     public void fail(final FailPaymentCommand command) {

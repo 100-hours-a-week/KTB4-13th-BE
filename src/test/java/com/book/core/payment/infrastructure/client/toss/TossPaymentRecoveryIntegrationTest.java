@@ -85,6 +85,8 @@ class TossPaymentRecoveryIntegrationTest {
     }
 
     @Autowired
+    private com.book.core.order.application.usecase.CancelOrderUseCase cancelOrder;
+    @Autowired
     private PaymentService payments;
     @Autowired
     private CancelService cancels;
@@ -114,6 +116,9 @@ class TossPaymentRecoveryIntegrationTest {
         assertThatThrownBy(() -> payments.success(command)).isInstanceOf(CoreException.class);
         assertThat(fixture.pg().approvals).isEqualTo(1);
         assertThat(pending(fixture)).isEqualTo(1L);
+        assertThatThrownBy(() -> cancelOrder
+            .execute(new com.book.core.order.application.command.CancelOrderCommand(fixture.order().userId(), fixture.order().key())))
+            .isInstanceOfSatisfying(CoreException.class, error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
         assertThat(orders.findActiveOrderByKey(fixture.order().key()).orElseThrow().status()).isEqualTo(OrderStatus.CREATED);
         final Long result = payments.success(command);
         assertThat(payments.success(command)).isEqualTo(result);
@@ -208,6 +213,22 @@ class TossPaymentRecoveryIntegrationTest {
         assertThatThrownBy(() -> cancels.partialCancel(command)).isInstanceOfSatisfying(CoreException.class,
             error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REVIEW_REQUIRED));
         assertThat(fixture.pg().refunds).isEqualTo(1);
+    }
+
+    @Test
+    void 만료된_PG승인은_거절로_기록하고_새_결제키의_승인을_허용한다() {
+        final Fixture fixture = fixture(false, 1);
+        fixture.pg().terminalState = "EXPIRED";
+        final var failed = new ApprovePaymentCommand(fixture.order().key(), fixture.key(), fixture.pg().total);
+        assertThatThrownBy(() -> payments.success(failed)).isInstanceOfSatisfying(CoreException.class,
+            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
+        assertThat(pending(fixture)).isZero();
+        final String newKey = "pg-" + UUID.randomUUID();
+        final GatewayPayment replacement = new GatewayPayment(fixture.order().key(), newKey, fixture.pg().total, false);
+        gateway.put(newKey, replacement);
+        payments.success(new ApprovePaymentCommand(fixture.order().key(), newKey, fixture.pg().total));
+        assertThat(replacement.approvals).isEqualTo(1);
+        assertThat(fixture.pg().approvals).isZero();
     }
 
     private long pending(final Fixture fixture) {
@@ -352,6 +373,7 @@ class TossPaymentRecoveryIntegrationTest {
         private final BigDecimal total;
         private BigDecimal balance;
         private boolean paid;
+        private String terminalState;
         private int approvals;
         private int refunds;
         private volatile boolean dropResponse;
@@ -376,6 +398,9 @@ class TossPaymentRecoveryIntegrationTest {
             }
             if (balance.signum() == 0) {
                 state = "CANCELED";
+            }
+            if (terminalState != null) {
+                state = terminalState;
             }
             return "{\"paymentKey\":\"" + key + "\",\"orderId\":\"" + orderKey + "\",\"totalAmount\":" + total + ",\"balanceAmount\":"
                 + balance + ",\"status\":\"" + state + "\",\"method\":\"카드\",\"card\":{\"approveNo\":\"12345678\"},\"cancels\":["

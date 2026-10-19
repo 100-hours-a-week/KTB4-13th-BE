@@ -44,7 +44,7 @@ class ApprovePgPaymentUseCaseTest {
         prepare(command);
         when(client.find("key")).thenReturn(result("IN_PROGRESS", "order"));
         when(client.approve("key", "order", BigDecimal.TEN, operation.pgIdempotencyKey())).thenReturn(result("DONE", "order"));
-        assertThat(useCase.execute(command)).isEqualTo(3L);
+        assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
         assertThat(operation.completed()).isTrue();
         verify(complete).execute("order",
             new com.book.core.payment.application.result.ApprovedPaymentResult("key", PaymentMethod.CARD, "1234"));
@@ -54,7 +54,7 @@ class ApprovePgPaymentUseCaseTest {
     void PG성공후_DB실패_재요청은_조회결과로_내부_완료만_재개한다() {
         prepare(command);
         when(client.find("key")).thenReturn(result("DONE", "order"));
-        assertThat(useCase.execute(command)).isEqualTo(3L);
+        assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
         verify(client, never()).approve(any(), any(), any(), any());
     }
 
@@ -62,7 +62,7 @@ class ApprovePgPaymentUseCaseTest {
     void 완료된_요청은_다시_승인하거나_포인트를_반영하지_않는다() {
         prepare(command);
         operation.complete(3L);
-        assertThat(useCase.execute(command)).isEqualTo(3L);
+        assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
         verifyNoInteractions(client, complete, validate);
     }
 
@@ -79,7 +79,7 @@ class ApprovePgPaymentUseCaseTest {
     void 영원_결제는_PG를_호출하지_않는다() {
         final var zero = new ApprovePaymentCommand("order", "", BigDecimal.ZERO);
         prepare(zero);
-        assertThat(useCase.execute(zero)).isEqualTo(3L);
+        assertThat(useCase.execute(zero).paymentId()).isEqualTo(3L);
         verifyNoInteractions(client);
     }
 

@@ -53,6 +53,23 @@ class TossPaymentWireTest {
     }
 
     @Test
+    void 처리중_충돌과_알수없는_오류는_확정거절로_바꾸지_않는다() {
+        final var decoder = new TossPaymentFeignConfiguration().tossErrorDecoder();
+        final var request =
+            feign.Request.create(feign.Request.HttpMethod.POST, "http://localhost", java.util.Map.of(), null, StandardCharsets.UTF_8, null);
+        for (final int status : new int[] {400, 409, 429, 500}) {
+            final var response = feign.Response.builder().status(status).reason("test").request(request).headers(java.util.Map.of())
+                .body("{\"code\":\"UNKNOWN\",\"message\":\"sensitive\"}", StandardCharsets.UTF_8).build();
+            final var error = (CoreException) decoder.decode("method", response);
+            assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE);
+            assertThat(error.getMessage()).doesNotContain("sensitive");
+        }
+        final var rejected = feign.Response.builder().status(400).reason("test").request(request).headers(java.util.Map.of())
+            .body("{\"code\":\"REJECT_CARD_PAYMENT\"}", StandardCharsets.UTF_8).build();
+        assertThat(((CoreException) decoder.decode("method", rejected)).errorCode()).isEqualTo(ErrorCode.PG_REJECTED);
+    }
+
+    @Test
     void 시크릿키가_없으면_인증_요청을_전송하지_않는다() {
         final var interceptor = new TossPaymentFeignConfiguration().tossAuthentication("");
         assertThatThrownBy(() -> interceptor.apply(new feign.RequestTemplate())).isInstanceOfSatisfying(CoreException.class,

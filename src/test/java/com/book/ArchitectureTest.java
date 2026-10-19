@@ -24,7 +24,9 @@ import com.book.core.point.domain.PointBalance;
 import com.book.core.point.domain.PointHistory;
 import com.book.core.product.domain.Product;
 import com.book.core.product.domain.ProductCategory;
+import com.book.core.review.application.service.ReviewService;
 import com.book.core.review.domain.Review;
+import com.book.core.review.domain.ReviewHistory;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -67,12 +69,12 @@ class ArchitectureTest {
     }
 
     @Test
-    void Service는_회원가입_조율을_제외하고_트랜잭션을_소유하지_않는다() {
+    void Service는_회원가입과_리뷰_쓰기_조율을_제외하고_트랜잭션을_소유하지_않는다() {
         noClasses().that().resideInAPackage("com.book.core..application.service..").should().beAnnotatedWith(Transactional.class)
             .check(CLASSES);
         noMethods().that().areDeclaredInClassesThat().resideInAPackage("com.book.core..application.service..").and()
-            .areDeclaredInClassesThat().doNotHaveFullyQualifiedName(SignUpService.class.getName()).should()
-            .beAnnotatedWith(Transactional.class).check(CLASSES);
+            .areDeclaredInClassesThat().doNotHaveFullyQualifiedName(SignUpService.class.getName()).and().areDeclaredInClassesThat()
+            .doNotHaveFullyQualifiedName(ReviewService.class.getName()).should().beAnnotatedWith(Transactional.class).check(CLASSES);
     }
 
     @Test
@@ -103,6 +105,7 @@ class ArchitectureTest {
         assertThat(OrderItem.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(OrderAddress.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Review.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(ReviewHistory.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(User.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(UserProvider.class.isAnnotationPresent(Entity.class)).isTrue();
     }

@@ -56,7 +56,7 @@ class ReviewRepositoryIntegrationTest {
     ReviewOrderItemRepositoryPort reviewOrders;
 
     @Test
-    void review_mapping_and_purchase_key_uniqueness_survive_soft_delete() {
+    void 소프트_삭제한_리뷰도_같은_구매_키로_다시_작성할_수_없다() {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns "
             + "WHERE table_schema = DATABASE() AND table_name = 'reviews' AND column_name = 'order_item_id'", Integer.class)).isZero();
         insertBook(9301L);
@@ -66,7 +66,7 @@ class ReviewRepositoryIntegrationTest {
         final Order savedOrder = orderRepository.save(order);
         final Long orderItemId = jdbc.queryForObject("SELECT id FROM order_item WHERE order_id = ?", Long.class, savedOrder.id());
         final Review review = reviewRepository.save(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + orderItemId),
-            new ReviewTarget(ReviewTargetType.PRODUCT, 9401L), new ReviewContent(new BigDecimal("4.5"), "리뷰 본문"), true));
+            new ReviewTarget(ReviewTargetType.PRODUCT, 9401L), new ReviewContent(new BigDecimal("4.5"), "리뷰 본문", true)));
 
         assertThat(reviewRepository.findActiveById(review.id())).isPresent();
         assertThat(jdbc.queryForMap(
@@ -76,7 +76,7 @@ class ReviewRepositoryIntegrationTest {
             .containsEntry("active_flag", 1);
         assertThat(reviewRepository.existsByUserIdAndReviewKey(42L, "ORDER_ITEM_" + orderItemId)).isTrue();
         assertThatThrownBy(() -> reviewRepository.save(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + orderItemId),
-            new ReviewTarget(ReviewTargetType.PRODUCT, 9401L), new ReviewContent(new BigDecimal("5.0"), "중복"), false)))
+            new ReviewTarget(ReviewTargetType.PRODUCT, 9401L), new ReviewContent(new BigDecimal("5.0"), "중복", false))))
             .isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> jdbc.update(
             "INSERT INTO reviews (user_id, review_key, target_type, target_id, rate, content, is_spoiler) "
@@ -96,12 +96,12 @@ class ReviewRepositoryIntegrationTest {
         assertThat(reviewRepository.findUsedReviewKeys(42L, List.of("ORDER_ITEM_" + orderItemId)))
             .containsExactly("ORDER_ITEM_" + orderItemId);
         assertThatThrownBy(() -> reviewRepository.save(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + orderItemId),
-            new ReviewTarget(ReviewTargetType.PRODUCT, 9401L), new ReviewContent(new BigDecimal("5.0"), "삭제 후 재작성"), false)))
+            new ReviewTarget(ReviewTargetType.PRODUCT, 9401L), new ReviewContent(new BigDecimal("5.0"), "삭제 후 재작성", false))))
             .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
-    void querydsl_filters_target_and_deleted_reviews_and_uses_exact_offset() {
+    void 리뷰_조회는_대상과_삭제_여부를_필터링하고_요청한_offset부터_반환한다() {
         insertBook(9501L);
         insertBook(9502L);
         insertProduct(9601L, 9501L);
@@ -132,7 +132,7 @@ class ReviewRepositoryIntegrationTest {
     }
 
     @Test
-    void recent_purchase_query_uses_paid_at_and_includes_the_7_day_boundary() {
+    void 결제_후_7일_이내에_구매한_상품을_리뷰_대상으로_조회한다() {
         insertBook(9701L);
         insertBook(9702L);
         insertProduct(9801L, 9701L);
@@ -163,7 +163,7 @@ class ReviewRepositoryIntegrationTest {
     private Review saveReview(final Long productId, final String content) {
         final Long itemId = saveOrderItem(productId, "review_query_" + content);
         return reviewRepository.save(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + itemId),
-            new ReviewTarget(ReviewTargetType.PRODUCT, productId), new ReviewContent(new BigDecimal("4.5"), content), true));
+            new ReviewTarget(ReviewTargetType.PRODUCT, productId), new ReviewContent(new BigDecimal("4.5"), content, true)));
     }
 
     private Long saveOrderItem(final Long productId, final String orderNumber) {

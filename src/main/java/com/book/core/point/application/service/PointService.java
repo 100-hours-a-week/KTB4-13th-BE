@@ -22,10 +22,10 @@ public class PointService {
     }
 
     public void earn(final EarnPointCommand command) {
-        earnPointUseCase.execute(command);
+        earnPointUseCase.execute(command.userId(), command.type(), command.referenceId(), command.amount());
     }
 
     public void deduct(final DeductPointCommand command) {
-        deductPointUseCase.execute(command);
+        deductPointUseCase.execute(command.userId(), command.type(), command.referenceId(), command.amount());
     }
 }

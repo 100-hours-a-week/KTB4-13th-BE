@@ -9,6 +9,7 @@ import com.book.core.agentchat.application.result.AgentContextCard;
 import com.book.core.agentchat.application.result.AgentDecision;
 import com.book.core.agentchat.application.result.AgentObservedProduct;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
+import com.book.core.recommendation.application.command.RecommendationSpec;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,6 +66,10 @@ public class AgentChatClientImpl implements AgentChatClient {
         final AgentAiRequest request =
             new AgentAiRequest(command.userId(), command.consented(), command.spec(), command.message(), command.recentTurns(),
                 command.excludeBookIds(), "chat_" + requestId, "cv_" + sessionId, Map.of("logged_in", true), cards, null, cart, offers);
+        return attempt(request, false);
+    }
+
+    private AgentDecision attempt(final AgentAiRequest request, final boolean retried) {
         try {
             final AgentAiEnvelope response =
                 client.post().uri("/recommendations/chat").body(request).retrieve().body(AgentAiEnvelope.class);
@@ -74,6 +79,15 @@ public class AgentChatClientImpl implements AgentChatClient {
             return mapper.map(response.data());
         } catch (final HttpStatusCodeException exception) {
             final int status = exception.getStatusCode().value();
+            if (status == 422 && specViolation(exception)) {
+                if (retried) {
+                    throw new CoreException(ErrorCode.AI_RECOMMENDATION_SPEC_VIOLATION);
+                }
+                final AgentAiRequest reset = new AgentAiRequest(request.userId(), request.consented(), RecommendationSpec.initial(),
+                    request.message(), request.recentTurns(), request.excludeBookIds(), request.idempotencyKey(), request.conversationId(),
+                    request.userContext(), request.contextCards(), request.focusedIsbn(), request.cart(), request.offers());
+                return attempt(reset, true);
+            }
             if (status == 401) {
                 throw new CoreException(ErrorCode.AI_SERVICE_UNAUTHORIZED);
             }
@@ -100,4 +114,14 @@ public class AgentChatClientImpl implements AgentChatClient {
             throw new CoreException(ErrorCode.AI_SERVICE_FAILURE);
         }
     }
+
+    private boolean specViolation(final HttpStatusCodeException failure) {
+        try {
+            final AgentAiEnvelope error = failure.getResponseBodyAs(AgentAiEnvelope.class);
+            return error != null && "spec_schema_violation".equals(error.message());
+        } catch (final RestClientException exception) {
+            return false;
+        }
+    }
+
 }

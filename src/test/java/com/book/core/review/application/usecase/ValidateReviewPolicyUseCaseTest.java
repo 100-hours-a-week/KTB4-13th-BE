@@ -39,7 +39,7 @@ class ValidateReviewPolicyUseCaseTest {
         when(orders.findRecentOrderItemsForProduct(42L, 10L, OrderStatus.PAID, now.minusDays(7))).thenReturn(List.of(701L, 702L));
         when(reviews.findByUserIdAndReviewKeyIn(42L, List.of("ORDER_ITEM_701", "ORDER_ITEM_702")))
             .thenReturn(List.of(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 10L),
-                new ReviewContent(new BigDecimal("4.5"), "기존"), false)));
+                new ReviewContent(new BigDecimal("4.5"), "기존", false))));
 
         final var result = useCase.validateNew(42L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L));
 
@@ -62,7 +62,7 @@ class ValidateReviewPolicyUseCaseTest {
         when(orders.findRecentOrderItemsForProduct(42L, 10L, OrderStatus.PAID, now.minusDays(7))).thenReturn(List.of(701L));
         when(reviews.findByUserIdAndReviewKeyIn(42L, List.of("ORDER_ITEM_701")))
             .thenReturn(List.of(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 10L),
-                new ReviewContent(new BigDecimal("4.5"), "기존"), false)));
+                new ReviewContent(new BigDecimal("4.5"), "기존", false))));
 
         assertThatThrownBy(() -> useCase.validateNew(42L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L))).isInstanceOfSatisfying(
             CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_HAS_NOT_ORDER));

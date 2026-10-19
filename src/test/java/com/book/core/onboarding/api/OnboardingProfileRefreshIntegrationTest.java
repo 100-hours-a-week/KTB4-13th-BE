@@ -44,7 +44,7 @@ import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "mysql"})
 @Testcontainers
 @Tag("integration")
 class OnboardingProfileRefreshIntegrationTest {

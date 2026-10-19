@@ -35,7 +35,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "mysql"})
 @Testcontainers
 @Tag("integration")
 class OrderRepositoryIntegrationTest {

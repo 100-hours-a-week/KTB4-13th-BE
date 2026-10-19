@@ -35,7 +35,7 @@ import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "mysql"})
 @Testcontainers
 @Tag("integration")
 class UserWithdrawalIntegrationTest {

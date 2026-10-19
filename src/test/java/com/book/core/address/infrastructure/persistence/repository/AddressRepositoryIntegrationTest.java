@@ -20,7 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "mysql"})
 @Import(AddressCategoryMySqlTestConfiguration.class)
 @Tag("integration")
 class AddressRepositoryIntegrationTest {

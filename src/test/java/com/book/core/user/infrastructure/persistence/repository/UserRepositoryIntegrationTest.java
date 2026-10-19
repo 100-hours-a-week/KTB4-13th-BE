@@ -13,27 +13,19 @@ import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
 @Tag("integration")
 class UserRepositoryIntegrationTest {
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
-
     @Autowired
     UserRepositoryPort userRepository;
 
@@ -70,6 +62,25 @@ class UserRepositoryIntegrationTest {
     }
 
     @Test
+    void 연결_해제_시각은_미해제_활성_provider에만_처음_한_번_기록한다() {
+        final User user = userRepository.save(User.create("해제회원"));
+        final UserProvider active =
+            userProviderRepository.save(UserProvider.create(user.id(), ProviderType.KAKAO, "unlink-provider", null));
+        final UserProvider deleted =
+            userProviderRepository.save(UserProvider.create(user.id(), ProviderType.KAKAO, "deleted-provider", null));
+        jdbc.update("UPDATE user_providers SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", deleted.id());
+        final LocalDateTime firstUnlinkedAt = LocalDateTime.of(2030, 1, 1, 4, 0);
+
+        userProviderRepository.markUnlinked(active.id(), firstUnlinkedAt);
+        userProviderRepository.markUnlinked(active.id(), firstUnlinkedAt.plusDays(1));
+        userProviderRepository.markUnlinked(deleted.id(), firstUnlinkedAt);
+
+        assertThat(jdbc.queryForObject("SELECT unlinked_at FROM user_providers WHERE id = ?", LocalDateTime.class, active.id()))
+            .isEqualTo(firstUnlinkedAt);
+        assertThat(jdbc.queryForObject("SELECT unlinked_at FROM user_providers WHERE id = ?", LocalDateTime.class, deleted.id())).isNull();
+    }
+
+    @Test
     void 활성_회원의_닉네임은_중복될_수_있다() {
         final User first = userRepository.save(User.create("중복닉네임"));
         final User second = userRepository.save(User.create("중복닉네임"));
@@ -87,7 +98,7 @@ class UserRepositoryIntegrationTest {
 
         assertThatThrownBy(() -> userProviderRepository.save(UserProvider.create(user.id(), ProviderType.KAKAO, "reusable-provider", null)))
             .isInstanceOfSatisfying(BusinessException.class,
-                (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
+                (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ALREADY_REGISTERED));
 
         jdbc.update("UPDATE user_providers SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", first.id());
         assertThat(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "reusable-provider")).isEmpty();
@@ -116,7 +127,7 @@ class UserRepositoryIntegrationTest {
         final Integer usersBefore = jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class);
 
         assertThatThrownBy(() -> userRegistrationUseCase.execute(command)).isInstanceOfSatisfying(BusinessException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ALREADY_REGISTERED));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(usersBefore);
     }
 }

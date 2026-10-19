@@ -59,9 +59,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "mysql-test"})
 @Testcontainers
 @Tag("integration")
+@Tag("mysql-migration")
 class CartChangeIntegrationTest {
     private static final Instant NOW = Instant.parse("2026-10-18T00:00:00Z");
     private static final BigDecimal UNIT_PRICE = new BigDecimal("18000.00");

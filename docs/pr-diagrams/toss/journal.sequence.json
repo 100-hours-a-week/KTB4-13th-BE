@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PG 요청 기록과 복구",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1280,
+      830
+    ]
+  },
+  "participants": [
+    {
+      "id": "api",
+      "type": "frontend",
+      "label": "API 요청"
+    },
+    {
+      "id": "app",
+      "type": "backend",
+      "label": "Service / UseCase"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL"
+    },
+    {
+      "id": "pg",
+      "type": "external",
+      "label": "Toss Payments"
+    }
+  ],
+  "messages": [
+    {
+      "id": "m0",
+      "from": "api",
+      "to": "app",
+      "label": "원본 입력 + 요청 키",
+      "y": 190
+    },
+    {
+      "id": "m1",
+      "from": "app",
+      "to": "db",
+      "label": "주문 잠금 · 입력과 소유권 검증",
+      "y": 264
+    },
+    {
+      "id": "m2",
+      "from": "app",
+      "to": "db",
+      "label": "요청 기록 먼저 커밋",
+      "y": 338
+    },
+    {
+      "id": "m3",
+      "from": "app",
+      "to": "pg",
+      "label": "같은 PG 멱등키로 실행",
+      "y": 412
+    },
+    {
+      "id": "m4",
+      "from": "pg",
+      "to": "app",
+      "label": "확정 결과 / 응답 유실",
+      "y": 486
+    },
+    {
+      "id": "m5",
+      "from": "app",
+      "to": "db",
+      "label": "내부 반영과 완료 기록 함께 커밋",
+      "y": 560
+    },
+    {
+      "id": "m6",
+      "from": "api",
+      "to": "app",
+      "label": "실패 시 동일 요청으로 재확인",
+      "y": 634
+    }
+  ]
+}

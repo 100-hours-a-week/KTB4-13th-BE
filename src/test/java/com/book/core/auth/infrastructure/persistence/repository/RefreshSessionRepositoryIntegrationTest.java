@@ -2,10 +2,13 @@ package com.book.core.auth.infrastructure.persistence.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doReturn;
 
+import com.book.core.auth.application.port.IssuedTokens;
 import com.book.core.auth.application.port.RefreshSessionRepository;
 import com.book.core.auth.application.port.RefreshTokenHasher;
-import com.book.core.auth.application.usecase.RefreshSessionRegistrationUseCase;
+import com.book.core.auth.application.port.TokenIssuer;
+import com.book.core.auth.application.usecase.CreateLoginSessionUseCase;
 import com.book.core.auth.domain.RefreshSession;
 import com.book.core.user.application.port.UserRepositoryPort;
 import com.book.core.user.domain.User;
@@ -16,30 +19,24 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataAccessException;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
 @Tag("integration")
 class RefreshSessionRepositoryIntegrationTest {
     private static final Instant EXPIRES_AT = Instant.parse("2030-01-09T03:04:05Z");
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
-
     @Autowired
     RefreshSessionRepository refreshSessionRepository;
 
     @Autowired
-    RefreshSessionRegistrationUseCase refreshSessionRegistrationUseCase;
+    CreateLoginSessionUseCase createLoginSessionUseCase;
+
+    @MockitoSpyBean
+    TokenIssuer tokenIssuer;
 
     @Autowired
     RefreshTokenHasher refreshTokenHasher;
@@ -114,9 +111,11 @@ class RefreshSessionRepositoryIntegrationTest {
     @Test
     void session_등록은_원문이_아닌_hash를_저장하고_기존_session을_revoke한다() {
         final User user = userRepository.save(User.create("로그인세션회원"));
-        refreshSessionRegistrationUseCase.execute(user.id(), "old-refresh-token", EXPIRES_AT);
+        doReturn(new IssuedTokens("old-access-token", "old-refresh-token", EXPIRES_AT),
+            new IssuedTokens("new-access-token", "new-refresh-token", EXPIRES_AT.plusSeconds(60))).when(tokenIssuer).issue(user.id());
+        createLoginSessionUseCase.execute(user.id());
 
-        refreshSessionRegistrationUseCase.execute(user.id(), "new-refresh-token", EXPIRES_AT.plusSeconds(60));
+        createLoginSessionUseCase.execute(user.id());
 
         final String newTokenHash = refreshTokenHasher.hash("new-refresh-token");
         final RefreshSession active = refreshSessionRepository.findActiveByUserId(user.id()).orElseThrow();
@@ -131,11 +130,12 @@ class RefreshSessionRepositoryIntegrationTest {
     @Test
     void 새_session_저장이_실패하면_기존_session_revoke도_rollback된다() {
         final User user = userRepository.save(User.create("세션롤백회원"));
-        refreshSessionRegistrationUseCase.execute(user.id(), "preserved-refresh-token", EXPIRES_AT);
+        doReturn(new IssuedTokens("preserved-access-token", "preserved-refresh-token", EXPIRES_AT),
+            new IssuedTokens("failed-access-token", "failed-refresh-token", null)).when(tokenIssuer).issue(user.id());
+        createLoginSessionUseCase.execute(user.id());
         final String oldTokenHash = refreshTokenHasher.hash("preserved-refresh-token");
 
-        assertThatThrownBy(() -> refreshSessionRegistrationUseCase.execute(user.id(), "failed-refresh-token", null))
-            .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> createLoginSessionUseCase.execute(user.id())).isInstanceOf(DataAccessException.class);
 
         final RefreshSession active = refreshSessionRepository.findActiveByUserId(user.id()).orElseThrow();
         assertThat(active.tokenHash()).isEqualTo(oldTokenHash);

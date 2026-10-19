@@ -16,7 +16,7 @@ import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.application.usecase.CreateOrderUseCase;
-import com.book.core.order.application.usecase.GetOrderUseCase;
+import com.book.core.order.application.usecase.GetOrderDetailUseCase;
 import com.book.core.order.application.usecase.GetOrdersUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
@@ -39,14 +39,14 @@ public class OrderService {
     private final CreateOrderUseCase createOrderUseCase;
     private final CancelOrderUseCase cancelOrderUseCase;
     private final GetOrdersUseCase getOrdersUseCase;
-    private final GetOrderUseCase getOrderUseCase;
+    private final GetOrderDetailUseCase getOrderDetailUseCase;
 
     public GetOrdersResult getOrders(final GetOrdersCommand command) {
         return getOrdersUseCase.execute(command);
     }
 
     public GetOrderResult getOrder(final GetOrderCommand command) {
-        return getOrderUseCase.execute(command);
+        return getOrderDetailUseCase.execute(command);
     }
 
     public void cancelOrder(final CancelOrderCommand command) {
@@ -87,4 +87,5 @@ public class OrderService {
         }
         return createOrderUseCase.execute(order);
     }
+
 }

@@ -18,6 +18,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+
+
 
 class PostProcessPaymentUseCaseTest {
     private final PaymentRepositoryPort payments = mock(PaymentRepositoryPort.class);
@@ -37,6 +40,22 @@ class PostProcessPaymentUseCaseTest {
         when(orders.execute("order", OrderStatus.PAID)).thenReturn(order);
         post.execute(3L, "order");
         verify(carts).execute(1L, List.of(10L));
+    }
+
+    @Test
+    void 장바구니_충돌은_한_번만_시도하고_기존_실패_처리로_종료한다() {
+        final Payment payment =
+            new Payment(1L, 2L, BigDecimal.TEN, -1L, BigDecimal.ZERO, BigDecimal.ZERO, 99L, BigDecimal.TEN, PaymentState.READY);
+        payment.success("test-key", PaymentMethod.CARD, "test");
+        final Order order = Order.create(1L, "order", null);
+        order.addItem(10L, "책", "", "저자", BigDecimal.TEN, BigDecimal.TEN, 1);
+        order.paid();
+        when(payments.findById(3L)).thenReturn(Optional.of(payment));
+        when(orders.execute("order", OrderStatus.PAID)).thenReturn(order);
+        org.mockito.Mockito.doThrow(new ObjectOptimisticLockingFailureException("Cart", 1L)).when(carts).execute(1L, List.of(10L));
+        assertThatCode(() -> post.execute(3L, "order")).doesNotThrowAnyException();
+        verify(carts).execute(1L, List.of(10L));
+        org.mockito.Mockito.verifyNoMoreInteractions(carts);
     }
 
     @Test

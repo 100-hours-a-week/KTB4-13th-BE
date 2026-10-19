@@ -4,8 +4,10 @@ import com.book.common.paging.SliceResult;
 import com.book.core.cancel.application.port.CancelRepositoryPort;
 import com.book.core.cancel.domain.Cancel;
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
@@ -25,9 +27,14 @@ class CancelRepositoryAdapter implements CancelRepositoryPort {
     }
 
     @Override
+    public List<Cancel> findActiveByOrderIdLatestFirst(final Long orderId) {
+        return jpaRepository.findByOrderIdAndDeletedAtIsNullOrderByCanceledAtDescIdDesc(orderId);
+    }
+
+    @Override
     public SliceResult<Cancel> findForSettlement(final LocalDateTime from, final LocalDateTime to, final int page, final int size) {
-        final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id"));
-        final var slice = jpaRepository.findAllByCanceledAtBetween(from, to, pageable);
+        final PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id"));
+        final Slice<Cancel> slice = jpaRepository.findAllByCanceledAtBetween(from, to, pageable);
         return new SliceResult<>(slice.getContent(), slice.hasNext());
     }
 }

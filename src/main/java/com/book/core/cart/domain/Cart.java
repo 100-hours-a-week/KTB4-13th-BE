@@ -6,6 +6,7 @@ import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,6 +18,10 @@ import lombok.experimental.Accessors;
 @Getter
 @Accessors(fluent = true)
 public class Cart extends BaseEntity {
+    @Version
+    @Column(nullable = false)
+    private long version;
+
     private static final int MAX_ITEM_COUNT = 30;
 
     @Column(name = "user_id", nullable = false)

@@ -12,9 +12,7 @@ import com.book.core.recommendation.application.usecase.ChatRecommendationUseCas
 import com.book.core.recommendation.application.usecase.GetRecommendationCardUseCase;
 import com.book.core.recommendation.application.usecase.GetRecommendationFeedUseCase;
 import com.book.core.recommendation.application.usecase.SaveRecommendationCardsUseCase;
-import com.book.core.recommendation.domain.RecommendationCard;
 import java.util.List;
-import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -28,11 +26,9 @@ public class RecommendationService {
 
     public ChatRecommendationResult chat(final ChatRecommendationCommand command) {
         final ChatRecommendationAiOutcome outcome = chatRecommendationUseCase.execute(command);
-        final List<RecommendationCard> savedCards = saveRecommendationCardsUseCase.execute(command.userId(), outcome.cards());
+        final List<RecommendationCardResult> savedCards = saveRecommendationCardsUseCase.execute(command.userId(), outcome.cards());
 
-        final List<RecommendationCardResult> cardResults = combine(savedCards, outcome);
-        return new ChatRecommendationResult(outcome.spec(), outcome.reply(), cardResults, outcome.followup(), outcome.buttons(),
-            outcome.degraded());
+        return ChatRecommendationResult.from(outcome, savedCards);
     }
 
     public RecommendationCardDetailResult getCard(final GetRecommendationCardCommand command) {
@@ -43,12 +39,4 @@ public class RecommendationService {
         return getRecommendationFeedUseCase.execute(command);
     }
 
-    private List<RecommendationCardResult> combine(final List<RecommendationCard> savedCards, final ChatRecommendationAiOutcome outcome) {
-        return IntStream.range(0, savedCards.size()).mapToObj(index -> {
-            final RecommendationCard saved = savedCards.get(index);
-            final var resolved = outcome.cards().get(index);
-            return new RecommendationCardResult(saved.id(), resolved.bookId(), resolved.productId(), resolved.title(), resolved.author(),
-                resolved.coverImageUrl(), resolved.price(), resolved.matchScore(), resolved.reasonShort(), resolved.reasonLong());
-        }).toList();
-    }
 }

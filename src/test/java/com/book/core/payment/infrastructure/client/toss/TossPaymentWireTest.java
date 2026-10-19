@@ -7,6 +7,7 @@ import com.book.common.exception.ErrorCode;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -53,20 +54,68 @@ class TossPaymentWireTest {
     }
 
     @Test
+    void 실제_Feign은_문서화된_승인_거절만_확정_거절로_반환한다() throws Exception {
+        final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        final AtomicInteger requests = new AtomicInteger();
+        server.createContext("/v1/payments/confirm", exchange -> {
+            final int request = requests.getAndIncrement();
+            final int status = request == 1 ? 403 : 400;
+            final String code = switch (request) {
+                case 0 -> "INVALID_REJECT_CARD";
+                case 1 -> "REJECT_CARD_COMPANY";
+                default -> "REJECT_CARD_PAYMENT";
+            };
+            final byte[] body = ("{\"code\":\"" + code + "\"}").getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(status, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(FeignAutoConfiguration.class))
+                .withUserConfiguration(TossPaymentConfiguration.class)
+                .withPropertyValues("payment.toss.base-url=http://127.0.0.1:" + server.getAddress().getPort(),
+                    "payment.toss.secret-key=test_sk_wire")
+                .run(context -> {
+                    final var client = new PaymentClientImpl(context.getBean(TossPaymentFeignClient.class));
+                    assertThatThrownBy(() -> client.approve("test-key", "order-001", java.math.BigDecimal.TEN, "request-001"))
+                        .isInstanceOfSatisfying(CoreException.class,
+                            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
+                    assertThatThrownBy(() -> client.approve("test-key", "order-001", java.math.BigDecimal.TEN, "request-002"))
+                        .isInstanceOfSatisfying(CoreException.class,
+                            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
+                    assertThatThrownBy(() -> client.approve("test-key", "order-001", java.math.BigDecimal.TEN, "request-003"))
+                        .isInstanceOfSatisfying(CoreException.class,
+                            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE));
+                });
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void 처리중_충돌과_알수없는_오류는_확정거절로_바꾸지_않는다() {
         final var decoder = new TossPaymentFeignConfiguration().tossErrorDecoder();
         final var request =
             feign.Request.create(feign.Request.HttpMethod.POST, "http://localhost", java.util.Map.of(), null, StandardCharsets.UTF_8, null);
-        for (final int status : new int[] {400, 409, 429, 500}) {
+        final String approveMethod = "TossPaymentFeignClient#approve(String,ApproveRequest)";
+        for (final int status : new int[] {400, 403, 408, 409, 429, 500}) {
             final var response = feign.Response.builder().status(status).reason("test").request(request).headers(java.util.Map.of())
                 .body("{\"code\":\"UNKNOWN\",\"message\":\"sensitive\"}", StandardCharsets.UTF_8).build();
-            final var error = (CoreException) decoder.decode("method", response);
+            final var error = (CoreException) decoder.decode(approveMethod, response);
             assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE);
             assertThat(error.getMessage()).doesNotContain("sensitive");
         }
-        final var rejected = feign.Response.builder().status(400).reason("test").request(request).headers(java.util.Map.of())
+        final var undocumented = feign.Response.builder().status(400).reason("test").request(request).headers(java.util.Map.of())
             .body("{\"code\":\"REJECT_CARD_PAYMENT\"}", StandardCharsets.UTF_8).build();
-        assertThat(((CoreException) decoder.decode("method", rejected)).errorCode()).isEqualTo(ErrorCode.PG_REJECTED);
+        assertThat(((CoreException) decoder.decode(approveMethod, undocumented)).errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE);
+        final var rejected = feign.Response.builder().status(400).reason("test").request(request).headers(java.util.Map.of())
+            .body("{\"code\":\"INVALID_REJECT_CARD\"}", StandardCharsets.UTF_8).build();
+        assertThat(((CoreException) decoder.decode(approveMethod, rejected)).errorCode()).isEqualTo(ErrorCode.PG_REJECTED);
+        final var companyRejected = feign.Response.builder().status(403).reason("test").request(request).headers(java.util.Map.of())
+            .body("{\"code\":\"REJECT_CARD_COMPANY\"}", StandardCharsets.UTF_8).build();
+        assertThat(((CoreException) decoder.decode(approveMethod, companyRejected)).errorCode()).isEqualTo(ErrorCode.PG_REJECTED);
     }
 
     @Test

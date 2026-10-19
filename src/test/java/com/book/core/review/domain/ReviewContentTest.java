@@ -14,7 +14,7 @@ class ReviewContentTest {
     @ParameterizedTest
     @ValueSource(strings = {"0.5", "1.0", "4.500", "5.0"})
     void 반점_단위의_별점을_소수_한_자리로_정규화한다(final String rate) {
-        final var content = new ReviewContent(new BigDecimal(rate), "x".repeat(255));
+        final var content = new ReviewContent(new BigDecimal(rate), "x".repeat(255), null);
 
         assertThat(content.rate()).isEqualByComparingTo(rate);
         assertThat(content.rate().scale()).isEqualTo(1);
@@ -37,7 +37,7 @@ class ReviewContentTest {
     }
 
     private void assertInvalid(final BigDecimal rate, final String content) {
-        assertThatThrownBy(() -> new ReviewContent(rate, content)).isInstanceOfSatisfying(CoreException.class,
+        assertThatThrownBy(() -> new ReviewContent(rate, content, null)).isInstanceOfSatisfying(CoreException.class,
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
     }
 }

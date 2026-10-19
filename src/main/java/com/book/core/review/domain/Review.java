@@ -62,11 +62,6 @@ public class Review extends BaseEntity {
             Boolean.TRUE.equals(content.isSpoiler()));
     }
 
-    public boolean wouldChange(final ReviewContent content) {
-        return this.rate.compareTo(content.rate()) != 0 || !this.content.equals(content.content())
-            || (content.isSpoiler() != null && this.isSpoiler != content.isSpoiler());
-    }
-
     public void updateContent(final ReviewContent content) {
         this.rate = content.rate();
         this.content = content.content();

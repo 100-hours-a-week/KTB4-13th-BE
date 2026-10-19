@@ -90,7 +90,6 @@ class ReviewTest {
             new ReviewContent(new BigDecimal("4.5"), "기존 본문", true));
         review.updateContent(new ReviewContent(new BigDecimal("3.5"), "새 본문", null));
         assertThat(review.isSpoiler()).isTrue();
-        assertThat(review.wouldChange(new ReviewContent(new BigDecimal("3.5"), "새 본문", null))).isFalse();
     }
 
 

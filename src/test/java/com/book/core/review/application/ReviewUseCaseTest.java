@@ -69,7 +69,7 @@ class ReviewUseCaseTest {
         final var review = review();
         when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.of(review));
 
-        assertThat(update.execute(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정", true))).contains(review);
+        assertThat(update.execute(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정", true))).isSameAs(review);
 
         assertThat(review.content()).isEqualTo("수정");
         assertThat(review.rate()).isEqualByComparingTo("4.5");
@@ -110,16 +110,6 @@ class ReviewUseCaseTest {
             CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_NOT_FOUND));
         assertThatThrownBy(() -> delete.execute(42L, 801L)).isInstanceOfSatisfying(CoreException.class,
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.REVIEW_NOT_FOUND));
-    }
-
-    @Test
-    void 같은_본문과_수치상_같은_별점은_변경_결과를_반환하지_않는다() {
-        final var review = review();
-        when(repository.findActiveByIdForUpdate(801L)).thenReturn(Optional.of(review));
-
-        assertThat(update.execute(42L, 801L, new ReviewContent(new BigDecimal("4.50"), "본문", null))).isEmpty();
-
-        verify(repository, never()).save(any(Review.class));
     }
 
     @Test

@@ -70,7 +70,7 @@ class ReviewHistoryIntegrationTest {
     private final ReviewTarget target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
 
     @Test
-    void 생성_수정_삭제를_역순으로_추적하고_동일_수정은_제외한다() {
+    void 생성_수정_삭제와_동일_값_수정도_역순으로_추적한다() {
         final Long id = addReview(target, new ReviewKey(42L, "history-flow"), content("4.5", "최초 본문", false));
         updateReview(42L, id, content("4.50", "최초 본문", null));
         updateReview(42L, id, content("4.5", "최초 본문", true));
@@ -78,10 +78,11 @@ class ReviewHistoryIntegrationTest {
         removeReview(42L, id);
 
         final var rows = jdbc.queryForList("SELECT * FROM review_history WHERE review_id = ? ORDER BY changed_at DESC, id DESC", id);
-        assertThat(rows).extracting((final var row) -> row.get("event_type")).containsExactly("DELETE", "UPDATE", "UPDATE", "CREATE");
-        assertThat(rows).extracting((final var row) -> row.get("content")).containsExactly("수정 본문", "수정 본문", "최초 본문", "최초 본문");
+        assertThat(rows).extracting((final var row) -> row.get("event_type")).containsExactly("DELETE", "UPDATE", "UPDATE", "UPDATE",
+            "CREATE");
+        assertThat(rows).extracting((final var row) -> row.get("content")).containsExactly("수정 본문", "수정 본문", "최초 본문", "최초 본문", "최초 본문");
         assertThat(rows).extracting((final var row) -> ((BigDecimal) row.get("rate")).toPlainString()).containsExactly("1.0", "1.0", "4.5",
-            "4.5");
+            "4.5", "4.5");
         assertThat(reviews.findActiveById(id)).isEmpty();
     }
 

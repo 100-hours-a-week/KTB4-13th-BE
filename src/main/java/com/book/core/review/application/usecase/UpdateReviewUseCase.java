@@ -7,7 +7,6 @@ import com.book.core.review.application.port.ReviewRepositoryPort;
 import com.book.core.review.domain.Review;
 import com.book.core.review.domain.ReviewContent;
 import lombok.RequiredArgsConstructor;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,22 +18,16 @@ public class UpdateReviewUseCase {
     private final ReviewRepositoryPort reviewRepository;
 
     @Transactional
-    public Optional<Review> execute(final Long userId, final Long reviewId, final ReviewContent content) {
+    public Review execute(final Long userId, final Long reviewId, final ReviewContent content) {
         log.debug("리뷰 수정 처리를 시작합니다. reviewId={}, traceId={}", reviewId, MDC.get("traceId"));
         final Review review =
             reviewRepository.findActiveByIdForUpdate(reviewId).orElseThrow(() -> new CoreException(ErrorCode.REVIEW_NOT_FOUND));
         if (!review.userId().equals(userId)) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
-        final boolean changed = review.wouldChange(content);
-        if (changed) {
-            review.updateContent(content);
-            reviewRepository.save(review);
-        }
+        review.updateContent(content);
+        reviewRepository.save(review);
         log.info("리뷰 수정 처리를 마쳤습니다. reviewId={}, traceId={}", reviewId, MDC.get("traceId"));
-        if (changed) {
-            return Optional.of(review);
-        }
-        return Optional.empty();
+        return review;
     }
 }

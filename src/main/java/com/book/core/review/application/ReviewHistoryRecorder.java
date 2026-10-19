@@ -20,10 +20,10 @@ public class ReviewHistoryRecorder {
     @Transactional(propagation = Propagation.MANDATORY)
     public void record(final Review review, final ReviewEventType eventType) {
         final LocalDateTime now = LocalDateTime.now().truncatedTo(MICROS);
-        final LocalDateTime previous = histories.findLatestChangedAt(review.id()).orElse(now);
+        final LocalDateTime latestChangedAt = histories.findLatestChangedAt(review.id()).orElse(now);
         LocalDateTime changedAt = now;
-        if (previous.isAfter(now)) {
-            changedAt = previous;
+        if (latestChangedAt.isAfter(now)) {
+            changedAt = latestChangedAt;
         }
         histories.append(new ReviewHistory(review, eventType, changedAt));
     }

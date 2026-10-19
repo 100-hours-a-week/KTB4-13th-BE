@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.book.common.config.security.UserIdMvcConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.cancel.domain.enums.CancelType;
 import com.book.core.order.api.converter.OrderCommandConverter;
 import com.book.core.order.api.converter.OrderResultConverter;
 import com.book.core.order.application.command.CancelOrderCommand;
@@ -26,16 +27,23 @@ import com.book.core.order.application.result.CreateOrderResult;
 import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
 import com.book.core.order.application.result.OrderAddressResult;
+import com.book.core.order.application.result.OrderCancellationItemResult;
+import com.book.core.order.application.result.OrderCancellationResult;
 import com.book.core.order.application.result.OrderItemResult;
+import com.book.core.order.application.result.OrderPaymentResult;
 import com.book.core.order.application.result.OrderSummaryResult;
 import com.book.core.order.application.service.OrderService;
 import com.book.core.order.domain.OrderStatus;
+import com.book.core.payment.domain.enums.PaymentMethod;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -65,17 +73,43 @@ class OrderControllerTest {
     @Test
     void 인증된_회원의_주문_목록을_반환한다() throws Exception {
         authenticateAs(42L);
-        when(orderService.getOrders(any())).thenReturn(GetOrdersResult.of(List.of(new OrderSummaryResult("order_new", "상품 701 외 1건",
-            OrderStatus.PAID, new BigDecimal("34.50"), LocalDateTime.of(2026, 9, 28, 10, 0))), "next-cursor"));
+        when(orderService.getOrders(any())).thenReturn(GetOrdersResult.of(List.of(new OrderSummaryResult("order_new", "대표 도서", 2, null,
+            new BigDecimal("34.50"), OrderStatus.PARTIAL_CANCELED, LocalDateTime.of(2026, 9, 28, 10, 0, 1))), "next-cursor"));
 
-        mvc.perform(get("/api/v1/orders").param("status", "PAID").param("from", "2026-01-01T00:00:00").param("to", "2026-09-28T23:59:59")
-            .param("limit", "10")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.orders[0].key").value("order_new"))
-            .andExpect(jsonPath("$.data.orders[0].name").value("상품 701 외 1건")).andExpect(jsonPath("$.data.orders[0].status").value("PAID"))
-            .andExpect(jsonPath("$.data.orders[0].totalPrice").value(34.50));
+        mvc.perform(
+            get("/api/v1/orders").param("status", "PAID").param("from", "2026-01-01").param("to", "2026-09-28").param("limit", "10"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.orders[0].orderKey").value("order_new"))
+            .andExpect(jsonPath("$.data.orders[0].representativeBookName").value("대표 도서"))
+            .andExpect(jsonPath("$.data.orders[0].itemCount").value(2)).andExpect(jsonPath("$.data.orders[0].thumbnailUrl").isEmpty())
+            .andExpect(jsonPath("$.data.orders[0].totalPrice").value(34.50))
+            .andExpect(jsonPath("$.data.orders[0].status").value("PARTIAL_CANCELED"))
+            .andExpect(jsonPath("$.data.orders[0].paidAt").value("2026-09-28T10:00:01"))
+            .andExpect(jsonPath("$.data.orders[0].name").doesNotExist()).andExpect(jsonPath("$.data.orders[0].createdAt").doesNotExist())
+            .andExpect(jsonPath("$.data.nextCursor").value("next-cursor"));
 
-        verify(orderService).getOrders(new GetOrdersCommand(42L, OrderStatus.PAID, LocalDateTime.of(2026, 1, 1, 0, 0),
-            LocalDateTime.of(2026, 9, 28, 23, 59, 59), null, 10));
+        verify(orderService)
+            .getOrders(new GetOrdersCommand(42L, OrderStatus.PAID, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 9, 28), null, 10));
+    }
+
+    @Test
+    void 주문_목록_필터가_없으면_기간_제한_없이_기본_limit으로_조회한다() throws Exception {
+        authenticateAs(42L);
+        when(orderService.getOrders(any())).thenReturn(GetOrdersResult.of(List.of(), null));
+
+        mvc.perform(get("/api/v1/orders")).andExpect(status().isOk()).andExpect(jsonPath("$.data.nextCursor").doesNotExist());
+
+        verify(orderService).getOrders(new GetOrdersCommand(42L, null, null, null, null, 20));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"status=CREATED", "to=2026-09-28T00:00:00"})
+    void 주문_목록_조회_조건이_잘못되면_서비스를_호출하지_않고_E400을_응답한다(final String query) throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(get("/api/v1/orders?" + query)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+
+        verify(orderService, never()).getOrders(any());
     }
 
     @Test
@@ -84,10 +118,28 @@ class OrderControllerTest {
         when(orderService.getOrder(any())).thenReturn(orderResult());
 
         mvc.perform(get("/api/v1/orders/order_test")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.key").value("order_test")).andExpect(jsonPath("$.data.name").value("상품 701"))
-            .andExpect(jsonPath("$.data.status").value("CREATED")).andExpect(jsonPath("$.data.items[0].itemId").value(701))
-            .andExpect(jsonPath("$.data.items[0].itemName").value("상품 701")).andExpect(jsonPath("$.data.items[0].quantity").value(2))
-            .andExpect(jsonPath("$.data.address.postalCode").value("06236"));
+            .andExpect(jsonPath("$.data.orderKey").value("order_test")).andExpect(jsonPath("$.data.status").value("PARTIAL_CANCELED"))
+            .andExpect(jsonPath("$.data.totalPrice").value(34.50)).andExpect(jsonPath("$.data.createdAt").value("2026-09-28T10:00:00"))
+            .andExpect(jsonPath("$.data.address.postalCode").value("06236")).andExpect(jsonPath("$.data.name").doesNotExist())
+            .andExpect(jsonPath("$.data.paidAt").doesNotExist()).andExpect(jsonPath("$.data.payment.couponDiscount").value(1.00))
+            .andExpect(jsonPath("$.data.payment.usedPoint").value(2.00)).andExpect(jsonPath("$.data.payment.paidAmount").value(31.50))
+            .andExpect(jsonPath("$.data.payment.method").value("CARD"))
+            .andExpect(jsonPath("$.data.payment.paidAt").value("2026-09-28T10:05:00"))
+            .andExpect(jsonPath("$.data.payment.cancelledPaidAmount").value(15.75))
+            .andExpect(jsonPath("$.data.payment.cancellablePaidAmount").value(15.75))
+            .andExpect(jsonPath("$.data.cancellations[0].type").value("PARTIAL"))
+            .andExpect(jsonPath("$.data.cancellations[0].refundedAmount").value(15.75))
+            .andExpect(jsonPath("$.data.cancellations[0].canceledAt").value("2026-09-29T09:00:00"))
+            .andExpect(jsonPath("$.data.cancellations[0].items[0].orderItemId").value(17))
+            .andExpect(jsonPath("$.data.cancellations[0].items[0].productId").value(701))
+            .andExpect(jsonPath("$.data.cancellations[0].items[0].itemName").value("상품 701"))
+            .andExpect(jsonPath("$.data.cancellations[0].items[0].quantity").value(1))
+            .andExpect(jsonPath("$.data.items[0].orderItemId").value(17)).andExpect(jsonPath("$.data.items[0].productId").value(701))
+            .andExpect(jsonPath("$.data.items[0].itemId").doesNotExist()).andExpect(jsonPath("$.data.items[0].itemName").value("상품 701"))
+            .andExpect(jsonPath("$.data.items[0].author").value("저자")).andExpect(jsonPath("$.data.items[0].unitPrice").value(17.25))
+            .andExpect(jsonPath("$.data.items[0].totalPrice").value(34.50)).andExpect(jsonPath("$.data.items[0].quantity").value(2))
+            .andExpect(jsonPath("$.data.items[0].canceledQuantity").value(1))
+            .andExpect(jsonPath("$.data.items[0].status").value("PARTIAL_CANCELED"));
 
         verify(orderService).getOrder(new GetOrderCommand(42L, "order_test"));
     }
@@ -216,10 +268,14 @@ class OrderControllerTest {
     }
 
     private static GetOrderResult orderResult() {
-        final OrderItemResult item = new OrderItemResult(17L, 701L, "상품 701", null, "저자", new BigDecimal("20.00"), new BigDecimal("17.25"),
-            new BigDecimal("34.50"), 2, com.book.core.order.domain.OrderItemStatus.CREATED);
-        return new GetOrderResult("order_test", "상품 701", OrderStatus.CREATED, new BigDecimal("34.50"),
-            LocalDateTime.of(2026, 9, 28, 10, 0), List.of(item), new OrderAddressResult("06236", "서울 주소", "101호"));
+        final OrderItemResult item = new OrderItemResult(17L, 701L, "상품 701", null, "저자", new BigDecimal("17.25"), new BigDecimal("34.50"),
+            2, 1L, com.book.core.order.domain.OrderItemStatus.PARTIAL_CANCELED);
+        return new GetOrderResult("order_test", OrderStatus.PARTIAL_CANCELED, new BigDecimal("34.50"), LocalDateTime.of(2026, 9, 28, 10, 0),
+            LocalDateTime.of(2026, 9, 28, 10, 5), List.of(item), new OrderAddressResult("06236", "서울 주소", "101호"),
+            new OrderPaymentResult(new BigDecimal("1.00"), new BigDecimal("2.00"), new BigDecimal("31.50"), PaymentMethod.CARD,
+                LocalDateTime.of(2026, 9, 28, 10, 5), new BigDecimal("15.75"), new BigDecimal("15.75")),
+            List.of(new OrderCancellationResult(CancelType.PARTIAL, new BigDecimal("15.75"), LocalDateTime.of(2026, 9, 29, 9, 0),
+                List.of(new OrderCancellationItemResult(17L, 701L, "상품 701", 1L)))));
     }
 
     private void authenticateAs(final Long userId) {

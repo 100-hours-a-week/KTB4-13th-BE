@@ -3,15 +3,15 @@
   "ok": true,
   "command": "deliver",
   "type": "sequence",
-  "input": "/tmp/book-review-history-diagram-service/review-history.sequence.json",
-  "output": "/tmp/book-review-history-diagram-service/review-history.html",
+  "input": "/Users/connor/.codex/worktrees/review-history-diagrams/book/docs/pr-diagrams/review-history/review-history.sequence.json",
+  "output": "/tmp/book-review-history-transactional/review-history.html",
   "specification": {
-    "sha256": "ea9d22d75939478fc50c9db77399223fc01c25c48a62d91528bc154872a601d6",
-    "bytes": 2575
+    "sha256": "0bb6a348b36c254f616a88ed8398d84dd9597aa94e730dbe14877059690c5d08",
+    "bytes": 3543
   },
   "artifact": {
-    "sha256": "1568e73a5b78031d3d158f28157bc51064456fa0a6f9688c3f3ed02ea0ef2ca7",
-    "bytes": 803703
+    "sha256": "09b91de2dd1206b988454edc983ce121fd89a960400538b34406badadf246b3d",
+    "bytes": 809523
   },
   "validation": {
     "checksPassed": 9,

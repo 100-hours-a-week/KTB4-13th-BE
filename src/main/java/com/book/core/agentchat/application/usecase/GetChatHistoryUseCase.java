@@ -1,0 +1,35 @@
+package com.book.core.agentchat.application.usecase;
+
+import com.book.common.annotation.UseCase;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
+import com.book.core.agentchat.application.port.ChatRepositoryPort;
+import com.book.core.agentchat.application.port.ChatResponseCodec;
+import com.book.core.agentchat.application.result.ChatHistoryMessage;
+import com.book.core.agentchat.application.result.ChatResponseSnapshot;
+import com.book.core.agentchat.domain.ChatMessage;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
+
+@UseCase
+@RequiredArgsConstructor
+public class GetChatHistoryUseCase {
+    private final ChatRepositoryPort chats;
+    private final ChatResponseCodec codec;
+
+    @Transactional(readOnly = true)
+    public List<ChatHistoryMessage> execute(final Long userId, final Long sessionId, final long afterSequence, final int limit) {
+        if (afterSequence < 0 || limit < 1 || limit > 100) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        chats.findSession(sessionId).orElseThrow(() -> new CoreException(ErrorCode.CHAT_NOT_FOUND)).requireOwner(userId);
+        return chats.messagesAfter(sessionId, afterSequence, limit).stream().map((final ChatMessage message) -> {
+            ChatResponseSnapshot response = null;
+            if (message.responsePayload() != null) {
+                response = codec.decode(message.responsePayload());
+            }
+            return new ChatHistoryMessage(message.id(), message.sequence(), message.role(), message.text(), message.createdAt(), response);
+        }).toList();
+    }
+}

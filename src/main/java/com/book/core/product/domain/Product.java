@@ -8,6 +8,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -20,6 +21,10 @@ import lombok.experimental.Accessors;
 @Getter
 @Accessors(fluent = true)
 public class Product extends BaseEntity {
+    @Version
+    @Column(nullable = false)
+    private long version;
+
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "book_id", nullable = false, unique = true)
     private Book book;

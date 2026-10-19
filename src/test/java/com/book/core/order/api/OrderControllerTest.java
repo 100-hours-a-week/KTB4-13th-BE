@@ -113,10 +113,15 @@ class OrderControllerTest {
         when(orderService.getOrder(any())).thenReturn(orderResult());
 
         mvc.perform(get("/api/v1/orders/order_test")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.key").value("order_test")).andExpect(jsonPath("$.data.name").value("상품 701"))
-            .andExpect(jsonPath("$.data.status").value("CREATED")).andExpect(jsonPath("$.data.items[0].itemId").value(701))
-            .andExpect(jsonPath("$.data.items[0].itemName").value("상품 701")).andExpect(jsonPath("$.data.items[0].quantity").value(2))
-            .andExpect(jsonPath("$.data.address.postalCode").value("06236"));
+            .andExpect(jsonPath("$.data.orderKey").value("order_test")).andExpect(jsonPath("$.data.status").value("PARTIAL_CANCELED"))
+            .andExpect(jsonPath("$.data.totalPrice").value(34.50)).andExpect(jsonPath("$.data.createdAt").value("2026-09-28T10:00:00"))
+            .andExpect(jsonPath("$.data.address.postalCode").value("06236")).andExpect(jsonPath("$.data.name").doesNotExist())
+            .andExpect(jsonPath("$.data.paidAt").doesNotExist()).andExpect(jsonPath("$.data.items[0].orderItemId").value(17))
+            .andExpect(jsonPath("$.data.items[0].productId").value(701)).andExpect(jsonPath("$.data.items[0].itemId").doesNotExist())
+            .andExpect(jsonPath("$.data.items[0].itemName").value("상품 701")).andExpect(jsonPath("$.data.items[0].author").value("저자"))
+            .andExpect(jsonPath("$.data.items[0].unitPrice").value(17.25)).andExpect(jsonPath("$.data.items[0].totalPrice").value(34.50))
+            .andExpect(jsonPath("$.data.items[0].quantity").value(2)).andExpect(jsonPath("$.data.items[0].canceledQuantity").value(1))
+            .andExpect(jsonPath("$.data.items[0].status").value("PARTIAL_CANCELED"));
 
         verify(orderService).getOrder(new GetOrderCommand(42L, "order_test"));
     }
@@ -245,10 +250,10 @@ class OrderControllerTest {
     }
 
     private static GetOrderResult orderResult() {
-        final OrderItemResult item = new OrderItemResult(17L, 701L, "상품 701", null, "저자", new BigDecimal("20.00"), new BigDecimal("17.25"),
-            new BigDecimal("34.50"), 2, com.book.core.order.domain.OrderItemStatus.CREATED);
-        return new GetOrderResult("order_test", "상품 701", OrderStatus.CREATED, new BigDecimal("34.50"),
-            LocalDateTime.of(2026, 9, 28, 10, 0), List.of(item), new OrderAddressResult("06236", "서울 주소", "101호"));
+        final OrderItemResult item = new OrderItemResult(17L, 701L, "상품 701", null, "저자", new BigDecimal("17.25"), new BigDecimal("34.50"),
+            2, 1L, com.book.core.order.domain.OrderItemStatus.PARTIAL_CANCELED);
+        return new GetOrderResult("order_test", OrderStatus.PARTIAL_CANCELED, new BigDecimal("34.50"), LocalDateTime.of(2026, 9, 28, 10, 0),
+            LocalDateTime.of(2026, 9, 28, 10, 5), List.of(item), new OrderAddressResult("06236", "서울 주소", "101호"));
     }
 
     private void authenticateAs(final Long userId) {

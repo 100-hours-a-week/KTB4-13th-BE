@@ -8,4 +8,6 @@ interface UserLibraryBookJpaRepository extends JpaRepository<UserLibraryBook, Lo
     List<UserLibraryBook> findByUserIdAndBookIdIn(final Long userId, final List<Long> bookIds);
 
     List<UserLibraryBook> findByUserIdAndIdInAndDeletedAtIsNull(final Long userId, final List<Long> ids);
+
+    List<UserLibraryBook> findByUserIdAndDeletedAtIsNull(final Long userId);
 }

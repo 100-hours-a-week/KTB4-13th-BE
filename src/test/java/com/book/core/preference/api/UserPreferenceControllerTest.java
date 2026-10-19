@@ -1,15 +1,20 @@
 package com.book.core.preference.api;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.config.security.UserIdMvcConfig;
+import com.book.core.memory.application.command.DeleteUserMemoriesCommand;
 import com.book.core.memory.application.result.UserMemoryGroupResult;
 import com.book.core.memory.domain.UserMemoryType;
 import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
 import com.book.core.onboarding.application.result.OnboardingOptionResult;
+import com.book.core.preference.api.converter.UserPreferenceCommandConverter;
 import com.book.core.preference.api.converter.UserPreferenceResultConverter;
 import com.book.core.preference.application.result.UserPreferencesResult;
 import com.book.core.preference.application.service.UserPreferenceService;
@@ -18,6 +23,8 @@ import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -30,7 +37,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(UserPreferenceController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({UserPreferenceResultConverter.class, UserIdMvcConfig.class})
+@Import({UserPreferenceCommandConverter.class, UserPreferenceResultConverter.class, UserIdMvcConfig.class})
 class UserPreferenceControllerTest {
     private static final Long USER_ID = 42L;
 
@@ -73,6 +80,44 @@ class UserPreferenceControllerTest {
 
         mvc.perform(get("/api/v1/users/me/preferences")).andExpect(status().isOk()).andExpect(jsonPath("$.data.onboarding").isEmpty())
             .andExpect(jsonPath("$.data.memories").isArray()).andExpect(jsonPath("$.data.memories").isEmpty());
+    }
+
+    @Test
+    void 선택한_취향_기억을_중복_없이_삭제하고_204를_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+
+        mvc.perform(delete("/api/v1/users/me/memories").param("ids", "102,101,102")).andExpect(status().isNoContent());
+
+        verify(userPreferenceService).deleteMemories(new DeleteUserMemoriesCommand(USER_ID, List.of(102L, 101L)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "0", "-1", "101,abc"})
+    void 삭제할_ID가_비었거나_양수가_아니면_400을_응답한다(final String ids) throws Exception {
+        authenticateAs(USER_ID);
+
+        mvc.perform(delete("/api/v1/users/me/memories").param("ids", ids)).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(userPreferenceService);
+    }
+
+    @Test
+    void 삭제할_ID가_없으면_400을_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+
+        mvc.perform(delete("/api/v1/users/me/memories")).andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userPreferenceService);
+    }
+
+    @Test
+    void 취향_기억을_전체_삭제하고_204를_응답한다() throws Exception {
+        authenticateAs(USER_ID);
+
+        mvc.perform(delete("/api/v1/users/me/memories/all")).andExpect(status().isNoContent());
+
+        verify(userPreferenceService).deleteAllMemories(USER_ID);
     }
 
     private void authenticateAs(final Long userId) {

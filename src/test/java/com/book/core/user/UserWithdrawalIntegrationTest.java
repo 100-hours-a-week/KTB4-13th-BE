@@ -57,7 +57,7 @@ class UserWithdrawalIntegrationTest {
 
     @Test
     void 탈퇴_신청하면_Refresh_Session을_폐기하고_쿠키를_만료하며_기존_Token으로_접근할_수_없다() throws Exception {
-        final MvcResult login = login("recover-provider").andExpect(status().isOk()).andReturn();
+        final MvcResult login = signup("recover-provider").andExpect(status().isOk()).andReturn();
         final String accessToken = accessToken(login);
         final Cookie refreshToken = login.getResponse().getCookie("refreshToken");
         final Long userId = userIdOf("recover-provider");
@@ -74,11 +74,11 @@ class UserWithdrawalIntegrationTest {
             .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
     }
 
-    private ResultActions login(final String providerUserId) throws Exception {
+    private ResultActions signup(final String providerUserId) throws Exception {
         when(oAuthTokenClient.exchangeForIdToken(providerUserId + "-code", "code-verifier")).thenReturn(providerUserId + "-id-token");
         when(oAuthProviderClient.verify(providerUserId + "-id-token", "nonce"))
             .thenReturn(new OAuthUserInfo(providerUserId, "reader@example.com"));
-        return mvc.perform(post("/api/v1/auth/kakao/login").contentType(MediaType.APPLICATION_JSON)
+        return mvc.perform(post("/api/v1/auth/kakao/signup").contentType(MediaType.APPLICATION_JSON)
             .content("{\"authorizationCode\":\"" + providerUserId + "-code\",\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}"));
     }
 

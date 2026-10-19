@@ -71,10 +71,10 @@ public class UserMemory extends BaseEntity {
     }
 
     public boolean hasSameKeywordAs(final UserMemory other) {
-        return type == other.type && normalize(keyword).equals(normalize(other.keyword));
+        return type == other.type && normalizedKeyword().equals(other.normalizedKeyword());
     }
 
-    private static String normalize(final String keyword) {
+    public String normalizedKeyword() {
         return keyword.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 

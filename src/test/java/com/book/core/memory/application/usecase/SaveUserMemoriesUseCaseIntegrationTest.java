@@ -122,8 +122,8 @@ class SaveUserMemoriesUseCaseIntegrationTest {
             new UserMemoryExtraction(UserMemoryType.TOPIC, "가".repeat(201), 2, List.of(), "로맨스 소설", List.of(0.054f, -0.25f), 2);
 
         assertThatThrownBy(() -> useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.MOOD, "잔잔한", List.of()), tooLongValue)))
-            .isInstanceOf(CoreException.class)
-            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+            .isInstanceOf(CoreException.class).extracting(exception -> ((CoreException) exception).errorCode())
+            .isEqualTo(ErrorCode.INVALID_REQUEST);
 
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NULL")).containsExactly("추리 소설");
     }

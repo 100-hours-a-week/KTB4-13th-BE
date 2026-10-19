@@ -16,6 +16,7 @@ import com.book.core.agentchat.api.converter.ChatSessionResultConverter;
 import com.book.core.agentchat.application.command.GetChatHistoryCommand;
 import com.book.core.agentchat.application.command.GetChatSessionsCommand;
 import com.book.core.agentchat.application.command.SendChatMessageCommand;
+import com.book.core.agentchat.application.result.AgentExecutionSummary;
 import com.book.core.agentchat.application.result.ChatHistoryMessage;
 import com.book.core.agentchat.application.result.ChatResponseSnapshot;
 import com.book.core.agentchat.application.result.ChatSessionPageResult;
@@ -67,8 +68,8 @@ class ChatSessionControllerTest {
     @Test
     void 대화_본문은_명령으로_옮기고_추천_응답을_변환한다() throws Exception {
         authenticate();
-        when(service.send(any()))
-            .thenReturn(new ChatResponseSnapshot(1, Map.of("intent", "semantic"), "답변", List.of(), "다음 질문", List.of("다른 책"), false));
+        when(service.send(any())).thenReturn(new ChatResponseSnapshot(1, Map.of("intent", "semantic"), "답변", List.of(), "다음 질문",
+            List.of("다른 책"), false, null, List.of(), null));
         mvc.perform(post("/api/v1/recommend/chat/sessions/11/messages").contentType(MediaType.APPLICATION_JSON).content("""
             {"idempotencyKey":"key", "message":"질문", "consented":true, "excludeBookIds":[12]}
             """)).andExpect(status().isOk()).andExpect(header().string("Cache-Control", Matchers.containsString("no-store")))
@@ -76,7 +77,17 @@ class ChatSessionControllerTest {
         verify(service).send(new SendChatMessageCommand(7L, 11L, "key", "질문", true, List.of(12L)));
     }
 
-
+    @Test
+    void 변경_거절도_채팅은_200이며_실제_안내와_객체_버튼_계약을_반환한다() throws Exception {
+        authenticate();
+        when(service.send(any())).thenReturn(ChatResponseSnapshot.shop(Map.of(), "재고가 부족해 담지 못했습니다", List.of(),
+            new AgentExecutionSummary(null, null, "rejected", "INSUFFICIENT_PRODUCT_STOCK")));
+        mvc.perform(post("/api/v1/recommend/chat/sessions/11/messages").contentType(MediaType.APPLICATION_JSON).content("""
+            {"idempotencyKey":"stock", "message":"5권 담아줘", "consented":true, "excludeBookIds":[]}
+            """)).andExpect(status().isOk()).andExpect(jsonPath("$.data.route").value("shop"))
+            .andExpect(jsonPath("$.data.reply").value("재고가 부족해 담지 못했습니다")).andExpect(jsonPath("$.data.execution.status").value("rejected"))
+            .andExpect(jsonPath("$.data.cards").doesNotExist()).andExpect(jsonPath("$.data.spec").doesNotExist());
+    }
 
     @Test
     void 조회_커서를_명령으로_옮기고_목록과_이력을_변환한다() throws Exception {

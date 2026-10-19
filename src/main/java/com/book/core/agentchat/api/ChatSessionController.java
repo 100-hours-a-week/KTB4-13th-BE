@@ -6,7 +6,7 @@ import com.book.core.agentchat.api.converter.ChatSessionCommandConverter;
 import com.book.core.agentchat.api.converter.ChatSessionResultConverter;
 import com.book.core.agentchat.api.request.SendChatMessageRequest;
 import com.book.core.agentchat.api.response.ChatHistoryResponse;
-import com.book.core.agentchat.api.response.ChatSessionReplyResponse;
+import com.book.core.agentchat.api.response.ChatReplyResponse;
 import com.book.core.agentchat.api.response.ChatSessionCreatedResponse;
 import com.book.core.agentchat.api.response.ChatSessionListResponse;
 import com.book.core.agentchat.api.spec.ChatSessionControllerSpec;
@@ -72,8 +72,8 @@ class ChatSessionController implements ChatSessionControllerSpec {
 
     @Override
     @PostMapping("/{sessionId}/messages")
-    public ResponseEntity<ApiResponse<ChatSessionReplyResponse>> send(@UserId final Long userId,
-        @Positive @PathVariable final Long sessionId, @Valid @RequestBody final SendChatMessageRequest request) {
+    public ResponseEntity<ApiResponse<ChatReplyResponse>> send(@UserId final Long userId, @Positive @PathVariable final Long sessionId,
+        @Valid @RequestBody final SendChatMessageRequest request) {
         final ChatResponseSnapshot result = service.send(commandConverter.toSendCommand(userId, sessionId, request));
         return ResponseEntity.ok().cacheControl(PRIVATE_NO_STORE).body(ApiResponse.ok(resultConverter.toReplyResponse(result)));
     }

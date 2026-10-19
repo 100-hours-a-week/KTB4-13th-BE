@@ -1,6 +1,7 @@
 package com.book.core.agentchat.infrastructure.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.client.ExpectedCount.twice;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -8,12 +9,14 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
 import com.book.core.agentchat.application.result.AgentChatContext;
 import com.book.core.agentchat.application.result.AgentContextCard;
 import com.book.core.agentchat.application.result.AgentObservedProduct;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
 import com.book.core.recommendation.application.command.RecommendationTurn;
+import com.book.core.recommendation.application.command.RecommendationSpec;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -84,4 +87,41 @@ class AgentChatClientImplTest {
             (final RetryAfterException exception) -> assertThat(exception.retryAfterSeconds()).isEqualTo(17));
         server.verify();
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{\"route\":\"shop\",\"reply\":\"어떤 책인가요?\",\"actions\":[],\"buttons\":[]}",
+        "{\"route\":\"recommend\",\"reply\":\"추천합니다\",\"spec\":{},\"cards\":[],\"buttons\":[],\"degraded\":false}"})
+    void 조건_위반만_초기_spec으로_한번_재시도하고_키와_최초_관측은_유지한다(final String data) {
+        server.expect(requestTo("https://ai.invalid/recommendations/chat")).andExpect(jsonPath("$.spec").isMap())
+            .andRespond(withStatus(HttpStatus.UNPROCESSABLE_CONTENT).body("{\"success\":false,\"message\":\"spec_schema_violation\"}")
+                .contentType(MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://ai.invalid/recommendations/chat"))
+            .andExpect(jsonPath("$.spec").value(org.hamcrest.Matchers.equalTo(RecommendationSpec.initial())))
+            .andExpect(jsonPath("$.idempotency_key").value("chat_19")).andExpect(jsonPath("$.conversation_id").value("cv_8"))
+            .andExpect(jsonPath("$.cart[0].quantity").value(2)).andExpect(jsonPath("$.cart[0].price").value(12000))
+            .andExpect(jsonPath("$.offers[0].stock_quantity").value(3)).andExpect(jsonPath("$.message").value(command.message()))
+            .andRespond(withSuccess("{\"data\":" + data + "}", MediaType.APPLICATION_JSON));
+        assertThat(client.chat(command, 8L, 19L, context).reply()).isNotBlank();
+        server.verify();
+    }
+
+    @Test
+    void 조건_위반이_두번이면_명세_위반으로_끝내고_세번째_호출은_하지_않는다() {
+        server.expect(twice(), requestTo("https://ai.invalid/recommendations/chat")).andRespond(withStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+            .body("{\"message\":\"spec_schema_violation\"}").contentType(MediaType.APPLICATION_JSON));
+        assertThatThrownBy(() -> client.chat(command, 8L, 19L, context)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_RECOMMENDATION_SPEC_VIOLATION));
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{\"message\":\"invalid_request\"}", "{", "{}"})
+    void 다른_422나_해석불가_본문에는_재시도하지_않는다(final String body) {
+        server.expect(requestTo("https://ai.invalid/recommendations/chat"))
+            .andRespond(withStatus(HttpStatus.UNPROCESSABLE_CONTENT).body(body).contentType(MediaType.APPLICATION_JSON));
+        assertThatThrownBy(() -> client.chat(command, 8L, 19L, context)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
+        server.verify();
+    }
+
 }

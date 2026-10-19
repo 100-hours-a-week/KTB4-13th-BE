@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.notification.application.command.CreateNotificationCommand;
 import com.book.core.notification.application.usecase.CreateNotificationUseCase;
+import com.book.core.notification.application.port.NotificationRepositoryPort;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,8 @@ class NotificationRepositoryIntegrationTest {
     CreateNotificationUseCase createUseCase;
     @Autowired
     JdbcTemplate jdbc;
+    @Autowired
+    NotificationRepositoryPort repository;
 
     @Test
     void 신규_알림과_공통_생명주기를_MySQL에_저장한다() {
@@ -46,5 +49,25 @@ class NotificationRepositoryIntegrationTest {
             .isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> jdbc.update("INSERT INTO notifications (user_id, title, body) VALUES (1, ' ', '본문')"))
             .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void 최근_20개를_ID_역순으로_조회하고_전체_미읽음을_집계한다() {
+        final Long userId = 10001L;
+        for (int i = 0; i < 25; i++) {
+            createUseCase.execute(new CreateNotificationCommand(userId, "제목 " + i, "본문"));
+        }
+        createUseCase.execute(new CreateNotificationCommand(10002L, "타인 알림", "본문"));
+        final Long deletedId = createUseCase.execute(new CreateNotificationCommand(userId, "삭제 알림", "본문"));
+        jdbc.update("UPDATE notifications SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", deletedId);
+        final var items = repository.findRecentByUserId(userId);
+        assertThat(items).hasSize(20);
+        assertThat(items).allSatisfy((final var item) -> assertThat(item.userId()).isEqualTo(userId));
+        assertThat(items).extracting((final var item) -> item.id()).isSortedAccordingTo(java.util.Comparator.reverseOrder());
+        assertThat(items.getFirst().title()).isEqualTo("제목 24");
+        assertThat(repository.countUnreadByUserId(userId)).isEqualTo(25L);
+        jdbc.update("UPDATE notifications SET read_at = CURRENT_TIMESTAMP(6) WHERE id = ?", items.getFirst().id());
+        assertThat(repository.countUnreadByUserId(userId)).isEqualTo(24L);
+        assertThat(repository.findRecentByUserId(10003L)).isEmpty();
     }
 }

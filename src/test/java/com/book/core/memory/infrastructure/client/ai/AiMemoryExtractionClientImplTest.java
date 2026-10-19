@@ -6,10 +6,12 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.common.exception.RetryAfterException;
 import com.book.core.memory.application.command.ConversationMessage;
 import com.book.core.memory.application.command.UserMemoryExtraction;
 import com.book.core.memory.application.port.AiMemoryExtractionRequest;
@@ -18,7 +20,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -90,6 +94,27 @@ class AiMemoryExtractionClientImplTest {
 
         assertThatThrownBy(() -> client.extract(request())).isInstanceOfSatisfying(CoreException.class,
             (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
+    }
+
+    @Test
+    void AI가_429를_응답하면_Retry_After와_함께_요청_제한으로_변환한다() {
+        server.expect(requestTo(EXTRACTION_URL)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS).header(HttpHeaders.RETRY_AFTER, "30"));
+
+        assertThatThrownBy(() -> client.extract(request())).isInstanceOfSatisfying(RetryAfterException.class,
+            (final RetryAfterException exception) -> {
+                assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_MEMORY_EXTRACTION_RATE_LIMITED);
+                assertThat(exception.retryAfterSeconds()).isEqualTo(30);
+            });
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {503, 504})
+    void AI가_503이나_504를_응답하면_재시도할_수_있는_오류로_구분한다(final int status) {
+        server.expect(requestTo(EXTRACTION_URL)).andRespond(withStatus(HttpStatus.valueOf(status)));
+
+        assertThatThrownBy(() -> client.extract(request())).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode())
+                .isEqualTo(status == 503 ? ErrorCode.AI_MEMORY_EXTRACTION_UNAVAILABLE : ErrorCode.AI_MEMORY_EXTRACTION_TIMEOUT));
     }
 
     private void assertInvalidResponse() {

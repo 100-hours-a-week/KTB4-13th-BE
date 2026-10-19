@@ -18,8 +18,8 @@ public interface OrderRepositoryPort {
 
     Optional<Order> findActiveOrderByKey(final String orderKey);
 
-    List<Order> findActiveOrders(final Long userId, final OrderStatus status, final LocalDateTime from, final LocalDateTime to,
-        final OrderListCursor cursor, final int limit);
+    List<Order> findPaidOrders(final Long userId, final OrderStatus status, final LocalDateTime paidAtFrom,
+        final LocalDateTime paidAtBefore, final OrderListCursor cursor, final int limit);
 
     Optional<OrderItem> findActiveOrderItem(final Long orderItemId);
 }

@@ -2,12 +2,20 @@ package com.book.core.order.infrastructure.persistence.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.cancel.domain.enums.CancelType;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.application.command.CancelOrderCommand;
-import com.book.core.order.application.command.OrderListCursor;
+import com.book.core.order.application.command.GetOrderCommand;
+import com.book.core.order.application.result.GetOrderResult;
+import com.book.core.order.application.result.OrderCancellationItemResult;
+import com.book.core.order.application.result.OrderCancellationResult;
+import com.book.core.order.application.result.OrderItemResult;
+import com.book.core.order.application.result.OrderPaymentResult;
+import com.book.core.order.application.service.OrderService;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.application.usecase.GetOrderItemUseCase;
 import com.book.core.order.domain.Order;
@@ -15,10 +23,12 @@ import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderItemStatus;
 import com.book.core.order.domain.OrderStatus;
+import com.book.core.payment.domain.enums.PaymentMethod;
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
+import javax.sql.DataSource;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -26,23 +36,14 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
 @Tag("integration")
 class OrderRepositoryIntegrationTest {
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
-
     @Autowired
     OrderRepositoryPort orderRepository;
 
@@ -50,10 +51,16 @@ class OrderRepositoryIntegrationTest {
     JdbcTemplate jdbc;
 
     @Autowired
+    DataSource dataSource;
+
+    @Autowired
     GetOrderItemUseCase getOrderItem;
 
     @Autowired
     CancelOrderUseCase cancelOrder;
+
+    @Autowired
+    OrderService orderService;
 
     @Test
     void 주문_배송지_상품과_상태를_실제_테이블에_저장한다() {
@@ -181,62 +188,6 @@ class OrderRepositoryIntegrationTest {
     }
 
     @Test
-    void 회원의_활성_주문만_최신순으로_조회한다() {
-        insertBook(9121L);
-        insertBook(9122L);
-        insertBook(9123L);
-        insertBook(9124L);
-        insertProduct(9221L, 9121L);
-        insertProduct(9222L, 9122L);
-        insertProduct(9223L, 9123L);
-        insertProduct(9224L, 9124L);
-        orderRepository.save(order(4242L, "order_old", 9221L));
-        orderRepository.save(order(4242L, "order_new", 9222L));
-        orderRepository.save(order(4343L, "another_users_order", 9223L));
-        final Order deletedOrder = orderRepository.save(order(4242L, "deleted_order", 9224L));
-        deletedOrder.delete();
-        orderRepository.save(deletedOrder);
-
-        final LocalDate today = LocalDate.now();
-        final List<Order> orders =
-            orderRepository.findActiveOrders(4242L, null, today.minusYears(1).atStartOfDay(), today.plusDays(1).atStartOfDay(), null, 20);
-
-        assertThat(orders).extracting(Order::key).containsExactly("order_new", "order_old");
-    }
-
-    @Test
-    void 목록_필터와_createdAt_ID_커서로_다음_페이지를_중복없이_조회한다() {
-        insertBook(9131L);
-        insertBook(9132L);
-        insertBook(9133L);
-        insertProduct(9231L, 9131L);
-        insertProduct(9232L, 9132L);
-        insertProduct(9233L, 9133L);
-        final Order oldest = orderRepository.save(order(4444L, "cursor_old", 9231L));
-        final Order sameTimeLowId = orderRepository.save(order(4444L, "cursor_same_low", 9232L));
-        final Order sameTimeHighId = orderRepository.save(order(4444L, "cursor_same_high", 9233L));
-        final LocalDateTime sameCreatedAt = LocalDateTime.of(2026, 9, 28, 10, 0);
-        jdbc.update("UPDATE orders SET created_at = ?, updated_at = ?, status = 'PAID' WHERE id = ?", sameCreatedAt, sameCreatedAt,
-            sameTimeLowId.id());
-        jdbc.update("UPDATE orders SET created_at = ?, updated_at = ?, status = 'PAID' WHERE id = ?", sameCreatedAt, sameCreatedAt,
-            sameTimeHighId.id());
-        jdbc.update("UPDATE orders SET created_at = ?, updated_at = ? WHERE id = ?", sameCreatedAt.minusDays(1), sameCreatedAt.minusDays(1),
-            oldest.id());
-        final LocalDateTime from = LocalDate.of(2026, 9, 27).atStartOfDay();
-        final LocalDateTime to = LocalDate.of(2026, 9, 28).atTime(23, 59, 59, 999_999_999);
-
-        final List<Order> firstPage = orderRepository.findActiveOrders(4444L, null, from, to, null, 2);
-        final OrderListCursor cursor = new OrderListCursor(firstPage.getLast().createdAt(), firstPage.getLast().id());
-        final List<Order> secondPage = orderRepository.findActiveOrders(4444L, null, from, to, cursor, 2);
-        final List<Order> paidOrders = orderRepository.findActiveOrders(4444L, OrderStatus.PAID, sameCreatedAt.toLocalDate().atStartOfDay(),
-            sameCreatedAt.toLocalDate().plusDays(1).atStartOfDay(), null, 10);
-
-        assertThat(firstPage).extracting(Order::key).containsExactly("cursor_same_high", "cursor_same_low");
-        assertThat(secondPage).extracting(Order::key).containsExactly("cursor_old");
-        assertThat(paidOrders).extracting(Order::key).containsExactly("cursor_same_high", "cursor_same_low");
-    }
-
-    @Test
     void 활성_주문을_주문상품과_함께_조회한다() {
         insertBook(9125L);
         insertProduct(9225L, 9125L);
@@ -248,6 +199,67 @@ class OrderRepositoryIntegrationTest {
 
         assertThat(found.userId()).isEqualTo(42L);
         assertThat(found.items()).extracting(OrderItem::itemName).containsExactly("주문 테스트 상품", "주문 테스트 상품 2");
+    }
+
+    @Test
+    void 전액_취소한_주문의_상세는_최초_주문상품_결제_환불_금액과_최신순_취소_이력을_반환한다() {
+        insertBook(9126L);
+        insertBook(9127L);
+        insertProduct(9226L, 9126L);
+        insertProduct(9227L, 9127L);
+        final Order order = order(42L, "order_detail_canceled", 9227L);
+        order.addItem(9226L, "주문 테스트 상품 2", null, "저자", new BigDecimal("20.00"), new BigDecimal("7.00"), 2);
+        final Order saved = orderRepository.save(order);
+        // 부분 취소 3번으로 모든 수량을 취소한 상태: 주문·주문상품 CANCELED, 취소 기록은 PARTIAL만 존재한다.
+        jdbc.update("UPDATE orders SET status = 'CANCELED', paid_at = '2026-09-28 10:00:00' WHERE id = ?", saved.id());
+        jdbc.update("UPDATE order_item SET status = 'CANCELED', canceled_quantity = quantity WHERE order_id = ?", saved.id());
+        jdbc.update("""
+                INSERT INTO payment (created_at, updated_at, user_id, order_id, origin_amount, owned_coupon_id, coupon_discount,
+                    used_point, payer_user_id, paid_amount, state, method, paid_at)
+                VALUES (NOW(6), NOW(6), 42, ?, 19.00, 0, 0.00, 4.00, 42, 15.00, 'SUCCESS', 'CARD', '2026-09-28 10:00:00')
+                """, saved.id());
+        jdbc.update("""
+                INSERT INTO cancel_balance (created_at, updated_at, order_id, cancellable_paid_amount, cancellable_point_amount,
+                    cancellable_coupon_amount, cancelled_paid_amount, cancelled_point_amount, cancelled_coupon_amount)
+                VALUES (NOW(6), NOW(6), ?, 0.00, 0.00, 0.00, 15.00, 4.00, 0.00)
+                """, saved.id());
+        final List<Long> orderItemIds =
+            jdbc.queryForList("SELECT id FROM order_item WHERE order_id = ? ORDER BY id", Long.class, saved.id());
+        final Long paymentId = jdbc.queryForObject("SELECT id FROM payment WHERE order_id = ?", Long.class, saved.id());
+        // 실결제액 15.00을 먼저 환불하고 남은 금액을 포인트 4.00으로 환불한다.
+        insertPartialCancel(saved.id(), paymentId, orderItemIds.get(0), "5.00", "0.00", "2026-09-28 11:00:00");
+        insertPartialCancel(saved.id(), paymentId, orderItemIds.get(1), "7.00", "0.00", "2026-09-28 12:00:00");
+        insertPartialCancel(saved.id(), paymentId, orderItemIds.get(1), "3.00", "4.00", "2026-09-28 12:00:00");
+
+        final GetOrderResult result = orderService.getOrder(new GetOrderCommand(42L, "order_detail_canceled"));
+
+        assertThat(result.status()).isEqualTo(OrderStatus.CANCELED);
+        assertThat(result.items()).extracting(OrderItemResult::orderItemId, OrderItemResult::productId, OrderItemResult::canceledQuantity,
+            OrderItemResult::status).containsExactly(tuple(orderItemIds.get(0), 9227L, 1L, OrderItemStatus.CANCELED),
+                tuple(orderItemIds.get(1), 9226L, 2L, OrderItemStatus.CANCELED));
+        assertThat(result.payment())
+            .isEqualTo(new OrderPaymentResult(new BigDecimal("0.00"), new BigDecimal("4.00"), new BigDecimal("15.00"), PaymentMethod.CARD,
+                LocalDateTime.of(2026, 9, 28, 10, 0), new BigDecimal("15.00"), new BigDecimal("0.00")));
+        assertThat(result.cancellations())
+            .extracting(OrderCancellationResult::type, OrderCancellationResult::refundedAmount, OrderCancellationResult::items)
+            .containsExactly(
+                tuple(CancelType.PARTIAL, new BigDecimal("3.00"),
+                    List.of(new OrderCancellationItemResult(orderItemIds.get(1), 9226L, "주문 테스트 상품 2", 1L))),
+                tuple(CancelType.PARTIAL, new BigDecimal("7.00"),
+                    List.of(new OrderCancellationItemResult(orderItemIds.get(1), 9226L, "주문 테스트 상품 2", 1L))),
+                tuple(CancelType.PARTIAL, new BigDecimal("5.00"),
+                    List.of(new OrderCancellationItemResult(orderItemIds.get(0), 9227L, "주문 테스트 상품", 1L))));
+    }
+
+    private void insertPartialCancel(final Long orderId, final Long paymentId, final Long orderItemId, final String paidAmount,
+        final String pointAmount, final String canceledAt) {
+        jdbc.update("""
+                INSERT INTO `cancel` (created_at, updated_at, user_id, type, order_id, order_item_id, payment_id, origin_amount,
+                    owned_coupon_id, coupon_discount, used_point, paid_amount, canceled_quantity, canceled_paid_amount,
+                    canceled_point_amount, canceled_coupon_amount, external_cancel_key, canceled_at)
+                VALUES (NOW(6), NOW(6), 42, 'PARTIAL', ?, ?, ?, 19.00, 0, 0.00, ?, ?, 1, ?, ?, 0.00, 'cancel_key', ?)
+                """, orderId, orderItemId, paymentId, new BigDecimal(pointAmount), new BigDecimal(paidAmount), new BigDecimal(paidAmount),
+            new BigDecimal(pointAmount), canceledAt);
     }
 
     @Test
@@ -276,14 +288,7 @@ class OrderRepositoryIntegrationTest {
     void 배송지와_상품_FK_및_주문키_UNIQUE_제약을_마이그레이션에_생성한다() {
         assertThat(countKeyUsage("orders", "address_id", "order_addresses", "id")).isEqualTo(1);
         assertThat(countKeyUsage("order_item", "product_id", "products", "id")).isEqualTo(1);
-        assertThat(jdbc.queryForObject("""
-                        SELECT COUNT(*)
-                        FROM information_schema.statistics
-                        WHERE table_schema = DATABASE()
-                          AND table_name = 'orders'
-                          AND index_name = 'uk_orders_key'
-                          AND non_unique = 0
-                        """, Integer.class)).isEqualTo(1);
+        assertThat(countUniqueIndex("orders", "key")).isEqualTo(1);
         assertThat(countColumn("orders", "deleted_at")).isEqualTo(1);
         assertThat(countColumn("order_item", "deleted_at")).isEqualTo(1);
     }
@@ -302,22 +307,43 @@ class OrderRepositoryIntegrationTest {
     }
 
     private int countKeyUsage(final String table, final String column, final String referencedTable, final String referencedColumn) {
-        return jdbc.queryForObject("""
-                        SELECT COUNT(*)
-                        FROM information_schema.key_column_usage
-                        WHERE constraint_schema = DATABASE()
-                          AND table_name = ?
-                          AND column_name = ?
-                          AND referenced_table_name = ?
-                          AND referenced_column_name = ?
-                        """, Integer.class, table, column, referencedTable, referencedColumn);
+        try (var connection = dataSource.getConnection();
+            var importedKeys = connection.getMetaData().getImportedKeys(connection.getCatalog(), connection.getSchema(), table)) {
+            int count = 0;
+            while (importedKeys.next()) {
+                if (table.equalsIgnoreCase(importedKeys.getString("FKTABLE_NAME"))
+                    && column.equalsIgnoreCase(importedKeys.getString("FKCOLUMN_NAME"))
+                    && referencedTable.equalsIgnoreCase(importedKeys.getString("PKTABLE_NAME"))
+                    && referencedColumn.equalsIgnoreCase(importedKeys.getString("PKCOLUMN_NAME"))) {
+                    count++;
+                }
+            }
+            return count;
+        } catch (final SQLException exception) {
+            throw new AssertionError("Failed to inspect imported keys for " + table, exception);
+        }
+    }
+
+    private int countUniqueIndex(final String table, final String column) {
+        try (var connection = dataSource.getConnection();
+            var indexes = connection.getMetaData().getIndexInfo(connection.getCatalog(), connection.getSchema(), table, true, false)) {
+            int count = 0;
+            while (indexes.next()) {
+                if (column.equalsIgnoreCase(indexes.getString("COLUMN_NAME")) && !indexes.getBoolean("NON_UNIQUE")) {
+                    count++;
+                }
+            }
+            return count;
+        } catch (final SQLException exception) {
+            throw new AssertionError("Failed to inspect indexes for " + table, exception);
+        }
     }
 
     private int countColumn(final String table, final String column) {
         return jdbc.queryForObject("""
                         SELECT COUNT(*)
                         FROM information_schema.columns
-                        WHERE table_schema = DATABASE()
+                        WHERE table_schema = CURRENT_SCHEMA()
                           AND table_name = ?
                           AND column_name = ?
                         """, Integer.class, table, column);

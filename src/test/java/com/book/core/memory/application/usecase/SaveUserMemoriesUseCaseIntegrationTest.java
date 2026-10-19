@@ -2,12 +2,9 @@ package com.book.core.memory.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.doThrow;
 
 import com.book.core.memory.application.command.SaveUserMemoriesCommand;
 import com.book.core.memory.application.command.UserMemoryExtraction;
-import com.book.core.memory.application.port.UserMemoryRepositoryPort;
 import com.book.core.memory.domain.UserMemoryType;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -19,10 +16,9 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
@@ -41,9 +37,6 @@ class SaveUserMemoriesUseCaseIntegrationTest {
 
     @Autowired
     JdbcTemplate jdbc;
-
-    @MockitoSpyBean
-    UserMemoryRepositoryPort userMemoryRepository;
 
     @Autowired
     PlatformTransactionManager transactionManager;
@@ -80,8 +73,7 @@ class SaveUserMemoriesUseCaseIntegrationTest {
 
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NULL")).containsExactlyInAnyOrder("로맨스 소설", "김영하");
         assertThat(jdbc.queryForList("SELECT type FROM user_memories WHERE user_id = ? AND deleted_at IS NULL AND keyword = '김영하'",
-            String.class, userId))
-            .containsExactly("TOPIC");
+            String.class, userId)).containsExactly("TOPIC");
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NOT NULL")).containsExactly("김영하");
         assertThat(keywords("cv_other", "deleted_at IS NULL")).containsExactly("잔잔한");
     }
@@ -125,10 +117,11 @@ class SaveUserMemoriesUseCaseIntegrationTest {
     @Test
     void 새_기억_저장에_실패하면_기존_활성_기억_삭제도_되돌린다() {
         useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.TOPIC, "추리 소설", List.of())));
-        doThrow(new DataAccessResourceFailureException("save failed")).when(userMemoryRepository).saveAll(anyList());
+        final var tooLongValue =
+            new UserMemoryExtraction(UserMemoryType.TOPIC, "가".repeat(201), 2, List.of(), "로맨스 소설", List.of(0.054f, -0.25f), 2);
 
-        assertThatThrownBy(() -> useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.MOOD, "잔잔한", List.of()))))
-            .isInstanceOf(DataAccessResourceFailureException.class);
+        assertThatThrownBy(() -> useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.MOOD, "잔잔한", List.of()), tooLongValue)))
+            .isInstanceOf(DataIntegrityViolationException.class);
 
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NULL")).containsExactly("추리 소설");
     }

@@ -22,9 +22,7 @@ class ReviewQueryRepository {
     private final JPAQueryFactory queryFactory;
 
     Optional<Review> findActiveByIdWithLock(final Long reviewId) {
-        final JPAQuery<Review> reviewQuery = queryFactory
-            .selectFrom(review)
-            .where(review.id.eq(reviewId).and(review.deletedAt.isNull()))
+        final JPAQuery<Review> reviewQuery = queryFactory.selectFrom(review).where(review.id.eq(reviewId).and(review.deletedAt.isNull()))
             .setLockMode(LockModeType.PESSIMISTIC_WRITE);
         return Optional.ofNullable(reviewQuery.fetchOne());
     }

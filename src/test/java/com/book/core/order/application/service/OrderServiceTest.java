@@ -12,8 +12,6 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.address.application.result.GetAddressItemResult;
 import com.book.core.address.application.usecase.GetAddressUseCase;
-import com.book.core.cancel.application.usecase.GetCancelBalanceUseCase;
-import com.book.core.cancel.domain.CancelBalance;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
@@ -25,23 +23,17 @@ import com.book.core.order.application.command.GetOrdersCommand;
 import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
 import com.book.core.order.application.result.CreateOrderResult;
-import com.book.core.order.application.result.OrderPaymentResult;
 import com.book.core.order.application.usecase.CreateOrderUseCase;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
-import com.book.core.order.application.usecase.GetOrderUseCase;
+import com.book.core.order.application.usecase.GetOrderDetailUseCase;
 import com.book.core.order.application.usecase.GetOrdersUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
-import com.book.core.payment.application.usecase.GetPaymentUseCase;
-import com.book.core.payment.domain.Payment;
-import com.book.core.payment.domain.enums.PaymentMethod;
-import com.book.core.payment.domain.enums.PaymentState;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,11 +47,9 @@ class OrderServiceTest {
     private final CreateOrderUseCase createOrderUseCase = mock(CreateOrderUseCase.class);
     private final CancelOrderUseCase cancelOrderUseCase = mock(CancelOrderUseCase.class);
     private final GetOrdersUseCase getOrdersUseCase = mock(GetOrdersUseCase.class);
-    private final GetOrderUseCase getOrderUseCase = mock(GetOrderUseCase.class);
-    private final GetPaymentUseCase getPaymentUseCase = mock(GetPaymentUseCase.class);
-    private final GetCancelBalanceUseCase getCancelBalanceUseCase = mock(GetCancelBalanceUseCase.class);
+    private final GetOrderDetailUseCase getOrderDetailUseCase = mock(GetOrderDetailUseCase.class);
     private final OrderService service = new OrderService(getAddressUseCase, getCartUseCase, getProductDetailUseCase, createOrderUseCase,
-        cancelOrderUseCase, getOrdersUseCase, getOrderUseCase, getPaymentUseCase, getCancelBalanceUseCase);
+        cancelOrderUseCase, getOrdersUseCase, getOrderDetailUseCase);
 
     @BeforeEach
     void setUp() {
@@ -169,77 +159,13 @@ class OrderServiceTest {
     }
 
     @Test
-    void 미결제_주문_상세는_결제_정보를_조회하지_않고_payment_없이_반환한다() {
+    void 주문_상세_조회를_UseCase에_위임한다() {
         final GetOrderCommand command = new GetOrderCommand(42L, "order_test");
-        final GetOrderResult result = orderDetail(null);
-        when(getOrderUseCase.execute(command)).thenReturn(result);
+        final GetOrderResult result = mock(GetOrderResult.class);
+        when(getOrderDetailUseCase.execute(command)).thenReturn(result);
 
-        assertThat(service.getOrder(command)).isSameAs(result).extracting(GetOrderResult::payment).isNull();
-        verifyNoInteractions(getPaymentUseCase, getCancelBalanceUseCase);
-    }
-
-    @Test
-    void 결제_주문_상세는_Payment와_취소_잔액_저장값으로_결제_요약을_구성한다() {
-        final GetOrderCommand command = new GetOrderCommand(42L, "order_test");
-        final Payment payment = payment();
-        when(getOrderUseCase.execute(command)).thenReturn(orderDetail(LocalDateTime.of(2026, 9, 28, 10, 0)));
-        when(getPaymentUseCase.execute("order_test")).thenReturn(payment);
-        when(getCancelBalanceUseCase.execute(7L)).thenReturn(new CancelBalance(7L, new BigDecimal("6000.00"), BigDecimal.ZERO,
-            BigDecimal.ZERO, new BigDecimal("3000.00"), new BigDecimal("500.00"), BigDecimal.ZERO));
-
-        final GetOrderResult result = service.getOrder(command);
-
-        assertThat(result.payment()).isEqualTo(new OrderPaymentResult(new BigDecimal("1000.00"), new BigDecimal("500.00"),
-            new BigDecimal("9000.00"), PaymentMethod.CARD, payment.paidAt(), new BigDecimal("3000.00"), new BigDecimal("6000.00")));
-        assertThat(result.items()).isEqualTo(orderDetail(null).items());
-    }
-
-    @Test
-    void 결제_주문의_Payment가_없으면_취소_잔액을_조회하지_않고_정합성_오류다() {
-        final GetOrderCommand command = new GetOrderCommand(42L, "order_test");
-        when(getOrderUseCase.execute(command)).thenReturn(orderDetail(LocalDateTime.of(2026, 9, 28, 10, 0)));
-        when(getPaymentUseCase.execute("order_test")).thenThrow(new CoreException(ErrorCode.NOT_FOUND_DATA));
-
-        assertOrderDataInconsistent(command);
-        verifyNoInteractions(getCancelBalanceUseCase);
-    }
-
-    @Test
-    void 결제_주문의_Payment가_승인_완료_상태가_아니면_취소_잔액을_조회하지_않고_정합성_오류다() {
-        final GetOrderCommand command = new GetOrderCommand(42L, "order_test");
-        when(getOrderUseCase.execute(command)).thenReturn(orderDetail(LocalDateTime.of(2026, 9, 28, 10, 0)));
-        when(getPaymentUseCase.execute("order_test")).thenReturn(new Payment(42L, 7L, new BigDecimal("10500.00"), 3L,
-            new BigDecimal("1000.00"), new BigDecimal("500.00"), 42L, new BigDecimal("9000.00"), PaymentState.READY));
-
-        assertOrderDataInconsistent(command);
-        verifyNoInteractions(getCancelBalanceUseCase);
-    }
-
-    @Test
-    void 결제_주문의_취소_잔액이_없으면_정합성_오류다() {
-        final GetOrderCommand command = new GetOrderCommand(42L, "order_test");
-        when(getOrderUseCase.execute(command)).thenReturn(orderDetail(LocalDateTime.of(2026, 9, 28, 10, 0)));
-        when(getPaymentUseCase.execute("order_test")).thenReturn(payment());
-        when(getCancelBalanceUseCase.execute(7L)).thenThrow(new CoreException(ErrorCode.NOT_FOUND_DATA));
-
-        assertOrderDataInconsistent(command);
-    }
-
-    private void assertOrderDataInconsistent(final GetOrderCommand command) {
-        assertThatThrownBy(() -> service.getOrder(command)).isInstanceOf(CoreException.class)
-            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.ORDER_DATA_INCONSISTENT);
-    }
-
-    private static GetOrderResult orderDetail(final LocalDateTime paidAt) {
-        return new GetOrderResult("order_test", OrderStatus.PARTIAL_CANCELED, new BigDecimal("10000.00"),
-            LocalDateTime.of(2026, 9, 28, 9, 0), paidAt, List.of(), null, null);
-    }
-
-    private static Payment payment() {
-        final Payment payment = new Payment(42L, 7L, new BigDecimal("10500.00"), 3L, new BigDecimal("1000.00"), new BigDecimal("500.00"),
-            42L, new BigDecimal("9000.00"), PaymentState.READY);
-        payment.success("payment_key", PaymentMethod.CARD, "approve");
-        return payment;
+        assertThat(service.getOrder(command)).isSameAs(result);
+        verify(getOrderDetailUseCase).execute(command);
     }
 
     private Order savedOrder() {

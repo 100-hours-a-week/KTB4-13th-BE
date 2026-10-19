@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.book.common.config.security.UserIdMvcConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.cancel.domain.enums.CancelType;
 import com.book.core.order.api.converter.OrderCommandConverter;
 import com.book.core.order.api.converter.OrderResultConverter;
 import com.book.core.order.application.command.CancelOrderCommand;
@@ -26,6 +27,8 @@ import com.book.core.order.application.result.CreateOrderResult;
 import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
 import com.book.core.order.application.result.OrderAddressResult;
+import com.book.core.order.application.result.OrderCancellationItemResult;
+import com.book.core.order.application.result.OrderCancellationResult;
 import com.book.core.order.application.result.OrderItemResult;
 import com.book.core.order.application.result.OrderPaymentResult;
 import com.book.core.order.application.result.OrderSummaryResult;
@@ -124,6 +127,13 @@ class OrderControllerTest {
             .andExpect(jsonPath("$.data.payment.paidAt").value("2026-09-28T10:05:00"))
             .andExpect(jsonPath("$.data.payment.cancelledPaidAmount").value(15.75))
             .andExpect(jsonPath("$.data.payment.cancellablePaidAmount").value(15.75))
+            .andExpect(jsonPath("$.data.cancellations[0].type").value("PARTIAL"))
+            .andExpect(jsonPath("$.data.cancellations[0].refundedAmount").value(15.75))
+            .andExpect(jsonPath("$.data.cancellations[0].canceledAt").value("2026-09-29T09:00:00"))
+            .andExpect(jsonPath("$.data.cancellations[0].items[0].orderItemId").value(17))
+            .andExpect(jsonPath("$.data.cancellations[0].items[0].productId").value(701))
+            .andExpect(jsonPath("$.data.cancellations[0].items[0].itemName").value("상품 701"))
+            .andExpect(jsonPath("$.data.cancellations[0].items[0].quantity").value(1))
             .andExpect(jsonPath("$.data.items[0].orderItemId").value(17)).andExpect(jsonPath("$.data.items[0].productId").value(701))
             .andExpect(jsonPath("$.data.items[0].itemId").doesNotExist()).andExpect(jsonPath("$.data.items[0].itemName").value("상품 701"))
             .andExpect(jsonPath("$.data.items[0].author").value("저자")).andExpect(jsonPath("$.data.items[0].unitPrice").value(17.25))
@@ -263,7 +273,9 @@ class OrderControllerTest {
         return new GetOrderResult("order_test", OrderStatus.PARTIAL_CANCELED, new BigDecimal("34.50"), LocalDateTime.of(2026, 9, 28, 10, 0),
             LocalDateTime.of(2026, 9, 28, 10, 5), List.of(item), new OrderAddressResult("06236", "서울 주소", "101호"),
             new OrderPaymentResult(new BigDecimal("1.00"), new BigDecimal("2.00"), new BigDecimal("31.50"), PaymentMethod.CARD,
-                LocalDateTime.of(2026, 9, 28, 10, 5), new BigDecimal("15.75"), new BigDecimal("15.75")));
+                LocalDateTime.of(2026, 9, 28, 10, 5), new BigDecimal("15.75"), new BigDecimal("15.75")),
+            List.of(new OrderCancellationResult(CancelType.PARTIAL, new BigDecimal("15.75"), LocalDateTime.of(2026, 9, 29, 9, 0),
+                List.of(new OrderCancellationItemResult(17L, 701L, "상품 701", 1L)))));
     }
 
     private void authenticateAs(final Long userId) {

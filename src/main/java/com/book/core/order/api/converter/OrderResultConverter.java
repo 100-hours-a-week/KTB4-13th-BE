@@ -2,6 +2,8 @@ package com.book.core.order.api.converter;
 
 import com.book.core.order.api.response.CreateOrderResponse;
 import com.book.core.order.api.response.CreateOrderItemResponse;
+import com.book.core.order.api.response.OrderCancellationItemResponse;
+import com.book.core.order.api.response.OrderCancellationResponse;
 import com.book.core.order.api.response.OrderAddressResponse;
 import com.book.core.order.api.response.OrderDetailResponse;
 import com.book.core.order.api.response.OrderItemResponse;
@@ -10,6 +12,7 @@ import com.book.core.order.api.response.OrderPaymentResponse;
 import com.book.core.order.api.response.OrderSummaryResponse;
 import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
+import com.book.core.order.application.result.OrderCancellationResult;
 import com.book.core.order.application.result.OrderItemResult;
 import com.book.core.order.application.result.OrderPaymentResult;
 import com.book.core.order.application.result.CreateOrderResult;
@@ -29,7 +32,17 @@ public class OrderResultConverter {
         final OrderAddressResponse address = result.address() == null ? null
             : new OrderAddressResponse(result.address().postalCode(), result.address().address(), result.address().detailAddress());
         return new OrderDetailResponse(result.key(), result.status(), result.totalPrice(), result.createdAt(), address,
-            toOrderPaymentResponse(result.payment()), toOrderItemResponses(result.items()));
+            toOrderPaymentResponse(result.payment()), toOrderItemResponses(result.items()),
+            toOrderCancellationResponses(result.cancellations()));
+    }
+
+    private List<OrderCancellationResponse> toOrderCancellationResponses(final List<OrderCancellationResult> cancellations) {
+        return cancellations.stream()
+            .map((final var cancellation) -> new OrderCancellationResponse(cancellation.type(), cancellation.refundedAmount(),
+                cancellation.canceledAt(),
+                cancellation.items().stream().map((final var item) -> new OrderCancellationItemResponse(item.orderItemId(),
+                    item.productId(), item.itemName(), item.quantity())).toList()))
+            .toList();
     }
 
     private OrderPaymentResponse toOrderPaymentResponse(final OrderPaymentResult payment) {

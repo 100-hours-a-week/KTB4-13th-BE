@@ -17,6 +17,7 @@ public class DeleteUserMemoriesUseCase {
 
     @Transactional
     public int execute(final DeleteUserMemoriesCommand command) {
+        userMemoryRepository.lockByUserId(command.userId());
         final List<UserMemory> memories = userMemoryRepository.findAllByIdIn(command.memoryIds());
         if (memories.size() != command.memoryIds().size()
             || memories.stream().anyMatch((final UserMemory memory) -> !memory.isOwnedBy(command.userId()))) {

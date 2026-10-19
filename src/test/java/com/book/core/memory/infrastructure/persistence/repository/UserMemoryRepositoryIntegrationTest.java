@@ -23,7 +23,7 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("test")
 @Tag("integration")
 class UserMemoryRepositoryIntegrationTest {
-    private static final long USER_ID = 9001L;
+    private static final String NICKNAME = "기억저장소회원";
     private static final int CHECK_CONSTRAINT_VIOLATED = 3819;
 
     @Autowired
@@ -32,23 +32,21 @@ class UserMemoryRepositoryIntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    Long userId;
+
     @BeforeEach
     void setUp() {
-        jdbc.update("DELETE FROM user_memories");
-        jdbc.update("DELETE FROM users");
-        jdbc.update("""
-            INSERT INTO users (id, nickname, created_at, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
-            """, USER_ID, "북적이");
+        jdbc.update("INSERT INTO users (nickname) VALUES (?)", NICKNAME);
+        userId = jdbc.queryForObject("SELECT MAX(id) FROM users WHERE nickname = ?", Long.class, NICKNAME);
     }
 
     @Test
     void 카테고리와_벡터를_JSON_배열로_저장하고_목록으로_복원한다() {
-        userMemoryRepository.saveAll(List.of(new UserMemory(USER_ID, UserMemoryType.TOPIC, "추리 소설을 좋아함", 2, List.of("추리/스릴러", "소설"),
+        userMemoryRepository.saveAll(List.of(new UserMemory(userId, UserMemoryType.TOPIC, "추리 소설을 좋아함", 2, List.of("추리/스릴러", "소설"),
             "추리 소설", List.of(0.054f, -0.0028f, 1.0f), 3, "cv_1")));
-        jdbc.update("UPDATE user_memories SET deleted_at = CURRENT_TIMESTAMP(6)");
+        jdbc.update("UPDATE user_memories SET deleted_at = CURRENT_TIMESTAMP(6) WHERE user_id = ?", userId);
 
-        final UserMemory found = userMemoryRepository.findDeletedByUserIdAndConversationId(USER_ID, "cv_1").getFirst();
+        final UserMemory found = userMemoryRepository.findDeletedByUserIdAndConversationId(userId, "cv_1").getFirst();
 
         assertThat(found.categories()).containsExactly("추리/스릴러", "소설");
         assertThat(found.vector()).containsExactly(0.054f, -0.0028f, 1.0f);
@@ -69,7 +67,7 @@ class UserMemoryRepositoryIntegrationTest {
         assertThatThrownBy(() -> jdbc.update("""
             INSERT INTO user_memories (user_id, type, value, strength, categories, keyword, vector, dim, conversation_id)
             VALUES (?, ?, '기억 문장', ?, ?, ?, ?, ?, 'cv_1')
-            """, USER_ID, type, strength, categories, keyword, vector, dim)).isInstanceOfSatisfying(UncategorizedSQLException.class,
+            """, userId, type, strength, categories, keyword, vector, dim)).isInstanceOfSatisfying(UncategorizedSQLException.class,
             (final UncategorizedSQLException exception) -> {
                 final SQLException cause = exception.getSQLException();
                 assertThat(cause.getErrorCode()).isEqualTo(CHECK_CONSTRAINT_VIOLATED);

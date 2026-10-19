@@ -36,6 +36,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -166,6 +167,23 @@ class TossPaymentRecoveryIntegrationTest {
     }
 
     @Test
+    void 서로_다른_요청키가_마지막_취소수량을_경쟁해도_한번만_환불한다() throws Exception {
+        final Fixture fixture = fixture(true, 1);
+        final var first = partial(fixture, "different-first");
+        final var second = partial(fixture, "different-second");
+        try (final var pool = Executors.newFixedThreadPool(2)) {
+            final var firstAttempt = pool.submit(() -> attempt(first));
+            final var secondAttempt = pool.submit(() -> attempt(second));
+            final List<CancelAttempt> attempts = List.of(firstAttempt.get(20, TimeUnit.SECONDS), secondAttempt.get(20, TimeUnit.SECONDS));
+            assertThat(attempts.stream().filter(CancelAttempt::succeeded)).hasSize(1);
+            assertThat(attempts.stream().filter(result -> !result.succeeded()).map(CancelAttempt::errorCode).toList()).singleElement()
+                .isIn(ErrorCode.PG_PENDING, ErrorCode.INVALID_REQUEST);
+        }
+        assertThat(fixture.pg().refunds).isEqualTo(1);
+        assertThat(canceledQuantity(fixture)).isEqualTo(1L);
+    }
+
+    @Test
     void 다른_키의_정상_반복취소는_허용하고_같은_키의_입력변경은_거절한다() {
         final Fixture fixture = fixture(true, 3);
         cancels.partialCancel(partial(fixture, "first"));
@@ -209,15 +227,21 @@ class TossPaymentRecoveryIntegrationTest {
         return new PartialCancelCommand(fixture.order().userId(), new PartialCancelAction(fixture.order().key(), itemId(fixture), 1), key);
     }
 
+    private CancelAttempt attempt(final PartialCancelCommand command) {
+        try {
+            return new CancelAttempt(cancels.partialCancel(command), null);
+        } catch (final CoreException exception) {
+            return new CancelAttempt(null, exception.errorCode());
+        }
+    }
+
     private Fixture fixture(final boolean paid, final int quantity) {
         final long userId = users.incrementAndGet();
         final long productId = 2000000 + userId;
-        jdbc.update(
-            "INSERT INTO books (id, title, author, publisher, category, published_at) VALUES (?, 'PG 테스트', '저자', '출판사', '소설', '2026-01-01')",
-            productId);
-        jdbc.update(
-            "INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity) VALUES (?, ?, 'PG 상품', 10000, 10000, 0, 10)",
-            productId, productId);
+        jdbc.update("INSERT INTO books (id, title, author, publisher, category, published_at) "
+            + "VALUES (?, 'PG 테스트', '저자', '출판사', '소설', '2026-01-01')", productId);
+        jdbc.update("INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity) "
+            + "VALUES (?, ?, 'PG 상품', 10000, 10000, 0, 10)", productId, productId);
         return new TransactionTemplate(transactions).execute(status -> {
             final Order order = Order.create(userId, "pg-order-" + UUID.randomUUID(), null);
             order.addItem(productId, "PG 상품", "", "저자", new BigDecimal("10000"), new BigDecimal("10000"), quantity);
@@ -244,6 +268,12 @@ class TossPaymentRecoveryIntegrationTest {
     }
 
     private record Fixture(Order order, String key, GatewayPayment pg) {
+    }
+
+    private record CancelAttempt(Long resultId, ErrorCode errorCode) {
+        private boolean succeeded() {
+            return resultId != null;
+        }
     }
 
     private static HttpServer startServer() {

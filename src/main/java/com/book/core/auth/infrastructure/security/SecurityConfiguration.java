@@ -27,7 +27,8 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.GET, "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs", "/v3/api-docs/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/items", "/api/v1/categories", "/api/v1/products/*", "/api/v1/search").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/coupons").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/*/login", "/api/v1/auth/reissue").permitAll().anyRequest().authenticated())
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/*/login", "/api/v1/auth/*/signup", "/api/v1/auth/reissue").permitAll()
+                .anyRequest().authenticated())
             .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint)).oauth2ResourceServer(
                 oauth2 -> oauth2.jwt(jwt -> jwt.decoder(serviceJwtDecoder)).authenticationEntryPoint(authenticationEntryPoint));
         return http.build();

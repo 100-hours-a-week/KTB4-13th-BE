@@ -6,6 +6,7 @@ import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderStatus;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -51,5 +52,15 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
     @Override
     public Optional<OrderItem> findActiveOrderItem(final Long orderItemId) {
         return orderItemJpaRepository.findByIdAndDeletedAtIsNullAndOrder_DeletedAtIsNull(orderItemId);
+    }
+
+    @Override
+    public List<OrderItem> findOrderItemsByOrderIdIn(final Collection<Long> orderIds) {
+        return orderItemJpaRepository.findByOrder_IdIn(orderIds);
+    }
+
+    @Override
+    public List<OrderItem> findOrderItemsByIdIn(final Collection<Long> orderItemIds) {
+        return orderItemJpaRepository.findByIdIn(orderItemIds);
     }
 }

@@ -19,13 +19,16 @@ import lombok.extern.slf4j.Slf4j;
 public class TransferSettlementsUseCase {
     private final CompleteSettlementTransferUseCase completeSettlementTransferUseCase;
 
+    /**
+     * 정산 주기에 해당하고 합계가 양수인 가맹점의 정산을 SENT로 변경한다. 외부 이체 API 연동 전이므로 지급 상태만 변경한다.
+     */
     public void transfer(final LocalDate targetDate, final List<Merchant> merchants, final List<Settlement> settlements) {
         final Map<Long, Merchant> merchantMap = new HashMap<>();
-        merchants.forEach((final var merchant) -> merchantMap.put(merchant.id(), merchant));
-        final var settlementMap = settlements.stream().collect(Collectors.groupingBy(Settlement::merchantId));
-        for (final var settlementGroup : settlementMap.entrySet()) {
-            final var merchantId = settlementGroup.getKey();
-            final var merchant = merchantMap.get(merchantId);
+        merchants.forEach((final Merchant merchant) -> merchantMap.put(merchant.id(), merchant));
+        final Map<Long, List<Settlement>> settlementMap = settlements.stream().collect(Collectors.groupingBy(Settlement::merchantId));
+        for (final Map.Entry<Long, List<Settlement>> settlementGroup : settlementMap.entrySet()) {
+            final Long merchantId = settlementGroup.getKey();
+            final Merchant merchant = merchantMap.get(merchantId);
             try {
                 if (merchant == null) {
                     log.warn("정산 가맹점 정보 없음 merchantId: {}", merchantId);
@@ -36,14 +39,14 @@ public class TransferSettlementsUseCase {
                         targetDate.getDayOfMonth());
                     continue;
                 }
-                final var transferAmount =
+                final BigDecimal transferAmount =
                     settlementGroup.getValue().stream().map(Settlement::settlementAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
                 if (transferAmount.compareTo(BigDecimal.ZERO) <= 0) {
                     log.warn("가맹점 미정산 금액 확인 필요 merchantId: {}, transferAmount: {}", merchantId, transferAmount);
                     continue;
                 }
-                // NOTE: 참고 구현과 동일하게 외부 이체 API는 미연동이다. SENT는 실제 송금 증거가 아니다.
                 completeSettlementTransferUseCase.execute(settlementGroup.getValue());
+                log.info("가맹점 정산 지급 상태 변경 완료 merchantId: {}, count: {}", merchantId, settlementGroup.getValue().size());
             } catch (final Exception exception) {
                 log.error("가맹점 정산 실패 merchantId: {}", merchantId, exception);
             }

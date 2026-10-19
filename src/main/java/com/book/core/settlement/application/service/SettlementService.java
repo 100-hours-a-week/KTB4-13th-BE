@@ -1,18 +1,20 @@
 package com.book.core.settlement.application.service;
 
-import com.book.core.cancel.application.usecase.GetCancelsForSettlementUseCase;
 import com.book.core.merchant.application.usecase.GetMerchantsUseCase;
-import com.book.core.payment.application.usecase.GetPaymentsForSettlementUseCase;
-import com.book.core.settlement.application.usecase.CreateSettlementTargetsUseCase;
+import com.book.core.merchant.domain.Merchant;
 import com.book.core.settlement.application.usecase.GenerateSettlementsUseCase;
 import com.book.core.settlement.application.usecase.GetSettlementTargetsUseCase;
 import com.book.core.settlement.application.usecase.GetSettlementsUseCase;
+import com.book.core.settlement.application.usecase.LoadSettlementTargetsUseCase;
 import com.book.core.settlement.application.usecase.TransferSettlementsUseCase;
 import com.book.core.settlement.domain.Settlement;
 import com.book.core.settlement.domain.SettlementState;
 import com.book.core.settlement.domain.SettlementTargetSummary;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,61 +24,36 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Slf4j
 public class SettlementService {
-    private static final int PAGE_SIZE = 1000;
-    private final GetPaymentsForSettlementUseCase getPaymentsForSettlementUseCase;
-    private final GetCancelsForSettlementUseCase getCancelsForSettlementUseCase;
-    private final CreateSettlementTargetsUseCase createSettlementTargetsUseCase;
+    private final LoadSettlementTargetsUseCase loadSettlementTargetsUseCase;
     private final GetSettlementTargetsUseCase getSettlementTargetsUseCase;
     private final GetSettlementsUseCase getSettlementsUseCase;
     private final GenerateSettlementsUseCase generateSettlementsUseCase;
     private final GetMerchantsUseCase getMerchantsUseCase;
     private final TransferSettlementsUseCase transferSettlementsUseCase;
 
+    /** 지정한 기간의 결제와 취소를 정산 대상으로 적재한다. */
     public void loadTargets(final LocalDate targetDate, final LocalDateTime from, final LocalDateTime to) {
-        processPayments(targetDate, from, to);
-        processCancels(targetDate, from, to);
+        loadSettlementTargetsUseCase.execute(targetDate, from, to);
     }
 
+    /** 정산일의 가맹점별 대상 금액과 최근 매출을 조회해 정산을 생성한다. */
     public int generate(final LocalDate targetDate) {
-        final var summaries = getSettlementTargetsUseCase.execute(targetDate);
-        final var recentSalesAmountMap =
+        log.info("정산 생성 시작 targetDate: {}", targetDate);
+        final List<SettlementTargetSummary> summaries = getSettlementTargetsUseCase.execute(targetDate);
+        final Map<Long, BigDecimal> recentSalesAmountMap =
             getSettlementsUseCase.recentSalesAmounts(targetDate, summaries.stream().map(SettlementTargetSummary::merchantId).toList());
-        return generateSettlementsUseCase.execute(summaries, recentSalesAmountMap);
+        final int count = generateSettlementsUseCase.execute(summaries, recentSalesAmountMap);
+        log.info("정산 생성 완료 targetDate: {}, count: {}", targetDate, count);
+        return count;
     }
 
+    /** 지급 대기 정산과 가맹점을 조회해 지급 상태 처리를 요청한다. */
     public void transfer(final LocalDate targetDate) {
-        final var readySettlements = getSettlementsUseCase.byState(SettlementState.READY);
-        final var merchants = getMerchantsUseCase.execute(readySettlements.stream().map(Settlement::merchantId).toList());
+        log.info("정산 지급 상태 처리 시작 targetDate: {}", targetDate);
+        final List<Settlement> readySettlements = getSettlementsUseCase.byState(SettlementState.READY);
+        final List<Merchant> merchants = getMerchantsUseCase.execute(readySettlements.stream().map(Settlement::merchantId).toList());
         transferSettlementsUseCase.transfer(targetDate, merchants, readySettlements);
+        log.info("정산 지급 상태 처리 종료 targetDate: {}, readyCount: {}", targetDate, readySettlements.size());
     }
 
-    private void processPayments(final LocalDate targetDate, final LocalDateTime from, final LocalDateTime to) {
-        int page = 0;
-        boolean hasNext;
-        do {
-            final var payments = getPaymentsForSettlementUseCase.execute(from, to, page, PAGE_SIZE);
-            try {
-                createSettlementTargetsUseCase.processPayments(targetDate, payments.content());
-            } catch (final Exception exception) {
-                log.error("결제 정산 대상 생성 실패 page: {}, size: {}", page, PAGE_SIZE, exception);
-            }
-            hasNext = payments.hasNext();
-            page++;
-        } while (hasNext);
-    }
-
-    private void processCancels(final LocalDate targetDate, final LocalDateTime from, final LocalDateTime to) {
-        int page = 0;
-        boolean hasNext;
-        do {
-            final var cancels = getCancelsForSettlementUseCase.execute(from, to, page, PAGE_SIZE);
-            try {
-                createSettlementTargetsUseCase.processCancels(targetDate, cancels.content());
-            } catch (final Exception exception) {
-                log.error("취소 정산 대상 생성 실패 page: {}, size: {}", page, PAGE_SIZE, exception);
-            }
-            hasNext = cancels.hasNext();
-            page++;
-        } while (hasNext);
-    }
 }

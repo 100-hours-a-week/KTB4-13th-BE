@@ -6,6 +6,8 @@ import com.book.core.user.application.port.UserProviderRepositoryPort;
 import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.UserProvider;
 import jakarta.persistence.PersistenceException;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
@@ -24,7 +26,7 @@ class UserProviderRepositoryAdapter implements UserProviderRepositoryPort {
             return jpaRepository.saveAndFlush(userProvider);
         } catch (final DataAccessException | PersistenceException exception) {
             if (ConstraintViolationDetector.hasConstraint(exception, PROVIDER_IDENTITY_UNIQUE_CONSTRAINT)) {
-                throw new BusinessException(ErrorCode.PROVIDER_IDENTITY_CONFLICT, exception);
+                throw new BusinessException(ErrorCode.ALREADY_REGISTERED, exception);
             }
             throw exception;
         }
@@ -33,5 +35,15 @@ class UserProviderRepositoryAdapter implements UserProviderRepositoryPort {
     @Override
     public Optional<UserProvider> findActiveByProviderTypeAndProviderUserId(final ProviderType providerType, final String providerUserId) {
         return jpaRepository.findByProviderTypeAndProviderUserIdAndDeletedAtIsNull(providerType, providerUserId);
+    }
+
+    @Override
+    public List<UserProvider> findActiveByUserId(final Long userId) {
+        return jpaRepository.findByUserIdAndDeletedAtIsNull(userId);
+    }
+
+    @Override
+    public void markUnlinked(final Long userProviderId, final LocalDateTime unlinkedAt) {
+        jpaRepository.markUnlinked(userProviderId, unlinkedAt);
     }
 }

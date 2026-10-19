@@ -46,9 +46,10 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "mysql-test"})
 @Testcontainers
 @Tag("integration")
+@Tag("mysql-migration")
 class ChatSessionHttpIntegrationTest {
     private static final String PATH = "/api/v1/recommend/chat/sessions";
     private static final AtomicLong NEXT_ID = new AtomicLong(2800000L);

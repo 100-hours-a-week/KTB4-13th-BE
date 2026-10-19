@@ -4,6 +4,7 @@ import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.user.application.port.UserProviderRepositoryPort;
 import com.book.core.user.application.port.UserRepositoryPort;
+import com.book.core.user.application.result.OAuthUserResult;
 import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
@@ -19,16 +20,16 @@ public class FindOAuthUserUseCase {
     private final UserProviderRepositoryPort userProviderRepository;
 
     @Transactional(readOnly = true)
-    public Optional<Long> execute(final ProviderType providerType, final String providerUserId) {
-        return userProviderRepository.findActiveByProviderTypeAndProviderUserId(providerType, providerUserId).map(this::findActiveUserId);
+    public Optional<OAuthUserResult> execute(final ProviderType providerType, final String providerUserId) {
+        return userProviderRepository.findActiveByProviderTypeAndProviderUserId(providerType, providerUserId).map(this::findActiveUser);
     }
 
-    private Long findActiveUserId(final UserProvider userProvider) {
+    private OAuthUserResult findActiveUser(final UserProvider userProvider) {
         final User user =
             userRepository.findById(userProvider.userId()).orElseThrow(() -> new BusinessException(ErrorCode.USER_PROVIDER_USER_NOT_FOUND));
         if (!user.isActive()) {
             throw new BusinessException(ErrorCode.USER_PROVIDER_USER_INACTIVE);
         }
-        return user.id();
+        return new OAuthUserResult(user.id(), user.isWithdrawalRequested());
     }
 }

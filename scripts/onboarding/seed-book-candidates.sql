@@ -1,6 +1,6 @@
 -- Run manually on MySQL 8.4 after V23. This file is not a Flyway migration.
 -- All 490 book IDs AND titles must match before any candidate is inserted/updated.
-DROP TEMPORARY TABLE IF EXISTS onboarding_candidate_seed;
+DROP TABLE IF EXISTS onboarding_candidate_seed;
 CREATE TEMPORARY TABLE onboarding_candidate_seed (
     subcategory_code VARCHAR(30) NOT NULL,
     book_id BIGINT NOT NULL,
@@ -505,7 +505,7 @@ VALUES
 SELECT seed.book_id, seed.title AS expected_title, books.title AS actual_title
 FROM onboarding_candidate_seed seed
 LEFT JOIN books ON books.id = seed.book_id
-WHERE books.id IS NULL OR CAST(books.title AS BINARY) <> CAST(seed.title AS BINARY);
+WHERE books.id IS NULL OR CAST(books.title AS VARBINARY) <> CAST(seed.title AS VARBINARY);
 
 -- One atomic INSERT: a catalog/code mismatch prevents the entire batch.
 -- Window totals validate the batch while reading the temporary table only once.
@@ -515,7 +515,7 @@ FROM (
     SELECT seed.subcategory_code, seed.book_id, seed.display_order,
            COUNT(*) OVER () AS total_count,
            SUM(books.id IS NOT NULL
-               AND CAST(books.title AS BINARY) = CAST(seed.title AS BINARY)
+               AND CAST(books.title AS VARBINARY) = CAST(seed.title AS VARBINARY)
                AND options.id IS NOT NULL) OVER () AS matched_count
     FROM onboarding_candidate_seed seed
     LEFT JOIN books ON books.id = seed.book_id

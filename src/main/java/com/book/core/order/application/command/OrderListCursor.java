@@ -5,24 +5,21 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.order.domain.OrderStatus;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Base64;
 
 // @formatter:off
-public record OrderListCursor(LocalDateTime createdAt, Long orderId) {
+public record OrderListCursor(LocalDateTime paidAt, Long orderId) {
     public OrderListCursor {
-        if (createdAt == null || orderId == null || orderId <= 0) {
+        if (paidAt == null || orderId == null || orderId <= 0) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 
-    public static OrderListCursor parse(
-            final String token, final OrderStatus status, final LocalDateTime from, final LocalDateTime to) {
+    public static OrderListCursor parse(final String token, final OrderStatus status, final LocalDate from, final LocalDate to) {
         if (token == null) {
             return null;
-        }
-        if (from == null || to == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
         final String[] parts;
@@ -33,9 +30,8 @@ public record OrderListCursor(LocalDateTime createdAt, Long orderId) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
-        final String expectedStatus = status == null ? "" : status.name();
-        if (parts.length != 5 || !parts[2].equals(expectedStatus) || !parts[3].equals(from.toString())
-                || !parts[4].equals(to.toString())) {
+        if (parts.length != 5 || !parts[2].equals(filterValue(status)) || !parts[3].equals(filterValue(from))
+                || !parts[4].equals(filterValue(to))) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
@@ -46,10 +42,17 @@ public record OrderListCursor(LocalDateTime createdAt, Long orderId) {
         }
     }
 
-    public String toToken(final OrderStatus status, final LocalDateTime from, final LocalDateTime to) {
-        final String statusValue = status == null ? "" : status.name();
-        final String value = String.join("|", createdAt.toString(), orderId.toString(), statusValue, from.toString(), to.toString());
+    public String toToken(final OrderStatus status, final LocalDate from, final LocalDate to) {
+        final String value =
+                String.join("|", paidAt.toString(), orderId.toString(), filterValue(status), filterValue(from), filterValue(to));
         return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String filterValue(final Object value) {
+        if (value == null) {
+            return "";
+        }
+        return value.toString();
     }
 }
 // @formatter:on

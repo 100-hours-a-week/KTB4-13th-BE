@@ -25,6 +25,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
 @Table(name = "orders")
@@ -62,6 +63,7 @@ public class Order extends BaseTimeEntity {
     @Getter(AccessLevel.NONE)
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
+    @BatchSize(size = 100)
     private List<OrderItem> items = new ArrayList<>();
 
     private Order(final Long userId, final String key, final OrderAddress address) {
@@ -113,12 +115,11 @@ public class Order extends BaseTimeEntity {
         return List.copyOf(items);
     }
 
-    public String name() {
-        final List<OrderItem> activeItems = items.stream().filter(OrderItem::isActive).toList();
-        if (activeItems.isEmpty()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
+    /** 주문 당시 저장한 첫 번째 주문상품(ID 오름차순)을 대표 상품으로 반환합니다. 취소 여부와 무관합니다. */
+    public OrderItem representativeItem() {
+        if (items.isEmpty()) {
+            throw new CoreException(ErrorCode.ORDER_DATA_INCONSISTENT);
         }
-        final String firstName = activeItems.getFirst().itemName();
-        return activeItems.size() == 1 ? firstName : firstName + " 외 " + (activeItems.size() - 1) + "건";
+        return items.getFirst();
     }
 }

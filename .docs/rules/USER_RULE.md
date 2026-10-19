@@ -1,6 +1,6 @@
 # 회원 도메인 규칙
 
-이 문서는 서비스 내부 회원과 외부 소셜 계정 연결의 정책, 생명주기와 로그인 시 회원 식별 흐름을 기록합니다.
+이 문서는 서비스 내부 회원과 외부 소셜 계정 연결의 정책, 생명주기와 로그인·회원 가입 시 회원 조회·등록 흐름을 기록합니다.
 Kakao 토큰 검증과 서비스 토큰 발급·인가는 [인증 도메인 규칙](AUTH_RULE.md)을 기준으로 합니다.
 
 ## 1. 범위와 책임
@@ -29,11 +29,11 @@ Kakao 토큰 검증과 서비스 토큰 발급·인가는 [인증 도메인 규�
 - `deletedAt`이 `null`이면 활성 연결이고 값이 있으면 비활성 연결입니다.
 - `UserProvider`는 `User` 객체의 JPA 연관관계를 가지지 않고 `userId`로 내부 회원을 참조합니다. DB 외래 키가 참조 무결성을 보장합니다.
 
-## 3. 사용자 식별과 신규 회원 생성
+## 3. 회원 조회와 신규 회원 등록
 
 활성 소셜 계정 연결은 `providerType + providerUserId`로 식별합니다.
 Kakao ID Token의 `sub`가 `providerUserId`로 전달되며 이메일은 식별에 사용하지 않습니다.
-로그인 시 조회와 신규 등록의 실행 순서는 인증 도메인의 `AuthService`가 조율하며, 회원 도메인의 UseCase는 서로 호출하지 않습니다.
+로그인과 회원 가입의 실행 순서는 인증 도메인의 `AuthService`가 조율하며, 회원 도메인의 UseCase는 서로 호출하지 않습니다.
 
 ```text
 회원 조회 FindOAuthUserUseCase(providerType, providerUserId):
@@ -47,7 +47,7 @@ Kakao ID Token의 `sub`가 `providerUserId`로 전달되며 이메일은 식별�
 회원 등록 UserRegistrationUseCase(providerType, providerUserId, providerEmail):
   1. 서버에서 닉네임을 생성한다.
   2. User와 UserProvider를 하나의 트랜잭션에서 저장한다.
-  3. provider identity가 충돌하면 재시도하지 않고 충돌 오류로 처리한다.
+  3. provider identity가 충돌하면 재시도하지 않고 ALREADY_REGISTERED로 처리한다.
 ```
 
 ## 4. 활성 데이터 중복 규칙
@@ -63,13 +63,13 @@ Kakao ID Token의 `sub`가 `providerUserId`로 전달되며 이메일은 식별�
 
 - 신규 `User` 저장과 신규 `UserProvider` 저장은 `UserRegistrationUseCase`의 한 트랜잭션에서 처리합니다.
 - `UserProvider` 저장이 실패하면 같은 시도에서 저장한 `User`도 rollback합니다.
-- 동일한 활성 provider identity의 동시 생성은 DB UNIQUE 제약으로 차단하고 `PROVIDER_IDENTITY_CONFLICT`로 처리합니다.
+- 동시 가입으로 같은 활성 provider identity가 충돌하면 DB UNIQUE 제약으로 차단하고 `ALREADY_REGISTERED`로 처리합니다.
 - 장바구니·포인트 잔액 초기화는 회원 등록 트랜잭션에 포함하지 않습니다. 실행 순서와 실패 처리는 [인증 도메인 규칙](AUTH_RULE.md)을 따릅니다.
 
 ## 6. 오류와 제약사항
 
 - 잘못된 회원 ID·닉네임·provider 정보는 각각 회원 입력 오류로 거부합니다.
-- 활성 provider identity 충돌은 `ErrorCode.PROVIDER_IDENTITY_CONFLICT`로 처리합니다.
+- 활성 provider identity 충돌은 `ErrorCode.ALREADY_REGISTERED`로 처리합니다.
 - 활성 `UserProvider`가 참조하는 `User`가 없으면 사용자 입력 오류가 아니라 `ErrorCode.USER_PROVIDER_USER_NOT_FOUND`의 내부 데이터 정합성 오류로 처리합니다.
 - 활성 `UserProvider`가 참조하는 `User`가 비활성 상태이면 `ErrorCode.USER_PROVIDER_USER_INACTIVE`의 내부 데이터 정합성 오류로 처리합니다.
 - 회원 탈퇴·복구, 소셜 계정 연결 해제·복구와 provider 추가는 현재 구현 범위에 포함하지 않습니다.

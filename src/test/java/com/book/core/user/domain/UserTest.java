@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -81,5 +82,22 @@ class UserTest {
         assertThatThrownBy(() -> user.changeNickname(" 한 ")).isInstanceOfSatisfying(BusinessException.class,
             (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_NICKNAME));
         assertThat(user.nickname()).isEqualTo("북적이");
+    }
+
+    @Test
+    void 탈퇴_신청_후_7일_전까지만_복구할_수_있다() {
+        final LocalDateTime requestedAt = LocalDateTime.of(2030, 1, 1, 12, 0);
+        final User recoverable = User.restore(42L, "북적이");
+        recoverable.requestWithdrawal(requestedAt);
+        recoverable.requestWithdrawal(requestedAt.plusDays(1));
+
+        recoverable.recoverWithdrawal(requestedAt.plusDays(7).minusNanos(1));
+
+        assertThat(recoverable.isWithdrawalRequested()).isFalse();
+        final User expired = User.restore(43L, "북적이");
+        expired.requestWithdrawal(requestedAt);
+        assertThatThrownBy(() -> expired.recoverWithdrawal(requestedAt.plusDays(7))).isInstanceOfSatisfying(BusinessException.class,
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.USER_WITHDRAWAL_PENDING));
+        assertThat(expired.deleteRequestedAt()).isEqualTo(requestedAt);
     }
 }

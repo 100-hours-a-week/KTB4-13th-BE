@@ -16,7 +16,9 @@ import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.application.usecase.AuthenticateOAuthUserUseCase;
 import com.book.core.auth.application.usecase.CreateLoginSessionUseCase;
 import com.book.core.user.application.command.UserRegistrationCommand;
+import com.book.core.user.application.result.OAuthUserResult;
 import com.book.core.user.application.usecase.FindOAuthUserUseCase;
+import com.book.core.user.application.usecase.RecoverWithdrawalUseCase;
 import com.book.core.user.domain.ProviderType;
 import java.time.Instant;
 import java.util.Optional;
@@ -38,6 +40,9 @@ class AuthServiceTest {
     SignUpService signUpService;
 
     @Mock
+    RecoverWithdrawalUseCase recoverWithdrawalUseCase;
+
+    @Mock
     CreateLoginSessionUseCase createLoginSessionUseCase;
 
     @Mock
@@ -51,7 +56,7 @@ class AuthServiceTest {
         final AuthLoginCommand command = command();
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
             .thenReturn(new OAuthUserInfo("provider-123", "reader@example.com"));
-        when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.of(42L));
+        when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.of(new OAuthUserResult(42L, false)));
         final Instant refreshExpiresAt = Instant.parse("2030-01-09T03:04:05Z");
         when(createLoginSessionUseCase.execute(42L)).thenReturn(new AuthLoginResult("access-token", "refresh-token", refreshExpiresAt));
 
@@ -61,10 +66,25 @@ class AuthServiceTest {
         order.verify(authenticateOAuthUserUseCase).execute("authorization-code", "code-verifier", "nonce");
         order.verify(findOAuthUserUseCase).execute(ProviderType.KAKAO, "provider-123");
         order.verify(createLoginSessionUseCase).execute(42L);
-        verifyNoInteractions(signUpService);
+        verifyNoInteractions(signUpService, recoverWithdrawalUseCase);
         assertThat(result.accessToken()).isEqualTo("access-token");
         assertThat(result.refreshToken()).isEqualTo("refresh-token");
         assertThat(result.refreshExpiresAt()).isEqualTo(refreshExpiresAt);
+    }
+
+    @Test
+    void 탈퇴_신청한_회원의_로그인은_복구를_요청한_뒤_token을_발급한다() {
+        final AuthLoginCommand command = command();
+        when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
+            .thenReturn(new OAuthUserInfo("provider-123", null));
+        when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.of(new OAuthUserResult(42L, true)));
+
+        service().login(command);
+
+        final InOrder order = inOrder(recoverWithdrawalUseCase, createLoginSessionUseCase);
+        order.verify(recoverWithdrawalUseCase).execute(42L);
+        order.verify(createLoginSessionUseCase).execute(42L);
+        verifyNoInteractions(signUpService);
     }
 
     @Test
@@ -104,7 +124,7 @@ class AuthServiceTest {
         final AuthLoginCommand command = command();
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
             .thenReturn(new OAuthUserInfo("provider-123", null));
-        when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.of(42L));
+        when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.of(new OAuthUserResult(42L, false)));
 
         assertThatThrownBy(() -> service().signup(command)).isInstanceOfSatisfying(BusinessException.class,
             (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ALREADY_REGISTERED));
@@ -151,8 +171,8 @@ class AuthServiceTest {
     }
 
     private AuthService service() {
-        return new AuthService(authenticateOAuthUserUseCase, findOAuthUserUseCase, signUpService, createLoginSessionUseCase,
-            authReissueUseCase, authLogoutUseCase);
+        return new AuthService(authenticateOAuthUserUseCase, findOAuthUserUseCase, signUpService, recoverWithdrawalUseCase,
+            createLoginSessionUseCase, authReissueUseCase, authLogoutUseCase);
     }
 
     private AuthLoginCommand command() {

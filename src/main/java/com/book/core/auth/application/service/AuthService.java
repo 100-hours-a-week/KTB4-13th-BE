@@ -12,7 +12,9 @@ import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.application.usecase.AuthenticateOAuthUserUseCase;
 import com.book.core.auth.application.usecase.CreateLoginSessionUseCase;
 import com.book.core.user.application.command.UserRegistrationCommand;
+import com.book.core.user.application.result.OAuthUserResult;
 import com.book.core.user.application.usecase.FindOAuthUserUseCase;
+import com.book.core.user.application.usecase.RecoverWithdrawalUseCase;
 import com.book.core.user.domain.ProviderType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,15 +25,20 @@ public class AuthService {
     private final AuthenticateOAuthUserUseCase authenticateOAuthUserUseCase;
     private final FindOAuthUserUseCase findOAuthUserUseCase;
     private final SignUpService signUpService;
+    private final RecoverWithdrawalUseCase recoverWithdrawalUseCase;
     private final CreateLoginSessionUseCase createLoginSessionUseCase;
     private final AuthReissueUseCase authReissueUseCase;
     private final AuthLogoutUseCase authLogoutUseCase;
 
     public AuthLoginResult login(final AuthLoginCommand command) {
         final OAuthUserInfo identity = authenticate(command);
-        final Long userId = findOAuthUserUseCase.execute(command.providerType(), identity.providerUserId())
+        final OAuthUserResult user = findOAuthUserUseCase.execute(command.providerType(), identity.providerUserId())
             .orElseThrow(() -> new BusinessException(ErrorCode.SIGNUP_REQUIRED));
-        return createLoginSessionUseCase.execute(userId);
+        // 탈퇴 신청 회원만 복구 UseCase가 회원 행을 잠그고 7일 유예를 재검증합니다.
+        if (user.withdrawalRequested()) {
+            recoverWithdrawalUseCase.execute(user.userId());
+        }
+        return createLoginSessionUseCase.execute(user.userId());
     }
 
     public AuthLoginResult signup(final AuthLoginCommand command) {

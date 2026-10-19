@@ -134,8 +134,8 @@ class UserWithdrawalIntegrationTest {
         jdbc.update("INSERT INTO books (id, title, author, publisher, category, published_at) VALUES (?, ?, ?, ?, ?, ?)", 9002L, "도서", "저자",
             "출판사", "소설", "2026-01-01");
         jdbc.update("INSERT INTO user_library_books (user_id, book_id, added_at) VALUES (?, ?, CURRENT_TIMESTAMP(6))", userId, 9001L);
-        jdbc.update("INSERT INTO user_library_books (user_id, book_id, added_at, deleted_at) VALUES (?, ?, CURRENT_TIMESTAMP(6), ?)", userId,
-            9002L, "2026-01-01 00:00:00");
+        jdbc.update("INSERT INTO user_library_books (user_id, book_id, added_at, deleted_at) VALUES (?, ?, CURRENT_TIMESTAMP(6), ?)",
+            userId, 9002L, "2026-01-01 00:00:00");
         mvc.perform(delete("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)).andExpect(status().isOk());
         jdbc.update("UPDATE users SET delete_requested_at = ? WHERE id = ?", LocalDateTime.now(ZoneId.of("Asia/Seoul")).minusDays(8),
             userId);

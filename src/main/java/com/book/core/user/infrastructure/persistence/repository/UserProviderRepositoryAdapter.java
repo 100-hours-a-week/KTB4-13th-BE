@@ -25,7 +25,7 @@ class UserProviderRepositoryAdapter implements UserProviderRepositoryPort {
             return jpaRepository.saveAndFlush(userProvider);
         } catch (final DataAccessException | PersistenceException exception) {
             if (ConstraintViolationDetector.hasConstraint(exception, PROVIDER_IDENTITY_UNIQUE_CONSTRAINT)) {
-                throw new BusinessException(ErrorCode.PROVIDER_IDENTITY_CONFLICT, exception);
+                throw new BusinessException(ErrorCode.ALREADY_REGISTERED, exception);
             }
             throw exception;
         }

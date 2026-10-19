@@ -97,6 +97,11 @@ class GetOnboardingProgressUseCaseTest {
         }
 
         @Override
+        public Optional<UserOnboarding> findActiveByUserIdForUpdate(final Long userId) {
+            return findActiveByUserId(userId);
+        }
+
+        @Override
         public UserOnboarding save(final UserOnboarding userOnboarding) {
             return userOnboarding;
         }
@@ -143,6 +148,11 @@ class GetOnboardingProgressUseCaseTest {
 
         @Override
         public void deleteByUserId(final Long userId) {}
+
+        @Override
+        public void deleteByUserIdAndBookIdIn(final Long userId, final List<Long> bookIds) {
+            throw new UnsupportedOperationException();
+        }
 
         @Override
         public List<UserOnboardingBook> saveAll(final List<UserOnboardingBook> books) {

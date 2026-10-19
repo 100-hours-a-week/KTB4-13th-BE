@@ -107,7 +107,7 @@ class UserRepositoryIntegrationTest {
 
         assertThatThrownBy(() -> userProviderRepository.save(UserProvider.create(user.id(), ProviderType.KAKAO, "reusable-provider", null)))
             .isInstanceOfSatisfying(BusinessException.class,
-                (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
+                (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ALREADY_REGISTERED));
 
         jdbc.update("UPDATE user_providers SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", first.id());
         assertThat(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "reusable-provider")).isEmpty();
@@ -136,7 +136,7 @@ class UserRepositoryIntegrationTest {
         final Integer usersBefore = jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class);
 
         assertThatThrownBy(() -> userRegistrationUseCase.execute(command)).isInstanceOfSatisfying(BusinessException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ALREADY_REGISTERED));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(usersBefore);
     }
 }

@@ -12,6 +12,11 @@ class UserMemoryRepositoryAdapter implements UserMemoryRepositoryPort {
     private final UserMemoryJpaRepository jpaRepository;
 
     @Override
+    public void lockByUserId(final Long userId) {
+        jpaRepository.lockUserById(userId);
+    }
+
+    @Override
     public List<UserMemory> findActiveByUserId(final Long userId) {
         return jpaRepository.findAllByUserIdAndDeletedAtIsNull(userId);
     }

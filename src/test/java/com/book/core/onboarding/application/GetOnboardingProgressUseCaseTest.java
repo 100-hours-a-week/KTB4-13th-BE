@@ -56,6 +56,14 @@ class GetOnboardingProgressUseCaseTest {
     }
 
     @Test
+    void 완료된_온보딩만_조회하면_진행중인_온보딩은_예외를_던진다() {
+        userOnboardingRepository.byUserId.put(42L, new UserOnboarding(1L, 42L, OnboardingStatus.IN_PROGRESS, null));
+
+        assertThatThrownBy(() -> useCase.executeCompleted(new GetOnboardingProgressCommand(42L))).isInstanceOf(CoreException.class)
+            .extracting("errorCode").isEqualTo(ErrorCode.ONBOARDING_NOT_COMPLETED);
+    }
+
+    @Test
     void 응답을_질문별로_그룹핑한다() {
         userOnboardingRepository.byUserId.put(42L, new UserOnboarding(1L, 42L, OnboardingStatus.IN_PROGRESS, null));
         answerRepository.byUserId.put(42L,
@@ -145,6 +153,11 @@ class GetOnboardingProgressUseCaseTest {
 
         @Override
         public void deleteByUserId(final Long userId) {}
+
+        @Override
+        public void deleteByUserIdAndBookIdIn(final Long userId, final List<Long> bookIds) {
+            throw new UnsupportedOperationException();
+        }
 
         @Override
         public List<UserOnboardingBook> saveAll(final List<UserOnboardingBook> books) {

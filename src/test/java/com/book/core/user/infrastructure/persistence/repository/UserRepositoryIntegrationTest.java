@@ -70,17 +70,13 @@ class UserRepositoryIntegrationTest {
     }
 
     @Test
-    void 활성_회원의_닉네임은_중복될_수_없고_soft_delete_후에는_재사용할_수_있다() {
-        final User first = userRepository.save(User.create("재사용닉네임"));
+    void 활성_회원의_닉네임은_중복될_수_있다() {
+        final User first = userRepository.save(User.create("중복닉네임"));
+        final User second = userRepository.save(User.create("중복닉네임"));
 
-        assertThatThrownBy(() -> userRepository.save(User.create("재사용닉네임"))).isInstanceOfSatisfying(BusinessException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NICKNAME_CONFLICT));
-
-        jdbc.update("UPDATE users SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", first.id());
-        assertThat(jdbc.queryForObject("SELECT active_flag FROM users WHERE id = ?", Integer.class, first.id())).isNull();
-
-        final User reused = userRepository.save(User.create("재사용닉네임"));
-        assertThat(reused.id()).isNotEqualTo(first.id());
+        assertThat(second.id()).isNotEqualTo(first.id());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE nickname = ? AND deleted_at IS NULL", Integer.class, "중복닉네임"))
+            .isEqualTo(2);
     }
 
     @Test
@@ -113,25 +109,14 @@ class UserRepositoryIntegrationTest {
     }
 
     @Test
-    void nickname_충돌_시도는_provider를_저장하지_않는다() {
-        userRepository.save(User.create("가입충돌닉네임"));
-        final UserRegistrationCommand command =
-            new UserRegistrationCommand(ProviderType.KAKAO, "nickname-rollback-provider", null, "가입충돌닉네임");
-
-        assertThatThrownBy(() -> userRegistrationUseCase.execute(command)).isInstanceOfSatisfying(BusinessException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NICKNAME_CONFLICT));
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_providers WHERE provider_user_id = ?", Integer.class,
-            "nickname-rollback-provider")).isZero();
-    }
-
-    @Test
     void provider_identity_충돌_시도는_먼저_저장한_User까지_rollback한다() {
         final User existingUser = userRepository.save(User.create("기존연결회원"));
         userProviderRepository.save(UserProvider.create(existingUser.id(), ProviderType.KAKAO, "registration-conflict", null));
-        final UserRegistrationCommand command = new UserRegistrationCommand(ProviderType.KAKAO, "registration-conflict", null, "롤백대상회원");
+        final UserRegistrationCommand command = new UserRegistrationCommand(ProviderType.KAKAO, "registration-conflict", null);
+        final Integer usersBefore = jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class);
 
         assertThatThrownBy(() -> userRegistrationUseCase.execute(command)).isInstanceOfSatisfying(BusinessException.class,
             (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE nickname = ?", Integer.class, "롤백대상회원")).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(usersBefore);
     }
 }

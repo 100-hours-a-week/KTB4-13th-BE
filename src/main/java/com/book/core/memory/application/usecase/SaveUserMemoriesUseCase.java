@@ -16,6 +16,7 @@ public class SaveUserMemoriesUseCase {
 
     @Transactional
     public void execute(final SaveUserMemoriesCommand command) {
+        userMemoryRepository.lockByUserId(command.userId());
         final List<UserMemory> extracted =
             command.extractions().stream().map((final UserMemoryExtraction extraction) -> toMemory(command, extraction)).toList();
         final List<UserMemory> deleted =

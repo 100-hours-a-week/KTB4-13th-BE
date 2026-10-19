@@ -31,8 +31,8 @@ class UserPreferenceServiceTest {
 
     @Test
     void 온보딩을_완료하지_않았으면_취향_기억을_조회하지_않고_409를_던진다() {
-        when(getOnboardingProgressUseCase.execute(new GetOnboardingProgressCommand(USER_ID)))
-            .thenReturn(new OnboardingProgressResult(OnboardingStatus.IN_PROGRESS, null, List.of(), List.of()));
+        when(getOnboardingProgressUseCase.executeCompleted(new GetOnboardingProgressCommand(USER_ID)))
+            .thenThrow(new CoreException(ErrorCode.ONBOARDING_NOT_COMPLETED));
 
         assertThatThrownBy(() -> userPreferenceService.getPreferences(USER_ID)).isInstanceOfSatisfying(CoreException.class,
             (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ONBOARDING_NOT_COMPLETED));
@@ -44,7 +44,7 @@ class UserPreferenceServiceTest {
         final var answers = List.of(new OnboardingAnswerGroupResult(3L, List.of(new OnboardingOptionResult(9L, null, "economy", "경제경영"))));
         final var memories = List.of(new UserMemoryGroupResult(List.of(102L, 101L), UserMemoryType.TOPIC, "경제 책을 좋아해요", List.of("경제경영"),
             List.of(LocalDate.of(2026, 10, 16))));
-        when(getOnboardingProgressUseCase.execute(new GetOnboardingProgressCommand(USER_ID)))
+        when(getOnboardingProgressUseCase.executeCompleted(new GetOnboardingProgressCommand(USER_ID)))
             .thenReturn(new OnboardingProgressResult(OnboardingStatus.COMPLETED, null, answers, List.of()));
         when(getUserMemoriesUseCase.execute(USER_ID)).thenReturn(memories);
 

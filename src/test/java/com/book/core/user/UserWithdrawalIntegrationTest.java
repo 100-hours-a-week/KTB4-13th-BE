@@ -10,7 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.book.core.auth.application.port.OAuthIdentity;
+import com.book.core.auth.application.result.OAuthUserInfo;
 import com.book.core.auth.application.port.OAuthProviderClient;
 import com.book.core.auth.application.port.OAuthTokenClient;
 import com.jayway.jsonpath.JsonPath;
@@ -77,7 +77,7 @@ class UserWithdrawalIntegrationTest {
     private ResultActions login(final String providerUserId) throws Exception {
         when(oAuthTokenClient.exchangeForIdToken(providerUserId + "-code", "code-verifier")).thenReturn(providerUserId + "-id-token");
         when(oAuthProviderClient.verify(providerUserId + "-id-token", "nonce"))
-            .thenReturn(new OAuthIdentity(providerUserId, "reader@example.com"));
+            .thenReturn(new OAuthUserInfo(providerUserId, "reader@example.com"));
         return mvc.perform(post("/api/v1/auth/kakao/login").contentType(MediaType.APPLICATION_JSON)
             .content("{\"authorizationCode\":\"" + providerUserId + "-code\",\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}"));
     }

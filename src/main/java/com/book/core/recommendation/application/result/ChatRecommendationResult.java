@@ -22,6 +22,11 @@ public class ChatRecommendationResult {
         this.degraded = degraded;
     }
 
+    public static ChatRecommendationResult from(final ChatRecommendationAiOutcome outcome, final List<RecommendationCardResult> cards) {
+        return new ChatRecommendationResult(outcome.spec(), outcome.reply(), cards, outcome.followup(), outcome.buttons(),
+            outcome.degraded());
+    }
+
     public Map<String, Object> spec() {
         return spec;
     }

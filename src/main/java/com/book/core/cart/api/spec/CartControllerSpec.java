@@ -25,8 +25,9 @@ public interface CartControllerSpec {
     @Operation(summary = "장바구니 상품 추가",
         description = "동일 장바구니에 같은 상품이 있으면 기존 수량에 누적하지 않고 요청한 수량으로 대체합니다. " + "같은 추가 요청을 반복해도 결과는 같습니다. quantity는 1~500 범위로 필수 입력입니다.")
     @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "추가 성공"), @ApiResponse(responseCode = "400", description = "요청 오류"),
-        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "추가 성공"),
+        @ApiResponse(responseCode = "409", description = "CONCURRENT_CHANGE: 동시 변경 충돌, 전체 미적용"),
+        @ApiResponse(responseCode = "400", description = "요청 오류"), @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
     ResponseEntity<com.book.common.response.ApiResponse<Void>> addCartItem(@Parameter(hidden = true) final Long userId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = AddCartItemRequest.class)))
@@ -35,6 +36,7 @@ public interface CartControllerSpec {
     @Operation(summary = "장바구니 상품 수량 변경", description = "인증된 회원의 활성 장바구니 상품 수량을 변경합니다. 재고가 부족하면 변경하지 않습니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "수량 변경 성공"),
+        @ApiResponse(responseCode = "409", description = "CONCURRENT_CHANGE: 동시 변경 충돌, 전체 미적용"),
         @ApiResponse(responseCode = "400", description = "수량 형식이 잘못되었거나 상품 재고가 부족함"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @ApiResponse(responseCode = "404", description = "장바구니 상품 또는 상품을 찾을 수 없음")})
@@ -47,6 +49,7 @@ public interface CartControllerSpec {
     @Operation(summary = "장바구니 상품 삭제", description = "인증된 회원의 활성 장바구니 상품을 논리 삭제합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "삭제 성공"),
+        @ApiResponse(responseCode = "409", description = "CONCURRENT_CHANGE: 동시 변경 충돌, 전체 미적용"),
         @ApiResponse(responseCode = "400", description = "장바구니 상품 ID가 잘못됨"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @ApiResponse(responseCode = "404", description = "장바구니 상품을 찾을 수 없음")})
@@ -57,6 +60,7 @@ public interface CartControllerSpec {
     @Operation(summary = "장바구니 상품 다건 삭제", description = "인증된 회원의 활성 장바구니 상품들을 논리 삭제합니다. 대상이 하나라도 유효하지 않으면 전체 요청을 실패합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "삭제 성공"),
+        @ApiResponse(responseCode = "409", description = "CONCURRENT_CHANGE: 동시 변경 충돌, 전체 미적용"),
         @ApiResponse(responseCode = "400", description = "요청 목록이 비었거나 장바구니 상품 ID가 잘못됨"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @ApiResponse(responseCode = "404", description = "장바구니 상품을 찾을 수 없음")})

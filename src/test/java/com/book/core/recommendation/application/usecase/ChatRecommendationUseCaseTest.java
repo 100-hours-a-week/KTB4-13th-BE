@@ -9,13 +9,15 @@ import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.ProductRepositoryPort;
 import com.book.core.product.application.result.ProductListItem;
-import com.book.core.product.application.usecase.FindProductByBookIdUseCase;
+import com.book.core.product.application.usecase.GetRecommendationProductsUseCase;
 import com.book.core.product.domain.Product;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
 import com.book.core.recommendation.application.port.AiRecommendationCard;
 import com.book.core.recommendation.application.port.AiRecommendationChatRequest;
 import com.book.core.recommendation.application.port.AiRecommendationChatResult;
 import com.book.core.recommendation.application.port.AiRecommendationClient;
+import com.book.core.recommendation.application.result.ChatRecommendationAiOutcome;
+import com.book.core.recommendation.application.result.ResolvedRecommendationCard;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -31,7 +33,7 @@ class ChatRecommendationUseCaseTest {
     private final FakeProductRepositoryPort productRepository = new FakeProductRepositoryPort();
     private final GetBooksUseCase getBooksUseCase = new GetBooksUseCase(bookRepository);
     private final ChatRecommendationUseCase useCase =
-        new ChatRecommendationUseCase(aiRecommendationClient, getBooksUseCase, new FindProductByBookIdUseCase(productRepository));
+        new ChatRecommendationUseCase(aiRecommendationClient, getBooksUseCase, new GetRecommendationProductsUseCase(productRepository));
 
     @Test
     void AI_카드를_Book_정보와_활성_상품의_ID와_가격으로_보강하고_AI_추천_값을_보존한다() {
@@ -40,10 +42,10 @@ class ChatRecommendationUseCaseTest {
         aiRecommendationClient.result = new AiRecommendationChatResult(Map.of("intent", "semantic"), "reply",
             List.of(new AiRecommendationCard(1L, 87, "한 줄 이유", "긴 이유")), "followup", List.of("btn"), false);
 
-        final var outcome = useCase.execute(command(Map.of("intent", "semantic"), List.of()));
+        final ChatRecommendationAiOutcome outcome = useCase.execute(command(Map.of("intent", "semantic"), List.of()));
 
         assertThat(outcome.cards()).hasSize(1);
-        final var card = outcome.cards().getFirst();
+        final ResolvedRecommendationCard card = outcome.cards().getFirst();
         assertThat(card.bookId()).isEqualTo(1L);
         assertThat(card.productId()).isEqualTo(501L);
         assertThat(card.title()).isEqualTo("제목1");
@@ -61,7 +63,7 @@ class ChatRecommendationUseCaseTest {
         aiRecommendationClient.result = new AiRecommendationChatResult(Map.of(), "reply",
             List.of(new AiRecommendationCard(1L, 70, "한 줄 이유", null)), null, List.of(), true);
 
-        final var outcome = useCase.execute(command(Map.of(), List.of()));
+        final ChatRecommendationAiOutcome outcome = useCase.execute(command(Map.of(), List.of()));
 
         assertThat(outcome.cards().getFirst().productId()).isNull();
         assertThat(outcome.cards().getFirst().price()).isNull();
@@ -84,9 +86,24 @@ class ChatRecommendationUseCaseTest {
         aiRecommendationClient.result = new AiRecommendationChatResult(Map.of(), "reply",
             List.of(new AiRecommendationCard(999L, 50, "이유", "이유")), null, List.of(), false);
 
-        final var outcome = useCase.execute(command(Map.of(), List.of()));
+        final ChatRecommendationAiOutcome outcome = useCase.execute(command(Map.of(), List.of()));
 
         assertThat(outcome.cards()).isEmpty();
+    }
+
+    @Test
+    void 삭제되거나_없는_책은_제외하고_정상_책의_추천_순서를_유지한다() {
+        final Book deleted = book(1L);
+        deleted.delete();
+        bookRepository.books.put(1L, deleted);
+        bookRepository.books.put(2L, book(2L));
+        bookRepository.books.put(3L, book(3L));
+        aiRecommendationClient.result =
+            new AiRecommendationChatResult(Map.of(), "reply", List.of(card(1L), card(999L), card(3L), card(2L)), null, List.of(), false);
+
+        final ChatRecommendationAiOutcome outcome = useCase.execute(command(Map.of(), List.of()));
+
+        assertThat(outcome.cards()).extracting("bookId").containsExactly(3L, 2L);
     }
 
     @Test
@@ -98,7 +115,7 @@ class ChatRecommendationUseCaseTest {
         aiRecommendationClient.result =
             new AiRecommendationChatResult(Map.of(), "reply", List.of(card(1L), card(2L), card(3L), card(4L)), null, List.of(), false);
 
-        final var outcome = useCase.execute(command(Map.of(), List.of()));
+        final ChatRecommendationAiOutcome outcome = useCase.execute(command(Map.of(), List.of()));
 
         assertThat(outcome.cards()).hasSize(3);
     }
@@ -160,7 +177,7 @@ class ChatRecommendationUseCaseTest {
 
         @Override
         public List<Product> findActiveByBookIds(final List<Long> bookIds) {
-            return List.of();
+            return bookIds.stream().distinct().map(productsByBookId::get).filter(Objects::nonNull).filter(Product::isActive).toList();
         }
 
         @Override

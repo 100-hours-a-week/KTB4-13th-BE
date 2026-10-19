@@ -2,24 +2,35 @@ package com.book.core.cart.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.cart.application.command.DeleteCartItemCommand;
 import com.book.core.cart.application.command.DeleteCartItemsCommand;
 import com.book.core.cart.application.port.CartItemRepositoryPort;
+import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.application.usecase.DeleteCartItemUseCase;
 import com.book.core.cart.application.usecase.DeleteCartItemsUseCase;
+import com.book.core.cart.domain.Cart;
 import com.book.core.cart.domain.CartItem;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class CartDeleteUseCaseTest {
+    private final CartRepositoryPort cartRepository = mock(CartRepositoryPort.class);
     private final FakeCartItemRepository cartItemRepository = new FakeCartItemRepository();
-    private final DeleteCartItemUseCase deleteCartItemUseCase = new DeleteCartItemUseCase(cartItemRepository);
-    private final DeleteCartItemsUseCase deleteCartItemsUseCase = new DeleteCartItemsUseCase(cartItemRepository);
+    private final DeleteCartItemUseCase deleteCartItemUseCase = new DeleteCartItemUseCase(cartRepository, cartItemRepository);
+    private final DeleteCartItemsUseCase deleteCartItemsUseCase = new DeleteCartItemsUseCase(cartRepository, cartItemRepository);
+
+    @BeforeEach
+    void setUpCart() {
+        when(cartRepository.findByUserIdForChange(42L)).thenReturn(Optional.of(new Cart(1L, 42L)));
+    }
 
     @Test
     void 소유한_활성_상품을_삭제하면_soft_delete_상태가_된다() {
@@ -108,6 +119,11 @@ class CartDeleteUseCaseTest {
     private static final class FakeCartItemRepository implements CartItemRepositoryPort {
         private List<CartItem> items = List.of();
         private Map<Long, Long> otherOwnerIds = Map.of();
+
+        @Override
+        public List<CartItem> findAllByCartIdForChange(final Long cartId) {
+            return items.stream().filter((final CartItem item) -> item.cartId().equals(cartId)).toList();
+        }
 
         @Override
         public Optional<CartItem> findActiveByUserIdAndId(final Long userId, final Long cartItemId) {

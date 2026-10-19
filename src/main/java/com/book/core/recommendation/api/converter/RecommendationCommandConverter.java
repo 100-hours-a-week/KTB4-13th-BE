@@ -7,13 +7,15 @@ import com.book.core.recommendation.application.command.GetRecommendationFeedCom
 import com.book.core.recommendation.application.command.RecommendationFeedSort;
 import com.book.core.recommendation.application.command.RecommendationFeedSurface;
 import com.book.core.recommendation.application.command.RecommendationTurn;
+import java.util.List;
 import java.util.Locale;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RecommendationCommandConverter {
     public ChatRecommendationCommand toChatRecommendationCommand(final Long userId, final ChatRecommendationRequest request) {
-        final var turns = request.recentTurns().stream().map(turn -> new RecommendationTurn(turn.role(), turn.text())).toList();
+        final List<RecommendationTurn> turns =
+            request.recentTurns().stream().map(turn -> new RecommendationTurn(turn.role(), turn.text())).toList();
         return new ChatRecommendationCommand(userId, Boolean.TRUE.equals(request.consented()), request.spec(), request.message(), turns,
             request.excludeBookIdsOrEmpty());
     }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.book.core.recommendation.application.port.RecommendationCardRepositoryPort;
 import com.book.core.recommendation.domain.RecommendationCard;
 import java.sql.Timestamp;
+import java.util.Map;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("test")
 @Tag("integration")
 class RecommendationCardRepositoryIntegrationTest {
+
     @Autowired
     RecommendationCardRepositoryPort recommendationCardRepository;
 
@@ -27,9 +29,10 @@ class RecommendationCardRepositoryIntegrationTest {
         insertUser(9001L, "닉네임9001");
         insertBook(29101L, "저장 검증 도서");
 
-        final var saved = recommendationCardRepository.save(RecommendationCard.create(9001L, 29101L, "긴 추천 이유"));
+        final RecommendationCard saved = recommendationCardRepository.save(RecommendationCard.create(9001L, 29101L, "긴 추천 이유"));
 
-        final var row = jdbc.queryForMap("SELECT user_id, book_id, reason_long FROM recommendation_cards WHERE id = ?", saved.id());
+        final Map<String, Object> row =
+            jdbc.queryForMap("SELECT user_id, book_id, reason_long FROM recommendation_cards WHERE id = ?", saved.id());
         assertThat(row).containsEntry("user_id", 9001L).containsEntry("book_id", 29101L).containsEntry("reason_long", "긴 추천 이유");
     }
 
@@ -37,9 +40,9 @@ class RecommendationCardRepositoryIntegrationTest {
     void 카드_ID로_조회하면_저장된_카드를_찾는다() {
         insertUser(9002L, "닉네임9002");
         insertBook(29102L, "조회 검증 도서");
-        final var saved = recommendationCardRepository.save(RecommendationCard.create(9002L, 29102L, "조회용 이유"));
+        final RecommendationCard saved = recommendationCardRepository.save(RecommendationCard.create(9002L, 29102L, "조회용 이유"));
 
-        final var found = recommendationCardRepository.findById(saved.id()).orElseThrow();
+        final RecommendationCard found = recommendationCardRepository.findById(saved.id()).orElseThrow();
 
         assertThat(found.userId()).isEqualTo(9002L);
         assertThat(found.bookId()).isEqualTo(29102L);
@@ -52,9 +55,9 @@ class RecommendationCardRepositoryIntegrationTest {
         insertUser(9003L, "닉네임9003");
         insertUser(9004L, "닉네임9004");
         insertBook(29103L, "소유권 검증 도서");
-        final var saved = recommendationCardRepository.save(RecommendationCard.create(9003L, 29103L, "소유권 이유"));
+        final RecommendationCard saved = recommendationCardRepository.save(RecommendationCard.create(9003L, 29103L, "소유권 이유"));
 
-        final var found = recommendationCardRepository.findById(saved.id()).orElseThrow();
+        final RecommendationCard found = recommendationCardRepository.findById(saved.id()).orElseThrow();
 
         assertThat(found.isOwnedBy(9004L)).isFalse();
     }

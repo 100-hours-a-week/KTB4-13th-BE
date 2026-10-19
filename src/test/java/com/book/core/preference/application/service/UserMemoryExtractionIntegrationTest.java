@@ -19,28 +19,19 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
 @Tag("integration")
 class UserMemoryExtractionIntegrationTest {
     private static final long USER_ID = 9001L;
     private static final String CONVERSATION_ID = "cv_1";
     private static final ExtractUserMemoriesCommand COMMAND =
         new ExtractUserMemoriesCommand(USER_ID, CONVERSATION_ID, List.of(new ConversationMessage("user", "로맨스 소설 좋아해요")));
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
 
     @Autowired
     UserPreferenceService userPreferenceService;

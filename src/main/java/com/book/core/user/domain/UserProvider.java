@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,6 +36,9 @@ public class UserProvider extends BaseEntity {
     @Column(name = "provider_email", length = 254)
     private String providerEmail;
 
+    @Column(name = "unlinked_at")
+    private LocalDateTime unlinkedAt;
+
     private UserProvider(final Long id, final Long userId, final ProviderType providerType, final String providerUserId,
         final String providerEmail) {
         super(id);
@@ -59,6 +63,10 @@ public class UserProvider extends BaseEntity {
             throw new BusinessException(ErrorCode.INVALID_USER_PROVIDER_ID);
         }
         return new UserProvider(id, userId, providerType, providerUserId, providerEmail);
+    }
+
+    public boolean isUnlinked() {
+        return unlinkedAt != null;
     }
 
     private static void validateUserId(final Long userId) {

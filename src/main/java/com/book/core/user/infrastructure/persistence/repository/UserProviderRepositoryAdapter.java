@@ -6,6 +6,7 @@ import com.book.core.user.application.port.UserProviderRepositoryPort;
 import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.UserProvider;
 import jakarta.persistence.PersistenceException;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
@@ -33,5 +34,10 @@ class UserProviderRepositoryAdapter implements UserProviderRepositoryPort {
     @Override
     public Optional<UserProvider> findActiveByProviderTypeAndProviderUserId(final ProviderType providerType, final String providerUserId) {
         return jpaRepository.findByProviderTypeAndProviderUserIdAndDeletedAtIsNull(providerType, providerUserId);
+    }
+
+    @Override
+    public void markUnlinked(final Long userProviderId, final LocalDateTime unlinkedAt) {
+        jpaRepository.markUnlinked(userProviderId, unlinkedAt);
     }
 }

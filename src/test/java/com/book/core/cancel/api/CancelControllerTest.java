@@ -66,10 +66,10 @@ class CancelControllerTest {
     @Test
     void 부분취소는_주문상품_ID와_Long_수량을_전달한다() throws Exception {
         authenticate();
-        mvc.perform(post("/api/v1/partial-cancel").header("Authorization", "Bearer test-token").contentType(MediaType.APPLICATION_JSON)
-            .content("{\"orderKey\":\"order\",\"orderItemId\":10,\"quantity\":2}")).andExpect(status().isOk())
-            .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
-        verify(cancelService).partialCancel(new PartialCancelCommand(42L, new PartialCancelAction("order", 10L, 2L)));
+        mvc.perform(post("/api/v1/partial-cancel").header("Idempotency-Key", "request").header("Authorization", "Bearer test-token")
+            .contentType(MediaType.APPLICATION_JSON).content("{\"orderKey\":\"order\",\"orderItemId\":10,\"quantity\":2}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
+        verify(cancelService).partialCancel(new PartialCancelCommand(42L, new PartialCancelAction("order", 10L, 2L), "request"));
     }
 
     @ParameterizedTest
@@ -77,8 +77,9 @@ class CancelControllerTest {
         "{\"orderKey\":\"order\",\"orderItemId\":0,\"quantity\":1}", "{\"orderKey\":\"order\",\"orderItemId\":10,\"quantity\":-1}"})
     void 잘못된_부분취소_입력은_HTTP에서_거부한다(final String body) throws Exception {
         authenticate();
-        mvc.perform(post("/api/v1/partial-cancel").header("Authorization", "Bearer test-token").contentType(MediaType.APPLICATION_JSON)
-            .content(body)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+        mvc.perform(post("/api/v1/partial-cancel").header("Idempotency-Key", "request").header("Authorization", "Bearer test-token")
+            .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
         verifyNoInteractions(cancelService);
     }
 

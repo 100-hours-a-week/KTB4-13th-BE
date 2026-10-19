@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "부분 취소와 요청 재전송",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1280,
+      830
+    ]
+  },
+  "participants": [
+    {
+      "id": "api",
+      "type": "frontend",
+      "label": "API 요청"
+    },
+    {
+      "id": "app",
+      "type": "backend",
+      "label": "Service / UseCase"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL"
+    },
+    {
+      "id": "pg",
+      "type": "external",
+      "label": "Toss Payments"
+    }
+  ],
+  "messages": [
+    {
+      "id": "m0",
+      "from": "api",
+      "to": "app",
+      "label": "상품 · 수량 + Idempotency-Key",
+      "y": 190
+    },
+    {
+      "id": "m1",
+      "from": "app",
+      "to": "db",
+      "label": "소유권 검증 · 요청 기록 커밋",
+      "y": 264
+    },
+    {
+      "id": "m2",
+      "from": "app",
+      "to": "db",
+      "label": "주문 잠금 · 취소 금액 계산",
+      "y": 338
+    },
+    {
+      "id": "m3",
+      "from": "app",
+      "to": "pg",
+      "label": "금액과 예상 잔액으로 부분 취소",
+      "y": 412
+    },
+    {
+      "id": "m4",
+      "from": "pg",
+      "to": "app",
+      "label": "해당 취소 거래 키",
+      "y": 486
+    },
+    {
+      "id": "m5",
+      "from": "app",
+      "to": "db",
+      "label": "취소 수량 · 잔액 · 이력 커밋",
+      "y": 560
+    },
+    {
+      "id": "m6",
+      "from": "app",
+      "to": "api",
+      "label": "완료 / 같은 요청은 결과 재생",
+      "y": 634
+    }
+  ]
+}

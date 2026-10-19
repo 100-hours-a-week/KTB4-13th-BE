@@ -20,6 +20,8 @@ public interface CancelControllerSpec {
         @Pattern(regexp = "[A-Za-z0-9_-]{1,100}") @RequestHeader("Idempotency-Key") final String requestKey,
         @Valid final CancelRequest request);
 
-    @Operation(summary = "결제 부분 취소", description = "PAID 또는 PARTIAL_CANCELED 주문의 상품 수량을 취소합니다. 실제 PG 연동은 미구현입니다.")
-    ResponseEntity<ApiResponse<Void>> partialCancel(@Parameter(hidden = true) final Long userId, @Valid final PartialCancelRequest request);
+    @Operation(summary = "결제 부분 취소", description = "상품 수량만큼 토스 결제를 부분 취소합니다. 같은 요청 키는 재생하고 다른 입력은 거절합니다.")
+    ResponseEntity<ApiResponse<Void>> partialCancel(@Parameter(hidden = true) final Long userId,
+        @Pattern(regexp = "[A-Za-z0-9_-]{1,100}") @RequestHeader("Idempotency-Key") final String requestKey,
+        @Valid final PartialCancelRequest request);
 }

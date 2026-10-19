@@ -15,7 +15,8 @@ public class CancelCommandConverter {
         return new CancelCommand(userId, new CancelAction(request.orderKey()), requestKey);
     }
 
-    public PartialCancelCommand toPartialCancelCommand(final Long userId, final PartialCancelRequest request) {
-        return new PartialCancelCommand(userId, new PartialCancelAction(request.orderKey(), request.orderItemId(), request.quantity()));
+    public PartialCancelCommand toPartialCancelCommand(final Long userId, final String requestKey, final PartialCancelRequest request) {
+        return new PartialCancelCommand(userId, new PartialCancelAction(request.orderKey(), request.orderItemId(), request.quantity()),
+            requestKey);
     }
 }

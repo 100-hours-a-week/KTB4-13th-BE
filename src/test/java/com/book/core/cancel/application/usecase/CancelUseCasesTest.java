@@ -94,7 +94,8 @@ class CancelUseCasesTest {
         final Order order = order(3);
         prepare(order, -1L);
         final CancelCalculated calculated = new CancelCalculated(BigDecimal.valueOf(1000), BigDecimal.ZERO, BigDecimal.ZERO, false);
-        partial().execute(new PartialCancelAction("order", 4L, 1L), calculated);
+        partial().execute(new PartialCancelAction("order", 4L, 1L), calculated,
+            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", java.time.OffsetDateTime.now()));
         assertThat(order.status()).isEqualTo(OrderStatus.PARTIAL_CANCELED);
         assertThat(order.items().getFirst().canceledQuantity()).isEqualTo(1);
         verify(deduct).execute(1L, PointType.PAYMENT, 3L, PointAmount.PAYMENT);
@@ -112,7 +113,8 @@ class CancelUseCasesTest {
         prepare(order, 10L);
         when(cancels.countByOrderId(2L)).thenReturn(1L);
         final CancelCalculated calculated = new CancelCalculated(BigDecimal.ZERO, BigDecimal.valueOf(1000), BigDecimal.valueOf(100), true);
-        partial().execute(new PartialCancelAction("order", 4L, 1L), calculated);
+        partial().execute(new PartialCancelAction("order", 4L, 1L), calculated,
+            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", java.time.OffsetDateTime.now()));
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
         verify(coupons).execute(10L);
         verify(earn).execute(1L, PointType.PAYMENT, 3L, BigDecimal.valueOf(100));

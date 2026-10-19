@@ -22,6 +22,6 @@ public interface CancelControllerSpec {
 
     @Operation(summary = "결제 부분 취소", description = "상품 수량만큼 토스 결제를 부분 취소합니다. 같은 요청 키는 재생하고 다른 입력은 거절합니다.")
     ResponseEntity<ApiResponse<Void>> partialCancel(@Parameter(hidden = true) final Long userId,
-        @Pattern(regexp = "[A-Za-z0-9_-]{1,100}") @RequestHeader("Idempotency-Key") final String requestKey,
+        @Parameter(description = "멱등 요청 키. 영문·숫자·밑줄·하이픈 1~100자") @RequestHeader("Idempotency-Key") final String requestKey,
         @Valid final PartialCancelRequest request);
 }

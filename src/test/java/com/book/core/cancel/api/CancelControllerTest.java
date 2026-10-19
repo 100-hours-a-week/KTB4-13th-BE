@@ -110,6 +110,16 @@ class CancelControllerTest {
         verifyNoInteractions(cancelService);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"bad key", "key/one", "한글"})
+    void 부분취소_요청키가_잘못되면_Command_검증으로_400을_반환한다(final String requestKey) throws Exception {
+        authenticate();
+        mvc.perform(post("/api/v1/partial-cancel").header("Idempotency-Key", requestKey).header("Authorization", "Bearer test-token")
+            .contentType(MediaType.APPLICATION_JSON).content("{\"orderKey\":\"order\",\"orderItemId\":10,\"quantity\":1}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+        verifyNoInteractions(cancelService);
+    }
+
     @Test
     void OpenAPI는_취소_API와_인증계약을_노출하고_userId를_입력으로_노출하지_않는다() throws Exception {
         mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andExpect(jsonPath("$.paths['/api/v1/cancel'].post.security").exists())

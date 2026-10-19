@@ -131,6 +131,11 @@ class UserWithdrawalIntegrationTest {
         jdbc.update("INSERT INTO books (id, title, author, publisher, category, published_at) VALUES (?, ?, ?, ?, ?, ?)", 9001L, "도서", "저자",
             "출판사", "소설", "2026-01-01");
         jdbc.update("INSERT INTO user_onboarding_books (user_id, book_id) VALUES (?, ?)", userId, 9001L);
+        jdbc.update("INSERT INTO books (id, title, author, publisher, category, published_at) VALUES (?, ?, ?, ?, ?, ?)", 9002L, "도서", "저자",
+            "출판사", "소설", "2026-01-01");
+        jdbc.update("INSERT INTO user_library_books (user_id, book_id, added_at) VALUES (?, ?, CURRENT_TIMESTAMP(6))", userId, 9001L);
+        jdbc.update("INSERT INTO user_library_books (user_id, book_id, added_at, deleted_at) VALUES (?, ?, CURRENT_TIMESTAMP(6), ?)", userId,
+            9002L, "2026-01-01 00:00:00");
         mvc.perform(delete("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)).andExpect(status().isOk());
         jdbc.update("UPDATE users SET delete_requested_at = ? WHERE id = ?", LocalDateTime.now(ZoneId.of("Asia/Seoul")).minusDays(8),
             userId);
@@ -145,6 +150,7 @@ class UserWithdrawalIntegrationTest {
         assertThat(count("SELECT COUNT(*) FROM users WHERE id = ? AND deleted_at IS NULL", userId)).isEqualTo(1);
         assertThat(count("SELECT COUNT(*) FROM user_providers WHERE user_id = ? AND unlinked_at IS NULL", userId)).isEqualTo(1);
         assertThat(count("SELECT COUNT(*) FROM user_onboarding_answers WHERE user_id = ?", userId)).isEqualTo(1);
+        assertThat(count("SELECT COUNT(*) FROM user_library_books WHERE user_id = ? AND deleted_at IS NULL", userId)).isEqualTo(1);
 
         doNothing().when(oAuthUnlinkClient).unlink(ProviderType.KAKAO, "expired-provider");
         doThrow(new IllegalStateException("db cleanup failure")).when(deleteUserOnboardingDataUseCase).execute(userId);
@@ -173,11 +179,14 @@ class UserWithdrawalIntegrationTest {
         assertThat(count("SELECT COUNT(*) FROM user_onboardings WHERE user_id = ?", userId)).isZero();
         assertThat(count("SELECT COUNT(*) FROM user_onboarding_answers WHERE user_id = ?", userId)).isZero();
         assertThat(count("SELECT COUNT(*) FROM user_onboarding_books WHERE user_id = ?", userId)).isZero();
+        assertThat(count("SELECT COUNT(*) FROM user_library_books WHERE user_id = ? AND deleted_at IS NOT NULL", userId)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT deleted_at FROM user_library_books WHERE user_id = ? AND book_id = ?", LocalDateTime.class,
+            userId, 9002L)).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
         assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ?", userId)).isEqualTo(1);
         assertThat(jdbc.queryForList("SELECT TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() "
             + "AND REFERENCED_TABLE_NAME = 'users'", String.class)).as("users를 참조하는 테이블이 추가되면 최종 탈퇴 보존·파기 대상을 결정해야 합니다.")
             .containsExactlyInAnyOrder("user_providers", "refresh_sessions", "user_onboardings", "user_onboarding_answers",
-                "user_onboarding_books", "recommendation_cards", "user_term_agreement");
+                "user_onboarding_books", "recommendation_cards", "user_term_agreement", "user_library_books");
 
         signup("expired-provider").andExpect(status().isOk());
         final Long newUserId = userIdOf("expired-provider");

@@ -152,7 +152,7 @@ class KakaoOAuthTokenClientImplTest {
 
     private KakaoOAuthTokenClientImpl createClient(final String clientSecret) {
         return new KakaoOAuthTokenClientImpl(restClientBuilder.build(),
-            new KakaoProperties("test-kakao-rest-api-key", clientSecret, "http://localhost:3000/oauth/kakao/callback"));
+            new KakaoProperties("test-kakao-rest-api-key", clientSecret, null, "http://localhost:3000/oauth/kakao/callback"));
     }
 
     private void assertError(final ErrorCode errorCode) {

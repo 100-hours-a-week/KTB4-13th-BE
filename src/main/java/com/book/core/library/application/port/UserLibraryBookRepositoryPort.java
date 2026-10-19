@@ -9,5 +9,7 @@ public interface UserLibraryBookRepositoryPort {
 
     List<UserLibraryBook> findActiveByUserIdAndIds(final Long userId, final List<Long> libraryBookIds);
 
+    List<UserLibraryBook> findActiveByUserId(final Long userId);
+
     List<UserLibraryBook> saveAll(final List<UserLibraryBook> libraryBooks);
 }

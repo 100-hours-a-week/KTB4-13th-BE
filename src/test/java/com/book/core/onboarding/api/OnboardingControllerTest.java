@@ -158,8 +158,11 @@ class OnboardingControllerTest {
     void 진행_정보를_조회하고_응답_계약을_반환한다() throws Exception {
         authenticateAs(USER_ID);
         final GetOnboardingProgressCommand command = new GetOnboardingProgressCommand(USER_ID);
-        when(onboardingService.getProgress(command)).thenReturn(new OnboardingProgressResult(OnboardingStatus.COMPLETED,
-            LocalDateTime.of(2026, 1, 1, 0, 0), List.of(new OnboardingAnswerGroupResult(1L, List.of(1L, 2L))), List.of(10L, 20L)));
+        when(onboardingService.getProgress(command))
+            .thenReturn(new OnboardingProgressResult(OnboardingStatus.COMPLETED, LocalDateTime.of(2026, 1, 1, 0, 0),
+                List.of(new OnboardingAnswerGroupResult(1L,
+                    List.of(new OnboardingOptionResult(1L, null, "morning", "아침"), new OnboardingOptionResult(2L, null, "lunch", "점심")))),
+                List.of(10L, 20L)));
 
         mvc.perform(get("/api/v1/onboarding")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.status").value("COMPLETED")).andExpect(jsonPath("$.data.answers[0].questionId").value(1))

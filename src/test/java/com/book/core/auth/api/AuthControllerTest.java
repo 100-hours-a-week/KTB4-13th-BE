@@ -107,6 +107,15 @@ class AuthControllerTest {
         verifyNoInteractions(authService);
     }
 
+    @Test
+    void 가입_요청도_필수값이_blank이면_400을_응답한다() throws Exception {
+        mvc.perform(post("/api/v1/auth/kakao/signup").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"authorizationCode\":\" \",\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(authService);
+    }
+
     private String loginRequest() {
         return "{\"authorizationCode\":\"authorization-code\"," + "\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}";
     }

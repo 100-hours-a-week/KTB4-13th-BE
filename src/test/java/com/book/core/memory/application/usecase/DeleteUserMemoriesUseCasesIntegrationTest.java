@@ -175,7 +175,7 @@ class DeleteUserMemoriesUseCasesIntegrationTest {
     private Long insertMemory(final Long userId, final String deletedAt) {
         jdbc.update("""
             INSERT INTO user_memories (user_id, type, value, strength, categories, keyword, vector, dim, conversation_id, deleted_at)
-            VALUES (?, 'TOPIC', '경제 책을 좋아해요', 2, '[]', '경제', '[0.1]', 1, 'cv_1', ?)
+            VALUES (?, 'TOPIC', '경제 책을 좋아해요', 2, '[]' FORMAT JSON, '경제', '[0.1]' FORMAT JSON, 1, 'cv_1', ?)
             """, userId, deletedAt);
         return jdbc.queryForObject("SELECT MAX(id) FROM user_memories WHERE user_id = ?", Long.class, userId);
     }

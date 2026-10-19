@@ -4,14 +4,14 @@
   "command": "deliver",
   "type": "sequence",
   "input": "/Users/connor/.codex/worktrees/review-history-diagrams/book/docs/pr-diagrams/review-history/review-history.sequence.json",
-  "output": "/tmp/book-review-history-transactional/review-history.html",
+  "output": "/Users/connor/.codex/worktrees/review-history-diagrams/book/docs/pr-diagrams/review-history/review-history.html",
   "specification": {
-    "sha256": "0bb6a348b36c254f616a88ed8398d84dd9597aa94e730dbe14877059690c5d08",
-    "bytes": 3543
+    "sha256": "d5c59021b8ce393a0ad6439801d1189788c5db763b95176d9aff1ab0b75cbcc6",
+    "bytes": 3113
   },
   "artifact": {
-    "sha256": "09b91de2dd1206b988454edc983ce121fd89a960400538b34406badadf246b3d",
-    "bytes": 809523
+    "sha256": "61b927d5cbc4122f3e75abc6e3fda99702c341786f671a3ddac1123d697d60e8",
+    "bytes": 806486
   },
   "validation": {
     "checksPassed": 9,

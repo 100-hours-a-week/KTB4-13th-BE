@@ -21,13 +21,7 @@
       "id": "review_service",
       "type": "backend",
       "label": "ReviewService",
-      "sublabel": "흐름 · 포인트 조율"
-    },
-    {
-      "id": "review_write_service",
-      "type": "backend",
-      "label": "리뷰 쓰기 Service",
-      "sublabel": "@Transactional"
+      "sublabel": "@Transactional CUD 전체"
     },
     {
       "id": "write_usecase",
@@ -63,31 +57,24 @@
       "label": "인증 사용자 · 리뷰 Command"
     },
     {
-      "id": "delegate_write",
-      "from": "review_service",
-      "to": "review_write_service",
-      "y": 188,
-      "label": "생성 / 수정 / 삭제 위임"
-    },
-    {
       "id": "execute_write",
-      "from": "review_write_service",
+      "from": "review_service",
       "to": "write_usecase",
-      "y": 216,
-      "label": "정책 검증 · 상태 변경"
+      "y": 192,
+      "label": "정책 검증 · 리뷰 상태 변경"
     },
     {
       "id": "lock_review",
       "from": "write_usecase",
       "to": "review_store",
-      "y": 244,
+      "y": 224,
       "label": "수정·삭제: 리뷰 행 쓰기 잠금"
     },
     {
       "id": "return_current",
       "from": "review_store",
       "to": "write_usecase",
-      "y": 272,
+      "y": 252,
       "label": "현재 활성 리뷰 · 최신 상태",
       "variant": "return"
     },
@@ -95,45 +82,45 @@
       "id": "persist_review",
       "from": "write_usecase",
       "to": "review_store",
-      "y": 300,
+      "y": 280,
       "label": "상태 변경 · 저장"
     },
     {
       "id": "return_changed_review",
       "from": "write_usecase",
-      "to": "review_write_service",
-      "y": 328,
+      "to": "review_service",
+      "y": 308,
       "label": "변경 후 Review 반환",
       "variant": "return"
     },
     {
       "id": "append_snapshot",
-      "from": "review_write_service",
+      "from": "review_service",
       "to": "history_store",
-      "y": 356,
+      "y": 336,
       "label": "같은 트랜잭션에서 전체 상태 추가"
-    },
-    {
-      "id": "commit_result",
-      "from": "review_write_service",
-      "to": "review_service",
-      "y": 384,
-      "label": "커밋 후 처리 결과 반환",
-      "variant": "return"
     },
     {
       "id": "update_points",
       "from": "review_service",
       "to": "point_usecase",
-      "y": 412,
-      "label": "생성·삭제: 포인트 적립 / 차감"
+      "y": 364,
+      "label": "생성·삭제: 포인트 적립 / 차감 (동일 트랜잭션)"
+    },
+    {
+      "id": "return_points",
+      "from": "point_usecase",
+      "to": "review_service",
+      "y": 392,
+      "label": "포인트 처리 완료",
+      "variant": "return"
     },
     {
       "id": "return_result",
       "from": "review_service",
       "to": "review_api",
-      "y": 440,
-      "label": "리뷰 ID 응답",
+      "y": 420,
+      "label": "전체 커밋 후 리뷰 ID 응답",
       "variant": "return"
     }
   ],
@@ -141,13 +128,7 @@
     {
       "participant": "review_service",
       "from": 170,
-      "to": 450,
-      "type": "backend"
-    },
-    {
-      "participant": "review_write_service",
-      "from": 198,
-      "to": 365,
+      "to": 430,
       "type": "backend"
     }
   ]

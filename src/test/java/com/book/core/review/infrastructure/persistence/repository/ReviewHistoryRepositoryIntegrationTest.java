@@ -43,7 +43,7 @@ class ReviewHistoryRepositoryIntegrationTest {
     JdbcTemplate jdbc;
 
     @Test
-    void 원본_수정과_삭제_후에도_전체_상태와_생성_시각을_보존한다() {
+    void 리뷰를_수정하거나_삭제해도_이력은_저장_당시_내용과_생성_시각을_보존한다() {
         final var review = reviews.save(Review.create(new ReviewKey(42L, "history-mapping"),
             new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new ReviewContent(new BigDecimal("4.5"), "최초 본문", false)));
         histories.append(new ReviewHistory(review, ReviewEventType.CREATE));

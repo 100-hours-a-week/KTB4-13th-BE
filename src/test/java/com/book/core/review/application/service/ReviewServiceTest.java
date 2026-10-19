@@ -53,7 +53,7 @@ class ReviewServiceTest {
     private final RemoveReviewCommand removeCommand = new RemoveReviewCommand(42L, 801L);
 
     @Test
-    void 조회_Command의_VO를_조회_UseCase에_전달한다() {
+    void 리뷰_조회_요청의_대상과_페이지_조건을_조회_UseCase에_전달한다() {
         final var paging = new OffsetLimit(0, 20);
         final Page<ReviewItemResult> result = new Page<>(List.of(), false);
         when(getReviews.execute(target, paging)).thenReturn(result);
@@ -62,7 +62,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    void 리뷰와_이력을_기록한_뒤_포인트를_적립하고_ID를_반환한다() {
+    void 회원이_리뷰를_작성하면_이력을_기록하고_포인트를_적립한_뒤_ID를_반환한다() {
         final ReviewKey reviewKey = new ReviewKey(42L, "ORDER_ITEM_42");
         when(validateReviewPolicy.validateNew(42L, target)).thenReturn(reviewKey);
         when(addReview.execute(target, reviewKey, content)).thenReturn(801L);
@@ -78,7 +78,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    void 리뷰_수정과_이력을_기록하고_ID를_반환한다() {
+    void 회원이_리뷰를_수정하면_이력을_기록하고_리뷰_ID를_반환한다() {
         when(updateReview.execute(42L, 801L, content)).thenReturn(801L);
 
         assertThat(service.updateReview(updateCommand)).isEqualTo(801L);
@@ -91,7 +91,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    void 삭제_이력을_기록한_뒤_포인트를_차감하고_ID를_반환한다() {
+    void 회원이_리뷰를_삭제하면_이력을_기록하고_포인트를_차감한_뒤_ID를_반환한다() {
         when(deleteReview.execute(42L, 801L)).thenReturn(801L);
 
         assertThat(service.removeReview(removeCommand)).isEqualTo(801L);
@@ -104,7 +104,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    void 작성_정책이_실패하면_리뷰_이력과_포인트를_호출하지_않는다() {
+    void 리뷰_작성_자격이_없으면_리뷰를_저장하거나_포인트를_적립하지_않는다() {
         when(validateReviewPolicy.validateNew(42L, target)).thenThrow(new CoreException(ErrorCode.REVIEW_HAS_NOT_ORDER));
 
         assertThatThrownBy(() -> service.addReview(addCommand)).isInstanceOf(CoreException.class);
@@ -114,7 +114,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    void 포인트_적립_실패를_호출자에게_전파한다() {
+    void 포인트_적립에_실패하면_오류를_호출자에게_전달한다() {
         final ReviewKey reviewKey = new ReviewKey(42L, "ORDER_ITEM_42");
         when(validateReviewPolicy.validateNew(42L, target)).thenReturn(reviewKey);
         when(addReview.execute(target, reviewKey, content)).thenReturn(801L);

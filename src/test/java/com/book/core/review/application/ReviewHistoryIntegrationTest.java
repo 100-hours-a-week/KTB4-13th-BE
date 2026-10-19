@@ -70,7 +70,7 @@ class ReviewHistoryIntegrationTest {
     private final ReviewTarget target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
 
     @Test
-    void 생성_수정_삭제와_동일_값_수정도_역순으로_추적한다() {
+    void 리뷰_생성부터_삭제까지_모든_변경_상태를_최신순으로_추적할_수_있다() {
         final Long id = addReview(target, new ReviewKey(42L, "history-flow"), content("4.5", "최초 본문", false));
         updateReview(42L, id, content("4.50", "최초 본문", null));
         updateReview(42L, id, content("4.5", "최초 본문", true));
@@ -87,7 +87,7 @@ class ReviewHistoryIntegrationTest {
     }
 
     @Test
-    void 기존_리뷰는_초기_이력_없이_도입_후_변경부터_기록한다() {
+    void 기존_리뷰에는_과거_이력을_만들지_않고_첫_변경부터_기록한다() {
         final Review review = existingReview("legacy-review");
         assertThat(historyCount(review.id())).isZero();
 
@@ -100,7 +100,7 @@ class ReviewHistoryIntegrationTest {
     }
 
     @Test
-    void 실제_DB_이력_저장_실패는_생성_수정_삭제를_모두_롤백한다() {
+    void 이력_저장에_실패하면_리뷰_생성_수정_삭제를_모두_롤백한다() {
         final ReviewTarget failureTarget = new ReviewTarget(ReviewTargetType.PRODUCT, 999292L);
         final Review review =
             reviews.save(Review.create(new ReviewKey(42L, "history-rollback-existing"), failureTarget, content("4.5", "기존 본문", false)));
@@ -125,7 +125,7 @@ class ReviewHistoryIntegrationTest {
     }
 
     @Test
-    void 같은_리뷰의_수정_중에는_삭제가_대기하고_다른_리뷰는_변경할_수_있다() throws Exception {
+    void 같은_리뷰의_수정이_끝날_때까지_삭제는_대기하고_다른_리뷰는_수정할_수_있다() throws Exception {
         final Review first = existingReview("history-lock-first");
         final Review other = existingReview("history-lock-other");
         final var written = new CountDownLatch(1);
@@ -166,7 +166,7 @@ class ReviewHistoryIntegrationTest {
     }
 
     @Test
-    void 대기하던_삭제가_수정_커밋_후_성공하고_수정된_본문을_이력에_남긴다() throws Exception {
+    void 리뷰_삭제는_수정_커밋까지_대기한_뒤_최신_본문을_이력에_남긴다() throws Exception {
         final Review review = existingReview("history-concurrent-success");
         final var written = new CountDownLatch(1);
         final var deleteStarted = new CountDownLatch(1);

@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 class ReviewHistoryTest {
     @Test
-    void 원본을_수정하고_삭제해도_기록한_본문과_별점을_유지한다() {
+    void 리뷰를_수정하거나_삭제해도_이력은_기록한_본문과_별점을_유지한다() {
         final var review = new Review(801L, 42L, "ORDER_ITEM_701", ReviewTargetType.PRODUCT, 10L, new BigDecimal("4.5"), "최초 본문", false);
         final var history = new ReviewHistory(review, ReviewEventType.CREATE);
 

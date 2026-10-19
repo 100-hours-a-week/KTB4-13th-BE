@@ -4,15 +4,13 @@ import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.auth.application.command.AuthLoginCommand;
 import com.book.core.auth.application.command.AuthReissueCommand;
-import com.book.core.auth.application.port.IssuedTokens;
-import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.application.result.AuthLoginResult;
 import com.book.core.auth.application.result.AuthReissueResult;
 import com.book.core.auth.application.result.OAuthUserInfo;
 import com.book.core.auth.application.usecase.AuthLogoutUseCase;
 import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.application.usecase.AuthenticateOAuthUserUseCase;
-import com.book.core.auth.application.usecase.RefreshSessionRegistrationUseCase;
+import com.book.core.auth.application.usecase.CreateLoginSessionUseCase;
 import com.book.core.cart.application.usecase.CreateCartUseCase;
 import com.book.core.point.application.usecase.CreatePointBalanceUseCase;
 import com.book.core.user.application.command.UserRegistrationCommand;
@@ -33,8 +31,7 @@ public class AuthService {
     private final UserRegistrationUseCase userRegistrationUseCase;
     private final CreateCartUseCase createCartUseCase;
     private final CreatePointBalanceUseCase createPointBalanceUseCase;
-    private final TokenIssuer tokenIssuer;
-    private final RefreshSessionRegistrationUseCase refreshSessionRegistrationUseCase;
+    private final CreateLoginSessionUseCase createLoginSessionUseCase;
     private final AuthReissueUseCase authReissueUseCase;
     private final AuthLogoutUseCase authLogoutUseCase;
 
@@ -42,7 +39,7 @@ public class AuthService {
         final OAuthUserInfo identity = authenticate(command);
         final Long userId = findOAuthUserUseCase.execute(command.providerType(), identity.providerUserId())
             .orElseThrow(() -> new BusinessException(ErrorCode.SIGNUP_REQUIRED));
-        return issueAndRegisterTokens(userId);
+        return createLoginSessionUseCase.execute(userId);
     }
 
     public AuthLoginResult signup(final AuthLoginCommand command) {
@@ -50,7 +47,7 @@ public class AuthService {
         if (findOAuthUserUseCase.execute(command.providerType(), identity.providerUserId()).isPresent()) {
             throw new BusinessException(ErrorCode.ALREADY_REGISTERED);
         }
-        return issueAndRegisterTokens(register(command.providerType(), identity));
+        return createLoginSessionUseCase.execute(register(command.providerType(), identity));
     }
 
     public AuthReissueResult reissue(final AuthReissueCommand command) {
@@ -79,11 +76,5 @@ public class AuthService {
         } catch (final RuntimeException exception) {
             log.error("회원 가입 후 {} 초기화에 실패했습니다. userId={}", target, userId, exception);
         }
-    }
-
-    private AuthLoginResult issueAndRegisterTokens(final Long userId) {
-        final IssuedTokens tokens = tokenIssuer.issue(userId);
-        refreshSessionRegistrationUseCase.execute(userId, tokens.refreshToken(), tokens.refreshExpiresAt());
-        return new AuthLoginResult(tokens.accessToken(), tokens.refreshToken(), tokens.refreshExpiresAt());
     }
 }

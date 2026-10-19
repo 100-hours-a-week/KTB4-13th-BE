@@ -9,13 +9,12 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.auth.application.command.AuthLoginCommand;
-import com.book.core.auth.application.port.IssuedTokens;
-import com.book.core.auth.application.port.TokenIssuer;
+import com.book.core.auth.application.result.AuthLoginResult;
 import com.book.core.auth.application.result.OAuthUserInfo;
 import com.book.core.auth.application.usecase.AuthLogoutUseCase;
 import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.application.usecase.AuthenticateOAuthUserUseCase;
-import com.book.core.auth.application.usecase.RefreshSessionRegistrationUseCase;
+import com.book.core.auth.application.usecase.CreateLoginSessionUseCase;
 import com.book.core.cart.application.usecase.CreateCartUseCase;
 import com.book.core.point.application.usecase.CreatePointBalanceUseCase;
 import com.book.core.user.application.command.UserRegistrationCommand;
@@ -48,10 +47,7 @@ class AuthServiceTest {
     CreatePointBalanceUseCase createPointBalanceUseCase;
 
     @Mock
-    TokenIssuer tokenIssuer;
-
-    @Mock
-    RefreshSessionRegistrationUseCase refreshSessionRegistrationUseCase;
+    CreateLoginSessionUseCase createLoginSessionUseCase;
 
     @Mock
     AuthReissueUseCase authReissueUseCase;
@@ -66,15 +62,14 @@ class AuthServiceTest {
             .thenReturn(new OAuthUserInfo("provider-123", "reader@example.com"));
         when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.of(42L));
         final Instant refreshExpiresAt = Instant.parse("2030-01-09T03:04:05Z");
-        when(tokenIssuer.issue(42L)).thenReturn(new IssuedTokens("access-token", "refresh-token", refreshExpiresAt));
+        when(createLoginSessionUseCase.execute(42L)).thenReturn(new AuthLoginResult("access-token", "refresh-token", refreshExpiresAt));
 
         final var result = service().login(command);
 
-        final InOrder order = inOrder(authenticateOAuthUserUseCase, findOAuthUserUseCase, tokenIssuer, refreshSessionRegistrationUseCase);
+        final InOrder order = inOrder(authenticateOAuthUserUseCase, findOAuthUserUseCase, createLoginSessionUseCase);
         order.verify(authenticateOAuthUserUseCase).execute("authorization-code", "code-verifier", "nonce");
         order.verify(findOAuthUserUseCase).execute(ProviderType.KAKAO, "provider-123");
-        order.verify(tokenIssuer).issue(42L);
-        order.verify(refreshSessionRegistrationUseCase).execute(42L, "refresh-token", refreshExpiresAt);
+        order.verify(createLoginSessionUseCase).execute(42L);
         verifyNoInteractions(userRegistrationUseCase, createCartUseCase, createPointBalanceUseCase);
         assertThat(result.accessToken()).isEqualTo("access-token");
         assertThat(result.refreshToken()).isEqualTo("refresh-token");
@@ -91,17 +86,15 @@ class AuthServiceTest {
         when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.empty());
         when(userRegistrationUseCase.execute(registrationCommand)).thenReturn(42L);
         final Instant refreshExpiresAt = Instant.parse("2030-01-09T03:04:05Z");
-        when(tokenIssuer.issue(42L)).thenReturn(new IssuedTokens("access-token", "refresh-token", refreshExpiresAt));
+        when(createLoginSessionUseCase.execute(42L)).thenReturn(new AuthLoginResult("access-token", "refresh-token", refreshExpiresAt));
 
         service().signup(command);
 
-        final InOrder order =
-            inOrder(userRegistrationUseCase, createCartUseCase, createPointBalanceUseCase, tokenIssuer, refreshSessionRegistrationUseCase);
+        final InOrder order = inOrder(userRegistrationUseCase, createCartUseCase, createPointBalanceUseCase, createLoginSessionUseCase);
         order.verify(userRegistrationUseCase).execute(registrationCommand);
         order.verify(createCartUseCase).execute(42L);
         order.verify(createPointBalanceUseCase).execute(42L);
-        order.verify(tokenIssuer).issue(42L);
-        order.verify(refreshSessionRegistrationUseCase).execute(42L, "refresh-token", refreshExpiresAt);
+        order.verify(createLoginSessionUseCase).execute(42L);
     }
 
     @Test
@@ -114,8 +107,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> service().login(command)).isInstanceOfSatisfying(BusinessException.class,
             (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.SIGNUP_REQUIRED));
 
-        verifyNoInteractions(userRegistrationUseCase, createCartUseCase, createPointBalanceUseCase, tokenIssuer,
-            refreshSessionRegistrationUseCase);
+        verifyNoInteractions(userRegistrationUseCase, createCartUseCase, createPointBalanceUseCase, createLoginSessionUseCase);
     }
 
     @Test
@@ -128,8 +120,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> service().signup(command)).isInstanceOfSatisfying(BusinessException.class,
             (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ALREADY_REGISTERED));
 
-        verifyNoInteractions(userRegistrationUseCase, createCartUseCase, createPointBalanceUseCase, tokenIssuer,
-            refreshSessionRegistrationUseCase);
+        verifyNoInteractions(userRegistrationUseCase, createCartUseCase, createPointBalanceUseCase, createLoginSessionUseCase);
     }
 
     @Test
@@ -140,7 +131,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> service().login(command)).isSameAs(exception);
 
-        verifyNoInteractions(findOAuthUserUseCase, userRegistrationUseCase, tokenIssuer, refreshSessionRegistrationUseCase);
+        verifyNoInteractions(findOAuthUserUseCase, userRegistrationUseCase, createLoginSessionUseCase);
     }
 
     @Test
@@ -153,7 +144,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> service().login(command)).isSameAs(exception);
 
-        verifyNoInteractions(tokenIssuer, refreshSessionRegistrationUseCase);
+        verifyNoInteractions(createLoginSessionUseCase);
     }
 
     @Test
@@ -167,26 +158,12 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> service().signup(command)).isSameAs(exception);
 
-        verifyNoInteractions(createCartUseCase, createPointBalanceUseCase, tokenIssuer, refreshSessionRegistrationUseCase);
-    }
-
-    @Test
-    void token_발급이_실패하면_refresh_session을_저장하지_않는다() {
-        final AuthLoginCommand command = command();
-        final BusinessException exception = new BusinessException(ErrorCode.TOKEN_ISSUE_FAILURE);
-        when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
-            .thenReturn(new OAuthUserInfo("provider-123", null));
-        when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.of(42L));
-        when(tokenIssuer.issue(42L)).thenThrow(exception);
-
-        assertThatThrownBy(() -> service().login(command)).isSameAs(exception);
-
-        verifyNoInteractions(refreshSessionRegistrationUseCase);
+        verifyNoInteractions(createCartUseCase, createPointBalanceUseCase, createLoginSessionUseCase);
     }
 
     private AuthService service() {
         return new AuthService(authenticateOAuthUserUseCase, findOAuthUserUseCase, userRegistrationUseCase, createCartUseCase,
-            createPointBalanceUseCase, tokenIssuer, refreshSessionRegistrationUseCase, authReissueUseCase, authLogoutUseCase);
+            createPointBalanceUseCase, createLoginSessionUseCase, authReissueUseCase, authLogoutUseCase);
     }
 
     private AuthLoginCommand command() {

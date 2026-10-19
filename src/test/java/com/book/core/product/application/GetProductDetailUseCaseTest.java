@@ -41,7 +41,7 @@ class GetProductDetailUseCaseTest {
         assertThat(result.stockQuantity()).isEqualTo(10);
         assertThat(result.reviewCount()).isZero();
         assertThat(result.reviewRate()).isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(result.coupons()).isEmpty();
+        assertThat(result.couponIds()).isEmpty();
     }
 
     @Test

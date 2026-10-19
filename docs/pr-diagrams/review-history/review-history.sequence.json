@@ -6,7 +6,7 @@
     "quality_profile": "showcase",
     "viewBox": [
       1080,
-      530
+      570
     ],
     "column_fit": "spread"
   },
@@ -36,10 +36,16 @@
       "sublabel": "Port → QueryDSL / JPA"
     },
     {
+      "id": "history_recorder",
+      "type": "backend",
+      "label": "이력 Recorder",
+      "sublabel": "ID로 리뷰 스냅샷 생성"
+    },
+    {
       "id": "history_store",
       "type": "database",
       "label": "이력 저장소",
-      "sublabel": "Recorder → Port → JPA"
+      "sublabel": "Port → JpaRepository"
     },
     {
       "id": "point_usecase",
@@ -61,57 +67,71 @@
       "from": "review_service",
       "to": "write_usecase",
       "y": 192,
-      "label": "정책 검증 · 리뷰 상태 변경"
+      "label": "리뷰 상태 변경"
     },
     {
       "id": "lock_review",
       "from": "write_usecase",
       "to": "review_store",
       "y": 224,
-      "label": "수정·삭제: 리뷰 행 쓰기 잠금"
-    },
-    {
-      "id": "return_current",
-      "from": "review_store",
-      "to": "write_usecase",
-      "y": 252,
-      "label": "현재 활성 리뷰 · 최신 상태",
-      "variant": "return"
+      "label": "수정·삭제: 활성 리뷰 잠금 후 최신 상태 조회"
     },
     {
       "id": "persist_review",
       "from": "write_usecase",
       "to": "review_store",
-      "y": 280,
+      "y": 260,
       "label": "상태 변경 · 저장"
     },
     {
       "id": "return_changed_review",
       "from": "write_usecase",
       "to": "review_service",
-      "y": 308,
-      "label": "변경 후 Review 반환",
+      "y": 290,
+      "label": "리뷰 ID 반환",
+      "variant": "return"
+    },
+    {
+      "id": "request_history",
+      "from": "review_service",
+      "to": "history_recorder",
+      "y": 318,
+      "label": "리뷰 ID · 이벤트 종류 전달"
+    },
+    {
+      "id": "load_snapshot",
+      "from": "history_recorder",
+      "to": "review_store",
+      "y": 346,
+      "label": "변경 후 상태 조회 (삭제 포함)"
+    },
+    {
+      "id": "return_snapshot",
+      "from": "review_store",
+      "to": "history_recorder",
+      "y": 374,
+      "label": "현재 리뷰 전체 상태",
       "variant": "return"
     },
     {
       "id": "append_snapshot",
-      "from": "review_service",
+      "from": "history_recorder",
       "to": "history_store",
-      "y": 336,
-      "label": "같은 트랜잭션에서 전체 상태 추가"
+      "y": 402,
+      "label": "스냅샷 저장 · created_at 기록"
     },
     {
       "id": "update_points",
       "from": "review_service",
       "to": "point_usecase",
-      "y": 364,
+      "y": 430,
       "label": "생성·삭제: 포인트 적립 / 차감 (동일 트랜잭션)"
     },
     {
       "id": "return_points",
       "from": "point_usecase",
       "to": "review_service",
-      "y": 392,
+      "y": 458,
       "label": "포인트 처리 완료",
       "variant": "return"
     },
@@ -119,7 +139,7 @@
       "id": "return_result",
       "from": "review_service",
       "to": "review_api",
-      "y": 420,
+      "y": 486,
       "label": "전체 커밋 후 리뷰 ID 응답",
       "variant": "return"
     }
@@ -128,7 +148,13 @@
     {
       "participant": "review_service",
       "from": 170,
-      "to": 430,
+      "to": 496,
+      "type": "backend"
+    },
+    {
+      "participant": "history_recorder",
+      "from": 318,
+      "to": 412,
       "type": "backend"
     }
   ]

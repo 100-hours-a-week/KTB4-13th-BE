@@ -6,12 +6,12 @@
   "input": "/Users/connor/.codex/worktrees/review-history-diagrams/book/docs/pr-diagrams/review-history/review-history.sequence.json",
   "output": "/Users/connor/.codex/worktrees/review-history-diagrams/book/docs/pr-diagrams/review-history/review-history.html",
   "specification": {
-    "sha256": "d5c59021b8ce393a0ad6439801d1189788c5db763b95176d9aff1ab0b75cbcc6",
-    "bytes": 3113
+    "sha256": "52f7ef4231b0c8509545bee264dd04af376ef0893c29a59062208067b5d14883",
+    "bytes": 3717
   },
   "artifact": {
-    "sha256": "61b927d5cbc4122f3e75abc6e3fda99702c341786f671a3ddac1123d697d60e8",
-    "bytes": 806486
+    "sha256": "ba4a1c7d5dcf42fdac17b952396842b950ac714b9ab506d130a3b890e4cf8216",
+    "bytes": 810315
   },
   "validation": {
     "checksPassed": 9,

@@ -36,7 +36,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Gradle check
-        run: ./gradlew clean check bootJar --no-daemon
+        run: ./gradlew clean check bootJar --no-daemon --profile
 
       - name: Verify automation and coverage output
         run: |
@@ -65,6 +65,7 @@ jobs:
             build/test-results/integrationTest/
             build/reports/tests/test/
             build/reports/tests/integrationTest/
+            build/reports/profile/
           if-no-files-found: warn
           retention-days: 7
 

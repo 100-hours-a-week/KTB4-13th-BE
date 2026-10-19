@@ -70,6 +70,18 @@ val integrationTest = tasks.register<Test>("integrationTest") {
     shouldRunAfter(tasks.test)
 }
 
+val mysqlMigrationTest = tasks.register<Test>("mysqlMigrationTest") {
+    description = "Runs MySQL migration and constraint tests using Testcontainers."
+    group = "verification"
+    maxHeapSize = "1536m"
+    useJUnitPlatform {
+        includeTags("mysql-migration")
+    }
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    shouldRunAfter(integrationTest)
+}
+
 jacoco { toolVersion = "0.8.15" }
 
 val logicClasses = files(layout.buildDirectory.dir("classes/java/main"))

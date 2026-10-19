@@ -14,21 +14,21 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class UserWithdrawalScheduler {
+public class UserDeletionScheduler {
     private static final String LOCK_NAME = "book_user_withdrawal_completion";
 
     private final DataSource dataSource;
     private final UserService userService;
 
     @Scheduled(cron = "${app.user-withdrawal.cron:0 0 4 * * *}", zone = "Asia/Seoul")
-    public void completeWithdrawalsDaily() {
+    public void completeUserDeletion() {
         try (Connection lockConnection = dataSource.getConnection()) {
             if (!acquireLock(lockConnection)) {
                 log.info("다른 인스턴스가 회원 최종 탈퇴를 실행 중이어서 건너뜁니다.");
                 return;
             }
             try {
-                userService.completeWithdrawals();
+                userService.completeUserDeletion();
             } finally {
                 releaseLock(lockConnection);
             }

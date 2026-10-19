@@ -145,7 +145,7 @@ class UserWithdrawalIntegrationTest {
 
         doThrow(new BusinessException(ErrorCode.OAUTH_PROVIDER_UNAVAILABLE)).when(oAuthUnlinkClient).unlink(ProviderType.KAKAO,
             "expired-provider");
-        userService.completeWithdrawals();
+        userService.completeUserDeletion();
 
         assertThat(count("SELECT COUNT(*) FROM users WHERE id = ? AND deleted_at IS NULL", userId)).isEqualTo(1);
         assertThat(count("SELECT COUNT(*) FROM user_providers WHERE user_id = ? AND unlinked_at IS NULL", userId)).isEqualTo(1);
@@ -154,14 +154,14 @@ class UserWithdrawalIntegrationTest {
 
         doNothing().when(oAuthUnlinkClient).unlink(ProviderType.KAKAO, "expired-provider");
         doThrow(new IllegalStateException("db cleanup failure")).when(deleteUserOnboardingDataUseCase).execute(userId);
-        userService.completeWithdrawals();
+        userService.completeUserDeletion();
 
         assertThat(count("SELECT COUNT(*) FROM users WHERE id = ? AND deleted_at IS NULL", userId)).isEqualTo(1);
         assertThat(count("SELECT COUNT(*) FROM user_providers WHERE user_id = ? AND unlinked_at IS NOT NULL AND deleted_at IS NULL "
             + "AND provider_user_id = 'expired-provider'", userId)).isEqualTo(1);
 
         doCallRealMethod().when(deleteUserOnboardingDataUseCase).execute(userId);
-        userService.completeWithdrawals();
+        userService.completeUserDeletion();
 
         assertThat(count("SELECT COUNT(*) FROM users WHERE id = ? AND deleted_at IS NULL", userId)).isEqualTo(1);
         assertThat(count("SELECT COUNT(*) FROM user_onboarding_answers WHERE user_id = ?", userId)).isZero();
@@ -169,7 +169,7 @@ class UserWithdrawalIntegrationTest {
 
         jdbc.update("UPDATE user_providers SET unlinked_at = ? WHERE user_id = ?",
             LocalDateTime.now(ZoneId.of("Asia/Seoul")).minusHours(13), userId);
-        userService.completeWithdrawals();
+        userService.completeUserDeletion();
 
         verify(oAuthUnlinkClient, times(2)).unlink(ProviderType.KAKAO, "expired-provider");
         assertThat(count("SELECT COUNT(*) FROM users WHERE id = ? AND deleted_at IS NOT NULL AND nickname = '탈퇴한 회원'", userId))
@@ -220,7 +220,7 @@ class UserWithdrawalIntegrationTest {
                 await(releaseRecovery);
             }));
         await(recoveryLocked);
-        final CompletableFuture<Void> withdrawal = CompletableFuture.runAsync(userService::completeWithdrawals);
+        final CompletableFuture<Void> withdrawal = CompletableFuture.runAsync(userService::completeUserDeletion);
         Thread.sleep(500);
 
         assertThat(withdrawal).isNotDone();

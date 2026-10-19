@@ -4,7 +4,7 @@ import com.book.core.library.application.usecase.DeleteAllLibraryBooksUseCase;
 import com.book.core.onboarding.application.usecase.DeleteUserOnboardingDataUseCase;
 import com.book.core.user.application.command.UpdateMyInfoCommand;
 import com.book.core.user.application.result.GetMyInfoResult;
-import com.book.core.user.application.usecase.CompleteWithdrawalUseCase;
+import com.book.core.user.application.usecase.CompleteUserDeletionUseCase;
 import com.book.core.user.application.usecase.FindWithdrawalTargetsUseCase;
 import com.book.core.user.application.usecase.FindWithdrawalUnlinkProvidersUseCase;
 import com.book.core.user.application.usecase.GetMyInfoUseCase;
@@ -30,7 +30,7 @@ public class UserService {
     private final UnlinkWithdrawalProvidersUseCase unlinkWithdrawalProvidersUseCase;
     private final DeleteUserOnboardingDataUseCase deleteUserOnboardingDataUseCase;
     private final DeleteAllLibraryBooksUseCase deleteAllLibraryBooksUseCase;
-    private final CompleteWithdrawalUseCase completeWithdrawalUseCase;
+    private final CompleteUserDeletionUseCase completeUserDeletionUseCase;
 
     public GetMyInfoResult getMyInfo(final Long userId) {
         return getMyInfoUseCase.execute(userId);
@@ -44,7 +44,7 @@ public class UserService {
         requestWithdrawalUseCase.execute(userId);
     }
 
-    public void completeWithdrawals() {
+    public void completeUserDeletion() {
         final List<Long> userIds = findWithdrawalTargetsUseCase.execute();
         int completed = 0;
         int skipped = 0;
@@ -59,7 +59,7 @@ public class UserService {
                 unlinkWithdrawalProvidersUseCase.execute(unlinkProviders.orElseThrow());
                 deleteUserOnboardingDataUseCase.execute(userId);
                 deleteAllLibraryBooksUseCase.execute(userId);
-                if (completeWithdrawalUseCase.execute(userId)) {
+                if (completeUserDeletionUseCase.execute(userId)) {
                     completed++;
                 } else {
                     skipped++;

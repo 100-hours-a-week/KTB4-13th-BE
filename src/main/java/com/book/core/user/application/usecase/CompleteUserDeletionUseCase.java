@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class CompleteWithdrawalUseCase {
+public class CompleteUserDeletionUseCase {
     private final UserRepositoryPort userRepository;
     private final UserProviderRepositoryPort userProviderRepository;
     private final Clock clock;

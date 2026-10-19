@@ -88,14 +88,14 @@ class UserTest {
     void 탈퇴_신청_후_7일_전까지만_복구할_수_있다() {
         final LocalDateTime requestedAt = LocalDateTime.of(2030, 1, 1, 12, 0);
         final User recoverable = User.restore(42L, "북적이");
-        recoverable.requestWithdrawal(requestedAt);
-        recoverable.requestWithdrawal(requestedAt.plusDays(1));
+        recoverable.requestUserDeletion(requestedAt);
+        recoverable.requestUserDeletion(requestedAt.plusDays(1));
 
         recoverable.recoverWithdrawal(requestedAt.plusDays(7).minusNanos(1));
 
         assertThat(recoverable.isWithdrawalRequested()).isFalse();
         final User expired = User.restore(43L, "북적이");
-        expired.requestWithdrawal(requestedAt);
+        expired.requestUserDeletion(requestedAt);
         assertThatThrownBy(() -> expired.recoverWithdrawal(requestedAt.plusDays(7))).isInstanceOfSatisfying(BusinessException.class,
             (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.USER_WITHDRAWAL_PENDING));
         assertThat(expired.deleteRequestedAt()).isEqualTo(requestedAt);
@@ -105,7 +105,7 @@ class UserTest {
     @Test
     void 최종_탈퇴하면_닉네임을_파기하고_비활성_상태가_된다() {
         final User user = User.restore(42L, "북적이");
-        user.requestWithdrawal(LocalDateTime.of(2030, 1, 1, 12, 0));
+        user.requestUserDeletion(LocalDateTime.of(2030, 1, 1, 12, 0));
 
         user.completeWithdrawal();
 

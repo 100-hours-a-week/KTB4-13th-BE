@@ -8,7 +8,7 @@ import com.book.core.user.application.usecase.CompleteUserDeletionUseCase;
 import com.book.core.user.application.usecase.FindWithdrawalTargetsUseCase;
 import com.book.core.user.application.usecase.FindWithdrawalUnlinkProvidersUseCase;
 import com.book.core.user.application.usecase.GetMyInfoUseCase;
-import com.book.core.user.application.usecase.RequestWithdrawalUseCase;
+import com.book.core.user.application.usecase.RequestUserDeletionUseCase;
 import com.book.core.user.application.usecase.UnlinkWithdrawalProvidersUseCase;
 import com.book.core.user.application.usecase.UpdateMyInfoUseCase;
 import com.book.core.user.domain.UserProvider;
@@ -24,7 +24,7 @@ import org.springframework.stereotype.Service;
 public class UserService {
     private final GetMyInfoUseCase getMyInfoUseCase;
     private final UpdateMyInfoUseCase updateMyInfoUseCase;
-    private final RequestWithdrawalUseCase requestWithdrawalUseCase;
+    private final RequestUserDeletionUseCase requestUserDeletionUseCase;
     private final FindWithdrawalTargetsUseCase findWithdrawalTargetsUseCase;
     private final FindWithdrawalUnlinkProvidersUseCase findWithdrawalUnlinkProvidersUseCase;
     private final UnlinkWithdrawalProvidersUseCase unlinkWithdrawalProvidersUseCase;
@@ -40,8 +40,8 @@ public class UserService {
         updateMyInfoUseCase.execute(command);
     }
 
-    public void requestWithdrawal(final Long userId) {
-        requestWithdrawalUseCase.execute(userId);
+    public void requestUserDeletion(final Long userId) {
+        requestUserDeletionUseCase.execute(userId);
     }
 
     public void completeUserDeletion() {

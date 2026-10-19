@@ -53,7 +53,7 @@ public class User extends BaseEntity {
         }
     }
 
-    public void requestWithdrawal(final LocalDateTime requestedAt) {
+    public void requestUserDeletion(final LocalDateTime requestedAt) {
         if (deleteRequestedAt == null) {
             deleteRequestedAt = requestedAt;
         }

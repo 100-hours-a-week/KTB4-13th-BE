@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class RequestWithdrawalUseCase {
+public class RequestUserDeletionUseCase {
     private final UserRepositoryPort userRepository;
     private final RefreshSessionRevokerPort refreshSessionRevoker;
     private final Clock clock;
@@ -24,7 +24,7 @@ public class RequestWithdrawalUseCase {
         if (!user.isActive()) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        user.requestWithdrawal(LocalDateTime.now(clock));
+        user.requestUserDeletion(LocalDateTime.now(clock));
         refreshSessionRevoker.revokeAll(userId);
     }
 }

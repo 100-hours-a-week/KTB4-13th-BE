@@ -6,10 +6,8 @@ import feign.Logger;
 import feign.RequestInterceptor;
 import feign.Retryer;
 import feign.codec.ErrorDecoder;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import tools.jackson.databind.json.JsonMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 
@@ -38,19 +36,8 @@ class TossPaymentFeignConfiguration {
     @Bean
     ErrorDecoder tossErrorDecoder() {
         return (method, response) -> {
-            if (method.startsWith("TossPaymentFeignClient#approve(") && response.body() != null) {
-                try (final var input = response.body().asInputStream()) {
-                    final byte[] bytes = input.readNBytes(8193);
-                    if (bytes.length <= 8192) {
-                        final String code = JsonMapper.builder().build().readTree(bytes).path("code").asText();
-                        if ((response.status() == 400 && "INVALID_REJECT_CARD".equals(code))
-                            || (response.status() == 403 && ("REJECT_CARD_COMPANY".equals(code) || "REJECT_CARD_PAYMENT".equals(code)))) {
-                            return new CoreException(ErrorCode.PG_REJECTED);
-                        }
-                    }
-                } catch (final IOException | RuntimeException exception) {
-                    return new CoreException(ErrorCode.PG_UNAVAILABLE);
-                }
+            if (response.status() >= 400 && response.status() < 500 && response.status() != 408 && response.status() != 429) {
+                return new CoreException(ErrorCode.PG_REJECTED);
             }
             return new CoreException(ErrorCode.PG_UNAVAILABLE);
         };

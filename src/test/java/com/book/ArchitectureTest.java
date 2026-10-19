@@ -30,6 +30,8 @@ import com.book.core.product.domain.ProductCategory;
 import com.book.core.review.application.service.ReviewService;
 import com.book.core.review.domain.Review;
 import com.book.core.review.domain.ReviewHistory;
+import com.book.core.settlement.domain.Settlement;
+import com.book.core.settlement.domain.SettlementTarget;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -108,6 +110,8 @@ class ArchitectureTest {
 
     @Test
     void 업무_모델은_JPA_Entity를_겸한다() {
+        assertThat(Settlement.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(SettlementTarget.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Merchant.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(MerchantProductMapping.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Payment.class.isAnnotationPresent(Entity.class)).isTrue();

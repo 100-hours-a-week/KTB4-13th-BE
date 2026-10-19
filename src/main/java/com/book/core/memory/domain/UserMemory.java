@@ -10,6 +10,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,6 +26,8 @@ import org.hibernate.type.SqlTypes;
 public class UserMemory extends BaseEntity {
     private static final int MAX_STRENGTH = 3;
     private static final int MAX_CATEGORIES = 3;
+    private static final int MAX_VALUE_LENGTH = 200;
+    private static final int MAX_KEYWORD_LENGTH = 100;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
@@ -87,18 +90,25 @@ public class UserMemory extends BaseEntity {
         if (userId == null || type == null || isBlank(value) || isBlank(keyword) || isBlank(conversationId)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
+        if (length(value) > MAX_VALUE_LENGTH || length(keyword) > MAX_KEYWORD_LENGTH) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
         if (strength == 0 || strength < -MAX_STRENGTH || strength > MAX_STRENGTH) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        if (categories == null || categories.size() > MAX_CATEGORIES) {
+        if (categories == null || categories.size() > MAX_CATEGORIES || categories.stream().anyMatch(Objects::isNull)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        if (dim <= 0 || vector == null || vector.size() != dim) {
+        if (dim <= 0 || vector == null || vector.size() != dim || vector.stream().anyMatch(Objects::isNull)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 
     private static boolean isBlank(final String text) {
         return text == null || text.isBlank();
+    }
+
+    private static int length(final String text) {
+        return text.codePointCount(0, text.length());
     }
 }

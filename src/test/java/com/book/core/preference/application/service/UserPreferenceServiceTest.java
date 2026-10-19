@@ -13,12 +13,15 @@ import com.book.core.memory.application.command.DeleteUserMemoriesCommand;
 import com.book.core.memory.application.result.UserMemoryGroupResult;
 import com.book.core.memory.application.usecase.DeleteAllUserMemoriesUseCase;
 import com.book.core.memory.application.usecase.DeleteUserMemoriesUseCase;
+import com.book.core.memory.application.usecase.ExtractUserMemoriesUseCase;
 import com.book.core.memory.application.usecase.GetUserMemoriesUseCase;
+import com.book.core.memory.application.usecase.SaveUserMemoriesUseCase;
 import com.book.core.memory.domain.UserMemoryType;
 import com.book.core.onboarding.application.command.GetOnboardingProgressCommand;
 import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
 import com.book.core.onboarding.application.result.OnboardingOptionResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
+import com.book.core.onboarding.application.usecase.CheckPersonalizationAgreementUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
 import com.book.core.onboarding.domain.OnboardingStatus;
 import java.time.LocalDate;
@@ -34,7 +37,8 @@ class UserPreferenceServiceTest {
     private final DeleteUserMemoriesUseCase deleteUserMemoriesUseCase = mock(DeleteUserMemoriesUseCase.class);
     private final DeleteAllUserMemoriesUseCase deleteAllUserMemoriesUseCase = mock(DeleteAllUserMemoriesUseCase.class);
     private final UserPreferenceService userPreferenceService = new UserPreferenceService(getOnboardingProgressUseCase,
-        getUserMemoriesUseCase, deleteUserMemoriesUseCase, deleteAllUserMemoriesUseCase);
+        getUserMemoriesUseCase, deleteUserMemoriesUseCase, deleteAllUserMemoriesUseCase, mock(CheckPersonalizationAgreementUseCase.class),
+        mock(ExtractUserMemoriesUseCase.class), mock(SaveUserMemoriesUseCase.class));
 
     @Test
     void 온보딩을_완료하지_않았으면_취향_조회와_삭제를_진행하지_않고_409를_던진다() {

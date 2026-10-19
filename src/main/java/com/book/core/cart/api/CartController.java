@@ -9,14 +9,19 @@ import com.book.core.cart.api.request.DeleteCartItemsRequest;
 import com.book.core.cart.api.request.ModifyCartItemRequest;
 import com.book.core.cart.api.response.CartResponse;
 import com.book.core.cart.api.spec.CartControllerSpec;
+import com.book.core.cart.application.command.AddCartItemCommand;
+import com.book.core.cart.application.command.DeleteCartItemCommand;
+import com.book.core.cart.application.command.DeleteCartItemsCommand;
+import com.book.core.cart.application.command.GetCartCommand;
+import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.service.CartService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -36,7 +41,7 @@ class CartController implements CartControllerSpec {
     @Override
     @PostMapping("/items")
     public ResponseEntity<ApiResponse<Void>> addCartItem(@UserId final Long userId, @Valid @RequestBody final AddCartItemRequest request) {
-        final var command = commandConverter.toAddCartItemCommand(userId, request);
+        final AddCartItemCommand command = commandConverter.toAddCartItemCommand(userId, request);
         cartService.addCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
@@ -45,7 +50,7 @@ class CartController implements CartControllerSpec {
     @PutMapping("/items/{cartItemId}")
     public ResponseEntity<ApiResponse<Void>> modifyCartItem(@UserId final Long userId,
         @Positive @PathVariable("cartItemId") final Long cartItemId, @Valid @RequestBody final ModifyCartItemRequest request) {
-        final var command = commandConverter.toModifyCartItemCommand(userId, cartItemId, request);
+        final ModifyCartItemCommand command = commandConverter.toModifyCartItemCommand(userId, cartItemId, request);
         cartService.modifyCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
@@ -54,7 +59,7 @@ class CartController implements CartControllerSpec {
     @DeleteMapping("/items/{cartItemId}")
     public ResponseEntity<ApiResponse<Void>> deleteCartItem(@UserId final Long userId,
         @Positive @PathVariable("cartItemId") final Long cartItemId) {
-        final var command = commandConverter.toDeleteCartItemCommand(userId, cartItemId);
+        final DeleteCartItemCommand command = commandConverter.toDeleteCartItemCommand(userId, cartItemId);
         cartService.deleteCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
@@ -63,7 +68,7 @@ class CartController implements CartControllerSpec {
     @DeleteMapping("/items")
     public ResponseEntity<ApiResponse<Void>> deleteCartItems(@UserId final Long userId,
         @Valid @RequestBody final DeleteCartItemsRequest request) {
-        final var command = commandConverter.toDeleteCartItemsCommand(userId, request);
+        final DeleteCartItemsCommand command = commandConverter.toDeleteCartItemsCommand(userId, request);
         cartService.deleteCartItems(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
@@ -71,8 +76,8 @@ class CartController implements CartControllerSpec {
     @Override
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCart(@UserId final Long userId) {
-        final var command = commandConverter.toGetCartCommand(userId);
-        final var cartResponse = resultConverter.toGetCartResponse(cartService.getCart(command));
+        final GetCartCommand command = commandConverter.toGetCartCommand(userId);
+        final CartResponse cartResponse = resultConverter.toGetCartResponse(cartService.getCart(command));
         return ResponseEntity.ok(ApiResponse.ok(cartResponse));
     }
 }

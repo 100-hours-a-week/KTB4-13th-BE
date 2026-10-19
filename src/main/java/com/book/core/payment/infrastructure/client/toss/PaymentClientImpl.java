@@ -4,20 +4,20 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.payment.application.port.PaymentClient;
 import com.book.core.payment.application.result.PgPaymentResult;
-import feign.FeignException;
 import java.math.BigDecimal;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
 
 @Component
 @RequiredArgsConstructor
 class PaymentClientImpl implements PaymentClient {
-    private final TossPaymentFeignClient client;
+    private final TossPaymentHttpClient client;
 
     @Override
     public PgPaymentResult approve(final String paymentKey, final String orderKey, final BigDecimal amount, final String idempotencyKey) {
-        return invoke(() -> client.approve(idempotencyKey, new TossPaymentFeignClient.ApproveRequest(paymentKey, orderKey, amount)));
+        return invoke(() -> client.approve(idempotencyKey, new TossPaymentHttpClient.ApproveRequest(paymentKey, orderKey, amount)));
     }
 
     @Override
@@ -29,13 +29,13 @@ class PaymentClientImpl implements PaymentClient {
     public PgPaymentResult cancel(final String paymentKey, final BigDecimal amount, final BigDecimal refundableAmount,
         final String idempotencyKey) {
         return invoke(
-            () -> client.cancel(paymentKey, idempotencyKey, new TossPaymentFeignClient.CancelRequest("고객 요청", amount, refundableAmount)));
+            () -> client.cancel(paymentKey, idempotencyKey, new TossPaymentHttpClient.CancelRequest("고객 요청", amount, refundableAmount)));
     }
 
     private PgPaymentResult invoke(final Supplier<TossPaymentResponse> action) {
         try {
             return TossPaymentExternalMapper.map(action.get());
-        } catch (final FeignException exception) {
+        } catch (final RestClientException exception) {
             throw new CoreException(ErrorCode.PG_UNAVAILABLE);
         }
     }

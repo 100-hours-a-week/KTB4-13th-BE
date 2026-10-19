@@ -11,24 +11,22 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.payment.domain.enums.PaymentMethod;
-import feign.Request;
-import feign.RetryableException;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.web.client.RestClientException;
 
 class PaymentClientImplTest {
-    private final TossPaymentFeignClient feign = mock(TossPaymentFeignClient.class);
-    private final PaymentClientImpl client = new PaymentClientImpl(feign);
+    private final TossPaymentHttpClient httpClient = mock(TossPaymentHttpClient.class);
+    private final PaymentClientImpl client = new PaymentClientImpl(httpClient);
 
     @Test
     void 승인_입력과_멱등키를_전달하고_카드_응답을_변환한다() {
-        when(feign.approve(eq("operation"), any())).thenReturn(response("카드", new TossPaymentResponse.Card("12345678")));
+        when(httpClient.approve(eq("operation"), any())).thenReturn(response("카드", new TossPaymentResponse.Card("12345678")));
         final var result = client.approve("test-key", "order-001", BigDecimal.TEN, "operation");
-        final var request = ArgumentCaptor.forClass(TossPaymentFeignClient.ApproveRequest.class);
-        verify(feign).approve(eq("operation"), request.capture());
+        final var request = ArgumentCaptor.forClass(TossPaymentHttpClient.ApproveRequest.class);
+        verify(httpClient).approve(eq("operation"), request.capture());
         assertThat(request.getValue().orderId()).isEqualTo("order-001");
         assertThat(request.getValue().paymentKey()).isEqualTo("test-key");
         assertThat(request.getValue().amount()).isEqualByComparingTo("10");
@@ -39,33 +37,30 @@ class PaymentClientImplTest {
 
     @Test
     void 카드가_없는_간편결제는_지원수단으로_변환하지_않는다() {
-        when(feign.find("test-key")).thenReturn(response("간편결제", null));
+        when(httpClient.find("test-key")).thenReturn(response("간편결제", null));
         assertThat(client.find("test-key").method()).isNull();
     }
 
     @Test
     void 취소_금액과_환불가능잔액을_함께_전달한다() {
-        when(feign.cancel(eq("test-key"), eq("operation"), any())).thenReturn(response("카드", null));
+        when(httpClient.cancel(eq("test-key"), eq("operation"), any())).thenReturn(response("카드", null));
         client.cancel("test-key", BigDecimal.ONE, BigDecimal.TEN, "operation");
-        final var request = ArgumentCaptor.forClass(TossPaymentFeignClient.CancelRequest.class);
-        verify(feign).cancel(eq("test-key"), eq("operation"), request.capture());
+        final var request = ArgumentCaptor.forClass(TossPaymentHttpClient.CancelRequest.class);
+        verify(httpClient).cancel(eq("test-key"), eq("operation"), request.capture());
         assertThat(request.getValue().cancelReason()).isEqualTo("고객 요청");
         assertThat(request.getValue().refundableAmount()).isEqualByComparingTo("10");
     }
 
     @Test
     void 네트워크_실패는_민감정보_없는_미확정_오류로_바꾼다() {
-        final Request request = Request.create(Request.HttpMethod.GET, "http://localhost/test-key", Map.of(), null,
-            java.nio.charset.StandardCharsets.UTF_8, null);
-        when(feign.find("test-key"))
-            .thenThrow(new RetryableException(504, "secret response", Request.HttpMethod.GET, (Long) null, request));
+        when(httpClient.find("test-key")).thenThrow(new RestClientException("secret response"));
         assertThatThrownBy(() -> client.find("test-key")).isInstanceOf(CoreException.class)
             .satisfies(error -> assertThat(((CoreException) error).errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE));
     }
 
     @Test
     void 필수_응답이_없으면_거절한다() {
-        when(feign.find("test-key")).thenReturn(null);
+        when(httpClient.find("test-key")).thenReturn(null);
         assertThatThrownBy(() -> client.find("test-key")).isInstanceOf(CoreException.class);
     }
 

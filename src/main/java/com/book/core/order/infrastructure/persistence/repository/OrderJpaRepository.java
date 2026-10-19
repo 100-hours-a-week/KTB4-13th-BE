@@ -26,15 +26,16 @@ interface OrderJpaRepository extends JpaRepository<Order, Long> {
             FROM Order orders
             WHERE orders.userId = :userId
               AND orders.deletedAt IS NULL
+              AND orders.paidAt IS NOT NULL
               AND (:status IS NULL OR orders.status = :status)
-              AND orders.createdAt >= :from
-              AND orders.createdAt <= :to
-              AND (:cursorCreatedAt IS NULL
-                   OR orders.createdAt < :cursorCreatedAt
-                   OR (orders.createdAt = :cursorCreatedAt AND orders.id < :cursorId))
-            ORDER BY orders.createdAt DESC, orders.id DESC
+              AND (:paidAtFrom IS NULL OR orders.paidAt >= :paidAtFrom)
+              AND (:paidAtBefore IS NULL OR orders.paidAt < :paidAtBefore)
+              AND (:cursorPaidAt IS NULL
+                   OR orders.paidAt < :cursorPaidAt
+                   OR (orders.paidAt = :cursorPaidAt AND orders.id < :cursorId))
+            ORDER BY orders.paidAt DESC, orders.id DESC
             """)
-    List<Order> findActiveOrders(@Param("userId") final Long userId, @Param("status") final OrderStatus status,
-        @Param("from") final LocalDateTime from, @Param("to") final LocalDateTime to,
-        @Param("cursorCreatedAt") final LocalDateTime cursorCreatedAt, @Param("cursorId") final Long cursorId, final Pageable pageable);
+    List<Order> findPaidOrders(@Param("userId") final Long userId, @Param("status") final OrderStatus status,
+        @Param("paidAtFrom") final LocalDateTime paidAtFrom, @Param("paidAtBefore") final LocalDateTime paidAtBefore,
+        @Param("cursorPaidAt") final LocalDateTime cursorPaidAt, @Param("cursorId") final Long cursorId, final Pageable pageable);
 }

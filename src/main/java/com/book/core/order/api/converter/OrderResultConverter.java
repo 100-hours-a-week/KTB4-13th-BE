@@ -2,14 +2,19 @@ package com.book.core.order.api.converter;
 
 import com.book.core.order.api.response.CreateOrderResponse;
 import com.book.core.order.api.response.CreateOrderItemResponse;
+import com.book.core.order.api.response.OrderCancellationItemResponse;
+import com.book.core.order.api.response.OrderCancellationResponse;
 import com.book.core.order.api.response.OrderAddressResponse;
 import com.book.core.order.api.response.OrderDetailResponse;
 import com.book.core.order.api.response.OrderItemResponse;
 import com.book.core.order.api.response.OrderListResponse;
+import com.book.core.order.api.response.OrderPaymentResponse;
 import com.book.core.order.api.response.OrderSummaryResponse;
 import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
+import com.book.core.order.application.result.OrderCancellationResult;
 import com.book.core.order.application.result.OrderItemResult;
+import com.book.core.order.application.result.OrderPaymentResult;
 import com.book.core.order.application.result.CreateOrderResult;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -17,16 +22,35 @@ import org.springframework.stereotype.Component;
 @Component
 public class OrderResultConverter {
     public OrderListResponse toOrderListResponse(final GetOrdersResult result) {
-        final List<OrderSummaryResponse> orders = result.orders().stream()
-            .map(order -> new OrderSummaryResponse(order.key(), order.name(), order.totalPrice(), order.status())).toList();
+        final List<OrderSummaryResponse> orders =
+            result.orders().stream().map((final var order) -> new OrderSummaryResponse(order.key(), order.representativeBookName(),
+                order.itemCount(), order.thumbnailUrl(), order.totalPrice(), order.status(), order.paidAt())).toList();
         return new OrderListResponse(orders, result.nextCursor());
     }
 
     public OrderDetailResponse toOrderDetailResponse(final GetOrderResult result) {
         final OrderAddressResponse address = result.address() == null ? null
             : new OrderAddressResponse(result.address().postalCode(), result.address().address(), result.address().detailAddress());
-        return new OrderDetailResponse(result.key(), result.name(), result.totalPrice(), result.status(),
-            toOrderItemResponses(result.items()), address, result.createdAt());
+        return new OrderDetailResponse(result.key(), result.status(), result.totalPrice(), result.createdAt(), address,
+            toOrderPaymentResponse(result.payment()), toOrderItemResponses(result.items()),
+            toOrderCancellationResponses(result.cancellations()));
+    }
+
+    private List<OrderCancellationResponse> toOrderCancellationResponses(final List<OrderCancellationResult> cancellations) {
+        return cancellations.stream()
+            .map((final var cancellation) -> new OrderCancellationResponse(cancellation.type(), cancellation.refundedAmount(),
+                cancellation.canceledAt(),
+                cancellation.items().stream().map((final var item) -> new OrderCancellationItemResponse(item.orderItemId(),
+                    item.productId(), item.itemName(), item.quantity())).toList()))
+            .toList();
+    }
+
+    private OrderPaymentResponse toOrderPaymentResponse(final OrderPaymentResult payment) {
+        if (payment == null) {
+            return null;
+        }
+        return new OrderPaymentResponse(payment.couponDiscount(), payment.usedPoint(), payment.paidAmount(), payment.method(),
+            payment.paidAt(), payment.cancelledPaidAmount(), payment.cancellablePaidAmount());
     }
 
     public CreateOrderResponse toCreateOrderResponse(final CreateOrderResult result) {
@@ -36,7 +60,9 @@ public class OrderResultConverter {
     }
 
     private List<OrderItemResponse> toOrderItemResponses(final List<OrderItemResult> items) {
-        return items.stream().map(item -> new OrderItemResponse(item.productId(), item.itemName(), item.thumbnailUrl(), item.author(),
-            item.quantity(), item.unitPrice(), item.totalPrice())).toList();
+        return items.stream()
+            .map((final var item) -> new OrderItemResponse(item.orderItemId(), item.productId(), item.itemName(), item.thumbnailUrl(),
+                item.author(), item.unitPrice(), item.totalPrice(), item.quantity(), item.canceledQuantity(), item.status()))
+            .toList();
     }
 }

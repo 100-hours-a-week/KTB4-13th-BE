@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: true
+  jpa:
+    defer-datasource-initialization: false
+    hibernate:
+      ddl-auto: validate
+  sql:
+    init:
+      mode: never

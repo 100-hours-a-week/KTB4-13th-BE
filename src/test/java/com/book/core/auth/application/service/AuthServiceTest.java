@@ -68,7 +68,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void 신규_회원은_가입_트랜잭션을_마친_뒤_token을_발급한다() {
+    void 회원_가입은_가입_트랜잭션을_마친_뒤_token을_발급한다() {
         final AuthLoginCommand command = command();
         final UserRegistrationCommand registrationCommand =
             new UserRegistrationCommand(ProviderType.KAKAO, "provider-123", "reader@example.com");
@@ -79,11 +79,37 @@ class AuthServiceTest {
         final Instant refreshExpiresAt = Instant.parse("2030-01-09T03:04:05Z");
         when(createLoginSessionUseCase.execute(42L)).thenReturn(new AuthLoginResult("access-token", "refresh-token", refreshExpiresAt));
 
-        service().login(command);
+        service().signup(command);
 
         final InOrder order = inOrder(signUpService, createLoginSessionUseCase);
         order.verify(signUpService).signUp(registrationCommand);
         order.verify(createLoginSessionUseCase).execute(42L);
+    }
+
+    @Test
+    void 가입하지_않은_회원의_로그인은_SIGNUP_REQUIRED이고_가입과_token_발급을_호출하지_않는다() {
+        final AuthLoginCommand command = command();
+        when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
+            .thenReturn(new OAuthUserInfo("provider-123", null));
+        when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().login(command)).isInstanceOfSatisfying(BusinessException.class,
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.SIGNUP_REQUIRED));
+
+        verifyNoInteractions(signUpService, createLoginSessionUseCase);
+    }
+
+    @Test
+    void 이미_가입한_회원의_가입은_ALREADY_REGISTERED이고_등록과_초기화를_호출하지_않는다() {
+        final AuthLoginCommand command = command();
+        when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
+            .thenReturn(new OAuthUserInfo("provider-123", null));
+        when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.of(42L));
+
+        assertThatThrownBy(() -> service().signup(command)).isInstanceOfSatisfying(BusinessException.class,
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ALREADY_REGISTERED));
+
+        verifyNoInteractions(signUpService, createLoginSessionUseCase);
     }
 
     @Test
@@ -98,7 +124,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void 회원_조회가_실패하면_가입과_token_발급을_호출하지_않는다() {
+    void 로그인_회원_조회가_실패하면_token_발급을_호출하지_않는다() {
         final AuthLoginCommand command = command();
         final BusinessException exception = new BusinessException(ErrorCode.USER_PROVIDER_USER_INACTIVE);
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
@@ -113,13 +139,13 @@ class AuthServiceTest {
     @Test
     void 가입이_실패하면_token을_발급하지_않는다() {
         final AuthLoginCommand command = command();
-        final BusinessException exception = new BusinessException(ErrorCode.PROVIDER_IDENTITY_CONFLICT);
+        final BusinessException exception = new BusinessException(ErrorCode.ALREADY_REGISTERED);
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
             .thenReturn(new OAuthUserInfo("provider-123", null));
         when(findOAuthUserUseCase.execute(ProviderType.KAKAO, "provider-123")).thenReturn(Optional.empty());
         when(signUpService.signUp(new UserRegistrationCommand(ProviderType.KAKAO, "provider-123", null))).thenThrow(exception);
 
-        assertThatThrownBy(() -> service().login(command)).isSameAs(exception);
+        assertThatThrownBy(() -> service().signup(command)).isSameAs(exception);
 
         verifyNoInteractions(createLoginSessionUseCase);
     }

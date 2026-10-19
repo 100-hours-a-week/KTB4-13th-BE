@@ -14,6 +14,7 @@ public class DeleteAllUserMemoriesUseCase {
 
     @Transactional
     public int execute(final Long userId) {
+        userMemoryRepository.lockByUserId(userId);
         final List<UserMemory> activeMemories = userMemoryRepository.findActiveByUserId(userId);
         activeMemories.forEach(UserMemory::delete);
         return activeMemories.size();

@@ -8,6 +8,10 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.memory.application.command.DeleteUserMemoriesCommand;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -18,6 +22,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -43,6 +49,9 @@ class DeleteUserMemoriesUseCasesIntegrationTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    PlatformTransactionManager transactionManager;
 
     @BeforeEach
     void setUp() {
@@ -103,6 +112,46 @@ class DeleteUserMemoriesUseCasesIntegrationTest {
         deleteAllUserMemoriesUseCase.execute(USER_ID);
 
         assertThat(deleteAllUserMemoriesUseCase.execute(USER_ID)).isZero();
+    }
+
+    @Test
+    void 같은_회원의_기억_저장이_진행_중이면_선택_삭제와_전체_삭제는_커밋을_기다린다() throws Exception {
+        assertWaitsForUserLock(() -> deleteUserMemoriesUseCase.execute(new DeleteUserMemoriesCommand(USER_ID, List.of(101L))));
+        assertWaitsForUserLock(() -> deleteAllUserMemoriesUseCase.execute(USER_ID));
+
+        assertThat(activeIds()).containsExactly(201L);
+    }
+
+    private void assertWaitsForUserLock(final Supplier<Integer> deletion) throws Exception {
+        final CountDownLatch locked = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        final CompletableFuture<Void> saving =
+            CompletableFuture.runAsync(() -> new TransactionTemplate(transactionManager).executeWithoutResult((final var status) -> {
+                jdbc.queryForList("SELECT id FROM users WHERE id = ? FOR UPDATE", Long.class, USER_ID);
+                locked.countDown();
+                await(release);
+            }));
+        await(locked);
+
+        final CompletableFuture<Integer> deleting = CompletableFuture.supplyAsync(deletion);
+        Thread.sleep(500);
+        final boolean finishedWhileLocked = deleting.isDone();
+        release.countDown();
+        saving.get(10, TimeUnit.SECONDS);
+        deleting.get(10, TimeUnit.SECONDS);
+
+        assertThat(finishedWhileLocked).isFalse();
+    }
+
+    private static void await(final CountDownLatch latch) {
+        try {
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("대기 시간을 초과했습니다");
+            }
+        } catch (final InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(exception);
+        }
     }
 
     private List<Long> activeIds() {

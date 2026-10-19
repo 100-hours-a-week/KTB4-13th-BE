@@ -1,12 +1,18 @@
 package com.book.core.auth.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.book.common.exception.BusinessException;
+import com.book.common.exception.ErrorCode;
+import com.book.core.auth.application.port.IssuedTokens;
 import com.book.core.auth.application.port.RefreshSessionRepository;
 import com.book.core.auth.application.port.RefreshTokenHasher;
+import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.domain.RefreshSession;
 import java.time.Clock;
 import java.time.Instant;
@@ -20,10 +26,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class RefreshSessionRegistrationUseCaseTest {
+class CreateLoginSessionUseCaseTest {
     private static final Long USER_ID = 42L;
     private static final Instant NOW = Instant.parse("2030-01-02T03:04:05Z");
     private static final Instant EXPIRES_AT = Instant.parse("2030-01-09T03:04:05Z");
+
+    @Mock
+    TokenIssuer tokenIssuer;
 
     @Mock
     RefreshSessionRepository refreshSessionRepository;
@@ -32,11 +41,12 @@ class RefreshSessionRegistrationUseCaseTest {
     RefreshTokenHasher refreshTokenHasher;
 
     @Test
-    void refresh_token을_hash한_새_session을_저장한다() {
+    void token을_발급하고_refresh_token을_hash한_새_session을_저장한다() {
+        when(tokenIssuer.issue(USER_ID)).thenReturn(new IssuedTokens("access-token", "refresh-token", EXPIRES_AT));
         when(refreshTokenHasher.hash("refresh-token")).thenReturn("token-hash");
         when(refreshSessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.empty());
 
-        useCase().execute(USER_ID, "refresh-token", EXPIRES_AT);
+        final var result = useCase().execute(USER_ID);
 
         final var sessionCaptor = ArgumentCaptor.forClass(RefreshSession.class);
         verify(refreshSessionRepository).save(sessionCaptor.capture());
@@ -45,15 +55,19 @@ class RefreshSessionRegistrationUseCaseTest {
         assertThat(sessionCaptor.getValue().tokenHash()).isNotEqualTo("refresh-token");
         assertThat(sessionCaptor.getValue().expiresAt()).isEqualTo(EXPIRES_AT);
         assertThat(sessionCaptor.getValue().isActive()).isTrue();
+        assertThat(result.accessToken()).isEqualTo("access-token");
+        assertThat(result.refreshToken()).isEqualTo("refresh-token");
+        assertThat(result.refreshExpiresAt()).isEqualTo(EXPIRES_AT);
     }
 
     @Test
     void 기존_active_session을_revoke한_뒤_새_session을_저장한다() {
         final RefreshSession existing = RefreshSession.restore(1L, USER_ID, "old-token-hash", EXPIRES_AT.minusSeconds(1), null);
+        when(tokenIssuer.issue(USER_ID)).thenReturn(new IssuedTokens("access-token", "new-refresh-token", EXPIRES_AT));
         when(refreshTokenHasher.hash("new-refresh-token")).thenReturn("new-token-hash");
         when(refreshSessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.of(existing));
 
-        useCase().execute(USER_ID, "new-refresh-token", EXPIRES_AT);
+        useCase().execute(USER_ID);
 
         final var sessionCaptor = ArgumentCaptor.forClass(RefreshSession.class);
         final InOrder saves = inOrder(refreshSessionRepository);
@@ -66,7 +80,17 @@ class RefreshSessionRegistrationUseCaseTest {
         assertThat(sessionCaptor.getValue().isActive()).isTrue();
     }
 
-    private RefreshSessionRegistrationUseCase useCase() {
-        return new RefreshSessionRegistrationUseCase(refreshSessionRepository, refreshTokenHasher, Clock.fixed(NOW, ZoneOffset.UTC));
+    @Test
+    void token_발급이_실패하면_refresh_session을_저장하지_않는다() {
+        final BusinessException exception = new BusinessException(ErrorCode.TOKEN_ISSUE_FAILURE);
+        when(tokenIssuer.issue(USER_ID)).thenThrow(exception);
+
+        assertThatThrownBy(() -> useCase().execute(USER_ID)).isSameAs(exception);
+
+        verifyNoInteractions(refreshTokenHasher, refreshSessionRepository);
+    }
+
+    private CreateLoginSessionUseCase useCase() {
+        return new CreateLoginSessionUseCase(tokenIssuer, refreshSessionRepository, refreshTokenHasher, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 }

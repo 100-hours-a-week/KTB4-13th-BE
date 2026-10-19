@@ -12,6 +12,7 @@ import com.book.core.onboarding.application.result.OnboardingAnswerGroupResult;
 import com.book.core.onboarding.application.result.OnboardingOptionResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.domain.OnboardingOption;
+import com.book.core.onboarding.domain.OnboardingStatus;
 import com.book.core.onboarding.domain.UserOnboarding;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
@@ -61,5 +62,14 @@ public class GetOnboardingProgressUseCase {
             .sorted(Comparator.naturalOrder()).toList();
 
         return new OnboardingProgressResult(userOnboarding.onboardingStatus(), userOnboarding.completedAt(), answerGroups, bookIds);
+    }
+
+    @Transactional(readOnly = true)
+    public OnboardingProgressResult executeCompleted(final GetOnboardingProgressCommand command) {
+        final OnboardingProgressResult progress = execute(command);
+        if (progress.status() != OnboardingStatus.COMPLETED) {
+            throw new CoreException(ErrorCode.ONBOARDING_NOT_COMPLETED);
+        }
+        return progress;
     }
 }

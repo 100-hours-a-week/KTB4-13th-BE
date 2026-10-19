@@ -93,7 +93,7 @@ public class UserMemory extends BaseEntity {
         if (length(value) > MAX_VALUE_LENGTH || length(keyword) > MAX_KEYWORD_LENGTH) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        if (strength == 0 || Math.abs(strength) > MAX_STRENGTH) {
+        if (strength == 0 || strength < -MAX_STRENGTH || strength > MAX_STRENGTH) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (categories == null || categories.size() > MAX_CATEGORIES || categories.stream().anyMatch(Objects::isNull)) {

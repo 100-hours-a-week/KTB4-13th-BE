@@ -42,8 +42,8 @@ class UserPreferenceServiceTest {
 
     @Test
     void 온보딩을_완료하지_않았으면_취향_조회와_삭제를_진행하지_않고_409를_던진다() {
-        when(getOnboardingProgressUseCase.execute(new GetOnboardingProgressCommand(USER_ID)))
-            .thenReturn(new OnboardingProgressResult(OnboardingStatus.IN_PROGRESS, null, List.of(), List.of()));
+        when(getOnboardingProgressUseCase.executeCompleted(new GetOnboardingProgressCommand(USER_ID)))
+            .thenThrow(new CoreException(ErrorCode.ONBOARDING_NOT_COMPLETED));
 
         assertNotCompleted(() -> userPreferenceService.getPreferences(USER_ID));
         assertNotCompleted(() -> userPreferenceService.deleteMemories(new DeleteUserMemoriesCommand(USER_ID, List.of(101L))));
@@ -54,7 +54,7 @@ class UserPreferenceServiceTest {
     @Test
     void 온보딩을_완료했으면_선택_삭제와_전체_삭제를_UseCase로_전달한다() {
         final var command = new DeleteUserMemoriesCommand(USER_ID, List.of(101L));
-        when(getOnboardingProgressUseCase.execute(new GetOnboardingProgressCommand(USER_ID)))
+        when(getOnboardingProgressUseCase.executeCompleted(new GetOnboardingProgressCommand(USER_ID)))
             .thenReturn(new OnboardingProgressResult(OnboardingStatus.COMPLETED, null, List.of(), List.of()));
 
         userPreferenceService.deleteMemories(command);
@@ -69,7 +69,7 @@ class UserPreferenceServiceTest {
         final var answers = List.of(new OnboardingAnswerGroupResult(3L, List.of(new OnboardingOptionResult(9L, null, "economy", "경제경영"))));
         final var memories = List.of(new UserMemoryGroupResult(List.of(102L, 101L), UserMemoryType.TOPIC, "경제 책을 좋아해요", List.of("경제경영"),
             List.of(LocalDate.of(2026, 10, 16))));
-        when(getOnboardingProgressUseCase.execute(new GetOnboardingProgressCommand(USER_ID)))
+        when(getOnboardingProgressUseCase.executeCompleted(new GetOnboardingProgressCommand(USER_ID)))
             .thenReturn(new OnboardingProgressResult(OnboardingStatus.COMPLETED, null, answers, List.of()));
         when(getUserMemoriesUseCase.execute(USER_ID)).thenReturn(memories);
 

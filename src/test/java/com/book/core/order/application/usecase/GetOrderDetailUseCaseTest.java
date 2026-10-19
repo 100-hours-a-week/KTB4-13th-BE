@@ -47,8 +47,8 @@ class GetOrderDetailUseCaseTest {
         order(LocalDateTime.of(2026, 9, 28, 10, 0));
         final Payment payment = payment();
         when(payments.findByOrderKey("order_test")).thenReturn(Optional.of(payment));
-        when(balances.findByOrderId(7L)).thenReturn(Optional.of(new CancelBalance(7L, new BigDecimal("6000.00"),
-            BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("3000.00"), new BigDecimal("500.00"), BigDecimal.ZERO)));
+        when(balances.findByOrderId(7L)).thenReturn(Optional.of(new CancelBalance(7L, new BigDecimal("6000.00"), BigDecimal.ZERO,
+            BigDecimal.ZERO, new BigDecimal("3000.00"), new BigDecimal("500.00"), BigDecimal.ZERO)));
 
         final GetOrderResult result = useCase.execute(command);
         assertThat(result.payment()).isEqualTo(new OrderPaymentResult(new BigDecimal("1000.00"), new BigDecimal("500.00"),
@@ -103,8 +103,8 @@ class GetOrderDetailUseCaseTest {
     }
 
     private static Payment payment() {
-        final Payment payment = new Payment(42L, 7L, new BigDecimal("10500.00"), 3L, new BigDecimal("1000.00"),
-            new BigDecimal("500.00"), 42L, new BigDecimal("9000.00"), PaymentState.READY);
+        final Payment payment = new Payment(42L, 7L, new BigDecimal("10500.00"), 3L, new BigDecimal("1000.00"), new BigDecimal("500.00"),
+            42L, new BigDecimal("9000.00"), PaymentState.READY);
         payment.success("payment_key", PaymentMethod.CARD, "approve");
         return payment;
     }

@@ -40,8 +40,8 @@ public class GetOrderDetailUseCase {
         if (result.paidAt() == null) {
             return result;
         }
-        final Payment payment = paymentRepository.findByOrderKey(order.key())
-            .orElseThrow(() -> new CoreException(ErrorCode.ORDER_DATA_INCONSISTENT));
+        final Payment payment =
+            paymentRepository.findByOrderKey(order.key()).orElseThrow(() -> new CoreException(ErrorCode.ORDER_DATA_INCONSISTENT));
         if (payment.state() != PaymentState.SUCCESS) {
             throw new CoreException(ErrorCode.ORDER_DATA_INCONSISTENT);
         }

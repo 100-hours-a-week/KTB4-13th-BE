@@ -73,8 +73,7 @@ class SaveUserMemoriesUseCaseIntegrationTest {
 
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NULL")).containsExactlyInAnyOrder("로맨스 소설", "김영하");
         assertThat(jdbc.queryForList("SELECT type FROM user_memories WHERE user_id = ? AND deleted_at IS NULL AND keyword = '김영하'",
-            String.class, userId))
-            .containsExactly("TOPIC");
+            String.class, userId)).containsExactly("TOPIC");
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NOT NULL")).containsExactly("김영하");
         assertThat(keywords("cv_other", "deleted_at IS NULL")).containsExactly("잔잔한");
     }

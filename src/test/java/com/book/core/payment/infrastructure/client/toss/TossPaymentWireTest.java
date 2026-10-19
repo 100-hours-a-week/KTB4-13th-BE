@@ -59,7 +59,7 @@ class TossPaymentWireTest {
         final AtomicInteger requests = new AtomicInteger();
         server.createContext("/v1/payments/confirm", exchange -> {
             final int request = requests.getAndIncrement();
-            final int status = request == 1 ? 403 : 400;
+            final int status = request == 1 || request == 2 ? 403 : 400;
             final String code = switch (request) {
                 case 0 -> "INVALID_REJECT_CARD";
                 case 1 -> "REJECT_CARD_COMPANY";
@@ -87,6 +87,9 @@ class TossPaymentWireTest {
                             error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
                     assertThatThrownBy(() -> client.approve("test-key", "order-001", java.math.BigDecimal.TEN, "request-003"))
                         .isInstanceOfSatisfying(CoreException.class,
+                            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
+                    assertThatThrownBy(() -> client.approve("test-key", "order-001", java.math.BigDecimal.TEN, "request-004"))
+                        .isInstanceOfSatisfying(CoreException.class,
                             error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE));
                 });
         } finally {
@@ -107,15 +110,18 @@ class TossPaymentWireTest {
             assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE);
             assertThat(error.getMessage()).doesNotContain("sensitive");
         }
-        final var undocumented = feign.Response.builder().status(400).reason("test").request(request).headers(java.util.Map.of())
+        final var wrongStatus = feign.Response.builder().status(400).reason("test").request(request).headers(java.util.Map.of())
             .body("{\"code\":\"REJECT_CARD_PAYMENT\"}", StandardCharsets.UTF_8).build();
-        assertThat(((CoreException) decoder.decode(approveMethod, undocumented)).errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE);
+        assertThat(((CoreException) decoder.decode(approveMethod, wrongStatus)).errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE);
         final var rejected = feign.Response.builder().status(400).reason("test").request(request).headers(java.util.Map.of())
             .body("{\"code\":\"INVALID_REJECT_CARD\"}", StandardCharsets.UTF_8).build();
         assertThat(((CoreException) decoder.decode(approveMethod, rejected)).errorCode()).isEqualTo(ErrorCode.PG_REJECTED);
         final var companyRejected = feign.Response.builder().status(403).reason("test").request(request).headers(java.util.Map.of())
             .body("{\"code\":\"REJECT_CARD_COMPANY\"}", StandardCharsets.UTF_8).build();
         assertThat(((CoreException) decoder.decode(approveMethod, companyRejected)).errorCode()).isEqualTo(ErrorCode.PG_REJECTED);
+        final var cardPaymentRejected = feign.Response.builder().status(403).reason("test").request(request).headers(java.util.Map.of())
+            .body("{\"code\":\"REJECT_CARD_PAYMENT\"}", StandardCharsets.UTF_8).build();
+        assertThat(((CoreException) decoder.decode(approveMethod, cardPaymentRejected)).errorCode()).isEqualTo(ErrorCode.PG_REJECTED);
     }
 
     @Test

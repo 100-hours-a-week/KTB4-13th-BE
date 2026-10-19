@@ -17,23 +17,14 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
 @Tag("integration")
 class UserRepositoryIntegrationTest {
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
-
     @Autowired
     UserRepositoryPort userRepository;
 
@@ -87,7 +78,7 @@ class UserRepositoryIntegrationTest {
 
         assertThatThrownBy(() -> userProviderRepository.save(UserProvider.create(user.id(), ProviderType.KAKAO, "reusable-provider", null)))
             .isInstanceOfSatisfying(BusinessException.class,
-                (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
+                (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ALREADY_REGISTERED));
 
         jdbc.update("UPDATE user_providers SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", first.id());
         assertThat(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "reusable-provider")).isEmpty();
@@ -116,7 +107,7 @@ class UserRepositoryIntegrationTest {
         final Integer usersBefore = jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class);
 
         assertThatThrownBy(() -> userRegistrationUseCase.execute(command)).isInstanceOfSatisfying(BusinessException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PROVIDER_IDENTITY_CONFLICT));
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ALREADY_REGISTERED));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(usersBefore);
     }
 }

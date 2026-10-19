@@ -14,6 +14,7 @@ import com.book.common.api.config.SwaggerConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
+import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import com.book.core.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.book.support.config.WebCorsConfiguration;
 import com.book.core.coupon.api.converter.CouponCommandConverter;
@@ -67,6 +68,9 @@ class CouponControllerTest {
 
     @MockitoBean(name = "serviceJwtDecoder")
     private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private CheckUserRestrictionUseCase checkUserRestrictionUseCase;
 
     @AfterEach
     void clearSecurityContext() {

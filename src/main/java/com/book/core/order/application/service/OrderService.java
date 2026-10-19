@@ -5,10 +5,6 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.address.application.result.GetAddressItemResult;
 import com.book.core.address.application.usecase.GetAddressUseCase;
 import com.book.core.cart.application.result.GetCartItemResult;
-import com.book.core.cancel.application.usecase.GetCancelBalanceUseCase;
-import com.book.core.cancel.application.usecase.GetCancelsUseCase;
-import com.book.core.cancel.domain.Cancel;
-import com.book.core.cancel.domain.CancelBalance;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
@@ -18,26 +14,19 @@ import com.book.core.order.application.command.GetOrdersCommand;
 import com.book.core.order.application.result.CreateOrderResult;
 import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
-import com.book.core.order.application.result.OrderCancellationResult;
-import com.book.core.order.application.result.OrderPaymentResult;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.application.usecase.CreateOrderUseCase;
-import com.book.core.order.application.usecase.GetOrderUseCase;
+import com.book.core.order.application.usecase.GetOrderDetailUseCase;
 import com.book.core.order.application.usecase.GetOrdersUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
-import com.book.core.payment.application.usecase.GetPaymentUseCase;
-import com.book.core.payment.domain.Payment;
-import com.book.core.payment.domain.enums.PaymentState;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -50,28 +39,14 @@ public class OrderService {
     private final CreateOrderUseCase createOrderUseCase;
     private final CancelOrderUseCase cancelOrderUseCase;
     private final GetOrdersUseCase getOrdersUseCase;
-    private final GetOrderUseCase getOrderUseCase;
-    private final GetPaymentUseCase getPaymentUseCase;
-    private final GetCancelBalanceUseCase getCancelBalanceUseCase;
-    private final GetCancelsUseCase getCancelsUseCase;
+    private final GetOrderDetailUseCase getOrderDetailUseCase;
 
     public GetOrdersResult getOrders(final GetOrdersCommand command) {
         return getOrdersUseCase.execute(command);
     }
 
     public GetOrderResult getOrder(final GetOrderCommand command) {
-        final GetOrderResult order = getOrderUseCase.execute(command);
-        if (order.paidAt() == null) {
-            return order;
-        }
-        final Payment payment = requirePaidOrderData(() -> getPaymentUseCase.execute(order.key()));
-        if (payment.state() != PaymentState.SUCCESS) {
-            throw new CoreException(ErrorCode.ORDER_DATA_INCONSISTENT);
-        }
-        final CancelBalance cancelBalance = requirePaidOrderData(() -> getCancelBalanceUseCase.execute(payment.orderId()));
-        final List<OrderCancellationResult> cancellations = getCancelsUseCase.execute(payment.orderId()).stream()
-            .map((final Cancel cancel) -> OrderCancellationResult.of(cancel, order.items())).toList();
-        return order.withPayment(OrderPaymentResult.of(payment, cancelBalance), cancellations);
+        return getOrderDetailUseCase.execute(command);
     }
 
     public void cancelOrder(final CancelOrderCommand command) {
@@ -113,15 +88,4 @@ public class OrderService {
         return createOrderUseCase.execute(order);
     }
 
-    // 결제 이력이 확인된 주문의 결제·취소 잔액 누락은 미결제가 아닌 내부 정합성 오류다.
-    private static <T> T requirePaidOrderData(final Supplier<T> lookup) {
-        try {
-            return lookup.get();
-        } catch (final CoreException exception) {
-            if (exception.errorCode() == ErrorCode.NOT_FOUND_DATA) {
-                throw new CoreException(ErrorCode.ORDER_DATA_INCONSISTENT, exception);
-            }
-            throw exception;
-        }
-    }
 }

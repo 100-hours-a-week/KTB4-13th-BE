@@ -147,4 +147,21 @@ class BookApplicationTest {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP"))
             .andExpect(jsonPath("$.components").doesNotExist());
     }
+
+    @Test
+    void prometheusIsUnauthenticatedAndExposesHttpRequestHistogram() throws Exception {
+        mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+
+        final String metrics =
+            mvc.perform(get("/actuator/prometheus")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        assertThat(metrics).contains("jvm_memory_used_bytes", "http_server_requests_seconds_bucket", "uri=\"/actuator/health\"");
+    }
+
+    @Test
+    void otherActuatorEndpointsRequireAuthentication() throws Exception {
+        mvc.perform(get("/actuator/env")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/actuator/prometheus")).andExpect(status().isUnauthorized());
+    }
+
 }

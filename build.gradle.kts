@@ -13,8 +13,13 @@ java {
     toolchain { languageVersion = JavaLanguageVersion.of(25) }
 }
 
+dependencyManagement {
+    imports { mavenBom("org.springframework.cloud:spring-cloud-dependencies:2025.1.2") }
+}
+
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")

@@ -36,3 +36,15 @@ auth:
     secret: ${JWT_SECRET}
     access-token-expiration: 1h
     refresh-token-expiration: 7d
+
+# 테스트: 개발자센터의 test_sk_... 값을 TOSS_PAYMENTS_SECRET_KEY 환경변수로 제공합니다.
+# 시크릿 키를 이 파일에 직접 저장하지 않습니다.
+payment:
+  toss:
+    base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}
+    secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
+
+spring.cloud.openfeign.client.config.tossPayments:
+  connectTimeout: 3000
+  readTimeout: 10000
+  loggerLevel: none

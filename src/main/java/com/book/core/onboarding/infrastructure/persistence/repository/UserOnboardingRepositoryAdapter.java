@@ -17,6 +17,11 @@ class UserOnboardingRepositoryAdapter implements UserOnboardingRepositoryPort {
     }
 
     @Override
+    public Optional<UserOnboarding> findActiveByUserIdForUpdate(final Long userId) {
+        return jpaRepository.findActiveByUserIdForUpdate(userId);
+    }
+
+    @Override
     public UserOnboarding save(final UserOnboarding userOnboarding) {
         return jpaRepository.save(userOnboarding);
     }

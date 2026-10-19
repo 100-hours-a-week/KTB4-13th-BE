@@ -83,6 +83,7 @@ Service·Converter 없이 직접 UseCase나 Repository 구현체를 호출하는
 
 `application/service/{Feature}Service`는 기능의 orchestration layer입니다.
 Controller의 진입점으로서 여러 CRUD·추가 기능 UseCase의 실행 순서를 조율하지만, Domain 규칙·트랜잭션·JPA Repository 호출을 소유하지 않습니다.
+예외로 회원가입 조율을 담당하는 `auth/application/service/SignUpService`만 public 메서드에 `@Transactional`을 선언해 회원 등록과 장바구니·포인트 잔액 생성 UseCase를 하나의 트랜잭션으로 묶습니다. 외부 OAuth 호출과 로그인 세션 생성은 이 트랜잭션 밖의 `AuthService`에서 실행합니다.
 현재 UseCase가 하나뿐이어도 Service를 제거하지 않고 이후 기능 확장 지점으로 유지합니다.
 
 `application/usecase`의 `{Feature}{Action}UseCase`는 구체 클래스입니다.
@@ -98,7 +99,7 @@ Repository·Client는 외부 기술을 격리하고 단위 테스트에서 대�
 조회 UseCase의 public 메서드는 독립 호출에서도 애플리케이션 조회 트랜잭션을 명시하도록 `@Transactional(readOnly = true)`를 사용합니다. 이 기준은 상속 CRUD 조회 메서드가 repository 수준에서 기본 read-only 트랜잭션을 제공하더라도 적용하며, repository 기본값이 UseCase 경계를 대체하지 않습니다. `readOnly`는 최적화를 위한 힌트이며 쓰기 차단을 보장하지 않습니다.
 
 조회 UseCase가 기존 `REQUIRED` 트랜잭션에 참여하면 호출자의 트랜잭션 속성을 따릅니다. 내부의 read-only 선언은 기존 쓰기 트랜잭션을 read-only로 바꾸지 않습니다. ([Spring `@Transactional`](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/transaction/annotation/Transactional.html), [Spring transaction propagation](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html), [Spring Data JPA transactionality](https://docs.spring.io/spring-data/jpa/reference/jpa/transactions.html))
-Controller와 Domain에는 트랜잭션을 두지 않습니다.
+Controller와 Domain에는 트랜잭션을 두지 않고, Service에는 위 `SignUpService` 예외만 허용합니다.
 
 ## 4. 데이터와 변환
 

@@ -29,7 +29,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @ActiveProfiles("test")
 @Tag("integration")
 class SaveUserMemoriesUseCaseIntegrationTest {
-    private static final long USER_ID = 9001L;
+    private static final String NICKNAME = "기억추출회원";
     private static final String CONVERSATION_ID = "cv_20261013_a1";
 
     @Autowired
@@ -44,22 +44,20 @@ class SaveUserMemoriesUseCaseIntegrationTest {
     @Autowired
     PlatformTransactionManager transactionManager;
 
+    Long userId;
+
     @BeforeEach
     void setUp() {
-        jdbc.update("DELETE FROM user_memories");
-        jdbc.update("DELETE FROM users");
-        jdbc.update("""
-            INSERT INTO users (id, nickname, created_at, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
-            """, USER_ID, "북적이");
+        jdbc.update("INSERT INTO users (nickname) VALUES (?)", NICKNAME);
+        userId = jdbc.queryForObject("SELECT MAX(id) FROM users WHERE nickname = ?", Long.class, NICKNAME);
     }
 
     @Test
     void 최초_추출_결과를_대화와_함께_저장한다() {
         useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.TOPIC, "추리 소설", List.of("추리/스릴러"))));
 
-        final var row = jdbc.queryForMap("SELECT * FROM user_memories");
-        assertThat(row).containsEntry("user_id", USER_ID).containsEntry("type", "TOPIC").containsEntry("keyword", "추리 소설")
+        final var row = jdbc.queryForMap("SELECT * FROM user_memories WHERE user_id = ?", userId);
+        assertThat(row).containsEntry("user_id", userId).containsEntry("type", "TOPIC").containsEntry("keyword", "추리 소설")
             .containsEntry("strength", 2).containsEntry("dim", 2).containsEntry("conversation_id", CONVERSATION_ID);
         assertThat(row.get("categories")).isEqualTo("[\"추리/스릴러\"]");
         assertThat(row.get("vector")).isEqualTo("[0.054, -0.25]");
@@ -71,13 +69,14 @@ class SaveUserMemoriesUseCaseIntegrationTest {
         useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.TOPIC, "추리 소설", List.of()),
             extraction(UserMemoryType.AUTHOR, "김영하", List.of())));
         useCase.execute(command("cv_other", extraction(UserMemoryType.MOOD, "잔잔한", List.of())));
-        jdbc.update("UPDATE user_memories SET deleted_at = CURRENT_TIMESTAMP(6) WHERE keyword = '김영하'");
+        jdbc.update("UPDATE user_memories SET deleted_at = CURRENT_TIMESTAMP(6) WHERE user_id = ? AND keyword = '김영하'", userId);
 
         useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.TOPIC, "로맨스 소설", List.of()),
             extraction(UserMemoryType.AUTHOR, " 김영하 ", List.of()), extraction(UserMemoryType.TOPIC, "김영하", List.of())));
 
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NULL")).containsExactlyInAnyOrder("로맨스 소설", "김영하");
-        assertThat(jdbc.queryForList("SELECT type FROM user_memories WHERE deleted_at IS NULL AND keyword = '김영하'", String.class))
+        assertThat(jdbc.queryForList("SELECT type FROM user_memories WHERE user_id = ? AND deleted_at IS NULL AND keyword = '김영하'",
+            String.class, userId))
             .containsExactly("TOPIC");
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NOT NULL")).containsExactly("김영하");
         assertThat(keywords("cv_other", "deleted_at IS NULL")).containsExactly("잔잔한");
@@ -90,8 +89,8 @@ class SaveUserMemoriesUseCaseIntegrationTest {
         final CountDownLatch commitDelete = new CountDownLatch(1);
         final CompletableFuture<Void> deletion =
             CompletableFuture.runAsync(() -> new TransactionTemplate(transactionManager).executeWithoutResult((final var status) -> {
-                jdbc.queryForList("SELECT id FROM users WHERE id = ? FOR UPDATE", Long.class, USER_ID);
-                jdbc.update("UPDATE user_memories SET deleted_at = CURRENT_TIMESTAMP(6) WHERE keyword = '김영하'");
+                jdbc.queryForList("SELECT id FROM users WHERE id = ? FOR UPDATE", Long.class, userId);
+                jdbc.update("UPDATE user_memories SET deleted_at = CURRENT_TIMESTAMP(6) WHERE user_id = ? AND keyword = '김영하'", userId);
                 deleting.countDown();
                 await(commitDelete);
             }));
@@ -116,7 +115,7 @@ class SaveUserMemoriesUseCaseIntegrationTest {
 
         useCase.execute(command(CONVERSATION_ID));
 
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_memories", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_memories WHERE user_id = ?", Integer.class, userId)).isZero();
     }
 
     @Test
@@ -142,7 +141,7 @@ class SaveUserMemoriesUseCaseIntegrationTest {
     }
 
     private SaveUserMemoriesCommand command(final String conversationId, final UserMemoryExtraction... extractions) {
-        return new SaveUserMemoriesCommand(USER_ID, conversationId, List.of(extractions));
+        return new SaveUserMemoriesCommand(userId, conversationId, List.of(extractions));
     }
 
     private UserMemoryExtraction extraction(final UserMemoryType type, final String keyword, final List<String> categories) {
@@ -150,7 +149,7 @@ class SaveUserMemoriesUseCaseIntegrationTest {
     }
 
     private List<String> keywords(final String conversationId, final String deletedCondition) {
-        return jdbc.queryForList("SELECT keyword FROM user_memories WHERE conversation_id = ? AND " + deletedCondition, String.class,
-            conversationId);
+        return jdbc.queryForList("SELECT keyword FROM user_memories WHERE user_id = ? AND conversation_id = ? AND " + deletedCondition,
+            String.class, userId, conversationId);
     }
 }

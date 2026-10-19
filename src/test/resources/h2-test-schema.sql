@@ -147,4 +147,6 @@ ALTER TABLE onboarding_book_candidates
 ALTER TABLE onboarding_book_candidates
     ADD CONSTRAINT fk_onboarding_candidates_book_id FOREIGN KEY (book_id) REFERENCES books (id);
 ALTER TABLE order_item ALTER COLUMN canceled_quantity SET DEFAULT 0;
+ALTER TABLE recommendation_cards
+    ADD CONSTRAINT fk_recommendation_cards_user_id FOREIGN KEY (user_id) REFERENCES users (id);
 ALTER TABLE IF EXISTS cancel_balance ALTER COLUMN version SET DEFAULT 0;

@@ -3,6 +3,8 @@ package com.book.core.memory.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.memory.application.command.SaveUserMemoriesCommand;
 import com.book.core.memory.application.command.UserMemoryExtraction;
 import com.book.core.memory.domain.UserMemoryType;
@@ -16,7 +18,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -115,13 +116,14 @@ class SaveUserMemoriesUseCaseIntegrationTest {
     }
 
     @Test
-    void 새_기억_저장에_실패하면_기존_활성_기억_삭제도_되돌린다() {
+    void 잘못된_새_기억은_거부하고_기존_활성_기억은_유지한다() {
         useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.TOPIC, "추리 소설", List.of())));
         final var tooLongValue =
             new UserMemoryExtraction(UserMemoryType.TOPIC, "가".repeat(201), 2, List.of(), "로맨스 소설", List.of(0.054f, -0.25f), 2);
 
         assertThatThrownBy(() -> useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.MOOD, "잔잔한", List.of()), tooLongValue)))
-            .isInstanceOf(DataIntegrityViolationException.class);
+            .isInstanceOf(CoreException.class)
+            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
 
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NULL")).containsExactly("추리 소설");
     }

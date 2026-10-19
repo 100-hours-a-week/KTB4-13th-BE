@@ -4,18 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.core.category.application.port.CategoryRepositoryPort;
 import com.book.core.category.domain.Category;
-import com.book.testsupport.AddressCategoryMySqlTestConfiguration;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
-@ActiveProfiles({"test", "mysql"})
-@Import(AddressCategoryMySqlTestConfiguration.class)
+@ActiveProfiles("test")
 @Tag("integration")
 class CategoryRepositoryIntegrationTest {
     @Autowired

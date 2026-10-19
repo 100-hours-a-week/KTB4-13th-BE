@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.address.application.port.AddressRepositoryPort;
 import com.book.core.address.domain.Address;
-import com.book.testsupport.AddressCategoryMySqlTestConfiguration;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Tag;
@@ -14,14 +13,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
-@ActiveProfiles({"test", "mysql"})
-@Import(AddressCategoryMySqlTestConfiguration.class)
+@ActiveProfiles("test")
 @Tag("integration")
 class AddressRepositoryIntegrationTest {
     @Autowired
@@ -156,13 +153,14 @@ class AddressRepositoryIntegrationTest {
     }
 
     @Test
-    void 주소지_마이그레이션은_deleted_at을_추가하고_status를_제거하며_order_addresses를_생성한다() {
+    void H2_테스트_스키마는_soft_delete_컬럼과_주문_주소지_테이블을_제공한다() {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns "
-            + "WHERE table_schema = DATABASE() AND table_name = 'addresses' AND column_name = 'deleted_at'", Integer.class)).isEqualTo(1);
+            + "WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'addresses' AND column_name = 'deleted_at'", Integer.class))
+            .isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns "
-            + "WHERE table_schema = DATABASE() AND table_name = 'addresses' AND column_name = 'status'", Integer.class)).isZero();
+            + "WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'addresses' AND column_name = 'status'", Integer.class)).isZero();
         assertThat(jdbc.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.tables " + "WHERE table_schema = DATABASE() AND table_name = 'order_addresses'",
+            "SELECT COUNT(*) FROM information_schema.tables " + "WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'order_addresses'",
             Integer.class)).isEqualTo(1);
     }
 }

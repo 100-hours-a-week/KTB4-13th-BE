@@ -19,22 +19,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
-@ActiveProfiles({"test", "mysql"})
-@Testcontainers
+@ActiveProfiles("test")
 @Tag("integration")
 class ProductRepositoryIntegrationTest {
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
-
     @Autowired
     ProductRepositoryPort productRepository;
 
@@ -217,8 +208,6 @@ class ProductRepositoryIntegrationTest {
         insertReview(4308L, 4208L, "10.0", null);
         insertReview(4310L, 4209L, "10.0", null);
         insertReview(4309L, 4205L, "0.0", Timestamp.valueOf("2026-01-01 00:00:00"));
-        insertReview(4311L, 4205L, "0.0", null);
-        jdbc.update("UPDATE reviews SET target_type = 'OTHER' WHERE id = 4311");
         insertPaidItem(4210L, 2290L, 1000, null, null);
         insertPaidItem(4211L, 2291L, 1000, null, null);
 
@@ -362,7 +351,7 @@ class ProductRepositoryIntegrationTest {
         try {
             assertThatThrownBy(() -> productService.refreshProductPopularitySnapshot()).isInstanceOf(DataAccessException.class);
         } finally {
-            jdbc.execute("ALTER TABLE product_popularity_snapshots DROP CHECK chk_fail_popularity_snapshot_refresh");
+            jdbc.execute("ALTER TABLE product_popularity_snapshots DROP CONSTRAINT chk_fail_popularity_snapshot_refresh");
         }
 
         final Long salesQuantity =

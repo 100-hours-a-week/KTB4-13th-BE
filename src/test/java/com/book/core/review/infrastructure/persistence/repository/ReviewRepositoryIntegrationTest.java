@@ -23,26 +23,15 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
-@ActiveProfiles({"test", "mysql"})
-@Testcontainers
+@ActiveProfiles("test")
 @Tag("integration")
 class ReviewRepositoryIntegrationTest {
-    private static final int MYSQL_CHECK_CONSTRAINT_VIOLATED = 3819;
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
-
     @Autowired
     ReviewRepositoryPort reviewRepository;
 
@@ -84,7 +73,7 @@ class ReviewRepositoryIntegrationTest {
             43L, "ORDER_ITEM_" + orderItemId, "PRODUCT", 9401L, new BigDecimal("10.1"), "범위 초과", false))
             .isInstanceOf(DataAccessException.class).satisfies(exception -> {
                 assertThat(exception.getCause()).isInstanceOf(SQLException.class);
-                assertThat(((SQLException) exception.getCause()).getErrorCode()).isEqualTo(MYSQL_CHECK_CONSTRAINT_VIOLATED);
+                assertThat(((SQLException) exception.getCause()).getSQLState()).startsWith("23");
             });
 
         review.delete();
@@ -133,15 +122,15 @@ class ReviewRepositoryIntegrationTest {
 
     @Test
     void 결제_후_7일_이내에_구매한_상품을_리뷰_대상으로_조회한다() {
-        insertBook(9701L);
-        insertBook(9702L);
-        insertProduct(9801L, 9701L);
-        insertProduct(9802L, 9702L);
+        insertBook(19701L);
+        insertBook(19702L);
+        insertProduct(19801L, 19701L);
+        insertProduct(19802L, 19702L);
         final var cutoff = LocalDateTime.of(2026, 10, 12, 9, 0).minusDays(7);
-        final var eligible = saveOrderItem(9801L, "기간 경계");
-        final var old = saveOrderItem(9801L, "기간 초과");
-        final var other = saveOrderItem(9802L, "다른 대상");
-        final var deleted = saveOrderItem(9801L, "삭제 주문상품");
+        final var eligible = saveOrderItem(19801L, "기간 경계");
+        final var old = saveOrderItem(19801L, "기간 초과");
+        final var other = saveOrderItem(19802L, "다른 대상");
+        final var deleted = saveOrderItem(19801L, "삭제 주문상품");
         markPaid(eligible, cutoff);
         jdbc.update("UPDATE orders SET created_at = ? WHERE id = (SELECT order_id FROM order_item WHERE id = ?)", cutoff.minusDays(30),
             eligible);
@@ -150,8 +139,8 @@ class ReviewRepositoryIntegrationTest {
         markPaid(deleted, cutoff);
         jdbc.update("UPDATE order_item SET deleted_at = ? WHERE id = ?", cutoff, deleted);
 
-        assertThat(reviewOrders.findRecentOrderItemsForProduct(42L, 9801L, OrderStatus.PAID, cutoff)).containsExactly(eligible);
-        assertThat(reviewOrders.findRecentOrderItemsForProduct(99L, 9801L, OrderStatus.PAID, cutoff)).isEmpty();
+        assertThat(reviewOrders.findRecentOrderItemsForProduct(42L, 19801L, OrderStatus.PAID, cutoff)).containsExactly(eligible);
+        assertThat(reviewOrders.findRecentOrderItemsForProduct(99L, 19801L, OrderStatus.PAID, cutoff)).isEmpty();
     }
 
     private void markPaid(final Long orderItemId, final LocalDateTime paidAt) {

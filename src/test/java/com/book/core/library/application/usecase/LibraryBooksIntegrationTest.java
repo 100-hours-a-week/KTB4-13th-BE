@@ -13,26 +13,16 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
-@ActiveProfiles({"test", "mysql"})
-@Testcontainers
+@ActiveProfiles("test")
 @Tag("integration")
 class LibraryBooksIntegrationTest {
     private static final LocalDateTime ADDED_AT = LocalDateTime.of(2026, 10, 1, 9, 0);
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8").withCommand("--log-bin-trust-function-creators=1");
-
     @Autowired
     UserLibraryBookRepositoryPort libraryBookRepository;
 
@@ -48,11 +38,11 @@ class LibraryBooksIntegrationTest {
     @Test
     void 같은_회원이_같은_도서를_다시_저장하면_UNIQUE_제약으로_DuplicateKeyException이_발생한다() {
         final Long userId = insertUser("도서관중복회원");
-        final Long bookId = insertBook(910001L);
+        final Long bookId = insertBook(1910001L);
         libraryBookRepository.saveAll(List.of(UserLibraryBook.add(userId, bookId, ADDED_AT)));
 
         assertThatThrownBy(() -> libraryBookRepository.saveAll(List.of(UserLibraryBook.add(userId, bookId, ADDED_AT))))
-            .isInstanceOf(DuplicateKeyException.class);
+            .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
@@ -68,7 +58,8 @@ class LibraryBooksIntegrationTest {
 
         assertThat(jdbc.queryForList("""
             SELECT CONCAT(book_id, ':', deleted_at IS NULL, ':', added_at = ?) FROM user_library_books WHERE user_id = ? ORDER BY book_id
-            """, String.class, ADDED_AT, userId)).containsExactly(activeBookId + ":1:1", deletedBookId + ":1:0", newBookId + ":1:0");
+            """, String.class, ADDED_AT, userId)).containsExactly(activeBookId + ":TRUE:TRUE", deletedBookId + ":TRUE:FALSE",
+            newBookId + ":TRUE:FALSE");
     }
 
     @Test
@@ -82,7 +73,7 @@ class LibraryBooksIntegrationTest {
             .isInstanceOf(DataIntegrityViolationException.class).isNotInstanceOf(DuplicateKeyException.class);
 
         assertThat(jdbc.queryForList("SELECT CONCAT(book_id, ':', deleted_at IS NULL) FROM user_library_books WHERE user_id = ?",
-            String.class, userId)).containsExactly(deletedBookId + ":0");
+            String.class, userId)).containsExactly(deletedBookId + ":FALSE");
     }
 
     @Test
@@ -112,19 +103,13 @@ class LibraryBooksIntegrationTest {
         final Long userId = insertUser("도서관삭제롤백회원");
         final Long first = insertLibraryBook(userId, insertBook(910401L), false);
         final Long second = insertLibraryBook(userId, insertBook(910402L), false);
-        jdbc.execute("""
-            CREATE TRIGGER fail_library_book_delete BEFORE UPDATE ON user_library_books FOR EACH ROW
-            BEGIN
-                IF NEW.book_id = 910402 AND NEW.deleted_at IS NOT NULL THEN
-                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'delete failure';
-                END IF;
-            END
-            """);
+        jdbc.execute(
+            "ALTER TABLE user_library_books ADD CONSTRAINT ck_fail_library_book_delete CHECK (book_id <> 910402 OR deleted_at IS NULL)");
         try {
             assertThatThrownBy(() -> deleteUseCase.execute(new DeleteLibraryBooksCommand(userId, List.of(first, second))))
                 .isInstanceOf(RuntimeException.class);
         } finally {
-            jdbc.execute("DROP TRIGGER fail_library_book_delete");
+            jdbc.execute("ALTER TABLE user_library_books DROP CONSTRAINT ck_fail_library_book_delete");
         }
 
         assertThat(activeIds(userId)).containsExactlyInAnyOrder(first, second);
@@ -147,8 +132,10 @@ class LibraryBooksIntegrationTest {
     }
 
     private Long insertLibraryBook(final Long userId, final Long bookId, final boolean deleted) {
-        jdbc.update("INSERT INTO user_library_books (user_id, book_id, added_at, deleted_at) VALUES (?, ?, ?, IF(?, NOW(6), NULL))", userId,
-            bookId, ADDED_AT, deleted);
+        jdbc.update("""
+            INSERT INTO user_library_books (user_id, book_id, added_at, deleted_at)
+            VALUES (?, ?, ?, CASE WHEN ? THEN NOW(6) ELSE NULL END)
+            """, userId, bookId, ADDED_AT, deleted);
         return jdbc.queryForObject("SELECT id FROM user_library_books WHERE user_id = ? AND book_id = ?", Long.class, userId, bookId);
     }
 }

@@ -1,14 +1,22 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:book-${random.uuid};MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:book-${random.uuid};MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;INIT=SET TIME ZONE 'UTC'
     username: sa
     password:
     driver-class-name: org.h2.Driver
   flyway:
     enabled: false
   jpa:
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: create-drop
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:h2-test-schema.sql
+      data-locations: classpath:h2-test-data.sql
 
 
 auth:

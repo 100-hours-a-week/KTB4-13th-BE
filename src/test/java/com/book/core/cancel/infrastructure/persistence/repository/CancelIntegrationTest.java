@@ -29,25 +29,17 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
-@ActiveProfiles({"test", "mysql"})
-@Testcontainers
+@ActiveProfiles("test")
 @Tag("integration")
 class CancelIntegrationTest {
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
     @Autowired
     private CancelService service;
     @Autowired
@@ -181,7 +173,7 @@ class CancelIntegrationTest {
             if (hasCoupon) {
                 jdbc.update(
                     "INSERT INTO coupon (id, name, type, discount, max_use_count, min_order_amount, expired_at, created_at, updated_at) "
-                        + "VALUES (?, '취소 테스트', 'FIXED_AMOUNT', 10000, 1, 35000, DATE_ADD(NOW(), INTERVAL 7 DAY), NOW(), NOW())",
+                        + "VALUES (?, '취소 테스트', 'FIXED_AMOUNT', 10000, 1, 35000, TIMESTAMPADD(DAY, 7, CURRENT_TIMESTAMP), NOW(), NOW())",
                     userId);
                 OwnedCouponStatus couponStatus = OwnedCouponStatus.ISSUED;
                 long usedCount = 0L;

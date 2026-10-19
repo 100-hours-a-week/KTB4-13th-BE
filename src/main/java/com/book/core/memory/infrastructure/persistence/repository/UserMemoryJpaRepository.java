@@ -8,6 +8,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 interface UserMemoryJpaRepository extends JpaRepository<UserMemory, Long> {
+    @Query(value = "SELECT id FROM users WHERE id = :userId FOR UPDATE", nativeQuery = true)
+    List<Long> lockUserById(@Param("userId") final Long userId);
+
     List<UserMemory> findAllByUserIdAndDeletedAtIsNull(final Long userId);
 
     List<UserMemory> findAllByUserIdAndConversationIdAndDeletedAtIsNotNull(final Long userId, final String conversationId);

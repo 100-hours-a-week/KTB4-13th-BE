@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class UserMemoryTest {
     @ParameterizedTest
-    @ValueSource(ints = {-4, 0, 4})
+    @ValueSource(ints = {Integer.MIN_VALUE, -4, 0, 4})
     void 세기가_범위_밖이거나_0이면_생성하지_않는다(final int strength) {
         assertThatThrownBy(() -> memory(UserMemoryType.TOPIC, "추리 소설", strength, List.of(0.1f, 0.2f), 2)).isInstanceOf(CoreException.class);
     }

@@ -7,6 +7,9 @@ import com.book.core.memory.application.command.SaveUserMemoriesCommand;
 import com.book.core.memory.application.command.UserMemoryExtraction;
 import com.book.core.memory.domain.UserMemoryType;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -37,6 +42,9 @@ class SaveUserMemoriesUseCaseIntegrationTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    PlatformTransactionManager transactionManager;
 
     @BeforeEach
     void setUp() {
@@ -78,6 +86,33 @@ class SaveUserMemoriesUseCaseIntegrationTest {
     }
 
     @Test
+    void 같은_회원의_삭제가_진행_중이면_재추출은_삭제_커밋을_기다린_뒤_삭제_기억을_다시_저장하지_않는다() throws Exception {
+        useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.AUTHOR, "김영하", List.of())));
+        final CountDownLatch deleting = new CountDownLatch(1);
+        final CountDownLatch commitDelete = new CountDownLatch(1);
+        final CompletableFuture<Void> deletion =
+            CompletableFuture.runAsync(() -> new TransactionTemplate(transactionManager).executeWithoutResult((final var status) -> {
+                jdbc.queryForList("SELECT id FROM users WHERE id = ? FOR UPDATE", Long.class, USER_ID);
+                jdbc.update("UPDATE user_memories SET deleted_at = CURRENT_TIMESTAMP(6) WHERE keyword = '김영하'");
+                deleting.countDown();
+                await(commitDelete);
+            }));
+        await(deleting);
+
+        final CompletableFuture<Void> reExtraction = CompletableFuture
+            .runAsync(() -> useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.AUTHOR, "김영하", List.of()))));
+        Thread.sleep(500);
+        final boolean finishedBeforeDeleteCommit = reExtraction.isDone();
+        commitDelete.countDown();
+        deletion.get(10, TimeUnit.SECONDS);
+        reExtraction.get(10, TimeUnit.SECONDS);
+
+        assertThat(finishedBeforeDeleteCommit).isFalse();
+        assertThat(keywords(CONVERSATION_ID, "deleted_at IS NULL")).isEmpty();
+        assertThat(keywords(CONVERSATION_ID, "deleted_at IS NOT NULL")).containsExactly("김영하");
+    }
+
+    @Test
     void 빈_추출_결과면_같은_대화의_활성_기억만_지운다() {
         useCase.execute(command(CONVERSATION_ID, extraction(UserMemoryType.TOPIC, "추리 소설", List.of())));
 
@@ -96,6 +131,17 @@ class SaveUserMemoriesUseCaseIntegrationTest {
             .isInstanceOf(DataIntegrityViolationException.class);
 
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NULL")).containsExactly("추리 소설");
+    }
+
+    private static void await(final CountDownLatch latch) {
+        try {
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("대기 시간을 초과했습니다");
+            }
+        } catch (final InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(exception);
+        }
     }
 
     private SaveUserMemoriesCommand command(final String conversationId, final UserMemoryExtraction... extractions) {

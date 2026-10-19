@@ -83,7 +83,7 @@ public class UserMemory extends BaseEntity {
         if (userId == null || type == null || isBlank(value) || isBlank(keyword) || isBlank(conversationId)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        if (strength == 0 || Math.abs(strength) > MAX_STRENGTH) {
+        if (strength == 0 || strength < -MAX_STRENGTH || strength > MAX_STRENGTH) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (categories == null || categories.size() > MAX_CATEGORIES) {

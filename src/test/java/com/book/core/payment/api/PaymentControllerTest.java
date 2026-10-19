@@ -16,6 +16,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
+import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import com.book.core.payment.api.converter.PaymentCommandConverter;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
@@ -52,6 +53,9 @@ class PaymentControllerTest {
     private PaymentService paymentService;
     @MockitoBean(name = "serviceJwtDecoder")
     private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private CheckUserRestrictionUseCase checkUserRestrictionUseCase;
 
     @Test
     void 일반_결제는_JWT_회원과_미입력_기본값으로_생성한다() throws Exception {

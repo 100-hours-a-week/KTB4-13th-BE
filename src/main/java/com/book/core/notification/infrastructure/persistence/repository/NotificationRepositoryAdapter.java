@@ -3,6 +3,7 @@ package com.book.core.notification.infrastructure.persistence.repository;
 import com.book.core.notification.application.port.NotificationRepositoryPort;
 import com.book.core.notification.domain.Notification;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -24,5 +25,10 @@ class NotificationRepositoryAdapter implements NotificationRepositoryPort {
     @Override
     public long countUnreadByUserId(final Long userId) {
         return jpaRepository.countByUserIdAndDeletedAtIsNullAndReadAtIsNull(userId);
+    }
+
+    @Override
+    public Optional<Notification> findOwnedActiveForUpdate(final Long userId, final Long notificationId) {
+        return jpaRepository.findOwnedActiveForUpdate(userId, notificationId);
     }
 }

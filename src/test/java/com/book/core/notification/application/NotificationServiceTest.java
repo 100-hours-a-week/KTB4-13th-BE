@@ -10,6 +10,8 @@ import com.book.core.notification.application.usecase.CreateNotificationUseCase;
 import com.book.core.notification.application.command.GetNotificationsCommand;
 import com.book.core.notification.application.result.GetNotificationsResult;
 import java.util.List;
+import com.book.core.notification.application.command.ReadNotificationCommand;
+import com.book.core.notification.application.usecase.ReadNotificationUseCase;
 import com.book.core.notification.application.usecase.GetNotificationsUseCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +25,8 @@ class NotificationServiceTest {
     CreateNotificationUseCase createUseCase;
     @Mock
     GetNotificationsUseCase getUseCase;
+    @Mock
+    ReadNotificationUseCase readUseCase;
     @InjectMocks
     NotificationService service;
 
@@ -41,5 +45,12 @@ class NotificationServiceTest {
         when(getUseCase.execute(command)).thenReturn(result);
         assertThat(service.getRecent(command)).isSameAs(result);
         verify(getUseCase).execute(command);
+    }
+
+    @Test
+    void 읽음_처리를_UseCase에_위임한다() {
+        final var command = new ReadNotificationCommand(42L, 10L);
+        service.read(command);
+        verify(readUseCase).execute(command);
     }
 }

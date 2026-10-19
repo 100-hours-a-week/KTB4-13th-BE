@@ -1,6 +1,10 @@
 package com.book.core.notification.api;
 
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -18,6 +22,9 @@ import com.book.core.notification.application.command.GetNotificationsCommand;
 import com.book.core.notification.application.result.GetNotificationsResult;
 import com.book.core.notification.application.result.NotificationItemResult;
 import com.book.core.notification.application.service.NotificationService;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
+import com.book.core.notification.application.command.ReadNotificationCommand;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -74,6 +81,34 @@ class NotificationControllerTest {
     @Test
     void 인증_없는_조회는_거부한다() throws Exception {
         mvc.perform(get("/api/v1/notifications")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 인증_회원으로_읽음_요청을_변환한다() throws Exception {
+        authenticate();
+        mvc.perform(patch("/api/v1/notifications/10/read").header("Authorization", "Bearer test-token").param("userId", "99"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
+        verify(service).read(new ReadNotificationCommand(42L, 10L));
+    }
+
+    @Test
+    void 타인과_없는_알림의_404_계약을_응답한다() throws Exception {
+        authenticate();
+        doThrow(new CoreException(ErrorCode.NOTIFICATION_NOT_FOUND)).when(service).read(new ReadNotificationCommand(42L, 10L));
+        mvc.perform(patch("/api/v1/notifications/10/read").header("Authorization", "Bearer test-token")).andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("NOTIFICATION_NOT_FOUND"));
+    }
+
+    @Test
+    void 음수_알림_ID는_거부한다() throws Exception {
+        authenticate();
+        mvc.perform(patch("/api/v1/notifications/-1/read").header("Authorization", "Bearer test-token")).andExpect(status().isBadRequest());
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void 인증_없는_읽음은_거부한다() throws Exception {
+        mvc.perform(patch("/api/v1/notifications/10/read")).andExpect(status().isUnauthorized());
     }
 
     private void authenticate() {

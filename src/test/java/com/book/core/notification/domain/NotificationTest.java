@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.common.exception.CoreException;
 import com.book.core.notification.application.command.CreateNotificationCommand;
 import org.junit.jupiter.api.Test;
+import java.time.LocalDateTime;
 
 class NotificationTest {
     @Test
@@ -34,5 +35,15 @@ class NotificationTest {
     @Test
     void 최대_길이의_내용을_허용한다() {
         assertThat(new Notification(1L, "가".repeat(100), "나".repeat(1000)).body()).hasSize(1000);
+    }
+
+    @Test
+    void 반복_읽음은_최초_시각을_유지한다() {
+        final var notification = new Notification(42L, "제목", "본문");
+        final var firstReadAt = LocalDateTime.of(2026, 10, 19, 10, 0);
+        notification.markRead(firstReadAt);
+        notification.markRead(firstReadAt.plusHours(1));
+        assertThat(notification.readAt()).isEqualTo(firstReadAt);
+        assertThatThrownBy(() -> notification.markRead(null)).isInstanceOf(CoreException.class);
     }
 }

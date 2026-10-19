@@ -36,4 +36,14 @@ public class Notification extends BaseEntity {
         this.title = title;
         this.body = body;
     }
+
+    /** 반복 요청은 최초 읽음 시각을 유지합니다. 호출자는 저장소 잠금으로 동시 변경을 직렬화합니다. */
+    public void markRead(final LocalDateTime readAt) {
+        if (readAt == null) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        if (this.readAt == null) {
+            this.readAt = readAt;
+        }
+    }
 }

@@ -11,14 +11,14 @@ public record OrderItemResult(
         String itemName,
         String thumbnailUrl,
         String author,
-        BigDecimal salePrice,
         BigDecimal unitPrice,
         BigDecimal totalPrice,
         Integer quantity,
+        long canceledQuantity,
         OrderItemStatus status) {
     public static OrderItemResult from(final OrderItem item) {
-        return new OrderItemResult(item.id(), item.productId(), item.itemName(), item.thumbnailUrl(), item.author(), item.salePrice(),
-                item.unitPrice(), item.totalPrice(), item.quantity(), item.status());
+        return new OrderItemResult(item.id(), item.productId(), item.itemName(), item.thumbnailUrl(), item.author(), item.unitPrice(),
+                item.totalPrice(), item.quantity(), item.canceledQuantity(), item.status());
     }
 }
 // @formatter:on

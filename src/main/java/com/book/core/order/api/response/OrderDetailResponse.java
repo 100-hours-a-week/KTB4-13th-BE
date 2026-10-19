@@ -7,11 +7,12 @@ import java.util.List;
 
 // @formatter:off
 public record OrderDetailResponse(
-        String key,
-        String name,
-        BigDecimal totalPrice,
+        String orderKey,
         OrderStatus status,
-        List<OrderItemResponse> items,
+        BigDecimal totalPrice,
+        LocalDateTime createdAt,
         OrderAddressResponse address,
-        LocalDateTime createdAt) {}
+        OrderPaymentResponse payment,
+        List<OrderItemResponse> items,
+        List<OrderCancellationResponse> cancellations) {}
 // @formatter:on

@@ -25,6 +25,7 @@ dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
     implementation("io.sentry:sentry-spring-boot-4-starter:8.52.0")
     implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("org.flywaydb:flyway-mysql")
     runtimeOnly("com.mysql:mysql-connector-j")
     compileOnly("org.projectlombok:lombok")
@@ -38,6 +39,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-mysql")
+    testRuntimeOnly("com.h2database:h2")
     testImplementation("com.tngtech.archunit:archunit:1.5.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -55,14 +57,29 @@ tasks.test {
 }
 
 val integrationTest = tasks.register<Test>("integrationTest") {
-    description = "Runs integration tests that require external infrastructure."
+    description = "Runs integration tests against the in-memory H2 database."
+    maxHeapSize = "1536m"
+    systemProperty("user.timezone", "UTC")
     group = "verification"
     useJUnitPlatform {
         includeTags("integration")
+        excludeTags("mysql-migration")
     }
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     shouldRunAfter(tasks.test)
+}
+
+val mysqlMigrationTest = tasks.register<Test>("mysqlMigrationTest") {
+    description = "Runs MySQL migration and constraint tests using Testcontainers."
+    group = "verification"
+    maxHeapSize = "1536m"
+    useJUnitPlatform {
+        includeTags("mysql-migration")
+    }
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    shouldRunAfter(integrationTest)
 }
 
 jacoco { toolVersion = "0.8.15" }

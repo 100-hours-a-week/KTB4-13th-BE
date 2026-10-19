@@ -27,6 +27,7 @@ import com.book.core.recommendation.application.result.RecommendationFeedItemRes
 import com.book.core.recommendation.application.service.RecommendationService;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -94,7 +95,7 @@ class RecommendationControllerTest {
             .andExpect(jsonPath("$.data.cards[0].reasonShort").value("한 줄 추천 이유"))
             .andExpect(jsonPath("$.data.cards[0].reasonLong").value("긴 추천 이유"));
 
-        final var expectedSpec = new java.util.HashMap<String, Object>();
+        final HashMap<String, Object> expectedSpec = new java.util.HashMap<String, Object>();
         expectedSpec.put("intent", "semantic");
         expectedSpec.put("exact", Map.of());
         expectedSpec.put("filters", Map.of());

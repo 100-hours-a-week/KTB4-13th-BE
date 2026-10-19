@@ -2,9 +2,11 @@ package com.book.core.recommendation.application.usecase;
 
 import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.book.domain.Book;
-import com.book.core.product.application.usecase.FindProductByBookIdUseCase;
-import com.book.core.product.domain.Product;
+import com.book.core.product.application.result.RecommendationProductResult;
+import com.book.core.product.application.usecase.GetRecommendationProductsUseCase;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
+import com.book.core.recommendation.application.command.RecommendationCardCandidate;
+import com.book.core.recommendation.application.command.ResolveRecommendationCommand;
 import com.book.core.recommendation.application.port.AiRecommendationCard;
 import com.book.core.recommendation.application.port.AiRecommendationChatRequest;
 import com.book.core.recommendation.application.port.AiRecommendationChatResult;
@@ -14,7 +16,6 @@ import com.book.core.recommendation.application.result.ResolvedRecommendationCar
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ public class ChatRecommendationUseCase {
 
     private final AiRecommendationClient aiRecommendationClient;
     private final GetBooksUseCase getBooksUseCase;
-    private final FindProductByBookIdUseCase findProductByBookIdUseCase;
+    private final GetRecommendationProductsUseCase getRecommendationProductsUseCase;
 
     public ChatRecommendationAiOutcome execute(final ChatRecommendationCommand command) {
 
@@ -35,22 +36,39 @@ public class ChatRecommendationUseCase {
             command.message(), command.recentTurns(), command.excludeBookIds());
         final AiRecommendationChatResult aiResult = aiRecommendationClient.chat(aiRequest);
 
-        final List<Long> bookIds = aiResult.cards().stream().map(AiRecommendationCard::bookId).toList();
-        final Map<Long, Book> booksById =
-            getBooksUseCase.execute(bookIds).stream().collect(Collectors.toMap(Book::id, Function.identity()));
+        return resolve(new ResolveRecommendationCommand(aiResult.spec(), aiResult.reply(),
+            aiResult.cards().stream().map((final AiRecommendationCard card) -> new RecommendationCardCandidate(card.bookId(),
+                card.matchScore(), card.reasonShort(), card.reasonLong())).toList(),
+            aiResult.followup(), aiResult.buttons(), aiResult.degraded()));
+    }
 
-        final List<ResolvedRecommendationCard> cards = aiResult.cards().stream().filter(card -> booksById.containsKey(card.bookId()))
-            .map(card -> toResolvedCard(card, booksById.get(card.bookId()))).limit(MAX_CARDS).toList();
+    /** AI 통신 없이 추천 후보를 기존 도서·상품 조회 규칙으로 보강합니다. */
+    public ChatRecommendationAiOutcome resolve(final ResolveRecommendationCommand aiResult) {
+        final List<Long> bookIds = aiResult.cards().stream().map(RecommendationCardCandidate::bookId).toList();
+        final Map<Long, Book> booksById =
+            getBooksUseCase.execute(bookIds).stream().filter(Book::isActive).collect(Collectors.toMap(Book::id, Function.identity()));
+
+        final List<RecommendationCardCandidate> selected = aiResult.cards().stream()
+            .filter((final RecommendationCardCandidate card) -> booksById.containsKey(card.bookId())).limit(MAX_CARDS).toList();
+        final Map<Long, RecommendationProductResult> products =
+            getRecommendationProductsUseCase.execute(selected.stream().map(RecommendationCardCandidate::bookId).toList());
+        final List<ResolvedRecommendationCard> cards = selected.stream()
+            .map(
+                (final RecommendationCardCandidate card) -> toResolvedCard(card, booksById.get(card.bookId()), products.get(card.bookId())))
+            .toList();
 
         return new ChatRecommendationAiOutcome(aiResult.spec(), aiResult.reply(), cards, aiResult.followup(), aiResult.buttons(),
             aiResult.degraded());
     }
 
-    private ResolvedRecommendationCard toResolvedCard(final AiRecommendationCard card, final Book book) {
-        // The active product owns the detail link and the price that orders charge.
-        final Optional<Product> product = findProductByBookIdUseCase.execute(book.id());
-        final Long productId = product.map(Product::id).orElse(null);
-        final BigDecimal price = product.map(Product::discountedPrice).orElse(null);
+    private ResolvedRecommendationCard toResolvedCard(final RecommendationCardCandidate card, final Book book,
+        final RecommendationProductResult product) {
+        Long productId = null;
+        BigDecimal price = null;
+        if (product != null) {
+            productId = product.productId();
+            price = product.price();
+        }
         return new ResolvedRecommendationCard(book.id(), productId, book.title(), book.author(), book.coverImageUrl(), price,
             card.matchScore(), card.reasonShort(), card.reasonLong());
     }

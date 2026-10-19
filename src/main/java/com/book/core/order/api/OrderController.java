@@ -15,7 +15,7 @@ import com.book.core.order.domain.OrderStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -42,8 +42,8 @@ class OrderController implements OrderControllerSpec {
     @GetMapping
     public ResponseEntity<ApiResponse<OrderListResponse>> getOrders(@UserId final Long userId,
         @RequestParam(value = "status", required = false) final OrderStatus status,
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "from", required = false) final LocalDateTime from,
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "to", required = false) final LocalDateTime to,
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @RequestParam(value = "from", required = false) final LocalDate from,
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @RequestParam(value = "to", required = false) final LocalDate to,
         @RequestParam(value = "cursor", required = false) final String cursor,
         @RequestParam(value = "limit", required = false) final Integer limit) {
         final var command = commandConverter.toGetOrdersCommand(userId, status, from, to, cursor, limit);

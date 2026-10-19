@@ -40,11 +40,13 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
     }
 
     @Override
-    public List<Order> findActiveOrders(final Long userId, final OrderStatus status, final LocalDateTime from, final LocalDateTime to,
-        final OrderListCursor cursor, final int limit) {
-        final LocalDateTime cursorCreatedAt = cursor == null ? null : cursor.createdAt();
-        final Long cursorId = cursor == null ? null : cursor.orderId();
-        return jpaRepository.findActiveOrders(userId, status, from, to, cursorCreatedAt, cursorId, PageRequest.of(0, limit));
+    public List<Order> findPaidOrders(final Long userId, final OrderStatus status, final LocalDateTime paidAtFrom,
+        final LocalDateTime paidAtBefore, final OrderListCursor cursor, final int limit) {
+        final PageRequest page = PageRequest.of(0, limit);
+        if (cursor == null) {
+            return jpaRepository.findPaidOrders(userId, status, paidAtFrom, paidAtBefore, null, null, page);
+        }
+        return jpaRepository.findPaidOrders(userId, status, paidAtFrom, paidAtBefore, cursor.paidAt(), cursor.orderId(), page);
     }
 
     @Override

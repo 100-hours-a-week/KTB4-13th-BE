@@ -25,9 +25,10 @@ import com.book.core.order.application.result.GetOrdersResult;
 import com.book.core.order.application.result.CreateOrderResult;
 import com.book.core.order.application.usecase.CreateOrderUseCase;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
-import com.book.core.order.application.usecase.GetOrderUseCase;
+import com.book.core.order.application.usecase.GetOrderDetailUseCase;
 import com.book.core.order.application.usecase.GetOrdersUseCase;
 import com.book.core.order.domain.Order;
+import com.book.core.order.domain.OrderStatus;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
@@ -46,9 +47,9 @@ class OrderServiceTest {
     private final CreateOrderUseCase createOrderUseCase = mock(CreateOrderUseCase.class);
     private final CancelOrderUseCase cancelOrderUseCase = mock(CancelOrderUseCase.class);
     private final GetOrdersUseCase getOrdersUseCase = mock(GetOrdersUseCase.class);
-    private final GetOrderUseCase getOrderUseCase = mock(GetOrderUseCase.class);
+    private final GetOrderDetailUseCase getOrderDetailUseCase = mock(GetOrderDetailUseCase.class);
     private final OrderService service = new OrderService(getAddressUseCase, getCartUseCase, getProductDetailUseCase, createOrderUseCase,
-        cancelOrderUseCase, getOrdersUseCase, getOrderUseCase);
+        cancelOrderUseCase, getOrdersUseCase, getOrderDetailUseCase);
 
     @BeforeEach
     void setUp() {
@@ -158,13 +159,13 @@ class OrderServiceTest {
     }
 
     @Test
-    void 주문_단건_조회를_UseCase에_위임한다() {
+    void 주문_상세_조회를_UseCase에_위임한다() {
         final GetOrderCommand command = new GetOrderCommand(42L, "order_test");
         final GetOrderResult result = mock(GetOrderResult.class);
-        when(getOrderUseCase.execute(command)).thenReturn(result);
+        when(getOrderDetailUseCase.execute(command)).thenReturn(result);
 
         assertThat(service.getOrder(command)).isSameAs(result);
-        verify(getOrderUseCase).execute(command);
+        verify(getOrderDetailUseCase).execute(command);
     }
 
     private Order savedOrder() {

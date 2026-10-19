@@ -12,5 +12,6 @@ public record OrderDetailResponse(
         BigDecimal totalPrice,
         LocalDateTime createdAt,
         OrderAddressResponse address,
+        OrderPaymentResponse payment,
         List<OrderItemResponse> items) {}
 // @formatter:on

@@ -18,7 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
-import com.book.core.auth.application.port.OAuthIdentity;
+import com.book.core.auth.application.result.OAuthUserInfo;
 import com.book.core.auth.application.port.OAuthProviderClient;
 import com.book.core.auth.application.port.OAuthTokenClient;
 import com.book.core.user.application.port.OAuthUnlinkClient;
@@ -98,7 +98,7 @@ class UserWithdrawalIntegrationTest {
 
     @Test
     void 탈퇴_신청_회원은_기존_Token으로_접근할_수_없고_7일_이내_로그인하면_기존_회원으로_복구된다() throws Exception {
-        final MvcResult login = login("recover-provider").andExpect(status().isOk()).andReturn();
+        final MvcResult login = signup("recover-provider").andExpect(status().isOk()).andReturn();
         final String accessToken = accessToken(login);
         final Cookie refreshToken = login.getResponse().getCookie("refreshToken");
         final Long userId = userIdOf("recover-provider");
@@ -123,7 +123,7 @@ class UserWithdrawalIntegrationTest {
 
     @Test
     void 탈퇴_신청_7일이_지나면_복구와_재가입을_막고_연결_해제_확인_후_유예_기간이_지나야_파기하며_늦게_끝난_이전_실행은_새_계정을_건드리지_않는다() throws Exception {
-        final String accessToken = accessToken(login("expired-provider").andExpect(status().isOk()).andReturn());
+        final String accessToken = accessToken(signup("expired-provider").andExpect(status().isOk()).andReturn());
         final Long userId = userIdOf("expired-provider");
         jdbc.update("INSERT INTO user_onboardings (user_id, onboarding_status) VALUES (?, 'IN_PROGRESS')", userId);
         jdbc.update("INSERT INTO user_onboarding_answers (user_id, onboarding_option_id) SELECT ?, MIN(id) FROM onboarding_options",
@@ -179,7 +179,7 @@ class UserWithdrawalIntegrationTest {
             .containsExactlyInAnyOrder("user_providers", "refresh_sessions", "user_onboardings", "user_onboarding_answers",
                 "user_onboarding_books", "recommendation_cards", "user_term_agreement");
 
-        login("expired-provider").andExpect(status().isOk());
+        signup("expired-provider").andExpect(status().isOk());
         final Long newUserId = userIdOf("expired-provider");
         assertThat(newUserId).isNotEqualTo(userId);
 
@@ -195,7 +195,7 @@ class UserWithdrawalIntegrationTest {
 
     @Test
     void 최종_탈퇴는_진행_중인_복구_트랜잭션을_PK_잠금으로_기다린_뒤_복구된_회원의_연결_해제와_파기를_하지_않는다() throws Exception {
-        final String accessToken = accessToken(login("race-provider").andExpect(status().isOk()).andReturn());
+        final String accessToken = accessToken(signup("race-provider").andExpect(status().isOk()).andReturn());
         final Long userId = userIdOf("race-provider");
         jdbc.update("INSERT INTO user_onboardings (user_id, onboarding_status) VALUES (?, 'IN_PROGRESS')", userId);
         mvc.perform(delete("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)).andExpect(status().isOk());
@@ -234,11 +234,19 @@ class UserWithdrawalIntegrationTest {
         }
     }
 
+    private ResultActions signup(final String providerUserId) throws Exception {
+        return authenticate("signup", providerUserId);
+    }
+
     private ResultActions login(final String providerUserId) throws Exception {
+        return authenticate("login", providerUserId);
+    }
+
+    private ResultActions authenticate(final String action, final String providerUserId) throws Exception {
         when(oAuthTokenClient.exchangeForIdToken(providerUserId + "-code", "code-verifier")).thenReturn(providerUserId + "-id-token");
         when(oAuthProviderClient.verify(providerUserId + "-id-token", "nonce"))
-            .thenReturn(new OAuthIdentity(providerUserId, "reader@example.com"));
-        return mvc.perform(post("/api/v1/auth/kakao/login").contentType(MediaType.APPLICATION_JSON)
+            .thenReturn(new OAuthUserInfo(providerUserId, "reader@example.com"));
+        return mvc.perform(post("/api/v1/auth/kakao/" + action).contentType(MediaType.APPLICATION_JSON)
             .content("{\"authorizationCode\":\"" + providerUserId + "-code\",\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}"));
     }
 

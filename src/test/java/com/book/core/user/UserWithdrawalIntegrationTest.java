@@ -30,12 +30,16 @@ import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.UserProvider;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.servlet.http.Cookie;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +66,9 @@ class UserWithdrawalIntegrationTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    DataSource dataSource;
 
     @Autowired
     UserService userService;
@@ -174,8 +181,7 @@ class UserWithdrawalIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT deleted_at FROM user_library_books WHERE user_id = ? AND book_id = ?", LocalDateTime.class,
             userId, 9002L)).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
         assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ?", userId)).isEqualTo(1);
-        assertThat(jdbc.queryForList("SELECT TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() "
-            + "AND REFERENCED_TABLE_NAME = 'users'", String.class)).as("users를 참조하는 테이블이 추가되면 최종 탈퇴 보존·파기 대상을 결정해야 합니다.")
+        assertThat(tablesReferencing("users")).as("users를 참조하는 테이블이 추가되면 최종 탈퇴 보존·파기 대상을 결정해야 합니다.")
             .containsExactlyInAnyOrder("user_providers", "refresh_sessions", "user_onboardings", "user_onboarding_answers",
                 "user_onboarding_books", "recommendation_cards", "user_term_agreement", "user_library_books");
 
@@ -257,6 +263,19 @@ class UserWithdrawalIntegrationTest {
     private Long userIdOf(final String providerUserId) {
         return jdbc.queryForObject("SELECT user_id FROM user_providers WHERE provider_user_id = ? AND deleted_at IS NULL", Long.class,
             providerUserId);
+    }
+
+    private List<String> tablesReferencing(final String table) {
+        try (var connection = dataSource.getConnection();
+            var exportedKeys = connection.getMetaData().getExportedKeys(connection.getCatalog(), connection.getSchema(), table)) {
+            final List<String> tables = new ArrayList<>();
+            while (exportedKeys.next()) {
+                tables.add(exportedKeys.getString("FKTABLE_NAME").toLowerCase(Locale.ROOT));
+            }
+            return tables;
+        } catch (final SQLException exception) {
+            throw new AssertionError("Failed to inspect exported keys for " + table, exception);
+        }
     }
 
     private Integer count(final String sql, final Object arg) {

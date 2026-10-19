@@ -4,6 +4,7 @@ import static com.book.core.review.domain.QReview.review;
 
 import com.book.common.paging.OffsetLimit;
 import com.book.core.review.domain.Review;
+import com.querydsl.jpa.impl.JPAQuery;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import com.book.common.paging.Page;
@@ -21,9 +22,10 @@ class ReviewQueryRepository {
     private final JPAQueryFactory queryFactory;
 
     Optional<Review> findActiveByIdWithLock(final Long reviewId) {
-        final var activeReview = review.id.eq(reviewId).and(review.deletedAt.isNull());
-        final var reviewQuery = queryFactory.selectFrom(review).where(activeReview);
-        reviewQuery.setLockMode(LockModeType.PESSIMISTIC_WRITE);
+        final JPAQuery<Review> reviewQuery = queryFactory
+            .selectFrom(review)
+            .where(review.id.eq(reviewId).and(review.deletedAt.isNull()))
+            .setLockMode(LockModeType.PESSIMISTIC_WRITE);
         return Optional.ofNullable(reviewQuery.fetchOne());
     }
 

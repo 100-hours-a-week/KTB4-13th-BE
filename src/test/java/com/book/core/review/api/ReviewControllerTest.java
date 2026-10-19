@@ -73,7 +73,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 작성값이_유효하지_않으면_회원은_리뷰를_생성할_수_없다() throws Exception {
+    void 요청값이_유효하지_않으면_회원은_리뷰를_생성할_수_없다() throws Exception {
         authenticateAs(42L);
 
         mvc.perform(post("/api/v1/reviews").contentType(MediaType.APPLICATION_JSON)

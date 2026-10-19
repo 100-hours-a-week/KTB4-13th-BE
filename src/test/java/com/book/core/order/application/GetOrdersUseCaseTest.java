@@ -127,7 +127,7 @@ class GetOrdersUseCaseTest {
         when(order.id()).thenReturn(id);
         when(order.key()).thenReturn(key);
         when(order.representativeItem()).thenReturn(representativeItem);
-        when(order.itemCount()).thenReturn(3);
+        when(order.items()).thenReturn(List.of(representativeItem, mock(OrderItem.class), mock(OrderItem.class)));
         when(order.status()).thenReturn(OrderStatus.PAID);
         when(order.totalPrice()).thenReturn(BigDecimal.TEN);
         when(order.paidAt()).thenReturn(paidAt);

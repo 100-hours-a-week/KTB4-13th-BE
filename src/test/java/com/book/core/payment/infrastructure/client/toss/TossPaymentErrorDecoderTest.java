@@ -18,6 +18,7 @@ class TossPaymentErrorDecoderTest {
     void 승인_요청은_문서화된_카드_거절_상태와_오류코드만_확정_거절로_분류한다() {
         assertThat(decode(APPROVE_METHOD, 400, "{\"code\":\"INVALID_REJECT_CARD\"}").errorCode()).isEqualTo(ErrorCode.PG_REJECTED);
         assertThat(decode(APPROVE_METHOD, 403, "{\"code\":\"REJECT_CARD_COMPANY\"}").errorCode()).isEqualTo(ErrorCode.PG_REJECTED);
+        assertThat(decode(APPROVE_METHOD, 403, "{\"code\":\"REJECT_CARD_PAYMENT\"}").errorCode()).isEqualTo(ErrorCode.PG_REJECTED);
     }
 
     @Test

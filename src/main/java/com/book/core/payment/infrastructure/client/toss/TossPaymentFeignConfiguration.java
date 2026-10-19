@@ -44,7 +44,7 @@ class TossPaymentFeignConfiguration {
                     if (bytes.length <= 8192) {
                         final String code = JsonMapper.builder().build().readTree(bytes).path("code").asText();
                         if ((response.status() == 400 && "INVALID_REJECT_CARD".equals(code))
-                            || (response.status() == 403 && "REJECT_CARD_COMPANY".equals(code))) {
+                            || (response.status() == 403 && ("REJECT_CARD_COMPANY".equals(code) || "REJECT_CARD_PAYMENT".equals(code)))) {
                             return new CoreException(ErrorCode.PG_REJECTED);
                         }
                     }

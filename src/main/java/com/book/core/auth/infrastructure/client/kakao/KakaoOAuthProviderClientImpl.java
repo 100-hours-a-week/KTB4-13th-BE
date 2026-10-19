@@ -2,8 +2,8 @@ package com.book.core.auth.infrastructure.client.kakao;
 
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
-import com.book.core.auth.application.port.OAuthIdentity;
 import com.book.core.auth.application.port.OAuthProviderClient;
+import com.book.core.auth.application.result.OAuthUserInfo;
 import com.nimbusds.jose.RemoteKeySourceException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -24,7 +24,7 @@ public class KakaoOAuthProviderClientImpl implements OAuthProviderClient {
     }
 
     @Override
-    public OAuthIdentity verify(final String idToken, final String expectedNonce) {
+    public OAuthUserInfo verify(final String idToken, final String expectedNonce) {
         if (!StringUtils.hasText(idToken) || !StringUtils.hasText(expectedNonce)) {
             throw new BusinessException(ErrorCode.INVALID_ID_TOKEN);
         }
@@ -42,14 +42,14 @@ public class KakaoOAuthProviderClientImpl implements OAuthProviderClient {
         }
     }
 
-    private OAuthIdentity toIdentity(final Jwt jwt, final String expectedNonce) {
+    private OAuthUserInfo toIdentity(final Jwt jwt, final String expectedNonce) {
         final String providerUserId = jwt.getSubject();
         final String nonce = jwt.getClaimAsString(NONCE_CLAIM);
         if (!StringUtils.hasText(providerUserId) || jwt.getExpiresAt() == null || !StringUtils.hasText(nonce)
             || !expectedNonce.equals(nonce)) {
             throw new BusinessException(ErrorCode.INVALID_ID_TOKEN);
         }
-        return new OAuthIdentity(providerUserId, jwt.getClaimAsString(EMAIL_CLAIM));
+        return new OAuthUserInfo(providerUserId, jwt.getClaimAsString(EMAIL_CLAIM));
     }
 
     private boolean hasRemoteKeySourceCause(final Throwable throwable) {

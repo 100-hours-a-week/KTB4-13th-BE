@@ -57,9 +57,10 @@ import org.testcontainers.mysql.MySQLContainer;
 import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "mysql-test"})
 @Testcontainers
 @Tag("integration")
+@Tag("mysql-migration")
 class ChatSessionIntegrationTest {
     private static final Instant NOW = Instant.parse("2026-10-18T00:00:00Z");
     private static final Duration LEASE = Duration.ofSeconds(60);

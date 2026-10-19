@@ -70,7 +70,7 @@ class GetUserMemoriesUseCaseIntegrationTest {
         jdbc.update("""
             INSERT INTO user_memories (
                 user_id, type, value, strength, categories, keyword, vector, dim, conversation_id, created_at, updated_at, deleted_at
-            ) VALUES (?, ?, ?, ?, ?, ?, '[0.1]', 1, 'cv_1', ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ? FORMAT JSON, ?, '[0.1]' FORMAT JSON, 1, 'cv_1', ?, ?, ?)
             """, userId, type, value, strength, categories, keyword, createdAt, createdAt, deletedAt);
         return jdbc.queryForObject("SELECT MAX(id) FROM user_memories WHERE user_id = ?", Long.class, userId);
     }

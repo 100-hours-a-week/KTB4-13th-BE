@@ -9,6 +9,7 @@ import com.book.core.memory.application.command.SaveUserMemoriesCommand;
 import com.book.core.memory.application.command.UserMemoryExtraction;
 import com.book.core.memory.application.port.UserMemoryRepositoryPort;
 import com.book.core.memory.domain.UserMemoryType;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -24,6 +25,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -31,6 +34,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 class SaveUserMemoriesUseCaseIntegrationTest {
     private static final String NICKNAME = "기억추출회원";
     private static final String CONVERSATION_ID = "cv_20261013_a1";
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Autowired
     SaveUserMemoriesUseCase useCase;
@@ -59,8 +63,8 @@ class SaveUserMemoriesUseCaseIntegrationTest {
         final var row = jdbc.queryForMap("SELECT * FROM user_memories WHERE user_id = ?", userId);
         assertThat(row).containsEntry("user_id", userId).containsEntry("type", "TOPIC").containsEntry("keyword", "추리 소설")
             .containsEntry("strength", 2).containsEntry("dim", 2).containsEntry("conversation_id", CONVERSATION_ID);
-        assertThat(row.get("categories")).isEqualTo("[\"추리/스릴러\"]");
-        assertThat(row.get("vector")).isEqualTo("[0.054, -0.25]");
+        assertThat(json(row.get("categories"))).isEqualTo(JSON.readTree("[\"추리/스릴러\"]"));
+        assertThat(json(row.get("vector"))).isEqualTo(JSON.readTree("[0.054, -0.25]"));
         assertThat(row.get("deleted_at")).isNull();
     }
 
@@ -127,6 +131,12 @@ class SaveUserMemoriesUseCaseIntegrationTest {
             .isInstanceOf(DataAccessResourceFailureException.class);
 
         assertThat(keywords(CONVERSATION_ID, "deleted_at IS NULL")).containsExactly("추리 소설");
+    }
+
+    // DB마다 JSON 컬럼 값의 표현과 공백이 달라 저장된 JSON 구조로 비교합니다.
+    private static JsonNode json(final Object value) {
+        final String text = value instanceof final byte[] bytes ? new String(bytes, StandardCharsets.UTF_8) : String.valueOf(value);
+        return JSON.readTree(text);
     }
 
     private static void await(final CountDownLatch latch) {

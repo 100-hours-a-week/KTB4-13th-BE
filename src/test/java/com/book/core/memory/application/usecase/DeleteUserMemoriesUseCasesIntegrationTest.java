@@ -28,8 +28,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 @ActiveProfiles("test")
 @Tag("integration")
 class DeleteUserMemoriesUseCasesIntegrationTest {
-    private static final long USER_ID = 9001L;
-    private static final long OTHER_USER_ID = 9002L;
     private static final String DELETED_AT = "2026-10-01 10:00:00";
 
     @Autowired
@@ -44,73 +42,88 @@ class DeleteUserMemoriesUseCasesIntegrationTest {
     @Autowired
     PlatformTransactionManager transactionManager;
 
+    Long userId;
+
+    Long otherUserId;
+
+    Long memory101;
+
+    Long memory102;
+
+    Long memory103;
+
+    Long memory105;
+
+    Long memory201;
+
     @BeforeEach
     void setUp() {
-        jdbc.update("DELETE FROM user_memories");
-        jdbc.update("DELETE FROM user_onboardings");
-        jdbc.update("DELETE FROM users");
-        insertUser(USER_ID);
-        insertUser(OTHER_USER_ID);
-        insertMemory(101L, USER_ID, null);
-        insertMemory(102L, USER_ID, null);
-        insertMemory(103L, USER_ID, null);
-        insertMemory(105L, USER_ID, DELETED_AT);
-        insertMemory(201L, OTHER_USER_ID, null);
+        userId = insertUser("기억삭제회원");
+        otherUserId = insertUser("기억삭제타인");
+        memory101 = insertMemory(userId, null);
+        memory102 = insertMemory(userId, null);
+        memory103 = insertMemory(userId, null);
+        memory105 = insertMemory(userId, DELETED_AT);
+        memory201 = insertMemory(otherUserId, null);
     }
 
     @Test
     void 선택한_본인_활성_기억만_중복_없이_Soft_Delete한다() {
-        assertThat(deleteUserMemoriesUseCase.execute(new DeleteUserMemoriesCommand(USER_ID, List.of(101L)))).isEqualTo(1);
-        assertThat(deleteUserMemoriesUseCase.execute(new DeleteUserMemoriesCommand(USER_ID, List.of(102L, 103L, 102L)))).isEqualTo(2);
+        assertThat(deleteUserMemoriesUseCase.execute(new DeleteUserMemoriesCommand(userId, List.of(memory101)))).isEqualTo(1);
+        assertThat(deleteUserMemoriesUseCase.execute(new DeleteUserMemoriesCommand(userId, List.of(memory102, memory103, memory102))))
+            .isEqualTo(2);
 
-        assertThat(activeIds()).containsExactly(201L);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_memories", Integer.class)).isEqualTo(5);
+        assertThat(activeIds()).containsExactly(memory201);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_memories WHERE user_id IN (?, ?)", Integer.class, userId, otherUserId))
+            .isEqualTo(5);
     }
 
     @ParameterizedTest
     @ValueSource(longs = {201L, 999L})
-    void 다른_회원의_기억이나_없는_기억이_있으면_아무것도_삭제하지_않고_404를_던진다(final long invalidId) {
-        assertThatThrownBy(() -> deleteUserMemoriesUseCase.execute(new DeleteUserMemoriesCommand(USER_ID, List.of(101L, invalidId))))
+    void 다른_회원의_기억이나_없는_기억이_있으면_아무것도_삭제하지_않고_404를_던진다(final long invalidCase) {
+        // 201은 다른 회원의 기억, 999는 존재하지 않는 기억입니다.
+        final long invalidId = invalidCase == 201L ? memory201 : Long.MAX_VALUE;
+        assertThatThrownBy(() -> deleteUserMemoriesUseCase.execute(new DeleteUserMemoriesCommand(userId, List.of(memory101, invalidId))))
             .isInstanceOfSatisfying(CoreException.class,
                 (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.USER_MEMORY_NOT_FOUND));
 
-        assertThat(activeIds()).containsExactly(101L, 102L, 103L, 201L);
+        assertThat(activeIds()).containsExactly(memory101, memory102, memory103, memory201);
     }
 
     @Test
     void 이미_삭제한_본인_기억은_삭제_시각을_유지하고_성공한다() {
-        assertThat(deleteUserMemoriesUseCase.execute(new DeleteUserMemoriesCommand(USER_ID, List.of(105L)))).isZero();
+        assertThat(deleteUserMemoriesUseCase.execute(new DeleteUserMemoriesCommand(userId, List.of(memory105)))).isZero();
 
-        assertThat(deletedAt(105L)).isEqualTo(LocalDateTime.of(2026, 10, 1, 10, 0));
+        assertThat(deletedAt(memory105)).isEqualTo(LocalDateTime.of(2026, 10, 1, 10, 0));
     }
 
     @Test
     void 전체_삭제는_본인_활성_기억만_지우고_다른_회원_기억과_온보딩과_기존_삭제_기록을_유지한다() {
         jdbc.update("INSERT INTO user_onboardings (user_id, onboarding_status, completed_at) VALUES (?, 'COMPLETED', CURRENT_TIMESTAMP(6))",
-            USER_ID);
+            userId);
 
-        assertThat(deleteAllUserMemoriesUseCase.execute(USER_ID)).isEqualTo(3);
+        assertThat(deleteAllUserMemoriesUseCase.execute(userId)).isEqualTo(3);
 
-        assertThat(activeIds()).containsExactly(201L);
-        assertThat(deletedAt(105L)).isEqualTo(LocalDateTime.of(2026, 10, 1, 10, 0));
+        assertThat(activeIds()).containsExactly(memory201);
+        assertThat(deletedAt(memory105)).isEqualTo(LocalDateTime.of(2026, 10, 1, 10, 0));
         assertThat(
-            jdbc.queryForObject("SELECT COUNT(*) FROM user_onboardings WHERE user_id = ? AND deleted_at IS NULL", Integer.class, USER_ID))
+            jdbc.queryForObject("SELECT COUNT(*) FROM user_onboardings WHERE user_id = ? AND deleted_at IS NULL", Integer.class, userId))
             .isEqualTo(1);
     }
 
     @Test
     void 전체_삭제할_활성_기억이_없어도_성공한다() {
-        deleteAllUserMemoriesUseCase.execute(USER_ID);
+        deleteAllUserMemoriesUseCase.execute(userId);
 
-        assertThat(deleteAllUserMemoriesUseCase.execute(USER_ID)).isZero();
+        assertThat(deleteAllUserMemoriesUseCase.execute(userId)).isZero();
     }
 
     @Test
     void 같은_회원의_기억_저장이_진행_중이면_선택_삭제와_전체_삭제는_커밋을_기다린다() throws Exception {
-        assertWaitsForUserLock(() -> deleteUserMemoriesUseCase.execute(new DeleteUserMemoriesCommand(USER_ID, List.of(101L))));
-        assertWaitsForUserLock(() -> deleteAllUserMemoriesUseCase.execute(USER_ID));
+        assertWaitsForUserLock(() -> deleteUserMemoriesUseCase.execute(new DeleteUserMemoriesCommand(userId, List.of(memory101))));
+        assertWaitsForUserLock(() -> deleteAllUserMemoriesUseCase.execute(userId));
 
-        assertThat(activeIds()).containsExactly(201L);
+        assertThat(activeIds()).containsExactly(memory201);
     }
 
     private void assertWaitsForUserLock(final Supplier<Integer> deletion) throws Exception {
@@ -118,7 +131,7 @@ class DeleteUserMemoriesUseCasesIntegrationTest {
         final CountDownLatch release = new CountDownLatch(1);
         final CompletableFuture<Void> saving =
             CompletableFuture.runAsync(() -> new TransactionTemplate(transactionManager).executeWithoutResult((final var status) -> {
-                jdbc.queryForList("SELECT id FROM users WHERE id = ? FOR UPDATE", Long.class, USER_ID);
+                jdbc.queryForList("SELECT id FROM users WHERE id = ? FOR UPDATE", Long.class, userId);
                 locked.countDown();
                 await(release);
             }));
@@ -146,24 +159,24 @@ class DeleteUserMemoriesUseCasesIntegrationTest {
     }
 
     private List<Long> activeIds() {
-        return jdbc.queryForList("SELECT id FROM user_memories WHERE deleted_at IS NULL ORDER BY id", Long.class);
+        return jdbc.queryForList("SELECT id FROM user_memories WHERE user_id IN (?, ?) AND deleted_at IS NULL ORDER BY id", Long.class,
+            userId, otherUserId);
     }
 
-    private LocalDateTime deletedAt(final long id) {
+    private LocalDateTime deletedAt(final Long id) {
         return jdbc.queryForObject("SELECT deleted_at FROM user_memories WHERE id = ?", LocalDateTime.class, id);
     }
 
-    private void insertUser(final long id) {
-        jdbc.update("""
-            INSERT INTO users (id, nickname, created_at, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
-            """, id, "북적이" + id);
+    private Long insertUser(final String nickname) {
+        jdbc.update("INSERT INTO users (nickname) VALUES (?)", nickname);
+        return jdbc.queryForObject("SELECT MAX(id) FROM users WHERE nickname = ?", Long.class, nickname);
     }
 
-    private void insertMemory(final long id, final long userId, final String deletedAt) {
+    private Long insertMemory(final Long userId, final String deletedAt) {
         jdbc.update("""
-            INSERT INTO user_memories (id, user_id, type, value, strength, categories, keyword, vector, dim, conversation_id, deleted_at)
-            VALUES (?, ?, 'TOPIC', '경제 책을 좋아해요', 2, '[]', '경제', '[0.1]', 1, 'cv_1', ?)
-            """, id, userId, deletedAt);
+            INSERT INTO user_memories (user_id, type, value, strength, categories, keyword, vector, dim, conversation_id, deleted_at)
+            VALUES (?, 'TOPIC', '경제 책을 좋아해요', 2, '[]', '경제', '[0.1]', 1, 'cv_1', ?)
+            """, userId, deletedAt);
+        return jdbc.queryForObject("SELECT MAX(id) FROM user_memories WHERE user_id = ?", Long.class, userId);
     }
 }

@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.book.core.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
+import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import com.book.support.config.WebCorsConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,9 @@ class SupportControllerTest {
 
     @MockitoBean(name = "serviceJwtDecoder")
     JwtDecoder serviceJwtDecoder;
+
+    @MockitoBean
+    CheckUserRestrictionUseCase checkUserRestrictionUseCase;
 
     @Test
     void 상태_확인_API는_인증_없이_공통_성공_응답을_반환한다() throws Exception {

@@ -2,17 +2,23 @@ package com.book.core.order.infrastructure.persistence.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.application.command.CancelOrderCommand;
+import com.book.core.order.application.command.GetOrderCommand;
+import com.book.core.order.application.result.GetOrderResult;
+import com.book.core.order.application.result.OrderItemResult;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.application.usecase.GetOrderItemUseCase;
+import com.book.core.order.application.usecase.GetOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderItemStatus;
+import com.book.core.order.domain.OrderStatus;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
@@ -46,6 +52,9 @@ class OrderRepositoryIntegrationTest {
 
     @Autowired
     CancelOrderUseCase cancelOrder;
+
+    @Autowired
+    GetOrderUseCase getOrder;
 
     @Test
     void 주문_배송지_상품과_상태를_실제_테이블에_저장한다() {
@@ -184,6 +193,28 @@ class OrderRepositoryIntegrationTest {
 
         assertThat(found.userId()).isEqualTo(42L);
         assertThat(found.items()).extracting(OrderItem::itemName).containsExactly("주문 테스트 상품", "주문 테스트 상품 2");
+    }
+
+    @Test
+    void 전액_취소한_주문의_상세는_최초_주문상품_전체를_주문상품_ID와_상품_ID로_반환한다() {
+        insertBook(9126L);
+        insertBook(9127L);
+        insertProduct(9226L, 9126L);
+        insertProduct(9227L, 9127L);
+        final Order order = order(42L, "order_detail_canceled", 9227L);
+        order.addItem(9226L, "주문 테스트 상품 2", null, "저자", new BigDecimal("20.00"), new BigDecimal("7.00"), 2);
+        final Order saved = orderRepository.save(order);
+        jdbc.update("UPDATE orders SET status = 'CANCELED', paid_at = CURRENT_TIMESTAMP(6) WHERE id = ?", saved.id());
+        jdbc.update("UPDATE order_item SET status = 'CANCELED', canceled_quantity = quantity WHERE order_id = ?", saved.id());
+        final List<Long> orderItemIds =
+            jdbc.queryForList("SELECT id FROM order_item WHERE order_id = ? ORDER BY id", Long.class, saved.id());
+
+        final GetOrderResult result = getOrder.execute(new GetOrderCommand(42L, "order_detail_canceled"));
+
+        assertThat(result.status()).isEqualTo(OrderStatus.CANCELED);
+        assertThat(result.items()).extracting(OrderItemResult::orderItemId, OrderItemResult::productId, OrderItemResult::canceledQuantity,
+            OrderItemResult::status).containsExactly(tuple(orderItemIds.get(0), 9227L, 1L, OrderItemStatus.CANCELED),
+                tuple(orderItemIds.get(1), 9226L, 2L, OrderItemStatus.CANCELED));
     }
 
     @Test

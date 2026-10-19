@@ -22,10 +22,7 @@ public class AddCartItemUseCase {
 
     @Transactional
     public void execute(final AddCartItemCommand command) {
-        // 최초 상품 추가면 장바구니를 만든 뒤, 기존 장바구니와 같은 잠금 조회로 다른 요청이 만든 행까지 확인
-        if (cartRepository.findByUserId(command.userId()).isEmpty()) {
-            cartRepository.createIfAbsent(command.userId());
-        }
+        // 장바구니가 존재하지 않으면 예외 발생
         final Cart cart =
             cartRepository.findByUserIdWithLock(command.userId()).orElseThrow(() -> new CoreException(ErrorCode.CART_NOT_FOUND));
 

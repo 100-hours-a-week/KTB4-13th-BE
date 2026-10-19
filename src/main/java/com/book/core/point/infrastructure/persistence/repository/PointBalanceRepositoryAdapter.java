@@ -19,16 +19,6 @@ public class PointBalanceRepositoryAdapter implements PointBalanceRepositoryPort
     }
 
     @Override
-    public Optional<PointBalance> findByUserIdForUpdate(final Long userId) {
-        return jpaRepository.findByUserIdForUpdate(userId);
-    }
-
-    @Override
-    public void createIfAbsent(final Long userId) {
-        jpaRepository.insertIfAbsent(userId);
-    }
-
-    @Override
     public void save(final PointBalance balance) {
         jpaRepository.save(balance);
     }

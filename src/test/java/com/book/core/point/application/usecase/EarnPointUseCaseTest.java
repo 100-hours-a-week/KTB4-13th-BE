@@ -1,11 +1,14 @@
 package com.book.core.point.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.application.port.PointHistoryRepositoryPort;
 import com.book.core.point.domain.PointBalance;
@@ -53,18 +56,12 @@ class EarnPointUseCaseTest {
     }
 
     @Test
-    void 잔액이_없으면_잔액을_만들고_잠금_조회한_잔액에_적립한다() {
-        final PointBalance created = new PointBalance(1L, 42L, BigDecimal.ZERO);
+    void 잔액이_없으면_오류를_반환하고_이력을_저장하지_않는다() {
         when(balances.findByUserId(42L)).thenReturn(Optional.empty());
-        when(balances.findByUserIdForUpdate(42L)).thenReturn(Optional.of(created));
 
-        useCase.execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN);
-
-        verify(balances).createIfAbsent(42L);
-        assertThat(created.balance()).isEqualByComparingTo("10");
-        final ArgumentCaptor<PointHistory> captured = ArgumentCaptor.forClass(PointHistory.class);
-        verify(histories).save(captured.capture());
-        assertThat(captured.getValue().balanceAfter()).isEqualByComparingTo("10");
+        assertThatThrownBy(() -> useCase.execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
+        verifyNoInteractions(histories);
     }
 
 }

@@ -1,8 +1,9 @@
 package com.book.core.point.application.usecase;
 
 import com.book.common.annotation.UseCase;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
-import com.book.core.point.domain.PointBalance;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,6 @@ public class GetPointBalanceUseCase {
 
     @Transactional(readOnly = true)
     public BigDecimal execute(final Long userId) {
-        return pointBalanceRepository.findByUserId(userId).map(PointBalance::balance).orElse(BigDecimal.ZERO);
+        return pointBalanceRepository.findByUserId(userId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA)).balance();
     }
 }

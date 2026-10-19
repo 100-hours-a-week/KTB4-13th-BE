@@ -32,11 +32,9 @@ class CartAddUseCaseTest {
         new AddCartItemUseCase(cartRepository, cartItemRepository, new GetProductDetailUseCase(productRepository));
 
     @Test
-    void 장바구니가_없으면_생성한_뒤_상품을_추가한다() {
-        useCase.execute(new AddCartItemCommand(1L, 20L, 2));
-
-        assertThat(cartRepository.cart.userId()).isEqualTo(1L);
-        assertThat(cartItemRepository.savedItem.productId()).isEqualTo(20L);
+    void 장바구니가_없으면_찾을_수_없다는_오류를_반환한다() {
+        assertThatThrownBy(() -> useCase.execute(new AddCartItemCommand(1L, 20L, 2))).isInstanceOfSatisfying(CoreException.class,
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_NOT_FOUND));
     }
 
     @Test
@@ -199,13 +197,6 @@ class CartAddUseCaseTest {
         @Override
         public Optional<Cart> findByUserId(final Long userId) {
             return Optional.ofNullable(cart);
-        }
-
-        @Override
-        public void createIfAbsent(final Long userId) {
-            if (cart == null) {
-                cart = new Cart(1L, userId);
-            }
         }
     }
 

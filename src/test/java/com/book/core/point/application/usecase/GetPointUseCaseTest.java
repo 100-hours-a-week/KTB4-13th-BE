@@ -1,9 +1,13 @@
 package com.book.core.point.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.point.application.command.GetPointCommand;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.application.port.PointHistoryRepositoryPort;
@@ -49,14 +53,11 @@ class GetPointUseCaseTest {
     }
 
     @Test
-    void 잔액이_아직_없으면_0포인트로_조회한다() {
+    void 잔액이_없으면_이력을_조회하지_않는다() {
         when(balances.findByUserId(42L)).thenReturn(Optional.empty());
-        when(histories.findByUserId(42L)).thenReturn(List.of());
 
-        final var result = useCase.execute(new GetPointCommand(42L));
-
-        assertThat(result.userId()).isEqualTo(42L);
-        assertThat(result.balance()).isEqualByComparingTo("0");
-        assertThat(result.histories()).isEmpty();
+        assertThatThrownBy(() -> useCase.execute(new GetPointCommand(42L))).isInstanceOfSatisfying(CoreException.class,
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
+        verifyNoInteractions(histories);
     }
 }

@@ -143,11 +143,6 @@ class GetCartUseCaseTest {
         public Optional<Cart> findByUserId(final Long userId) {
             return Optional.ofNullable(cart);
         }
-
-        @Override
-        public void createIfAbsent(final Long userId) {
-            throw new UnsupportedOperationException();
-        }
     }
 
     private static final class FakeCartItemRepository implements CartItemRepositoryPort {

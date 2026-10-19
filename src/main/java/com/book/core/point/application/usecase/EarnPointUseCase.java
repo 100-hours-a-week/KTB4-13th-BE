@@ -30,16 +30,11 @@ public class EarnPointUseCase {
 
         log.debug("포인트 적립 처리를 시작합니다. type={}, referenceId={}, traceId={}", type, referenceId, MDC.get("traceId"));
 
-        final PointBalance balance = pointBalanceRepository.findByUserId(userId).orElseGet(() -> createBalance(userId));
+        final PointBalance balance =
+            pointBalanceRepository.findByUserId(userId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
         balance.apply(amount);
         pointHistoryRepository.save(PointHistory.builder().userId(userId).type(type).referenceId(referenceId).amount(amount)
             .balanceAfter(balance.balance()).build());
         log.info("포인트 적립 처리를 마쳤습니다. type={}, referenceId={}, traceId={}", type, referenceId, MDC.get("traceId"));
-    }
-
-    // 최초 적립이 동시에 들어와도 UNIQUE(user_id)로 한 행만 만들고, 잠금 조회로 먼저 커밋된 적립까지 반영한 잔액에 더합니다.
-    private PointBalance createBalance(final Long userId) {
-        pointBalanceRepository.createIfAbsent(userId);
-        return pointBalanceRepository.findByUserIdForUpdate(userId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
     }
 }

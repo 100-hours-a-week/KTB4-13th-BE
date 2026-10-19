@@ -5,7 +5,6 @@ import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -15,8 +14,4 @@ interface CartJpaRepository extends JpaRepository<Cart, Long> {
     Optional<Cart> findByUserIdWithLock(@Param("userId") final Long userId);
 
     Optional<Cart> findByUserIdAndDeletedAtIsNull(final Long userId);
-
-    @Modifying
-    @Query(value = "INSERT INTO carts (user_id) VALUES (:userId) ON DUPLICATE KEY UPDATE id = id", nativeQuery = true)
-    void insertIfAbsent(@Param("userId") final Long userId);
 }

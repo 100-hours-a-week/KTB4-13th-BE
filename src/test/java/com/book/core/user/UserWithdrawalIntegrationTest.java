@@ -181,9 +181,9 @@ class UserWithdrawalIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT deleted_at FROM user_library_books WHERE user_id = ? AND book_id = ?", LocalDateTime.class,
             userId, 9002L)).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
         assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ?", userId)).isEqualTo(1);
-        assertThat(tablesReferencing("users")).as("users를 참조하는 테이블이 추가되면 최종 탈퇴 보존·파기 대상을 결정해야 합니다.")
-            .containsExactlyInAnyOrder("user_providers", "refresh_sessions", "user_onboardings", "user_onboarding_answers",
-                "user_onboarding_books", "recommendation_cards", "user_term_agreement", "user_library_books");
+        assertThat(tablesReferencing("users")).as("users를 참조하는 테이블이 추가되면 최종 탈퇴 보존·파기 대상을 결정해야 합니다.").containsExactlyInAnyOrder(
+            "user_providers", "refresh_sessions", "user_onboardings", "user_onboarding_answers", "user_onboarding_books",
+            "recommendation_cards", "user_term_agreement", "user_library_books");
 
         signup("expired-provider").andExpect(status().isOk());
         final Long newUserId = userIdOf("expired-provider");

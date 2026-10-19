@@ -28,10 +28,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @ActiveProfiles("test")
 @Tag("integration")
 class UserMemoryExtractionIntegrationTest {
-    private static final long USER_ID = 9001L;
+    private static final String NICKNAME = "기억추출연동회원";
     private static final String CONVERSATION_ID = "cv_1";
-    private static final ExtractUserMemoriesCommand COMMAND =
-        new ExtractUserMemoriesCommand(USER_ID, CONVERSATION_ID, List.of(new ConversationMessage("user", "로맨스 소설 좋아해요")));
 
     @Autowired
     UserPreferenceService userPreferenceService;
@@ -42,16 +40,19 @@ class UserMemoryExtractionIntegrationTest {
     @MockitoBean
     AiMemoryExtractionClient aiMemoryExtractionClient;
 
+    Long userId;
+
+    ExtractUserMemoriesCommand command;
+
     @BeforeEach
     void setUp() {
-        jdbc.update("DELETE FROM user_memories");
-        jdbc.update("DELETE FROM user_term_agreement");
-        jdbc.update("DELETE FROM users");
-        jdbc.update("INSERT INTO users (id, nickname) VALUES (?, '북적이')", USER_ID);
+        jdbc.update("INSERT INTO users (nickname) VALUES (?)", NICKNAME);
+        userId = jdbc.queryForObject("SELECT MAX(id) FROM users WHERE nickname = ?", Long.class, NICKNAME);
+        command = new ExtractUserMemoriesCommand(userId, CONVERSATION_ID, List.of(new ConversationMessage("user", "로맨스 소설 좋아해요")));
         jdbc.update("""
             INSERT INTO user_memories (user_id, type, value, strength, categories, keyword, vector, dim, conversation_id)
             VALUES (?, 'TOPIC', '추리 소설을 좋아함', 2, '[]', '추리 소설', '[0.1]', 1, ?)
-            """, USER_ID, CONVERSATION_ID);
+            """, userId, CONVERSATION_ID);
     }
 
     @Test
@@ -62,7 +63,7 @@ class UserMemoryExtractionIntegrationTest {
             return List.of(new UserMemoryExtraction(UserMemoryType.TOPIC, "로맨스 소설을 좋아함", 2, List.of("로맨스"), "로맨스 소설", List.of(0.2f), 1));
         });
 
-        userPreferenceService.extractMemories(COMMAND);
+        userPreferenceService.extractMemories(command);
 
         assertThat(activeKeywords()).containsExactly("로맨스 소설");
     }
@@ -72,14 +73,14 @@ class UserMemoryExtractionIntegrationTest {
         agree();
         when(aiMemoryExtractionClient.extract(any())).thenReturn(List.of());
 
-        userPreferenceService.extractMemories(COMMAND);
+        userPreferenceService.extractMemories(command);
 
         assertThat(activeKeywords()).isEmpty();
     }
 
     @Test
     void 개인화_추천에_동의하지_않았으면_AI를_호출하지_않고_기억을_유지한다() {
-        userPreferenceService.extractMemories(COMMAND);
+        userPreferenceService.extractMemories(command);
 
         verifyNoInteractions(aiMemoryExtractionClient);
         assertThat(activeKeywords()).containsExactly("추리 소설");
@@ -90,7 +91,7 @@ class UserMemoryExtractionIntegrationTest {
         agree();
         when(aiMemoryExtractionClient.extract(any())).thenThrow(new CoreException(ErrorCode.AI_MEMORY_EXTRACTION_INVALID_RESPONSE));
 
-        assertThatThrownBy(() -> userPreferenceService.extractMemories(COMMAND)).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> userPreferenceService.extractMemories(command)).isInstanceOf(CoreException.class);
 
         assertThat(activeKeywords()).containsExactly("추리 소설");
     }
@@ -101,7 +102,7 @@ class UserMemoryExtractionIntegrationTest {
         when(aiMemoryExtractionClient.extract(any()))
             .thenReturn(List.of(new UserMemoryExtraction(UserMemoryType.TOPIC, "로맨스 소설을 좋아함", 0, List.of(), "로맨스 소설", List.of(0.2f), 1)));
 
-        assertThatThrownBy(() -> userPreferenceService.extractMemories(COMMAND)).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> userPreferenceService.extractMemories(command)).isInstanceOf(CoreException.class);
 
         assertThat(activeKeywords()).containsExactly("추리 소설");
     }
@@ -110,10 +111,10 @@ class UserMemoryExtractionIntegrationTest {
         jdbc.update("""
             INSERT INTO user_term_agreement (user_id, term_id, action, agreed_at)
             SELECT ?, id, 'AGREE', CURRENT_TIMESTAMP(6) FROM terms WHERE term_type = 'PERSONALIZED_RECOMMENDATION'
-            """, USER_ID);
+            """, userId);
     }
 
     private List<String> activeKeywords() {
-        return jdbc.queryForList("SELECT keyword FROM user_memories WHERE deleted_at IS NULL", String.class);
+        return jdbc.queryForList("SELECT keyword FROM user_memories WHERE user_id = ? AND deleted_at IS NULL", String.class, userId);
     }
 }

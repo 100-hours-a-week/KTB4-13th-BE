@@ -1,9 +1,11 @@
 package com.book;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.core.address.domain.Address;
+import com.book.core.auth.application.service.SignUpService;
 import com.book.core.book.domain.Book;
 import com.book.core.cancel.domain.Cancel;
 import com.book.core.cancel.domain.CancelBalance;
@@ -23,13 +25,16 @@ import com.book.core.point.domain.PointBalance;
 import com.book.core.point.domain.PointHistory;
 import com.book.core.product.domain.Product;
 import com.book.core.product.domain.ProductCategory;
+import com.book.core.review.application.service.ReviewService;
 import com.book.core.review.domain.Review;
+import com.book.core.review.domain.ReviewHistory;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import jakarta.persistence.Entity;
+import org.springframework.transaction.annotation.Transactional;
 import org.junit.jupiter.api.Test;
 
 class ArchitectureTest {
@@ -65,6 +70,15 @@ class ArchitectureTest {
     }
 
     @Test
+    void Service는_회원가입과_리뷰_쓰기_조율을_제외하고_트랜잭션을_소유하지_않는다() {
+        noClasses().that().resideInAPackage("com.book.core..application.service..").should().beAnnotatedWith(Transactional.class)
+            .check(CLASSES);
+        noMethods().that().areDeclaredInClassesThat().resideInAPackage("com.book.core..application.service..").and()
+            .areDeclaredInClassesThat().doNotHaveFullyQualifiedName(SignUpService.class.getName()).and().areDeclaredInClassesThat()
+            .doNotHaveFullyQualifiedName(ReviewService.class.getName()).should().beAnnotatedWith(Transactional.class).check(CLASSES);
+    }
+
+    @Test
     void 공통_코드는_기능에_의존하지_않는다() {
         noClasses().that().resideInAPackage("com.book.common..").should().dependOnClassesThat().resideInAPackage("com.book.core..")
             .check(CLASSES);
@@ -92,6 +106,7 @@ class ArchitectureTest {
         assertThat(OrderItem.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(OrderAddress.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Review.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(ReviewHistory.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(User.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(UserProvider.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(UserMemory.class.isAnnotationPresent(Entity.class)).isTrue();

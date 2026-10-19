@@ -9,9 +9,11 @@ import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.user.application.port.UserProviderRepositoryPort;
 import com.book.core.user.application.port.UserRepositoryPort;
+import com.book.core.user.application.result.OAuthUserResult;
 import com.book.core.user.domain.ProviderType;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +34,7 @@ class FindOAuthUserUseCaseTest {
             .thenReturn(Optional.of(UserProvider.restore(7L, 42L, ProviderType.KAKAO, "provider-123", null)));
         when(userRepository.findById(42L)).thenReturn(Optional.of(User.restore(42L, "북적이")));
 
-        assertThat(useCase().execute(ProviderType.KAKAO, "provider-123")).contains(42L);
+        assertThat(useCase().execute(ProviderType.KAKAO, "provider-123")).contains(new OAuthUserResult(42L, false));
     }
 
     @Test
@@ -64,6 +66,17 @@ class FindOAuthUserUseCaseTest {
 
         assertThat(useCase().execute(ProviderType.KAKAO, "new-provider")).isEmpty();
         verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void 탈퇴_신청한_회원은_탈퇴_신청_상태와_기존_userId를_반환한다() {
+        when(userProviderRepository.findActiveByProviderTypeAndProviderUserId(ProviderType.KAKAO, "withdrawal-provider"))
+            .thenReturn(Optional.of(UserProvider.restore(7L, 42L, ProviderType.KAKAO, "withdrawal-provider", null)));
+        final User user = User.restore(42L, "북적이");
+        user.requestUserDeletion(LocalDateTime.of(2030, 1, 1, 0, 0));
+        when(userRepository.findById(42L)).thenReturn(Optional.of(user));
+
+        assertThat(useCase().execute(ProviderType.KAKAO, "withdrawal-provider")).contains(new OAuthUserResult(42L, true));
     }
 
     private FindOAuthUserUseCase useCase() {

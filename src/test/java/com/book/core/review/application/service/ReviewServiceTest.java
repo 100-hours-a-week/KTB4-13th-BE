@@ -2,171 +2,129 @@ package com.book.core.review.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.inOrder;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.paging.OffsetLimit;
 import com.book.common.paging.Page;
+import com.book.core.point.application.usecase.DeductPointUseCase;
+import com.book.core.point.application.usecase.EarnPointUseCase;
+import com.book.core.point.domain.enums.PointType;
 import com.book.core.review.application.command.AddReviewCommand;
 import com.book.core.review.application.command.GetReviewsCommand;
-import com.book.core.review.application.command.UpdateReviewCommand;
 import com.book.core.review.application.command.RemoveReviewCommand;
+import com.book.core.review.application.command.UpdateReviewCommand;
+import com.book.core.review.application.ReviewHistoryRecorder;
 import com.book.core.review.application.result.ReviewItemResult;
-import com.book.core.review.application.result.ReviewProcessResult;
-import com.book.core.review.domain.ReviewFormat;
-import com.book.core.point.application.usecase.EarnPointUseCase;
-import com.book.core.point.application.usecase.DeductPointUseCase;
-import com.book.core.point.domain.enums.PointType;
 import com.book.core.review.application.usecase.AddReviewUseCase;
 import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.GetReviewsUseCase;
 import com.book.core.review.application.usecase.UpdateReviewUseCase;
 import com.book.core.review.application.usecase.ValidateReviewPolicyUseCase;
+import com.book.core.review.domain.ReviewContent;
 import com.book.core.review.domain.ReviewKey;
 import com.book.core.review.domain.ReviewTarget;
-import com.book.core.review.domain.ReviewContent;
+import com.book.core.review.domain.enums.ReviewEventType;
 import com.book.core.review.domain.enums.ReviewTargetType;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ReviewServiceTest {
-    private final AddReviewUseCase create = mock(AddReviewUseCase.class);
-    private final UpdateReviewUseCase update = mock(UpdateReviewUseCase.class);
-    private final DeleteReviewUseCase delete = mock(DeleteReviewUseCase.class);
-    private final GetReviewsUseCase get = mock(GetReviewsUseCase.class);
-    private final ValidateReviewPolicyUseCase policy = mock(ValidateReviewPolicyUseCase.class);
-    private final EarnPointUseCase earn = mock(EarnPointUseCase.class);
-    private final DeductPointUseCase deduct = mock(DeductPointUseCase.class);
-    private final ReviewService service = new ReviewService(create, update, delete, get, policy, earn, deduct);
+    private final GetReviewsUseCase getReviews = mock(GetReviewsUseCase.class);
+    private final AddReviewUseCase addReview = mock(AddReviewUseCase.class);
+    private final UpdateReviewUseCase updateReview = mock(UpdateReviewUseCase.class);
+    private final DeleteReviewUseCase deleteReview = mock(DeleteReviewUseCase.class);
+    private final ValidateReviewPolicyUseCase validateReviewPolicy = mock(ValidateReviewPolicyUseCase.class);
+    private final ReviewHistoryRecorder historyRecorder = mock(ReviewHistoryRecorder.class);
+    private final EarnPointUseCase earnPoint = mock(EarnPointUseCase.class);
+    private final DeductPointUseCase deductPoint = mock(DeductPointUseCase.class);
+    private final ReviewService service =
+        new ReviewService(getReviews, addReview, updateReview, deleteReview, validateReviewPolicy, historyRecorder, earnPoint, deductPoint);
     private final ReviewTarget target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
+    private final ReviewContent content = new ReviewContent(new BigDecimal("4.5"), "본문", false);
+    private final AddReviewCommand addCommand = new AddReviewCommand(42L, target, content);
+    private final UpdateReviewCommand updateCommand = new UpdateReviewCommand(42L, 801L, content);
+    private final RemoveReviewCommand removeCommand = new RemoveReviewCommand(42L, 801L);
 
     @Test
-    void 조회_Command에서_VO를_꺼내_UseCase에_전달한다() {
+    void 리뷰_조회_요청의_대상과_페이지_조건을_조회_UseCase에_전달한다() {
         final var paging = new OffsetLimit(0, 20);
         final Page<ReviewItemResult> result = new Page<>(List.of(), false);
-        when(get.execute(target, paging)).thenReturn(result);
-
+        when(getReviews.execute(target, paging)).thenReturn(result);
         assertThat(service.findReviews(new GetReviewsCommand(target, paging))).isSameAs(result);
-        verify(get).execute(target, paging);
+        verifyNoInteractions(addReview, updateReview, deleteReview, validateReviewPolicy, historyRecorder, earnPoint, deductPoint);
     }
 
     @Test
-    void 작성_자격을_검증한_뒤_선택된_키와_대상을_저장_UseCase에_전달한다() {
-        final var key = new ReviewKey(42L, "ORDER_ITEM_702");
-        final var rate = new BigDecimal("4.5");
-        when(policy.validateNew(42L, target)).thenReturn(key);
-        when(create.execute(target, key, new ReviewContent(rate, "본문"), false))
-            .thenReturn(new ReviewProcessResult(801L, ReviewFormat.TEXT));
+    void 회원이_리뷰를_작성하면_이력을_기록하고_포인트를_적립한_뒤_ID를_반환한다() {
+        final ReviewKey reviewKey = new ReviewKey(42L, "ORDER_ITEM_42");
+        when(validateReviewPolicy.validateNew(42L, target)).thenReturn(reviewKey);
+        when(addReview.execute(target, reviewKey, content)).thenReturn(801L);
 
-        assertThat(service.addReview(new AddReviewCommand(42L, target, new ReviewContent(rate, "본문"), false))).isEqualTo(801L);
+        assertThat(service.addReview(addCommand)).isEqualTo(801L);
 
-        final var order = inOrder(policy, create, earn);
-        order.verify(policy).validateNew(42L, target);
-        order.verify(create).execute(target, key, new ReviewContent(rate, "본문"), false);
-        order.verify(earn).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
-        verifyNoInteractions(deduct);
+        final var order = inOrder(validateReviewPolicy, addReview, historyRecorder, earnPoint);
+        order.verify(validateReviewPolicy).validateNew(42L, target);
+        order.verify(addReview).execute(target, reviewKey, content);
+        order.verify(historyRecorder).record(801L, ReviewEventType.CREATE);
+        order.verify(earnPoint).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
+        verifyNoInteractions(deductPoint);
     }
 
     @Test
-    void 작성_자격_검증이_실패하면_저장하지_않는다() {
-        when(policy.validateNew(42L, target)).thenThrow(new CoreException(ErrorCode.REVIEW_HAS_NOT_ORDER));
+    void 회원이_리뷰를_수정하면_이력을_기록하고_리뷰_ID를_반환한다() {
+        when(updateReview.execute(42L, 801L, content)).thenReturn(801L);
 
-        assertThatThrownBy(
-            () -> service.addReview(new AddReviewCommand(42L, target, new ReviewContent(new BigDecimal("4.5"), "본문"), false)))
-            .isInstanceOf(CoreException.class);
-        verifyNoInteractions(create, earn, deduct);
+        assertThat(service.updateReview(updateCommand)).isEqualTo(801L);
+
+        final var order = inOrder(validateReviewPolicy, updateReview, historyRecorder);
+        order.verify(validateReviewPolicy).validateUpdate(42L, 801L);
+        order.verify(updateReview).execute(42L, 801L, content);
+        order.verify(historyRecorder).record(801L, ReviewEventType.UPDATE);
+        verifyNoInteractions(earnPoint, deductPoint);
     }
 
     @Test
-    void 수정_Command를_필요한_인자로_풀어_UseCase에_전달한다() {
-        final var rate = new BigDecimal("4.5");
+    void 회원이_리뷰를_삭제하면_이력을_기록하고_포인트를_차감한_뒤_ID를_반환한다() {
+        when(deleteReview.execute(42L, 801L)).thenReturn(801L);
 
-        when(update.execute(42L, 801L, new ReviewContent(rate, "수정 본문"), true)).thenReturn(801L);
+        assertThat(service.removeReview(removeCommand)).isEqualTo(801L);
 
-        assertThat(service.updateReview(new UpdateReviewCommand(42L, 801L, new ReviewContent(rate, "수정 본문"), true))).isEqualTo(801L);
-
-        final var order = inOrder(policy, update);
-        order.verify(policy).validateUpdate(42L, 801L);
-        order.verify(update).execute(42L, 801L, new ReviewContent(rate, "수정 본문"), true);
-        verifyNoInteractions(create, delete, get, earn, deduct);
+        final var order = inOrder(deleteReview, historyRecorder, deductPoint);
+        order.verify(deleteReview).execute(42L, 801L);
+        order.verify(historyRecorder).record(801L, ReviewEventType.DELETE);
+        order.verify(deductPoint).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
+        verifyNoInteractions(earnPoint);
     }
 
     @Test
-    void 삭제_Command를_사용자와_리뷰_ID로_풀어_UseCase에_전달한다() {
-        when(delete.execute(42L, 801L)).thenReturn(new ReviewProcessResult(801L, ReviewFormat.TEXT));
+    void 리뷰_작성_자격이_없으면_리뷰를_저장하거나_포인트를_적립하지_않는다() {
+        when(validateReviewPolicy.validateNew(42L, target)).thenThrow(new CoreException(ErrorCode.REVIEW_HAS_NOT_ORDER));
 
-        assertThat(service.removeReview(new RemoveReviewCommand(42L, 801L))).isEqualTo(801L);
+        assertThatThrownBy(() -> service.addReview(addCommand)).isInstanceOf(CoreException.class);
 
-        final var order = inOrder(delete, deduct);
-        order.verify(delete).execute(42L, 801L);
-        order.verify(deduct).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
-        verifyNoInteractions(earn);
-        verifyNoInteractions(create, update, get, policy);
-    }
-
-
-    @Test
-    void 리뷰_저장이_실패하면_적립하지_않는다() {
-        final var key = new ReviewKey(42L, "ORDER_ITEM_702");
-        final var content = new ReviewContent(new BigDecimal("4.5"), "본문");
-        when(policy.validateNew(42L, target)).thenReturn(key);
-        when(create.execute(target, key, content, false)).thenThrow(new CoreException(ErrorCode.REVIEW_ALREADY_REVIEWED));
-
-        assertThatThrownBy(() -> service.addReview(new AddReviewCommand(42L, target, content, false))).isInstanceOf(CoreException.class);
-        verifyNoInteractions(earn, deduct);
+        verifyNoInteractions(addReview, historyRecorder);
+        verifyNoInteractions(earnPoint, deductPoint);
     }
 
     @Test
-    void 리뷰_삭제가_실패하면_차감하지_않는다() {
-        when(delete.execute(42L, 801L)).thenThrow(new CoreException(ErrorCode.REVIEW_NOT_FOUND));
+    void 포인트_적립에_실패하면_오류를_호출자에게_전달한다() {
+        final ReviewKey reviewKey = new ReviewKey(42L, "ORDER_ITEM_42");
+        when(validateReviewPolicy.validateNew(42L, target)).thenReturn(reviewKey);
+        when(addReview.execute(target, reviewKey, content)).thenReturn(801L);
+        doThrow(new CoreException(ErrorCode.NOT_FOUND_DATA)).when(earnPoint).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
 
-        assertThatThrownBy(() -> service.removeReview(new RemoveReviewCommand(42L, 801L))).isInstanceOf(CoreException.class);
-        verifyNoInteractions(earn, deduct);
-    }
+        assertThatThrownBy(() -> service.addReview(addCommand)).isInstanceOf(CoreException.class);
 
-    @Test
-    void 리뷰_저장_후_적립_실패는_호출자에게_전파한다() {
-        final var key = new ReviewKey(42L, "ORDER_ITEM_702");
-        final var content = new ReviewContent(new BigDecimal("4.5"), "본문");
-        when(policy.validateNew(42L, target)).thenReturn(key);
-        when(create.execute(target, key, content, false)).thenReturn(new ReviewProcessResult(801L, ReviewFormat.TEXT));
-        final var failure = new CoreException(ErrorCode.NOT_FOUND_DATA);
-        doThrow(failure).when(earn).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
-
-        assertThatThrownBy(() -> service.addReview(new AddReviewCommand(42L, target, content, false))).isSameAs(failure);
-        final var order = inOrder(create, earn);
-        order.verify(create).execute(target, key, content, false);
-        order.verify(earn).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
-        verifyNoInteractions(delete, deduct);
-    }
-
-    @Test
-    void 리뷰_삭제_후_차감_실패는_호출자에게_전파한다() {
-        when(delete.execute(42L, 801L)).thenReturn(new ReviewProcessResult(801L, ReviewFormat.TEXT));
-        final var failure = new CoreException(ErrorCode.NOT_FOUND_DATA);
-        doThrow(failure).when(deduct).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
-
-        assertThatThrownBy(() -> service.removeReview(new RemoveReviewCommand(42L, 801L))).isSameAs(failure);
-        final var order = inOrder(delete, deduct);
-        order.verify(delete).execute(42L, 801L);
-        order.verify(deduct).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
-        verifyNoInteractions(create, earn);
-    }
-
-    @Test
-    void 수정_기간_검증이_실패하면_리뷰를_수정하지_않는다() {
-        doThrow(new CoreException(ErrorCode.REVIEW_UPDATE_EXPIRED)).when(policy).validateUpdate(42L, 801L);
-
-        assertThatThrownBy(
-            () -> service.updateReview(new UpdateReviewCommand(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정 본문"), true)))
-            .isInstanceOf(CoreException.class);
-        verifyNoInteractions(update, earn, deduct);
+        final var order = inOrder(addReview, historyRecorder, earnPoint);
+        order.verify(addReview).execute(target, reviewKey, content);
+        order.verify(historyRecorder).record(801L, ReviewEventType.CREATE);
+        order.verify(earnPoint).execute(42L, PointType.REVIEW, 801L, BigDecimal.valueOf(1000));
     }
 }

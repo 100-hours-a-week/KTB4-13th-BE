@@ -21,11 +21,11 @@ public class ReviewCommandConverter {
 
     public AddReviewCommand toAddReviewCommand(final Long userId, final AddReviewRequest request) {
         return new AddReviewCommand(userId, new ReviewTarget(request.targetType(), request.targetId()),
-            new ReviewContent(request.rate(), request.content()), request.isSpoiler());
+            new ReviewContent(request.rate(), request.content(), request.isSpoiler()));
     }
 
     public UpdateReviewCommand toUpdateReviewCommand(final Long userId, final Long reviewId, final UpdateReviewRequest request) {
-        return new UpdateReviewCommand(userId, reviewId, new ReviewContent(request.rate(), request.content()), request.isSpoiler());
+        return new UpdateReviewCommand(userId, reviewId, new ReviewContent(request.rate(), request.content(), request.isSpoiler()));
     }
 
     public RemoveReviewCommand toRemoveReviewCommand(final Long userId, final Long reviewId) {

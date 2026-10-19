@@ -51,7 +51,7 @@ class UserMemoryExtractionIntegrationTest {
         command = new ExtractUserMemoriesCommand(userId, CONVERSATION_ID, List.of(new ConversationMessage("user", "로맨스 소설 좋아해요")));
         jdbc.update("""
             INSERT INTO user_memories (user_id, type, value, strength, categories, keyword, vector, dim, conversation_id)
-            VALUES (?, 'TOPIC', '추리 소설을 좋아함', 2, '[]', '추리 소설', '[0.1]', 1, ?)
+            VALUES (?, 'TOPIC', '추리 소설을 좋아함', 2, '[]' FORMAT JSON, '추리 소설', '[0.1]' FORMAT JSON, 1, ?)
             """, userId, CONVERSATION_ID);
     }
 

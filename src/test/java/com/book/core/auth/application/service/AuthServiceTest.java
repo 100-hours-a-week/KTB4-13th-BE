@@ -15,8 +15,6 @@ import com.book.core.auth.application.usecase.AuthLogoutUseCase;
 import com.book.core.auth.application.usecase.AuthReissueUseCase;
 import com.book.core.auth.application.usecase.AuthenticateOAuthUserUseCase;
 import com.book.core.auth.application.usecase.CreateLoginSessionUseCase;
-import com.book.core.cart.application.usecase.CreateCartUseCase;
-import com.book.core.point.application.usecase.CreatePointBalanceUseCase;
 import com.book.core.user.application.command.UserRegistrationCommand;
 import com.book.core.user.application.usecase.FindOAuthUserUseCase;
 import com.book.core.user.application.usecase.UserRegistrationUseCase;
@@ -41,12 +39,6 @@ class AuthServiceTest {
     UserRegistrationUseCase userRegistrationUseCase;
 
     @Mock
-    CreateCartUseCase createCartUseCase;
-
-    @Mock
-    CreatePointBalanceUseCase createPointBalanceUseCase;
-
-    @Mock
     CreateLoginSessionUseCase createLoginSessionUseCase;
 
     @Mock
@@ -56,7 +48,7 @@ class AuthServiceTest {
     AuthLogoutUseCase authLogoutUseCase;
 
     @Test
-    void 기존_회원은_가입과_초기화_없이_OAuth_인증부터_refresh_session_저장까지_순서대로_실행한다() {
+    void 기존_회원은_가입_없이_OAuth_인증부터_refresh_session_저장까지_순서대로_실행한다() {
         final AuthLoginCommand command = command();
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
             .thenReturn(new OAuthUserInfo("provider-123", "reader@example.com"));
@@ -70,14 +62,14 @@ class AuthServiceTest {
         order.verify(authenticateOAuthUserUseCase).execute("authorization-code", "code-verifier", "nonce");
         order.verify(findOAuthUserUseCase).execute(ProviderType.KAKAO, "provider-123");
         order.verify(createLoginSessionUseCase).execute(42L);
-        verifyNoInteractions(userRegistrationUseCase, createCartUseCase, createPointBalanceUseCase);
+        verifyNoInteractions(userRegistrationUseCase);
         assertThat(result.accessToken()).isEqualTo("access-token");
         assertThat(result.refreshToken()).isEqualTo("refresh-token");
         assertThat(result.refreshExpiresAt()).isEqualTo(refreshExpiresAt);
     }
 
     @Test
-    void 신규_회원은_등록과_장바구니_포인트_초기화_후_token을_발급한다() {
+    void 신규_회원은_회원과_OAuth_정보만_등록한_뒤_token을_발급한다() {
         final AuthLoginCommand command = command();
         final UserRegistrationCommand registrationCommand =
             new UserRegistrationCommand(ProviderType.KAKAO, "provider-123", "reader@example.com");
@@ -90,10 +82,8 @@ class AuthServiceTest {
 
         service().login(command);
 
-        final InOrder order = inOrder(userRegistrationUseCase, createCartUseCase, createPointBalanceUseCase, createLoginSessionUseCase);
+        final InOrder order = inOrder(userRegistrationUseCase, createLoginSessionUseCase);
         order.verify(userRegistrationUseCase).execute(registrationCommand);
-        order.verify(createCartUseCase).execute(42L);
-        order.verify(createPointBalanceUseCase).execute(42L);
         order.verify(createLoginSessionUseCase).execute(42L);
     }
 
@@ -122,7 +112,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void 회원_등록이_실패하면_초기화와_token_발급을_호출하지_않는다() {
+    void 회원_등록이_실패하면_token을_발급하지_않는다() {
         final AuthLoginCommand command = command();
         final BusinessException exception = new BusinessException(ErrorCode.PROVIDER_IDENTITY_CONFLICT);
         when(authenticateOAuthUserUseCase.execute("authorization-code", "code-verifier", "nonce"))
@@ -132,12 +122,12 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> service().login(command)).isSameAs(exception);
 
-        verifyNoInteractions(createCartUseCase, createPointBalanceUseCase, createLoginSessionUseCase);
+        verifyNoInteractions(createLoginSessionUseCase);
     }
 
     private AuthService service() {
-        return new AuthService(authenticateOAuthUserUseCase, findOAuthUserUseCase, userRegistrationUseCase, createCartUseCase,
-            createPointBalanceUseCase, createLoginSessionUseCase, authReissueUseCase, authLogoutUseCase);
+        return new AuthService(authenticateOAuthUserUseCase, findOAuthUserUseCase, userRegistrationUseCase, createLoginSessionUseCase,
+            authReissueUseCase, authLogoutUseCase);
     }
 
     private AuthLoginCommand command() {

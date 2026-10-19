@@ -20,7 +20,6 @@ import com.book.core.product.application.result.ProductListItem;
 import com.book.core.product.domain.Product;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -33,9 +32,11 @@ class CartAddUseCaseTest {
         new AddCartItemUseCase(cartRepository, cartItemRepository, new GetProductDetailUseCase(productRepository));
 
     @Test
-    void 장바구니가_없으면_찾을_수_없다는_오류를_반환한다() {
-        assertThatThrownBy(() -> useCase.execute(new AddCartItemCommand(1L, 20L, 2))).isInstanceOfSatisfying(CoreException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_NOT_FOUND));
+    void 장바구니가_없으면_생성한_뒤_상품을_추가한다() {
+        useCase.execute(new AddCartItemCommand(1L, 20L, 2));
+
+        assertThat(cartRepository.cart.userId()).isEqualTo(1L);
+        assertThat(cartItemRepository.savedItem.productId()).isEqualTo(20L);
     }
 
     @Test
@@ -201,13 +202,10 @@ class CartAddUseCaseTest {
         }
 
         @Override
-        public boolean existsByUserId(final Long userId) {
-            return cart != null;
-        }
-
-        @Override
-        public List<Long> findActiveUserIdsWithoutCart(final LocalDateTime registeredBefore, final Long afterUserId, final int limit) {
-            return List.of();
+        public void createIfAbsent(final Long userId) {
+            if (cart == null) {
+                cart = new Cart(1L, userId);
+            }
         }
     }
 

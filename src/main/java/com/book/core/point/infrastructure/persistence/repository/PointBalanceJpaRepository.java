@@ -1,29 +1,27 @@
 package com.book.core.point.infrastructure.persistence.repository;
 
 import com.book.core.point.domain.PointBalance;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 public interface PointBalanceJpaRepository extends JpaRepository<PointBalance, Long> {
     Optional<PointBalance> findByUserId(final Long userId);
 
-    boolean existsByUserId(final Long userId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select balance from PointBalance balance where balance.userId = :userId")
+    Optional<PointBalance> findByUserIdForUpdate(@Param("userId") final Long userId);
 
+    @Modifying
     @Query(value = """
-        SELECT u.id
-        FROM users u
-        WHERE u.deleted_at IS NULL
-          AND u.created_at <= :registeredBefore
-          AND u.id > :afterUserId
-          AND NOT EXISTS (SELECT 1 FROM point_balance pb WHERE pb.user_id = u.id)
-        ORDER BY u.id
-        LIMIT :limit
+        INSERT INTO point_balance (user_id, balance, created_at, updated_at)
+        VALUES (:userId, 0, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+        ON DUPLICATE KEY UPDATE id = id
         """, nativeQuery = true)
-    List<Long> findActiveUserIdsWithoutPointBalance(@Param("registeredBefore") final LocalDateTime registeredBefore,
-        @Param("afterUserId") final Long afterUserId, @Param("limit") final int limit);
+    void insertIfAbsent(@Param("userId") final Long userId);
 }

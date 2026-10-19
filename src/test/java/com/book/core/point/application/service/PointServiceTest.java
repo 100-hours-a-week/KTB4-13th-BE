@@ -11,15 +11,11 @@ import com.book.core.point.application.command.GetPointCommand;
 import com.book.core.point.application.result.GetPointResult;
 import com.book.core.point.application.usecase.DeductPointUseCase;
 import com.book.core.point.application.usecase.EarnPointUseCase;
-import com.book.core.point.application.usecase.FindUserIdsWithoutPointBalanceUseCase;
 import com.book.core.point.application.usecase.GetPointUseCase;
-import com.book.core.point.application.usecase.RecoverPointBalanceUseCase;
 import com.book.core.point.domain.enums.PointType;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DataAccessResourceFailureException;
 
 class PointServiceTest {
     @Test
@@ -27,8 +23,7 @@ class PointServiceTest {
         final GetPointUseCase get = mock(GetPointUseCase.class);
         final EarnPointUseCase earn = mock(EarnPointUseCase.class);
         final DeductPointUseCase deduct = mock(DeductPointUseCase.class);
-        final PointService service =
-            new PointService(get, earn, deduct, mock(FindUserIdsWithoutPointBalanceUseCase.class), mock(RecoverPointBalanceUseCase.class));
+        final PointService service = new PointService(get, earn, deduct);
         final GetPointCommand getCommand = new GetPointCommand(42L);
         final EarnPointCommand earnCommand = new EarnPointCommand(42L, PointType.REVIEW, 10L, BigDecimal.TEN);
         final DeductPointCommand deductCommand = new DeductPointCommand(42L, PointType.REVIEW, 10L, BigDecimal.TEN);
@@ -42,20 +37,5 @@ class PointServiceTest {
         verify(get).execute(getCommand);
         verify(earn).execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN);
         verify(deduct).execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN);
-    }
-
-    @Test
-    void 한_회원의_포인트_잔액_복구가_실패해도_다음_회원을_복구한다() {
-        final FindUserIdsWithoutPointBalanceUseCase find = mock(FindUserIdsWithoutPointBalanceUseCase.class);
-        final RecoverPointBalanceUseCase recover = mock(RecoverPointBalanceUseCase.class);
-        final PointService service =
-            new PointService(mock(GetPointUseCase.class), mock(EarnPointUseCase.class), mock(DeductPointUseCase.class), find, recover);
-        final LocalDateTime registeredBefore = LocalDateTime.of(2030, 1, 1, 0, 0);
-        when(find.execute(registeredBefore, 0L, 500)).thenReturn(List.of(1L, 2L));
-        when(recover.execute(1L)).thenThrow(new DataAccessResourceFailureException("point"));
-
-        service.recoverMissingPointBalances(registeredBefore, 500);
-
-        verify(recover).execute(2L);
     }
 }

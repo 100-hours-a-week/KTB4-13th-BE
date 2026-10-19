@@ -1,8 +1,6 @@
 package com.book.core.cart.application.port;
 
 import com.book.core.cart.domain.Cart;
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 public interface CartRepositoryPort {
@@ -12,7 +10,6 @@ public interface CartRepositoryPort {
 
     Optional<Cart> findByUserId(final Long userId);
 
-    boolean existsByUserId(final Long userId);
-
-    List<Long> findActiveUserIdsWithoutCart(final LocalDateTime registeredBefore, final Long afterUserId, final int limit);
+    /** 회원의 장바구니 행이 없을 때만 만들고, 동시 생성은 UNIQUE(user_id) 충돌을 무시해 한 행으로 수렴시킵니다. */
+    void createIfAbsent(final Long userId);
 }

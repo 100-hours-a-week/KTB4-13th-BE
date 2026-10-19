@@ -3,12 +3,17 @@ package com.book.core.point.infrastructure.persistence.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.book.common.exception.CoreException;
 import com.book.core.point.application.usecase.DeductPointUseCase;
 import com.book.core.point.application.usecase.EarnPointUseCase;
 import com.book.core.point.domain.PointBalance;
 import com.book.core.point.domain.enums.PointType;
 import java.math.BigDecimal;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,6 +86,62 @@ class PointBalanceOptimisticLockIntegrationTest {
         assertThat(balance.balance()).isEqualByComparingTo("1000");
         assertThat(balance.version()).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM point_history WHERE user_id = ?", Long.class, userId)).isZero();
+    }
+
+    @Test
+    void 최초_적립이_동시에_들어와도_잔액_행_하나에_두_적립과_이력을_모두_반영한다() throws Exception {
+        final Long userId = 940006L;
+        final CountDownLatch earned = new CountDownLatch(1);
+        final CountDownLatch commit = new CountDownLatch(1);
+        final CompletableFuture<Void> first = CompletableFuture
+            .runAsync(() -> new TransactionTemplate(transactionManager).executeWithoutResult((final TransactionStatus status) -> {
+                earnPointUseCase.execute(userId, PointType.REVIEW, 1L, new BigDecimal("100"));
+                earned.countDown();
+                await(commit);
+            }));
+        await(earned);
+
+        final CompletableFuture<Void> second = CompletableFuture
+            .runAsync(() -> new TransactionTemplate(transactionManager).executeWithoutResult((final TransactionStatus status) -> {
+                // 결제·취소처럼 적립 전에 다른 조회로 읽기 시점이 먼저 정해진 트랜잭션을 재현합니다.
+                jdbc.queryForObject("SELECT COUNT(*) FROM point_history WHERE user_id = ?", Long.class, userId);
+                earnPointUseCase.execute(userId, PointType.PAYMENT, 2L, new BigDecimal("200"));
+            }));
+        Thread.sleep(500);
+        final boolean secondFinishedBeforeCommit = second.isDone();
+        commit.countDown();
+        first.get(10, TimeUnit.SECONDS);
+        second.get(10, TimeUnit.SECONDS);
+
+        assertThat(secondFinishedBeforeCommit).isFalse();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM point_balance WHERE user_id = ?", Long.class, userId)).isEqualTo(1L);
+        final PointBalance balance = balances.findByUserId(userId).orElseThrow();
+        assertThat(balance.balance()).isEqualByComparingTo("300");
+        assertThat(balance.version()).isEqualTo(2L);
+        assertThat(jdbc.queryForList("SELECT balance_after FROM point_history WHERE user_id = ? ORDER BY id", BigDecimal.class, userId))
+            .usingElementComparator(BigDecimal::compareTo).containsExactly(new BigDecimal("100"), new BigDecimal("300"));
+    }
+
+    @Test
+    void 잔액_행이_없으면_차감하지_않고_잔액도_만들지_않는다() {
+        final Long userId = 940007L;
+
+        assertThatThrownBy(() -> deductPointUseCase.execute(userId, PointType.PAYMENT, 1L, BigDecimal.TEN))
+            .isInstanceOf(CoreException.class);
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM point_balance WHERE user_id = ?", Long.class, userId)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM point_history WHERE user_id = ?", Long.class, userId)).isZero();
+    }
+
+    private static void await(final CountDownLatch latch) {
+        try {
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("대기 시간을 초과했습니다");
+            }
+        } catch (final InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(exception);
+        }
     }
 
     private void apply(final boolean deduct, final Long userId, final Long referenceId, final BigDecimal amount) {

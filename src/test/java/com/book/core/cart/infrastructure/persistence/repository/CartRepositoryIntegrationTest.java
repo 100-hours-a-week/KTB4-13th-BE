@@ -17,6 +17,9 @@ import com.book.core.cart.application.usecase.DeleteCartItemsUseCase;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.cart.application.usecase.ModifyCartItemUseCase;
 import java.sql.SQLException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +28,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -55,6 +60,9 @@ class CartRepositoryIntegrationTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    PlatformTransactionManager transactionManager;
 
     @Test
     void 같은_사용자의_같은_상품_추가는_한_항목의_수량을_대체한다() {
@@ -139,6 +147,47 @@ class CartRepositoryIntegrationTest {
         assertThatThrownBy(() -> modifyCartItemUseCase.execute(new ModifyCartItemCommand(1005L, cartItemId, 5))).isInstanceOfSatisfying(
             CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
         assertThat(quantityOf(cartItemId)).isEqualTo(4);
+    }
+
+    @Test
+    void 첫_상품_추가가_동시에_들어와도_장바구니를_하나만_만들고_두_상품을_모두_담는다() throws Exception {
+        createProduct(2101L, 3101L, 10);
+        createProduct(2102L, 3102L, 10);
+        final CountDownLatch added = new CountDownLatch(1);
+        final CountDownLatch commit = new CountDownLatch(1);
+        final CompletableFuture<Void> first =
+            CompletableFuture.runAsync(() -> new TransactionTemplate(transactionManager).executeWithoutResult((final var status) -> {
+                addUseCase.execute(new AddCartItemCommand(1101L, 2101L, 1));
+                added.countDown();
+                await(commit);
+            }));
+        await(added);
+
+        final CompletableFuture<Void> second =
+            CompletableFuture.runAsync(() -> addUseCase.execute(new AddCartItemCommand(1101L, 2102L, 1)));
+        Thread.sleep(500);
+        final boolean secondFinishedBeforeCommit = second.isDone();
+        commit.countDown();
+        first.get(10, TimeUnit.SECONDS);
+        second.get(10, TimeUnit.SECONDS);
+
+        assertThat(secondFinishedBeforeCommit).isFalse();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM carts WHERE user_id = ?", Integer.class, 1101L)).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT item.product_id FROM cart_item item JOIN carts cart ON cart.id = item.cart_id "
+            + "WHERE cart.user_id = ? ORDER BY item.product_id", Long.class, 1101L)).containsExactly(2101L, 2102L);
+    }
+
+    @Test
+    void 삭제된_장바구니만_있으면_새로_만들거나_복구하지_않고_찾을_수_없다는_오류를_반환한다() {
+        createCart(1102L);
+        jdbc.update("UPDATE carts SET deleted_at = CURRENT_TIMESTAMP(6) WHERE user_id = ?", 1102L);
+        createProduct(2103L, 3103L, 10);
+
+        assertThatThrownBy(() -> addUseCase.execute(new AddCartItemCommand(1102L, 2103L, 1))).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_NOT_FOUND));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM carts WHERE user_id = ?", Integer.class, 1102L)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM carts WHERE user_id = ? AND deleted_at IS NULL", Integer.class, 1102L))
+            .isZero();
     }
 
     @Test
@@ -236,6 +285,17 @@ class CartRepositoryIntegrationTest {
             .isInstanceOfSatisfying(CoreException.class,
                 exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
         assertThat(deletedCount(ownedItemId)).isZero();
+    }
+
+    private static void await(final CountDownLatch latch) {
+        try {
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("대기 시간을 초과했습니다");
+            }
+        } catch (final InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(exception);
+        }
     }
 
     private void createCart(final long userId) {

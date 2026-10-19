@@ -56,6 +56,7 @@ tasks.test {
 
 val integrationTest = tasks.register<Test>("integrationTest") {
     description = "Runs integration tests that require external infrastructure."
+    maxHeapSize = "1536m"
     group = "verification"
     useJUnitPlatform {
         includeTags("integration")

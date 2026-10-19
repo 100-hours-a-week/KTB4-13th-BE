@@ -15,6 +15,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
+import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import com.book.core.cancel.api.converter.CancelCommandConverter;
 import com.book.core.cancel.application.command.CancelCommand;
 import com.book.core.cancel.application.command.PartialCancelCommand;
@@ -53,6 +54,9 @@ class CancelControllerTest {
     private CancelService cancelService;
     @MockitoBean(name = "serviceJwtDecoder")
     private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private CheckUserRestrictionUseCase checkUserRestrictionUseCase;
 
     @Test
     void 전체취소는_JWT회원과_주문키를_전달하고_참고처럼_빈_성공을_응답한다() throws Exception {

@@ -51,9 +51,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "mysql-test"})
 @Testcontainers
 @Tag("integration")
+@Tag("mysql-migration")
 class CartWriterConcurrencyIntegrationTest {
     @Container
     @ServiceConnection

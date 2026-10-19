@@ -37,17 +37,19 @@ public class ApprovePgPaymentUseCase {
         if (command.amount().compareTo(BigDecimal.ZERO) > 0) {
             PgPaymentResult result = client.find(command.externalPaymentKey());
             verify(command, result);
-            if ("ABORTED".equals(result.status()) || "EXPIRED".equals(result.status()) || "READY".equals(result.status())) {
+            TossPaymentStatus status = TossPaymentStatus.from(result.status());
+            if (status == TossPaymentStatus.ABORTED || status == TossPaymentStatus.EXPIRED || status == TossPaymentStatus.READY) {
                 throw new CoreException(ErrorCode.PG_REJECTED);
             }
-            if ("IN_PROGRESS".equals(result.status())) {
+            if (status == TossPaymentStatus.IN_PROGRESS) {
                 if (result.method() == null) {
                     throw new CoreException(ErrorCode.PG_REJECTED);
                 }
                 result = client.approve(command.externalPaymentKey(), command.orderKey(), command.amount(), operation.pgIdempotencyKey());
                 verify(command, result);
+                status = TossPaymentStatus.from(result.status());
             }
-            if (!"DONE".equals(result.status()) || result.balanceAmount().compareTo(command.amount()) != 0 || result.method() == null
+            if (status != TossPaymentStatus.DONE || result.balanceAmount().compareTo(command.amount()) != 0 || result.method() == null
                 || result.approveCode() == null || result.approveCode().isBlank()) {
                 throw new CoreException(ErrorCode.PG_RESPONSE_MISMATCH);
             }
@@ -62,6 +64,29 @@ public class ApprovePgPaymentUseCase {
         if (result == null || !command.orderKey().equals(result.orderKey()) || !command.externalPaymentKey().equals(result.paymentKey())
             || result.totalAmount() == null || result.totalAmount().compareTo(command.amount()) != 0 || result.balanceAmount() == null) {
             throw new CoreException(ErrorCode.PG_RESPONSE_MISMATCH);
+        }
+    }
+
+    private enum TossPaymentStatus {
+        READY,
+        IN_PROGRESS,
+        WAITING_FOR_DEPOSIT,
+        DONE,
+        CANCELED,
+        PARTIAL_CANCELED,
+        ABORTED,
+        EXPIRED,
+        UNKNOWN;
+
+        private static TossPaymentStatus from(final String status) {
+            if (status == null) {
+                return UNKNOWN;
+            }
+            try {
+                return valueOf(status);
+            } catch (final IllegalArgumentException exception) {
+                return UNKNOWN;
+            }
         }
     }
 }

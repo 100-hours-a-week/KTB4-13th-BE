@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
@@ -22,6 +23,8 @@ import com.book.core.payment.domain.enums.PaymentMethod;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ApprovePgPaymentUseCaseTest {
     private final GetPgOperationUseCase operations = mock(GetPgOperationUseCase.class);
@@ -56,6 +59,23 @@ class ApprovePgPaymentUseCaseTest {
         when(client.find("key")).thenReturn(result("DONE", "order"));
         assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
         verify(client, never()).approve(any(), any(), any(), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"READY", "ABORTED", "EXPIRED"})
+    void 승인이_거절되거나_만료된_토스_상태는_결제_거절로_처리한다(final String status) {
+        prepare(command);
+        when(client.find("key")).thenReturn(result(status, "order"));
+        assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
+    }
+
+    @Test
+    void 알_수_없는_토스_상태는_응답_불일치로_처리한다() {
+        prepare(command);
+        when(client.find("key")).thenReturn(result("FUTURE_STATUS", "order"));
+        assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_RESPONSE_MISMATCH));
     }
 
     @Test

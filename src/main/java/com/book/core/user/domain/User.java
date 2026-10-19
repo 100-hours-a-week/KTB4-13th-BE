@@ -6,6 +6,7 @@ import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,6 +23,9 @@ public class User extends BaseEntity {
 
     @Column(nullable = false, length = 20)
     private String nickname;
+
+    @Column(name = "delete_requested_at")
+    private LocalDateTime deleteRequestedAt;
 
     private User(final Long id, final String nickname) {
         super(id);
@@ -44,6 +48,16 @@ public class User extends BaseEntity {
         if (!normalized.equals(this.nickname)) {
             this.nickname = normalized;
         }
+    }
+
+    public void requestWithdrawal(final LocalDateTime requestedAt) {
+        if (deleteRequestedAt == null) {
+            deleteRequestedAt = requestedAt;
+        }
+    }
+
+    public boolean isWithdrawalRequested() {
+        return deleteRequestedAt != null;
     }
 
     public static String normalizeNickname(final String nickname) {

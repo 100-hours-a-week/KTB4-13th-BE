@@ -20,4 +20,9 @@ class UserRepositoryAdapter implements UserRepositoryPort {
     public Optional<User> findById(final Long id) {
         return jpaRepository.findById(id);
     }
+
+    @Override
+    public Optional<User> findByIdForUpdate(final Long id) {
+        return jpaRepository.findByIdForUpdate(id);
+    }
 }

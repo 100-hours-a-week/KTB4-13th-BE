@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
@@ -23,6 +25,7 @@ import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.application.service.PaymentService;
 import com.book.core.payment.application.usecase.CompletePaymentUseCase;
+import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
 import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.enums.PaymentMethod;
 import com.book.core.payment.domain.enums.PaymentState;
@@ -106,6 +109,8 @@ class TossPaymentRecoveryIntegrationTest {
     private CompletePaymentUseCase completePayment;
     @MockitoSpyBean
     private CancelPaymentUseCase completeCancel;
+    @MockitoSpyBean
+    private PostProcessPaymentUseCase postProcessPayment;
 
     @Test
     void 승인_성공후_DB실패는_요청을_보존하고_조회로_내부_반영을_복구한다() {
@@ -127,6 +132,7 @@ class TossPaymentRecoveryIntegrationTest {
         assertThat(jdbc.queryForObject("select count(*) from transaction_history where order_id = ? and type = 'PAYMENT'", Long.class,
             fixture.order().id())).isEqualTo(1L);
         assertThat(points.findByUserId(fixture.order().userId()).orElseThrow().balance()).isEqualByComparingTo("22000");
+        verify(postProcessPayment, times(1)).execute(result, fixture.order().key());
     }
 
     @Test

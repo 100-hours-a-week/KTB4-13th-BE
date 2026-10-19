@@ -1,5 +1,7 @@
 package com.book.core.onboarding.domain;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -55,5 +57,14 @@ public class OnboardingQuestion {
         this.minSelection = minSelection;
         this.maxSelection = maxSelection;
         this.displayOrder = displayOrder;
+    }
+
+    public void validateSelectionCount(final int count) {
+        if (count < minSelection) {
+            throw new CoreException(ErrorCode.INVALID_ONBOARDING_ANSWER_SELECTION);
+        }
+        if (maxSelection != null && count > maxSelection) {
+            throw new CoreException(ErrorCode.INVALID_ONBOARDING_ANSWER_SELECTION);
+        }
     }
 }

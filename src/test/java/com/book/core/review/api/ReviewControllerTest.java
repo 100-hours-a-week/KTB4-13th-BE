@@ -59,7 +59,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 인증된_사용자와_요청_대상으로_리뷰를_생성한다() throws Exception {
+    void 회원은_리뷰를_생성할_수_있다() throws Exception {
         authenticateAs(42L);
         when(reviewService.addReview(new AddReviewCommand(42L, new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
             new ReviewContent(new BigDecimal("4.5"), "본문", false)))).thenReturn(801L);
@@ -73,7 +73,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 잘못된_작성_입력은_거부한다() throws Exception {
+    void 작성값이_유효하지_않으면_회원은_리뷰를_생성할_수_없다() throws Exception {
         authenticateAs(42L);
 
         mvc.perform(post("/api/v1/reviews").contentType(MediaType.APPLICATION_JSON)
@@ -93,7 +93,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 리뷰_수정은_인증_사용자와_리뷰_ID를_사용한다() throws Exception {
+    void 회원은_자신의_리뷰를_수정할_수_있다() throws Exception {
         authenticateAs(42L);
         when(reviewService.updateReview(new UpdateReviewCommand(42L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정", null))))
             .thenReturn(801L);
@@ -105,7 +105,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 다른_사용자의_리뷰_수정은_거부한다() throws Exception {
+    void 회원은_다른_회원의_리뷰를_수정할_수_없다() throws Exception {
         authenticateAs(999L);
         doThrow(new CoreException(ErrorCode.FORBIDDEN)).when(reviewService)
             .updateReview(new UpdateReviewCommand(999L, 801L, new ReviewContent(new BigDecimal("4.5"), "수정", null)));
@@ -115,7 +115,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 필수_수정_값이_누락되면_거부한다() throws Exception {
+    void 수정값이_누락되면_회원은_리뷰를_수정할_수_없다() throws Exception {
         authenticateAs(42L);
         mvc.perform(patch("/api/v1/reviews/801").contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"수정\"}"))
             .andExpect(status().isBadRequest());
@@ -125,7 +125,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 리뷰_삭제는_인증_사용자와_reviewId를_사용한다() throws Exception {
+    void 회원은_자신의_리뷰를_삭제할_수_있다() throws Exception {
         authenticateAs(42L);
 
         when(reviewService.removeReview(new RemoveReviewCommand(42L, 801L))).thenReturn(801L);
@@ -137,7 +137,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 다른_사용자의_리뷰_삭제는_거부한다() throws Exception {
+    void 회원은_다른_회원의_리뷰를_삭제할_수_없다() throws Exception {
         authenticateAs(999L);
         doThrow(new CoreException(ErrorCode.FORBIDDEN)).when(reviewService).removeReview(new RemoveReviewCommand(999L, 801L));
 
@@ -145,7 +145,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 양수가_아닌_reviewId는_400을_응답한다() throws Exception {
+    void 리뷰_ID가_양수가_아니면_회원은_리뷰를_삭제할_수_없다() throws Exception {
         authenticateAs(42L);
 
         mvc.perform(delete("/api/v1/reviews/0")).andExpect(status().isBadRequest());
@@ -154,7 +154,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 비즈니스_오류를_기존_HTTP_오류_계약으로_응답한다() throws Exception {
+    void 리뷰_작성_업무_오류를_HTTP_오류_응답으로_반환한다() throws Exception {
         authenticateAs(42L);
         doThrow(new CoreException(ErrorCode.REVIEW_ALREADY_REVIEWED)).when(reviewService).addReview(new AddReviewCommand(42L,
             new ReviewTarget(ReviewTargetType.PRODUCT, 701L), new ReviewContent(new BigDecimal("4.5"), "본문", false)));
@@ -165,7 +165,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 리뷰를_요청한_offset부터_조회해_응답_DTO로_반환한다() throws Exception {
+    void 회원은_리뷰를_대상과_페이지로_조회할_수_있다() throws Exception {
         final var target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
         final var paging = new OffsetLimit(3, 2);
         final var item = new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문", true);
@@ -182,7 +182,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 기본_페이징으로_빈_목록을_반환한다() throws Exception {
+    void 조회_결과가_없으면_빈_페이지를_반환한다() throws Exception {
         final var target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
         final var paging = new OffsetLimit(0, 20);
         when(reviewService.findReviews(new GetReviewsCommand(target, paging))).thenReturn(new Page<>(List.of(), false));
@@ -192,7 +192,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void 잘못된_조회_입력은_거부한다() throws Exception {
+    void 조회값이_유효하지_않으면_회원은_리뷰를_조회할_수_없다() throws Exception {
         mvc.perform(get("/api/v1/reviews").param("targetType", "UNKNOWN").param("targetId", "10")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "0")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("offset", "-1"))

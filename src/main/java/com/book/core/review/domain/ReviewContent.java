@@ -5,7 +5,7 @@ import com.book.common.exception.ErrorCode;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-public record ReviewContent(BigDecimal rate, String content) {
+public record ReviewContent(BigDecimal rate, String content, Boolean isSpoiler) {
     private static final BigDecimal RATE_UNIT = new BigDecimal("0.5");
 
     public ReviewContent {

@@ -14,7 +14,9 @@ import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderItemStatus;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.util.List;
+import javax.sql.DataSource;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -22,28 +24,22 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
 @Tag("integration")
 class OrderRepositoryIntegrationTest {
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
-
     @Autowired
     OrderRepositoryPort orderRepository;
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    DataSource dataSource;
 
     @Autowired
     GetOrderItemUseCase getOrderItem;
@@ -216,14 +212,7 @@ class OrderRepositoryIntegrationTest {
     void 배송지와_상품_FK_및_주문키_UNIQUE_제약을_마이그레이션에_생성한다() {
         assertThat(countKeyUsage("orders", "address_id", "order_addresses", "id")).isEqualTo(1);
         assertThat(countKeyUsage("order_item", "product_id", "products", "id")).isEqualTo(1);
-        assertThat(jdbc.queryForObject("""
-                        SELECT COUNT(*)
-                        FROM information_schema.statistics
-                        WHERE table_schema = DATABASE()
-                          AND table_name = 'orders'
-                          AND index_name = 'uk_orders_key'
-                          AND non_unique = 0
-                        """, Integer.class)).isEqualTo(1);
+        assertThat(countUniqueIndex("orders", "key")).isEqualTo(1);
         assertThat(countColumn("orders", "deleted_at")).isEqualTo(1);
         assertThat(countColumn("order_item", "deleted_at")).isEqualTo(1);
     }
@@ -242,22 +231,43 @@ class OrderRepositoryIntegrationTest {
     }
 
     private int countKeyUsage(final String table, final String column, final String referencedTable, final String referencedColumn) {
-        return jdbc.queryForObject("""
-                        SELECT COUNT(*)
-                        FROM information_schema.key_column_usage
-                        WHERE constraint_schema = DATABASE()
-                          AND table_name = ?
-                          AND column_name = ?
-                          AND referenced_table_name = ?
-                          AND referenced_column_name = ?
-                        """, Integer.class, table, column, referencedTable, referencedColumn);
+        try (var connection = dataSource.getConnection();
+            var importedKeys = connection.getMetaData().getImportedKeys(connection.getCatalog(), connection.getSchema(), table)) {
+            int count = 0;
+            while (importedKeys.next()) {
+                if (table.equalsIgnoreCase(importedKeys.getString("FKTABLE_NAME"))
+                    && column.equalsIgnoreCase(importedKeys.getString("FKCOLUMN_NAME"))
+                    && referencedTable.equalsIgnoreCase(importedKeys.getString("PKTABLE_NAME"))
+                    && referencedColumn.equalsIgnoreCase(importedKeys.getString("PKCOLUMN_NAME"))) {
+                    count++;
+                }
+            }
+            return count;
+        } catch (final SQLException exception) {
+            throw new AssertionError("Failed to inspect imported keys for " + table, exception);
+        }
+    }
+
+    private int countUniqueIndex(final String table, final String column) {
+        try (var connection = dataSource.getConnection();
+            var indexes = connection.getMetaData().getIndexInfo(connection.getCatalog(), connection.getSchema(), table, true, false)) {
+            int count = 0;
+            while (indexes.next()) {
+                if (column.equalsIgnoreCase(indexes.getString("COLUMN_NAME")) && !indexes.getBoolean("NON_UNIQUE")) {
+                    count++;
+                }
+            }
+            return count;
+        } catch (final SQLException exception) {
+            throw new AssertionError("Failed to inspect indexes for " + table, exception);
+        }
     }
 
     private int countColumn(final String table, final String column) {
         return jdbc.queryForObject("""
                         SELECT COUNT(*)
                         FROM information_schema.columns
-                        WHERE table_schema = DATABASE()
+                        WHERE table_schema = CURRENT_SCHEMA()
                           AND table_name = ?
                           AND column_name = ?
                         """, Integer.class, table, column);

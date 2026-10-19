@@ -18,7 +18,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -27,20 +27,25 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Order", description = "주문 API")
 public interface OrderControllerSpec {
-    @Operation(summary = "내 주문 목록 조회",
-        description = "인증 회원의 활성 주문을 createdAt DESC, id DESC 순서로 조회합니다. 조회 시각 기본값은 오늘까지 최근 1년이며 limit은 기본 20, 최대 100입니다.")
+    @Operation(summary = "내 주문내역 목록 조회",
+        description = "인증 회원의 결제 이력이 있는 주문을 paidAt DESC, id DESC 순서로 조회합니다. status는 PAID, PARTIAL_CANCELED, CANCELED만 허용하고 "
+            + "from·to(yyyy-MM-dd)는 각각 선택이며 결제일 기준 from 00:00 이상, to 다음 날 00:00 미만입니다. limit은 기본 20, 최대 100입니다.")
     @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "주문 목록 조회 성공"),
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "주문내역 목록 조회 성공"),
+        @ApiResponse(responseCode = "400", description = "status=CREATED, from > to, limit 범위 오류, 필터 불일치·손상 cursor(E400)"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
     ResponseEntity<com.book.common.response.ApiResponse<OrderListResponse>> getOrders(@Parameter(hidden = true) final Long userId,
         @RequestParam(value = "status", required = false) final OrderStatus status,
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "from", required = false) final LocalDateTime from,
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "to", required = false) final LocalDateTime to,
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @RequestParam(value = "from", required = false) final LocalDate from,
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @RequestParam(value = "to", required = false) final LocalDate to,
         @RequestParam(value = "cursor", required = false) final String cursor,
         @RequestParam(value = "limit", required = false) final Integer limit);
 
-    @Operation(summary = "내 주문 상세 조회", description = "주문 소유권을 확인하고 주문 상품을 포함한 상세 정보를 조회합니다.")
+    @Operation(summary = "내 주문 상세 조회",
+        description = "주문 소유권을 확인하고 주문 정보와 주문 당시 배송지, 취소된 상품을 포함한 최초 주문상품 전체(ID 오름차순)를 조회합니다. "
+            + "결제 이력이 있으면 payment에 결제 금액과 환불 완료·취소 가능 금액을, 없으면 null을 반환합니다. "
+            + "cancellations는 취소 기록을 canceledAt DESC, id DESC 순서로 반환하며 없으면 빈 배열입니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "주문 상세 조회 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식 오류(E400)"),

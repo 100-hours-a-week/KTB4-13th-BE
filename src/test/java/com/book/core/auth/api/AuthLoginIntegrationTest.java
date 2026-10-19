@@ -3,10 +3,10 @@ package com.book.core.auth.api;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.core.auth.application.port.OAuthProviderClient;
@@ -19,6 +19,7 @@ import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.domain.PointBalance;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -108,25 +109,23 @@ class AuthLoginIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"cart-failure, true, false", "point-failure, false, true", "both-failure, true, true"})
-    void 신규_회원_초기화가_실패해도_회원을_유지하고_로그인한다(final String providerUserId, final boolean cartFails, final boolean pointFails) throws Exception {
+    @CsvSource({"cart-failure, true", "point-failure, false"})
+    void 신규_회원_초기화가_실패하면_회원_등록까지_모두_Rollback하고_가입을_실패한다(final String providerUserId, final boolean cartFails) throws Exception {
         givenKakaoUser(providerUserId);
         if (cartFails) {
             doThrow(new DataAccessResourceFailureException("cart")).when(cartRepository).save(any(Cart.class));
-        }
-        if (pointFails) {
+        } else {
             doThrow(new DataAccessResourceFailureException("point")).when(pointBalanceRepository).save(any(PointBalance.class));
         }
+        final List<Integer> before = rowCounts();
 
-        login(providerUserId);
+        mvc.perform(post("/api/v1/auth/kakao/login").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"authorizationCode\":\"" + providerUserId + "-code\",\"codeVerifier\":\"code-verifier\",\"nonce\":\"nonce\"}"))
+            .andExpect(status().isInternalServerError()).andExpect(jsonPath("$.success").value(false))
+            .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
 
-        final Long userId = userIdOf(providerUserId);
-        verify(cartRepository).save(any(Cart.class));
-        verify(pointBalanceRepository).save(any(PointBalance.class));
-        assertThat(count("SELECT COUNT(*) FROM users WHERE id = ? AND deleted_at IS NULL", userId)).isEqualTo(1);
-        assertThat(count("SELECT COUNT(*) FROM carts WHERE user_id = ?", userId)).isEqualTo(cartFails ? 0 : 1);
-        assertThat(count("SELECT COUNT(*) FROM point_balance WHERE user_id = ?", userId)).isEqualTo(pointFails ? 0 : 1);
-        assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ? AND active_flag = 1", userId)).isEqualTo(1);
+        assertThat(count("SELECT COUNT(*) FROM user_providers WHERE provider_user_id = ?", providerUserId)).isZero();
+        assertThat(rowCounts()).isEqualTo(before);
     }
 
     private void givenKakaoUser(final String providerUserId) {
@@ -148,6 +147,11 @@ class AuthLoginIntegrationTest {
     private Long userIdOf(final String providerUserId) {
         return jdbc.queryForObject("SELECT user_id FROM user_providers WHERE provider_user_id = ? AND deleted_at IS NULL", Long.class,
             providerUserId);
+    }
+
+    private List<Integer> rowCounts() {
+        return List.of("users", "user_providers", "carts", "point_balance", "refresh_sessions").stream()
+            .map((final String table) -> jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).toList();
     }
 
     private Integer count(final String sql, final Object arg) {

@@ -18,8 +18,13 @@ public record GetOrdersCommand(
     private static final LocalDate MAX_DATE = LocalDate.of(9999, 12, 30);
 
     public GetOrdersCommand {
-        if (userId == null || userId <= 0 || status == OrderStatus.CREATED || !isSupported(from) || !isSupported(to)
-                || (from != null && to != null && from.isAfter(to)) || limit == null || limit <= 0 || limit > 100) {
+        if (userId == null || userId <= 0 || limit == null || limit <= 0 || limit > 100) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        if (status == OrderStatus.CREATED) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        if (!isValidPeriod(from, to)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
@@ -38,6 +43,10 @@ public record GetOrdersCommand(
             return null;
         }
         return to.plusDays(1).atStartOfDay();
+    }
+
+    private static boolean isValidPeriod(final LocalDate from, final LocalDate to) {
+        return isSupported(from) && isSupported(to) && (from == null || to == null || !from.isAfter(to));
     }
 
     private static boolean isSupported(final LocalDate date) {

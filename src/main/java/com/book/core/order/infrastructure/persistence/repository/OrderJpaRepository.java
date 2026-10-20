@@ -23,14 +23,21 @@ interface OrderJpaRepository extends JpaRepository<Order, Long> {
             WHERE orders.status = :status
               AND orders.expiresAt <= :now
               AND orders.deletedAt IS NULL
-              AND NOT EXISTS (SELECT 1 FROM Payment payment WHERE payment.orderId = orders.id)
+              AND NOT EXISTS (
+                SELECT 1 FROM PgOperation operation
+                WHERE operation.orderKey = orders.key AND operation.completed = false AND operation.rejected = false
+              )
             ORDER BY orders.expiresAt ASC, orders.id ASC
             """)
     List<String> findExpiredOrderKeys(@Param("status") final OrderStatus status, @Param("now") final LocalDateTime now,
         final Pageable pageable);
 
-    @Query("SELECT COUNT(payment) > 0 FROM Payment payment WHERE payment.orderId = :orderId")
-    boolean hasPayment(@Param("orderId") final Long orderId);
+    @Query("""
+            SELECT COUNT(operation) > 0
+            FROM PgOperation operation
+            WHERE operation.orderKey = :orderKey AND operation.completed = false AND operation.rejected = false
+            """)
+    boolean hasPendingPgOperation(@Param("orderKey") final String orderKey);
 
     @EntityGraph(attributePaths = "items")
     @Query("SELECT orders FROM Order orders WHERE orders.key = :key AND orders.deletedAt IS NULL")

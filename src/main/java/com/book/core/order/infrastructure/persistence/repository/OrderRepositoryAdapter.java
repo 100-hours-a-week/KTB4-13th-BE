@@ -35,8 +35,8 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
     }
 
     @Override
-    public boolean hasPayment(final Long orderId) {
-        return jpaRepository.hasPayment(orderId);
+    public boolean hasPendingPgOperation(final String orderKey) {
+        return jpaRepository.hasPendingPgOperation(orderKey);
     }
 
     @Override

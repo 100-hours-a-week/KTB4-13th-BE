@@ -31,7 +31,7 @@ class ReviewQueryRepository {
         final var found = queryFactory
             .select(Projections.constructor(ReviewItemResult.class, review.id,
                 Projections.constructor(ReviewTarget.class, review.targetType, review.targetId), review.rate, review.content,
-                review.isSpoiler))
+                review.isSpoiler, review.userId))
             .from(review).where(review.targetType.eq(target.type()), review.targetId.eq(target.id()), review.deletedAt.isNull())
             .orderBy(review.id.desc()).offset(offsetLimit.offset()).limit((long) offsetLimit.limit() + 1).fetch();
         final boolean hasNext = found.size() > offsetLimit.limit();

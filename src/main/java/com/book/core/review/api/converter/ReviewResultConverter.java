@@ -8,10 +8,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ReviewResultConverter {
-    public PageResponse<ReviewResponse> toResponse(final Page<ReviewItemResult> result) {
-        final var content = result.content().stream().map(
-            item -> new ReviewResponse(item.id(), item.target().type(), item.target().id(), item.rate(), item.content(), item.isSpoiler()))
-            .toList();
+    public PageResponse<ReviewResponse> toResponse(final Page<ReviewItemResult> result, final Long userId) {
+        final var content = result.content().stream().map((final var item) -> new ReviewResponse(item.id(), item.target().type(),
+            item.target().id(), item.rate(), item.content(), item.isSpoiler(), item.isAuthoredBy(userId))).toList();
         return new PageResponse<>(content, result.hasNext());
     }
 }

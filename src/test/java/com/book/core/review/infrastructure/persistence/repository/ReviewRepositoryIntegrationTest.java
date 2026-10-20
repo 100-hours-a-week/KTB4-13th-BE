@@ -110,6 +110,7 @@ class ReviewRepositoryIntegrationTest {
             assertThat(item.target().type()).isEqualTo(ReviewTargetType.PRODUCT);
             assertThat(item.target().id()).isEqualTo(9601L);
             assertThat(item.isSpoiler()).isTrue();
+            assertThat(item.userId()).isEqualTo(42L);
         });
         assertThat(page.hasNext()).isTrue();
 

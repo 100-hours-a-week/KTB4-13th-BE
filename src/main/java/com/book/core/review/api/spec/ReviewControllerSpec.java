@@ -25,11 +25,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "Review", description = "리뷰 API")
 public interface ReviewControllerSpec {
-    @Operation(summary = "리뷰 조회", description = "상품의 활성 리뷰를 최신 ID 순으로 조회합니다. offset은 건너뛸 개수이며 기본 limit은 20이며 최대 100개입니다.")
+    @Operation(summary = "리뷰 조회",
+        description = "상품의 활성 리뷰를 최신 ID 순으로 조회합니다. isAuthor는 본인 작성 여부이며 비로그인은 false입니다. offset은 건너뛸 개수이며 기본 limit은 20이며 최대 100개입니다.")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "리뷰 조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "대상 또는 페이징 값 오류")})
-    ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(@RequestParam("targetType") final ReviewTargetType targetType,
-        @Positive @RequestParam("targetId") final Long targetId,
+    ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(@Parameter(hidden = true) final Long userId,
+        @RequestParam("targetType") final ReviewTargetType targetType, @Positive @RequestParam("targetId") final Long targetId,
         @Min(0) @RequestParam(value = "offset", defaultValue = "0") final int offset,
         @Positive @Max(OffsetLimit.MAX_LIMIT) @RequestParam(value = "limit", defaultValue = "20") final int limit);
 

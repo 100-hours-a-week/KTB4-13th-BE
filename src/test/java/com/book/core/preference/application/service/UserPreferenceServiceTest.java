@@ -2,6 +2,7 @@ package com.book.core.preference.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -92,23 +93,22 @@ class UserPreferenceServiceTest {
     }
 
     @Test
-    void 추출_대상을_세션_100개나_메시지_1000개_단위로_순서대로_묶어_대화를_조회한다() {
-        final List<MemoryExtractionTarget> large =
-            List.of(new MemoryExtractionTarget(1L, 1L, 600), new MemoryExtractionTarget(2L, 2L, 1200));
-        final List<MemoryExtractionTarget> small =
-            LongStream.rangeClosed(3, 103).mapToObj((final long id) -> new MemoryExtractionTarget(id, id, 2)).toList();
-        final List<MemoryExtractionTarget> targets = new ArrayList<>(large);
-        targets.addAll(small);
+    void 추출_대상을_세션_100개나_보낼_메시지_1000개_단위로_순서대로_묶어_최근_40개씩_대화를_조회한다() {
+        final List<MemoryExtractionTarget> longSessions =
+            LongStream.rangeClosed(1, 26).mapToObj((final long id) -> new MemoryExtractionTarget(id, id, 500)).toList();
+        final List<MemoryExtractionTarget> shortSessions =
+            LongStream.rangeClosed(27, 127).mapToObj((final long id) -> new MemoryExtractionTarget(id, id, 2)).toList();
+        final List<MemoryExtractionTarget> targets = new ArrayList<>(longSessions);
+        targets.addAll(shortSessions);
         when(getMemoryExtractionTargetsUseCase.execute()).thenReturn(targets);
-        when(getChatHistoryUseCase.executeForMemoryExtraction(anyList())).thenReturn(Map.of());
+        when(getChatHistoryUseCase.executeForMemoryExtraction(anyList(), anyInt())).thenReturn(Map.of());
 
         userPreferenceService.extractNightlyMemories();
 
         final InOrder order = inOrder(getChatHistoryUseCase);
-        order.verify(getChatHistoryUseCase).executeForMemoryExtraction(large.subList(0, 1));
-        order.verify(getChatHistoryUseCase).executeForMemoryExtraction(large.subList(1, 2));
-        order.verify(getChatHistoryUseCase).executeForMemoryExtraction(small.subList(0, 100));
-        order.verify(getChatHistoryUseCase).executeForMemoryExtraction(small.subList(100, 101));
+        order.verify(getChatHistoryUseCase).executeForMemoryExtraction(longSessions.subList(0, 25), 40);
+        order.verify(getChatHistoryUseCase).executeForMemoryExtraction(targets.subList(25, 125), 40);
+        order.verify(getChatHistoryUseCase).executeForMemoryExtraction(shortSessions.subList(99, 101), 40);
         order.verifyNoMoreInteractions();
     }
 

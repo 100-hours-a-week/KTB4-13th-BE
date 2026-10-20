@@ -172,13 +172,30 @@ class UserMemoryExtractionIntegrationTest {
     }
 
     @Test
+    void 긴_대화는_최근_40개만_조회해_보낸다() {
+        agree();
+        final Long sessionId = chatSessionService.create(userId);
+        for (int turn = 1; turn <= 21; turn++) {
+            send(sessionId, "turn-" + turn, "대화 " + turn);
+        }
+        when(extractionClient.extract(argThat(this::mine))).thenReturn(List.of());
+
+        userPreferenceService.extractNightlyMemories();
+
+        verify(extractionClient).extract(argThat((final AiMemoryExtractionRequest request) -> mine(request)
+            && request.conversation().size() == 40 && request.conversation().getFirst().equals(new ConversationMessage("user", "대화 2"))
+            && request.conversation().getLast().equals(new ConversationMessage("assistant", "답변"))));
+        assertThat(extractedSequence(sessionId)).isEqualTo(42);
+    }
+
+    @Test
     void 대상의_회원이_세션_주인과_다르면_그_세션의_대화를_돌려주지_않는다() {
         final Long sessionId = chatSessionService.create(userId);
         send(sessionId, "first", "추리 소설 좋아해요");
 
-        assertThat(getChatHistoryUseCase.executeForMemoryExtraction(List.of(new MemoryExtractionTarget(userId + 1, sessionId, 2))))
+        assertThat(getChatHistoryUseCase.executeForMemoryExtraction(List.of(new MemoryExtractionTarget(userId + 1, sessionId, 2)), 40))
             .doesNotContainKey(sessionId);
-        assertThat(getChatHistoryUseCase.executeForMemoryExtraction(List.of(new MemoryExtractionTarget(userId, sessionId, 1))))
+        assertThat(getChatHistoryUseCase.executeForMemoryExtraction(List.of(new MemoryExtractionTarget(userId, sessionId, 1)), 40))
             .containsOnlyKeys(sessionId).extractingByKey(sessionId).asInstanceOf(InstanceOfAssertFactories.LIST).hasSize(1);
     }
 

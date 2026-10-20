@@ -35,23 +35,23 @@ public class GetChatHistoryUseCase {
     }
 
     @Transactional(readOnly = true)
-    public Map<Long, List<ChatHistoryMessage>> executeForMemoryExtraction(final List<MemoryExtractionTarget> targets) {
+    public Map<Long, List<ChatHistoryMessage>> executeForMemoryExtraction(final List<MemoryExtractionTarget> targets, final int limit) {
         final Map<Long, MemoryExtractionTarget> targetsBySessionId =
             targets.stream().collect(Collectors.toMap(MemoryExtractionTarget::sessionId, Function.identity()));
+        final Map<Long, Long> lastSequenceBySessionId = new HashMap<>();
         final Map<Long, List<ChatHistoryMessage>> conversations = new HashMap<>();
         for (final ChatSession session : chats.findSessionsByIds(targetsBySessionId.keySet())) {
-            if (session.userId().equals(targetsBySessionId.get(session.id()).userId())) {
+            final MemoryExtractionTarget target = targetsBySessionId.get(session.id());
+            if (session.userId().equals(target.userId())) {
+                lastSequenceBySessionId.put(session.id(), target.sequence());
                 conversations.put(session.id(), new ArrayList<>());
             }
         }
         if (conversations.isEmpty()) {
             return conversations;
         }
-        final long maxSequence = targets.stream().mapToLong(MemoryExtractionTarget::sequence).max().orElseThrow();
-        for (final ChatMessage message : chats.messagesUpTo(conversations.keySet(), maxSequence)) {
-            if (message.sequence() <= targetsBySessionId.get(message.sessionId()).sequence()) {
-                conversations.get(message.sessionId()).add(toHistoryMessage(message));
-            }
+        for (final ChatMessage message : chats.recentMessagesUpTo(lastSequenceBySessionId, limit)) {
+            conversations.get(message.sessionId()).add(toHistoryMessage(message));
         }
         return conversations;
     }

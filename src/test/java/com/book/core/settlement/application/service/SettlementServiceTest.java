@@ -1,73 +1,67 @@
 package com.book.core.settlement.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.book.common.paging.SliceResult;
-import com.book.core.cancel.application.usecase.GetCancelsForSettlementUseCase;
-import com.book.core.cancel.domain.Cancel;
-import com.book.core.payment.application.usecase.GetPaymentsForSettlementUseCase;
-import com.book.core.payment.domain.Payment;
-import com.book.core.settlement.application.usecase.CreateSettlementTargetsUseCase;
+import com.book.core.merchant.application.usecase.GetMerchantsUseCase;
 import com.book.core.settlement.application.usecase.GenerateSettlementsUseCase;
 import com.book.core.settlement.application.usecase.GetSettlementTargetsUseCase;
 import com.book.core.settlement.application.usecase.GetSettlementsUseCase;
+import com.book.core.settlement.application.usecase.LoadSettlementTargetsUseCase;
+import com.book.core.settlement.application.usecase.TransferSettlementsUseCase;
+import com.book.core.settlement.domain.Settlement;
+import com.book.core.settlement.domain.SettlementState;
 import com.book.core.settlement.domain.SettlementTargetSummary;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 class SettlementServiceTest {
-    private final GetPaymentsForSettlementUseCase payments = mock(GetPaymentsForSettlementUseCase.class);
-    private final GetCancelsForSettlementUseCase cancels = mock(GetCancelsForSettlementUseCase.class);
-    private final CreateSettlementTargetsUseCase create = mock(CreateSettlementTargetsUseCase.class);
+    private final LoadSettlementTargetsUseCase load = mock(LoadSettlementTargetsUseCase.class);
     private final GetSettlementTargetsUseCase targets = mock(GetSettlementTargetsUseCase.class);
     private final GetSettlementsUseCase settlements = mock(GetSettlementsUseCase.class);
     private final GenerateSettlementsUseCase generate = mock(GenerateSettlementsUseCase.class);
-    private final SettlementService service = new SettlementService(payments, cancels, create, targets, settlements, generate);
+    private final GetMerchantsUseCase merchants = mock(GetMerchantsUseCase.class);
+    private final TransferSettlementsUseCase transfer = mock(TransferSettlementsUseCase.class);
+    private final SettlementService service = new SettlementService(load, targets, settlements, generate, merchants, transfer);
     private final LocalDate date = LocalDate.of(2026, 10, 16);
 
     @Test
-    void 결제_취소를_각각_천건씩_읽고_페이지_실패후에도_계속한다() {
-        final var from = date.minusDays(1).atStartOfDay();
-        final var to = date.atStartOfDay().minusNanos(1);
-        final var payment = mock(Payment.class);
-        final var cancel = mock(Cancel.class);
-        when(payments.execute(from, to, 0, 1000)).thenReturn(new SliceResult<>(List.of(payment), true));
-        when(payments.execute(from, to, 1, 1000)).thenReturn(new SliceResult<>(List.of(), false));
-        when(cancels.execute(from, to, 0, 1000)).thenReturn(new SliceResult<>(List.of(cancel), true));
-        when(cancels.execute(from, to, 1, 1000)).thenReturn(new SliceResult<>(List.of(), false));
-        doThrow(new IllegalStateException("test payment")).when(create).processPayments(date, List.of(payment));
-        doThrow(new IllegalStateException("test cancel")).when(create).processCancels(date, List.of(cancel));
+    void 정산_대상_적재를_전용_유즈케이스에_위임한다() {
+        final LocalDateTime from = date.minusDays(1).atStartOfDay();
+        final LocalDateTime to = date.atStartOfDay().minusNanos(1);
         service.loadTargets(date, from, to);
-        final var order = inOrder(payments, cancels, create);
-        order.verify(payments).execute(from, to, 0, 1000);
-        order.verify(create).processPayments(date, List.of(payment));
-        order.verify(payments).execute(from, to, 1, 1000);
-        order.verify(create).processPayments(date, List.of());
-        order.verify(cancels).execute(from, to, 0, 1000);
-        order.verify(create).processCancels(date, List.of(cancel));
-        order.verify(cancels).execute(from, to, 1, 1000);
-        order.verify(create).processCancels(date, List.of());
+        verify(load).execute(date, from, to);
     }
 
     @Test
     void 생성은_집계_매출조회_생성_순서를_유지한다() {
-        final var summaries = List.of(new SettlementTargetSummary(1L, date, BigDecimal.TEN, 1, 1));
-        final var amounts = Map.of(1L, BigDecimal.ZERO);
+        final List<SettlementTargetSummary> summaries = List.of(new SettlementTargetSummary(1L, date, BigDecimal.TEN, 1, 1));
+        final Map<Long, BigDecimal> amounts = Map.of(1L, BigDecimal.ZERO);
         when(targets.execute(date)).thenReturn(summaries);
         when(settlements.recentSalesAmounts(date, List.of(1L))).thenReturn(amounts);
         when(generate.execute(summaries, amounts)).thenReturn(1);
         assertThat(service.generate(date)).isEqualTo(1);
-        final var order = inOrder(targets, settlements, generate);
+        final InOrder order = inOrder(targets, settlements, generate);
         order.verify(targets).execute(date);
         order.verify(settlements).recentSalesAmounts(date, List.of(1L));
         order.verify(generate).execute(summaries, amounts);
     }
 
+    @Test
+    void 이체는_READY_전체와_해당가맹점을_전달한다() {
+        final List<Settlement> ready = List.of(
+            new Settlement(1L, date, BigDecimal.TEN, BigDecimal.ONE, new BigDecimal("0.1"), new BigDecimal("9"), SettlementState.READY));
+        when(settlements.byState(SettlementState.READY)).thenReturn(ready);
+        when(merchants.execute(List.of(1L))).thenReturn(List.of());
+        service.transfer(date);
+        verify(transfer).transfer(date, List.of(), ready);
+    }
 }

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class SettlementUseCasesTest {
     private final SettlementRepositoryPort repository = mock(SettlementRepositoryPort.class);
@@ -62,6 +63,16 @@ class SettlementUseCasesTest {
         assertThat(new GetSettlementsUseCase(repository).byState(SettlementState.READY)).isEmpty();
     }
 
+    @Test
+    void 이체완료는_ID로_재조회한_영속객체를_SENT로_전환한다() {
+        final var settlement =
+            new Settlement(1L, date, BigDecimal.TEN, BigDecimal.ONE, new BigDecimal("0.1"), new BigDecimal("9"), SettlementState.READY);
+        ReflectionTestUtils.setField(settlement, "id", 5L);
+        when(repository.findAllById(List.of(5L))).thenReturn(List.of(settlement));
+        new CompleteSettlementTransferUseCase(repository).execute(List.of(settlement));
+        assertThat(settlement.state()).isEqualTo(SettlementState.SENT);
+        verify(repository).saveAll(List.of(settlement));
+    }
 
     @Test
     void 대상조회는_기준일을_그대로_전달한다() {

@@ -2,6 +2,7 @@ package com.book.core.memory.infrastructure.client.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -12,12 +13,14 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.memory.application.command.ConversationMessage;
 import com.book.core.memory.application.command.UserMemoryExtraction;
 import com.book.core.memory.application.port.AiMemoryExtractionRequest;
 import com.book.core.memory.domain.UserMemoryType;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +28,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.slf4j.MDC;
 import org.springframework.web.client.RestClient;
 
 class AiMemoryExtractionClientImplTest {
@@ -38,6 +42,23 @@ class AiMemoryExtractionClientImplTest {
     private final RestClient.Builder builder = RestClient.builder().baseUrl(BASE_URL);
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     private final AiMemoryExtractionClientImpl client = new AiMemoryExtractionClientImpl(builder.build());
+
+    @AfterEach
+    void clearMdc() {
+        MDC.remove(RequestMdcFilter.REQUEST_ID_MDC_KEY);
+    }
+
+    @Test
+    void 추출_요청에_MDC의_요청_ID를_전달한다() {
+        final String requestId = "request-memory-123";
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, requestId);
+        server.expect(requestTo(EXTRACTION_URL)).andExpect(header(RequestMdcFilter.REQUEST_ID_HEADER, requestId))
+            .andRespond(withSuccess(envelope("[]", true), MediaType.APPLICATION_JSON));
+
+        client.extract(request());
+
+        server.verify();
+    }
 
     @Test
     void 대화를_AI_계약의_snake_case로_보내고_추출_결과를_도메인_값으로_변환한다() {

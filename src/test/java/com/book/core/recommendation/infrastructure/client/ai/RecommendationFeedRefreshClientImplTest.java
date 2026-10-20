@@ -12,9 +12,12 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.recommendation.application.port.RecommendationFeedRefreshResult;
 import java.net.SocketTimeoutException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -30,6 +33,11 @@ class RecommendationFeedRefreshClientImplTest {
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     private final RecommendationFeedRefreshClientImpl client = new RecommendationFeedRefreshClientImpl(builder.build());
 
+    @AfterEach
+    void clearMdc() {
+        MDC.remove(RequestMdcFilter.REQUEST_ID_MDC_KEY);
+    }
+
     @Test
     void 서비스_토큰과_빈_본문으로_POST하고_다시_뽑은_목록_수와_남은_목록_수를_반환한다() {
         server.expect(requestTo(REFRESH_URL)).andExpect(method(HttpMethod.POST))
@@ -38,6 +46,20 @@ class RecommendationFeedRefreshClientImplTest {
                 """, MediaType.APPLICATION_JSON));
 
         assertThat(client.refreshFeed()).isEqualTo(new RecommendationFeedRefreshResult(12, 30));
+
+        server.verify();
+    }
+
+    @Test
+    void 현재_요청_ID를_X_Request_Id_header로_전달한다() {
+        final String requestId = "request-refresh-789";
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, requestId);
+        server.expect(requestTo(REFRESH_URL)).andExpect(method(HttpMethod.POST)).andExpect(header("X-Request-Id", requestId))
+            .andRespond(withSuccess("""
+                {"message": "refresh_success", "data": {"refreshed": 1, "remaining": 2}}
+                """, MediaType.APPLICATION_JSON));
+
+        client.refreshFeed();
 
         server.verify();
     }

@@ -3,6 +3,7 @@ package com.book.core.coupon.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.Coupon;
@@ -26,7 +27,7 @@ public class IssueCouponUseCase {
 
     @Transactional
     public void execute(final Long userId, final Long couponId) {
-        log.debug("쿠폰 발급 처리를 시작합니다. couponId={}, traceId={}", couponId, MDC.get("traceId"));
+        log.debug("쿠폰 발급 처리를 시작합니다. couponId={}, requestId={}", couponId, MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
         final Coupon coupon = couponRepository.findIssuableById(couponId, LocalDateTime.now())
             .orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
         final Optional<OwnedCoupon> existing = ownedCouponRepository.findByUserIdAndCouponId(userId, coupon.id());
@@ -36,6 +37,6 @@ public class IssueCouponUseCase {
 
         final OwnedCoupon ownedCoupon = new OwnedCoupon(userId, coupon.id(), OwnedCouponStatus.ISSUED, coupon.maxUseCount(), 0L);
         ownedCouponRepository.save(ownedCoupon);
-        log.info("쿠폰 발급 처리를 했습니다. couponId={}, traceId={}", couponId, MDC.get("traceId"));
+        log.info("쿠폰 발급 처리를 했습니다. couponId={}, requestId={}", couponId, MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
     }
 }

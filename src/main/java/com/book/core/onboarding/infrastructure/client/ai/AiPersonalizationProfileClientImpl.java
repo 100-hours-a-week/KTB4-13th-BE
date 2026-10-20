@@ -2,7 +2,7 @@ package com.book.core.onboarding.infrastructure.client.ai;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.common.logging.TraceIdFilter;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileClient;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import java.util.UUID;
@@ -49,7 +49,7 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
     }
 
     private String currentRequestId() {
-        final String traceId = MDC.get(TraceIdFilter.TRACE_ID_MDC_KEY);
-        return traceId != null ? traceId : UUID.randomUUID().toString();
+        final String requestId = MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY);
+        return requestId != null ? requestId : UUID.randomUUID().toString();
     }
 }

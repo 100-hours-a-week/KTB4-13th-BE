@@ -1,5 +1,6 @@
 package com.book.core.auth.infrastructure.token;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -9,11 +10,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
 import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import com.book.support.config.WebCorsConfiguration;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -39,6 +42,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -203,9 +207,12 @@ class SecurityIntegrationTest {
 
     @Test
     void Token_없이_보호된_endpoint를_요청하면_401을_응답한다() throws Exception {
-        mvc.perform(get("/test/protected")).andExpect(status().isUnauthorized()).andExpect(header().exists("X-Trace-Id"))
+        final String requestId = "request-auth-123";
+        final MvcResult result = mvc.perform(get("/test/protected").header(RequestMdcFilter.REQUEST_ID_HEADER, requestId))
+            .andExpect(status().isUnauthorized()).andExpect(header().string(RequestMdcFilter.REQUEST_ID_HEADER, requestId))
             .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E401"))
-            .andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다.")).andExpect(jsonPath("$.traceId").isNotEmpty());
+            .andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다.")).andExpect(jsonPath("$.traceId").isNotEmpty()).andReturn();
+        assertTraceIdMatchesRequestId(result);
     }
 
     @Test
@@ -219,10 +226,16 @@ class SecurityIntegrationTest {
     }
 
     private void assertUnauthorized(final String token) throws Exception {
-        mvc.perform(get("/test/protected").header(HttpHeaders.AUTHORIZATION, bearer(token))).andExpect(status().isUnauthorized())
-            .andExpect(header().exists("X-Trace-Id")).andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.code").value("E401")).andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다."))
-            .andExpect(jsonPath("$.traceId").isNotEmpty());
+        final MvcResult result = mvc.perform(get("/test/protected").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isUnauthorized()).andExpect(header().exists(RequestMdcFilter.REQUEST_ID_HEADER))
+            .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E401"))
+            .andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다.")).andExpect(jsonPath("$.traceId").isNotEmpty()).andReturn();
+        assertTraceIdMatchesRequestId(result);
+    }
+
+    private void assertTraceIdMatchesRequestId(final MvcResult result) throws Exception {
+        final String bodyTraceId = new ObjectMapper().readTree(result.getResponse().getContentAsString()).get("traceId").asText();
+        assertThat(result.getResponse().getHeader(RequestMdcFilter.REQUEST_ID_HEADER)).isEqualTo(bodyTraceId);
     }
 
     private String bearer(final String token) {

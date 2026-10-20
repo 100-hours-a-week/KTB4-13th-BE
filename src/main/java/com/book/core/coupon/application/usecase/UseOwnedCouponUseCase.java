@@ -3,6 +3,7 @@ package com.book.core.coupon.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.OwnedCoupon;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +25,7 @@ public class UseOwnedCouponUseCase {
      */
     @Transactional
     public void execute(final Long ownedCouponId) {
-        log.debug("쿠폰 사용 처리를 시작합니다. ownedCouponId={}, traceId={}", ownedCouponId, MDC.get("traceId"));
+        log.debug("쿠폰 사용 처리를 시작합니다. ownedCouponId={}, requestId={}", ownedCouponId, MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
         final OwnedCoupon ownedCoupon =
             ownedCouponRepository.findById(ownedCouponId).orElseThrow(() -> new CoreException(ErrorCode.OWNED_COUPON_INVALID));
 
@@ -34,6 +35,6 @@ public class UseOwnedCouponUseCase {
         }
 
         ownedCoupon.use();
-        log.info("쿠폰 사용 처리를 마쳤습니다. ownedCouponId={}, traceId={}", ownedCouponId, MDC.get("traceId"));
+        log.info("쿠폰 사용 처리를 마쳤습니다. ownedCouponId={}, requestId={}", ownedCouponId, MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
     }
 }

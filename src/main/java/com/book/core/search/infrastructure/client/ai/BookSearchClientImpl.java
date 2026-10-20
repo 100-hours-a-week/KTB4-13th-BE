@@ -4,7 +4,7 @@ import com.book.common.config.ai.AiRestClientConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
-import com.book.common.logging.TraceIdFilter;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.search.application.port.BookSearchClient;
 import com.book.core.search.application.port.BookSearchItem;
 import com.book.core.search.application.port.BookSearchRequest;
@@ -82,8 +82,8 @@ public class BookSearchClientImpl implements BookSearchClient {
     }
 
     private String currentRequestId() {
-        final String traceId = MDC.get(TraceIdFilter.TRACE_ID_MDC_KEY);
-        return traceId != null ? traceId : UUID.randomUUID().toString();
+        final String requestId = MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY);
+        return requestId != null ? requestId : UUID.randomUUID().toString();
     }
 
     private BookSearchResult toResult(final AiSearchResponse response, final String degraded) {

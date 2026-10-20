@@ -4,7 +4,7 @@ import com.book.common.config.ai.AiRestClientConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
-import com.book.common.logging.TraceIdFilter;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.memory.application.command.UserMemoryExtraction;
 import com.book.core.memory.application.port.AiMemoryExtractionClient;
 import com.book.core.memory.application.port.AiMemoryExtractionRequest;
@@ -107,10 +107,10 @@ public class AiMemoryExtractionClientImpl implements AiMemoryExtractionClient {
     }
 
     private String currentRequestId() {
-        final String traceId = MDC.get(TraceIdFilter.TRACE_ID_MDC_KEY);
-        if (traceId == null) {
+        final String requestId = MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY);
+        if (requestId == null) {
             return UUID.randomUUID().toString();
         }
-        return traceId;
+        return requestId;
     }
 }

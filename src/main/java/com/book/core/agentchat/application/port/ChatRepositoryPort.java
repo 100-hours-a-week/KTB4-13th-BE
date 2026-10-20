@@ -5,6 +5,7 @@ import com.book.core.agentchat.domain.ChatMessage;
 import com.book.core.agentchat.domain.ChatRequest;
 import com.book.core.agentchat.domain.ChatSession;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +15,8 @@ public interface ChatRepositoryPort {
     Optional<ChatSession> findSession(Long sessionId);
 
     List<ChatSession> findSessions(Long userId, Long beforeId, int limit);
+
+    List<ChatSession> findSessionsByIds(Collection<Long> sessionIds);
 
     Optional<ChatSession> findSessionForChange(Long sessionId);
 
@@ -28,6 +31,8 @@ public interface ChatRepositoryPort {
     List<ChatMessage> recentMessages(Long sessionId, int limit);
 
     List<ChatMessage> messagesAfter(Long sessionId, long afterSequence, int limit);
+
+    List<ChatMessage> messagesUpTo(Collection<Long> sessionIds, long maxSequence);
 
     Optional<ChatMessage> latestCardResponse(Long sessionId);
 

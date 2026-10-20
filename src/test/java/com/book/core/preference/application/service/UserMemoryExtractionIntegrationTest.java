@@ -14,9 +14,11 @@ import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
 import com.book.core.agentchat.application.command.SendChatMessageCommand;
 import com.book.core.agentchat.application.result.ChatAttemptResult;
+import com.book.core.agentchat.application.result.MemoryExtractionTarget;
 import com.book.core.agentchat.application.service.ChatSessionService;
 import com.book.core.agentchat.application.usecase.BeginChatRequestUseCase;
 import com.book.core.agentchat.application.usecase.CompleteChatRequestUseCase;
+import com.book.core.agentchat.application.usecase.GetChatHistoryUseCase;
 import com.book.core.memory.application.command.ConversationMessage;
 import com.book.core.memory.application.command.UserMemoryExtraction;
 import com.book.core.memory.application.port.AiMemoryExtractionClient;
@@ -28,10 +30,12 @@ import com.book.core.recommendation.application.result.ChatRecommendationAiOutco
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -65,6 +69,8 @@ class UserMemoryExtractionIntegrationTest {
     private BeginChatRequestUseCase begin;
     @Autowired
     private CompleteChatRequestUseCase complete;
+    @Autowired
+    private GetChatHistoryUseCase getChatHistoryUseCase;
     @Autowired
     private JdbcTemplate jdbc;
     @MockitoBean
@@ -134,6 +140,46 @@ class UserMemoryExtractionIntegrationTest {
             argThat((final AiMemoryExtractionRequest request) -> mine(request) && request.conversationId().equals(String.valueOf(later))));
         assertThat(extractedSequence(earlier)).isEqualTo(2);
         assertThat(extractedSequence(later)).isEqualTo(2);
+    }
+
+    @Test
+    void 여러_세션을_한_번에_조회해도_세션마다_자기_대화만_순번대로_보내고_대상_순번_뒤의_대화는_뺀다() {
+        agree();
+        final Long first = chatSessionService.create(userId);
+        final Long second = chatSessionService.create(userId);
+        send(first, "first-1", "추리 소설 좋아해요");
+        send(second, "second-1", "에세이도 읽어요");
+        send(second, "second-2", "여행 에세이요");
+        send(second, "second-3", "짧은 글이 좋아요");
+        send(first, "first-2", "오늘 새로 한 말");
+        jdbc.update("UPDATE chat_messages SET created_at = ? WHERE session_id = ? AND message_sequence > 2",
+            LocalDateTime.now().plusDays(3), first);
+        when(extractionClient.extract(argThat(this::mine))).thenReturn(List.of());
+
+        userPreferenceService.extractNightlyMemories();
+
+        verify(extractionClient).extract(argThat((final AiMemoryExtractionRequest request) -> mine(request)
+            && request.conversationId().equals(String.valueOf(first)) && request.conversation()
+                .equals(List.of(new ConversationMessage("user", "추리 소설 좋아해요"), new ConversationMessage("assistant", "답변")))));
+        verify(extractionClient).extract(
+            argThat((final AiMemoryExtractionRequest request) -> mine(request) && request.conversationId().equals(String.valueOf(second))
+                && request.conversation()
+                    .equals(List.of(new ConversationMessage("user", "에세이도 읽어요"), new ConversationMessage("assistant", "답변"),
+                        new ConversationMessage("user", "여행 에세이요"), new ConversationMessage("assistant", "답변"),
+                        new ConversationMessage("user", "짧은 글이 좋아요"), new ConversationMessage("assistant", "답변")))));
+        assertThat(extractedSequence(first)).isEqualTo(2);
+        assertThat(extractedSequence(second)).isEqualTo(6);
+    }
+
+    @Test
+    void 대상의_회원이_세션_주인과_다르면_그_세션의_대화를_돌려주지_않는다() {
+        final Long sessionId = chatSessionService.create(userId);
+        send(sessionId, "first", "추리 소설 좋아해요");
+
+        assertThat(getChatHistoryUseCase.executeForMemoryExtraction(List.of(new MemoryExtractionTarget(userId + 1, sessionId, 2))))
+            .doesNotContainKey(sessionId);
+        assertThat(getChatHistoryUseCase.executeForMemoryExtraction(List.of(new MemoryExtractionTarget(userId, sessionId, 1))))
+            .containsOnlyKeys(sessionId).extractingByKey(sessionId).asInstanceOf(InstanceOfAssertFactories.LIST).hasSize(1);
     }
 
     @Test

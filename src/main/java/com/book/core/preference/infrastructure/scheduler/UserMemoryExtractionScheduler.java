@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/** 프로필 갱신과 추천 목록 다시 뽑기까지 야간 배치가 완성되기 전에는 운영에서 켜지 않도록 기본으로 비활성화합니다. */
+// ⑥ 프로필 갱신과 ⑨ 추천 재생성이 연결되기 전에는 운영에서 켜지 않습니다.
 @Component
 @ConditionalOnProperty(name = "app.memory-extraction.enabled", havingValue = "true")
 @RequiredArgsConstructor

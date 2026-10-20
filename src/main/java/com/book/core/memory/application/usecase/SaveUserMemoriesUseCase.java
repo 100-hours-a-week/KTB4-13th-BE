@@ -16,7 +16,6 @@ public class SaveUserMemoriesUseCase {
     private final UserMemoryRepositoryPort userMemoryRepository;
     private final MemoryExtractionProgressPort extractionProgress;
 
-    /** 완료 순번 갱신과 같은 대화의 기억 교체를 한 트랜잭션으로 반영하고, 이미 반영한 순번이면 기억을 바꾸지 않습니다. */
     @Transactional
     public boolean execute(final SaveUserMemoriesCommand command) {
         userMemoryRepository.lockByUserId(command.userId());

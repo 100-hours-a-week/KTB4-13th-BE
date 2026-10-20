@@ -62,7 +62,6 @@ public class UserPreferenceService {
         deleteAllUserMemoriesUseCase.execute(userId);
     }
 
-    /** 사용자별로 마지막 메시지가 이른 세션부터 추출하고, 실패한 사용자의 뒤 세션은 순서를 지키도록 다음 밤으로 미룹니다. */
     public void extractNightlyMemories() {
         final Set<Long> failedUserIds = new HashSet<>();
         for (final MemoryExtractionTarget target : getMemoryExtractionTargetsUseCase.execute()) {
@@ -72,6 +71,7 @@ public class UserPreferenceService {
             try {
                 extractMemories(new ExtractChatMemoriesCommand(target.userId(), target.sessionId(), target.sequence()));
             } catch (final RuntimeException exception) {
+                // 같은 회원의 세션 순서를 지키도록 뒤 세션은 다음 밤으로 미룹니다.
                 failedUserIds.add(target.userId());
                 // 외부 응답 원문이 담길 수 있는 예외 메시지 대신 오류 코드나 예외 종류만 기록합니다.
                 log.error("대화 취향 기억 추출에 실패해 다음 밤에 다시 처리합니다. userId={}, sessionId={}, sequence={}, cause={}", target.userId(),
@@ -98,7 +98,6 @@ public class UserPreferenceService {
             .execute(new SaveUserMemoriesCommand(command.userId(), command.sessionId(), command.sequence(), extractions));
     }
 
-    // 배치를 고른 뒤 저장된 메시지가 섞이지 않도록 대상 순번까지만 세션 전체 대화를 나눠 읽습니다.
     private List<ConversationMessage> conversation(final ExtractChatMemoriesCommand command) {
         final List<ConversationMessage> messages = new ArrayList<>();
         long afterSequence = 0;

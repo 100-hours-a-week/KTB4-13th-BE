@@ -33,6 +33,5 @@ public interface ChatRepositoryPort {
 
     Optional<ChatMessage> responseFor(Long requestId);
 
-    /** 기준 시각 전에 저장됐지만 아직 기억 추출에 반영하지 않은 메시지가 있는 세션을 마지막 메시지 시각 순으로 찾습니다. */
     List<MemoryExtractionTarget> findMemoryExtractionTargets(Instant before);
 }

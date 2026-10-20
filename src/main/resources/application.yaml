@@ -43,8 +43,5 @@ payment:
   toss:
     base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}
     secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
-
-spring.cloud.openfeign.client.config.tossPayments:
-  connectTimeout: 3000
-  readTimeout: 10000
-  loggerLevel: none
+    connect-timeout-ms: 3000
+    read-timeout-ms: 10000

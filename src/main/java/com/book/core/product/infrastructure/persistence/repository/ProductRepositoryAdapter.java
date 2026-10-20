@@ -1,6 +1,8 @@
 package com.book.core.product.infrastructure.persistence.repository;
 
 import com.book.core.inventory.application.port.ProductInventoryRepositoryPort;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.CartChangeProductRepositoryPort;
@@ -42,7 +44,7 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort, CartChan
             entityManager.lock(product, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
             final Integer availableQuantity = quantities.get(product.id());
             if (availableQuantity == null) {
-                throw new IllegalStateException("상품 재고 정보가 없습니다: " + product.id());
+                throw new CoreException(ErrorCode.ORDER_DATA_INCONSISTENT);
             }
             products.put(product.id(), new CartChangeProductResult(product.id(), product.discountedPrice(), availableQuantity,
                 product.isActive() && product.book().isActive()));

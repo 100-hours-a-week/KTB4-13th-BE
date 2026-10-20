@@ -27,7 +27,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 class ProfileHistoryRepositoryAdapter implements ProfileHistoryRepositoryPort {
-    // AI 서버는 형식이 틀린 ISBN이 하나라도 있으면 요청 전체를 거절하므로 13자리 숫자만 보냅니다.
     private static final Pattern ISBN13 = Pattern.compile("\\d{13}");
     private static final List<OrderStatus> PURCHASED_ORDER_STATUSES = List.of(OrderStatus.PAID, OrderStatus.PARTIAL_CANCELED);
     private static final List<OrderItemStatus> PURCHASED_ITEM_STATUSES = List.of(OrderItemStatus.PAID, OrderItemStatus.PARTIAL_CANCELED);
@@ -55,7 +54,6 @@ class ProfileHistoryRepositoryAdapter implements ProfileHistoryRepositoryPort {
 
     @Override
     public List<Long> findChangedUserIds(final Instant from, final Instant before) {
-        // updated_at은 JVM 기본 시간대로 저장되므로 같은 시간대로 바꿔 비교합니다.
         final LocalDateTime start = LocalDateTime.ofInstant(from, ZoneId.systemDefault());
         final LocalDateTime end = LocalDateTime.ofInstant(before, ZoneId.systemDefault());
         final List<Long> orders = queryFactory.select(order.userId).distinct().from(order)

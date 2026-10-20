@@ -34,7 +34,6 @@ class ProfileMemoryRepositoryAdapter implements ProfileMemoryRepositoryPort {
             .fetch();
     }
 
-    // created_at은 JVM 기본 시간대로 저장되므로 명세의 한국 시간으로 바꿉니다.
     private AiPersonalizationProfileMemory toProfileMemory(final UserMemory memory) {
         return new AiPersonalizationProfileMemory(memory.type().name().toLowerCase(Locale.ROOT), memory.value(), memory.strength(),
             memory.categories(), memory.keyword(),

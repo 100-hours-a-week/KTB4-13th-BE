@@ -191,7 +191,6 @@ class UserMemoryExtractionIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM chat_messages WHERE session_id = ?", Integer.class, sessionId)).isEqualTo(4);
     }
 
-    // 메시지 created_at은 실제 시각으로 저장되므로 서비스 시각을 다음 날로 옮겨 오늘 대화를 지난 대화로 만듭니다.
     private void nightAfterToday() {
         when(clock.instant()).thenReturn(Instant.now().plus(Duration.ofDays(1)));
     }

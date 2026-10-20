@@ -89,9 +89,7 @@ public class UserPreferenceService {
                     memoryChangedUserIds.add(target.userId());
                 }
             } catch (final RuntimeException exception) {
-                // 같은 회원의 세션 순서를 지키도록 뒤 세션은 다음 밤으로 미룹니다.
                 failedUserIds.add(target.userId());
-                // 외부 응답 원문이 담길 수 있는 예외 메시지 대신 오류 코드나 예외 종류만 기록합니다.
                 log.error("대화 취향 기억 추출에 실패해 다음 밤에 다시 처리합니다. userId={}, sessionId={}, sequence={}, cause={}", target.userId(),
                     target.sessionId(), target.sequence(), cause(exception));
             }

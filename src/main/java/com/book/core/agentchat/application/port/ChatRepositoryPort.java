@@ -7,6 +7,7 @@ import com.book.core.agentchat.domain.ChatSession;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface ChatRepositoryPort {
@@ -32,7 +33,7 @@ public interface ChatRepositoryPort {
 
     List<ChatMessage> messagesAfter(Long sessionId, long afterSequence, int limit);
 
-    List<ChatMessage> messagesUpTo(Collection<Long> sessionIds, long maxSequence);
+    List<ChatMessage> recentMessagesUpTo(Map<Long, Long> lastSequenceBySessionId, int limit);
 
     Optional<ChatMessage> latestCardResponse(Long sessionId);
 

@@ -111,7 +111,7 @@ public class UserPreferenceService {
 
     private Map<Long, List<ChatHistoryMessage>> conversations(final List<MemoryExtractionTarget> chunk, final Set<Long> failedUserIds) {
         try {
-            return getChatHistoryUseCase.executeForMemoryExtraction(chunk);
+            return getChatHistoryUseCase.executeForMemoryExtraction(chunk, ExtractUserMemoriesUseCase.MAX_MESSAGES);
         } catch (final RuntimeException exception) {
             chunk.forEach((final MemoryExtractionTarget target) -> failedUserIds.add(target.userId()));
             log.error("대화 기록 조회에 실패해 다음 밤에 다시 처리합니다. sessionCount={}, cause={}", chunk.size(), cause(exception));
@@ -162,14 +162,15 @@ public class UserPreferenceService {
         List<MemoryExtractionTarget> chunk = new ArrayList<>();
         long chunkMessages = 0;
         for (final MemoryExtractionTarget target : targets) {
+            final long targetMessages = Math.min(target.sequence(), ExtractUserMemoriesUseCase.MAX_MESSAGES);
             if (!chunk.isEmpty()
-                && (chunk.size() == CONVERSATION_CHUNK_SESSIONS || chunkMessages + target.sequence() > CONVERSATION_CHUNK_MESSAGES)) {
+                && (chunk.size() == CONVERSATION_CHUNK_SESSIONS || chunkMessages + targetMessages > CONVERSATION_CHUNK_MESSAGES)) {
                 chunks.add(chunk);
                 chunk = new ArrayList<>();
                 chunkMessages = 0;
             }
             chunk.add(target);
-            chunkMessages += target.sequence();
+            chunkMessages += targetMessages;
         }
         if (!chunk.isEmpty()) {
             chunks.add(chunk);

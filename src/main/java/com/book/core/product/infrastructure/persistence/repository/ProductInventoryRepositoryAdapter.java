@@ -37,4 +37,9 @@ class ProductInventoryRepositoryAdapter implements ProductInventoryRepositoryPor
     public boolean restore(final Long productId, final int quantity) {
         return jpaRepository.restore(productId, quantity) == 1;
     }
+
+    @Override
+    public boolean receive(final Long productId, final int quantity) {
+        return jpaRepository.restore(productId, quantity) == 1;
+    }
 }

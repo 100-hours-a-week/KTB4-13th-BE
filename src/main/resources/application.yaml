@@ -10,7 +10,11 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
   endpoint:
     health:
       show-components: never
@@ -31,8 +35,18 @@ auth:
   kakao:
     rest-api-key: ${KAKAO_REST_API_KEY}
     client-secret: ${KAKAO_CLIENT_SECRET:}
+    admin-key: ${KAKAO_ADMIN_KEY:}
     redirect-uri: ${KAKAO_REDIRECT_URI}
   token:
     secret: ${JWT_SECRET}
     access-token-expiration: 1h
     refresh-token-expiration: 7d
+
+# 테스트: 개발자센터의 test_sk_... 값을 TOSS_PAYMENTS_SECRET_KEY 환경변수로 제공합니다.
+# 시크릿 키를 이 파일에 직접 저장하지 않습니다.
+payment:
+  toss:
+    base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}
+    secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
+    connect-timeout-ms: 3000
+    read-timeout-ms: 10000

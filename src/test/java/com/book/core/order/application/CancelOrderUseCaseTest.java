@@ -23,7 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 class CancelOrderUseCaseTest {
     private final OrderRepositoryPort orderRepository = mock(OrderRepositoryPort.class);
-    private final CancelOrderUseCase useCase = new CancelOrderUseCase(orderRepository);
+    private final com.book.core.payment.application.usecase.AssertNoPendingPgOperationUseCase pgGuard =
+        mock(com.book.core.payment.application.usecase.AssertNoPendingPgOperationUseCase.class);
+    private final CancelOrderUseCase useCase = new CancelOrderUseCase(orderRepository, pgGuard);
 
     @Test
     void 회원의_생성_주문과_모든_주문상품을_취소한다() {
@@ -69,6 +71,16 @@ class CancelOrderUseCaseTest {
             .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.ORDER_CANNOT_BE_CANCELED);
         verify(orderRepository).findActiveOrderByKeyForUpdate("already_canceled_order");
         verifyNoMoreInteractions(orderRepository);
+    }
+
+    @Test
+    void 미확정_PG요청이_있으면_주문을_취소하지_않는다() {
+        final Order order = Order.create(42L, "pending_order", null);
+        when(orderRepository.findActiveOrderByKeyForUpdate("pending_order")).thenReturn(Optional.of(order));
+        org.mockito.Mockito.doThrow(new CoreException(ErrorCode.PG_PENDING)).when(pgGuard).execute("pending_order");
+        assertThatThrownBy(() -> useCase.execute(new CancelOrderCommand(42L, "pending_order"))).isInstanceOfSatisfying(CoreException.class,
+            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
+        assertThat(order.status()).isEqualTo(OrderStatus.CREATED);
     }
 
     @Test

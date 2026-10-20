@@ -1,9 +1,11 @@
 package com.book;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.core.address.domain.Address;
+import com.book.core.auth.application.service.SignUpService;
 import com.book.core.book.domain.Book;
 import com.book.core.cancel.domain.Cancel;
 import com.book.core.cancel.domain.CancelBalance;
@@ -13,6 +15,9 @@ import com.book.core.category.domain.Category;
 import com.book.core.coupon.domain.Coupon;
 import com.book.core.coupon.domain.CouponTarget;
 import com.book.core.coupon.domain.OwnedCoupon;
+import com.book.core.memory.domain.UserMemory;
+import com.book.core.merchant.domain.Merchant;
+import com.book.core.merchant.domain.MerchantProductMapping;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
@@ -22,13 +27,18 @@ import com.book.core.point.domain.PointBalance;
 import com.book.core.point.domain.PointHistory;
 import com.book.core.product.domain.Product;
 import com.book.core.product.domain.ProductCategory;
+import com.book.core.review.application.service.ReviewService;
 import com.book.core.review.domain.Review;
+import com.book.core.review.domain.ReviewHistory;
+import com.book.core.settlement.domain.Settlement;
+import com.book.core.settlement.domain.SettlementTarget;
 import com.book.core.user.domain.User;
 import com.book.core.user.domain.UserProvider;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import jakarta.persistence.Entity;
+import org.springframework.transaction.annotation.Transactional;
 import org.junit.jupiter.api.Test;
 
 class ArchitectureTest {
@@ -58,6 +68,41 @@ class ArchitectureTest {
     }
 
     @Test
+    void 인증과_회원_UseCase는_다른_UseCase를_호출하지_않는다() {
+        noClasses().that().resideInAnyPackage("com.book.core.auth.application.usecase..", "com.book.core.user.application.usecase..")
+            .should().dependOnClassesThat().resideInAPackage("com.book.core..application.usecase..").check(CLASSES);
+    }
+
+    @Test
+    void 장바구니와_추천은_에이전트_대화에_의존하지_않는다() {
+        noClasses().that().resideInAnyPackage("com.book.core.cart..", "com.book.core.recommendation..").should().dependOnClassesThat()
+            .resideInAPackage("com.book.core.agentchat..").check(CLASSES);
+    }
+
+    @Test
+    void 에이전트는_다른_기능의_저장_Port를_직접_호출하지_않는다() {
+        noClasses().that().resideInAPackage("com.book.core.agentchat..").should().dependOnClassesThat()
+            .resideInAnyPackage("com.book.core.cart.application.port..", "com.book.core.product.application.port..",
+                "com.book.core.book.application.port..", "com.book.core.recommendation.application.port..")
+            .check(CLASSES);
+    }
+
+    @Test
+    void 에이전트_저장_모델은_다른_기능의_업무_모델을_저장_형식으로_사용하지_않는다() {
+        noClasses().that().resideInAPackage("com.book.core.agentchat.domain..").should().dependOnClassesThat()
+            .resideInAnyPackage("com.book.core.cart..", "com.book.core.recommendation..").check(CLASSES);
+    }
+
+    @Test
+    void Service는_회원가입과_리뷰_쓰기_조율을_제외하고_트랜잭션을_소유하지_않는다() {
+        noClasses().that().resideInAPackage("com.book.core..application.service..").should().beAnnotatedWith(Transactional.class)
+            .check(CLASSES);
+        noMethods().that().areDeclaredInClassesThat().resideInAPackage("com.book.core..application.service..").and()
+            .areDeclaredInClassesThat().doNotHaveFullyQualifiedName(SignUpService.class.getName()).and().areDeclaredInClassesThat()
+            .doNotHaveFullyQualifiedName(ReviewService.class.getName()).should().beAnnotatedWith(Transactional.class).check(CLASSES);
+    }
+
+    @Test
     void 공통_코드는_기능에_의존하지_않는다() {
         noClasses().that().resideInAPackage("com.book.common..").should().dependOnClassesThat().resideInAPackage("com.book.core..")
             .check(CLASSES);
@@ -65,6 +110,10 @@ class ArchitectureTest {
 
     @Test
     void 업무_모델은_JPA_Entity를_겸한다() {
+        assertThat(Settlement.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(SettlementTarget.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(Merchant.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(MerchantProductMapping.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Payment.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(PaymentHistory.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Cancel.class.isAnnotationPresent(Entity.class)).isTrue();
@@ -85,7 +134,9 @@ class ArchitectureTest {
         assertThat(OrderItem.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(OrderAddress.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(Review.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(ReviewHistory.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(User.class.isAnnotationPresent(Entity.class)).isTrue();
         assertThat(UserProvider.class.isAnnotationPresent(Entity.class)).isTrue();
+        assertThat(UserMemory.class.isAnnotationPresent(Entity.class)).isTrue();
     }
 }

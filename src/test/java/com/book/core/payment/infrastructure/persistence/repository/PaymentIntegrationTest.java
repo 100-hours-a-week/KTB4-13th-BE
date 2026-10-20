@@ -26,25 +26,17 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
 @Tag("integration")
 class PaymentIntegrationTest {
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
     @Autowired
     private PaymentService service;
     @Autowired
@@ -62,11 +54,21 @@ class PaymentIntegrationTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.book.core.payment.application.port.PaymentClient pg;
+
+    private void stubApproval(final Order order) {
+        org.mockito.Mockito.when(pg.find("test-pg-key"))
+            .thenReturn(new com.book.core.payment.application.result.PgPaymentResult("test-pg-key", order.key(), new BigDecimal("8800"),
+                new BigDecimal("8800"), "DONE", com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678", java.util.List.of()));
+    }
+
     @Test
     void 성공_트랜잭션은_주문_포인트_취소잔액_거래이력을_함께_저장한다() {
         final Order order = order(1001L);
         balances.save(new PointBalance(null, 1001L, BigDecimal.valueOf(5000)));
         final Payment payment = payments.save(payment(order, -1L));
+        stubApproval(order);
         service.success(new ApprovePaymentCommand(order.key(), "test-pg-key", new BigDecimal("8800.00")));
         assertThat(payments.findById(payment.id()).orElseThrow().state()).isEqualTo(PaymentState.SUCCESS);
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
@@ -85,6 +87,7 @@ class PaymentIntegrationTest {
         final Order order = order(1002L);
         final OwnedCoupon coupon = coupons.save(new OwnedCoupon(1002L, 123L, OwnedCouponStatus.USED, 1L, 1L));
         final Payment payment = payments.save(payment(order, coupon.id()));
+        stubApproval(order);
         assertThatThrownBy(() -> service.success(new ApprovePaymentCommand(order.key(), "test-pg-key", new BigDecimal("8800.00"))))
             .isInstanceOf(CoreException.class);
         assertThat(payments.findById(payment.id()).orElseThrow().state()).isEqualTo(PaymentState.READY);

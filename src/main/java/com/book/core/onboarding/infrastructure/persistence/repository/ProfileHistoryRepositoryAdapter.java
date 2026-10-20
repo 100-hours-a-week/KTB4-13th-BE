@@ -35,12 +35,12 @@ class ProfileHistoryRepositoryAdapter implements ProfileHistoryRepositoryPort {
 
     @Override
     public AiPersonalizationProfileHistory findHistory(final Long userId) {
-        final List<String> purchased =
+        final List<String> purchasedIsbns =
             queryFactory.select(book.isbn13).distinct().from(orderItem).join(orderItem.order, order).join(product)
                 .on(product.id.eq(orderItem.productId)).join(product.book, book).where(order.userId.eq(userId), order.deletedAt.isNull(),
                     order.status.in(PURCHASED_ORDER_STATUSES), orderItem.deletedAt.isNull(), orderItem.status.in(PURCHASED_ITEM_STATUSES))
                 .fetch();
-        final List<String> library = queryFactory.select(book.isbn13).distinct().from(userLibraryBook).join(book)
+        final List<String> libraryIsbns = queryFactory.select(book.isbn13).distinct().from(userLibraryBook).join(book)
             .on(book.id.eq(userLibraryBook.bookId)).where(userLibraryBook.userId.eq(userId), userLibraryBook.deletedAt.isNull()).fetch();
         final List<AiPersonalizationProfileHistory.Review> reviews = queryFactory.select(book.isbn13, review.rate, review.content)
             .from(review).join(product).on(product.id.eq(review.targetId)).join(product.book, book)
@@ -49,27 +49,27 @@ class ProfileHistoryRepositoryAdapter implements ProfileHistoryRepositoryPort {
             .map((final Tuple row) -> new AiPersonalizationProfileHistory.Review(row.get(book.isbn13), row.get(review.rate),
                 row.get(review.content)))
             .toList();
-        return new AiPersonalizationProfileHistory(isbns(purchased), isbns(library), reviews);
+        return new AiPersonalizationProfileHistory(validIsbns(purchasedIsbns), validIsbns(libraryIsbns), reviews);
     }
 
     @Override
     public List<Long> findChangedUserIds(final Instant from, final Instant before) {
         final LocalDateTime start = LocalDateTime.ofInstant(from, ZoneId.systemDefault());
         final LocalDateTime end = LocalDateTime.ofInstant(before, ZoneId.systemDefault());
-        final List<Long> orders = queryFactory.select(order.userId).distinct().from(order)
+        final List<Long> orderUserIds = queryFactory.select(order.userId).distinct().from(order)
             .where(order.paidAt.isNotNull(), order.updatedAt.goe(start), order.updatedAt.lt(end)).fetch();
-        final List<Long> orderItems = queryFactory.select(order.userId).distinct().from(orderItem).join(orderItem.order, order)
+        final List<Long> orderItemUserIds = queryFactory.select(order.userId).distinct().from(orderItem).join(orderItem.order, order)
             .where(order.paidAt.isNotNull(), orderItem.updatedAt.goe(start), orderItem.updatedAt.lt(end)).fetch();
-        final List<Long> library = queryFactory.select(userLibraryBook.userId).distinct().from(userLibraryBook)
+        final List<Long> libraryUserIds = queryFactory.select(userLibraryBook.userId).distinct().from(userLibraryBook)
             .where(userLibraryBook.updatedAt.goe(start), userLibraryBook.updatedAt.lt(end)).fetch();
-        final List<Long> reviews =
+        final List<Long> reviewUserIds =
             queryFactory.select(review.userId).distinct().from(review).where(review.updatedAt.goe(start), review.updatedAt.lt(end)).fetch();
-        return List.copyOf(
-            Stream.of(orders, orderItems, library, reviews).flatMap(List::stream).collect(TreeSet::new, TreeSet::add, TreeSet::addAll));
+        return List.copyOf(Stream.of(orderUserIds, orderItemUserIds, libraryUserIds, reviewUserIds).flatMap(List::stream)
+            .collect(TreeSet::new, TreeSet::add, TreeSet::addAll));
     }
 
-    private static List<String> isbns(final List<String> values) {
-        return values.stream().filter(ProfileHistoryRepositoryAdapter::isIsbn13).sorted().toList();
+    private static List<String> validIsbns(final List<String> isbns) {
+        return isbns.stream().filter(ProfileHistoryRepositoryAdapter::isIsbn13).sorted().toList();
     }
 
     private static boolean isIsbn13(final String value) {

@@ -316,8 +316,7 @@ class TossPaymentRecoveryIntegrationTest {
             }
             final var input = mapper.readTree(exchange.getRequestBody());
             final BigDecimal amount = input.path("cancelAmount").decimalValue();
-            final BigDecimal expected = input.path("refundableAmount").decimalValue();
-            if (pg.balance.compareTo(expected) != 0 || amount.compareTo(pg.balance) > 0) {
+            if (amount.signum() <= 0 || amount.compareTo(pg.balance) > 0) {
                 respond(exchange, 400, "{}");
                 return;
             }

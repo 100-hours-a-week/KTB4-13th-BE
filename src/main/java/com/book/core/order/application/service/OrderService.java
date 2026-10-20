@@ -6,6 +6,8 @@ import com.book.core.address.application.result.GetAddressItemResult;
 import com.book.core.address.application.usecase.GetAddressUseCase;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
+import com.book.core.notification.application.command.CreateNotificationCommand;
+import com.book.core.notification.application.service.NotificationService;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
@@ -26,6 +28,7 @@ import com.book.core.order.domain.OrderAddress;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.command.ProductQuantitiesCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
+import com.book.core.product.application.result.LowStockReservationResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.application.usecase.ReleaseProductInventoryUseCase;
 import com.book.core.product.application.usecase.ReserveProductInventoryUseCase;
@@ -39,6 +42,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +62,7 @@ public class OrderService {
     private final GetReservedOrderQuantitiesUseCase getReservedOrderQuantitiesUseCase;
     private final GetExpiredOrderKeysUseCase getExpiredOrderKeysUseCase;
     private final ExpireOrderUseCase expireOrderUseCase;
+    private final NotificationService notificationService;
 
     public GetOrdersResult getOrders(final GetOrdersCommand command) {
         return getOrdersUseCase.execute(command);
@@ -115,8 +121,31 @@ public class OrderService {
             order.addItem(item.productId(), product.itemName(), product.thumbnailUrl(), product.author(), product.salePrice(),
                 product.discountedPrice(), item.quantity());
         }
-        reserveProductInventoryUseCase.execute(new ProductQuantitiesCommand(order.reservedQuantities()));
-        return createOrderUseCase.execute(order);
+        final List<LowStockReservationResult> lowStockReservations =
+            reserveProductInventoryUseCase.execute(new ProductQuantitiesCommand(order.reservedQuantities()));
+        final CreateOrderResult result = createOrderUseCase.execute(order);
+        registerLowStockNotifications(lowStockReservations, productsByProductId);
+        return result;
+    }
+
+    private void registerLowStockNotifications(final List<LowStockReservationResult> lowStockReservations,
+        final Map<Long, GetProductDetailResult> productsByProductId) {
+        final List<CreateNotificationCommand> commands = lowStockReservations.stream()
+            .flatMap((final LowStockReservationResult reservation) -> reservation.userIds().stream().map((final Long userId) -> {
+                final String productName = productsByProductId.get(reservation.productId()).itemName();
+                final String body = "장바구니에 담아둔 '" + productName + "'의 재고가 " + reservation.availableQuantity() + "권 남았어요.";
+                final String eventKey = "cart-low-stock:" + reservation.productId() + ":" + reservation.lowStockCycle() + ":" + userId;
+                return new CreateNotificationCommand(userId, "장바구니 상품 품절 임박", body, eventKey);
+            })).toList();
+        if (commands.isEmpty()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                notificationService.createAllAsync(commands);
+            }
+        });
     }
 
     private void release(final Map<Long, Integer> quantities) {

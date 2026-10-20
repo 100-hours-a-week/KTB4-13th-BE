@@ -16,6 +16,7 @@ import com.book.core.address.application.usecase.GetAddressUseCase;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
+import com.book.core.notification.application.service.NotificationService;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
@@ -60,9 +61,10 @@ class OrderServiceTest {
     private final ReleaseProductInventoryUseCase releaseProductInventoryUseCase = mock(ReleaseProductInventoryUseCase.class);
     private final GetReservedOrderQuantitiesUseCase getReservedOrderQuantitiesUseCase = mock(GetReservedOrderQuantitiesUseCase.class);
     private final ExpireOrderUseCase expireOrderUseCase = mock(ExpireOrderUseCase.class);
+    private final NotificationService notificationService = mock(NotificationService.class);
     private final OrderService service = new OrderService(getAddressUseCase, getCartUseCase, getProductDetailUseCase, createOrderUseCase,
         cancelOrderUseCase, getOrdersUseCase, getOrderDetailUseCase, reserveProductInventoryUseCase, releaseProductInventoryUseCase,
-        getReservedOrderQuantitiesUseCase, mock(GetExpiredOrderKeysUseCase.class), expireOrderUseCase);
+        getReservedOrderQuantitiesUseCase, mock(GetExpiredOrderKeysUseCase.class), expireOrderUseCase, notificationService);
 
     @BeforeEach
     void setUp() {

@@ -46,6 +46,9 @@ public class ProductInventory {
     @Column(name = "target_stock", nullable = false)
     private int targetStock;
 
+    @Column(name = "low_stock_cycle", nullable = false)
+    private long lowStockCycle;
+
     ProductInventory(final Product product, final int onHandQuantity) {
         if (product == null || onHandQuantity < 0) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);

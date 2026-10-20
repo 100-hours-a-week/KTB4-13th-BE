@@ -49,10 +49,11 @@ class OrderInventoryIntegrationTest {
         final long enough = insertProduct(5, userId);
         final long scarce = insertProduct(1, userId);
 
-        assertThatThrownBy(() -> order(userId, enough, 2, scarce, 2)).isInstanceOfSatisfying(CoreException.class,
+        assertThatThrownBy(() -> order(userId, enough, 3, scarce, 2)).isInstanceOfSatisfying(CoreException.class,
             (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INSUFFICIENT_PRODUCT_STOCK));
         assertThat(inventory(enough)).containsExactly(5, 0);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE user_id = ?", Integer.class, userId)).isZero();
+        assertThat(notificationCount(enough)).isZero();
 
         final String orderKey = order(userId, enough, 2, scarce, 1);
 
@@ -90,6 +91,50 @@ class OrderInventoryIntegrationTest {
             assertThat(ordered).isEqualTo(3);
         }
         assertThat(inventory(productId)).containsExactly(3, 3);
+        assertThat(jdbc.queryForObject("SELECT low_stock_cycle FROM product_inventory WHERE product_id = ?", Long.class, productId))
+            .isEqualTo(1);
+    }
+
+    @Test
+    void 부족_진입_당시_장바구니_사용자에게만_주기마다_한_번_알림을_보낸다() throws Exception {
+        final long orderingUserId = insertUser();
+        final long cartUserId = insertUser();
+        final long userWithoutCartItem = insertUser();
+        final long productId = insertProduct(5, orderingUserId, cartUserId);
+
+        final String firstOrderKey = order(orderingUserId, productId, 3);
+        awaitNotificationCount(productId, 2);
+
+        assertThat(notificationUserIds(productId)).containsExactlyInAnyOrder(orderingUserId, cartUserId)
+            .doesNotContain(userWithoutCartItem);
+        assertThat(
+            jdbc.queryForList("SELECT title FROM notifications WHERE event_key LIKE ?", String.class, "cart-low-stock:" + productId + ":%"))
+            .containsOnly("장바구니 상품 품절 임박");
+        assertThat(
+            jdbc.queryForList("SELECT body FROM notifications WHERE event_key LIKE ?", String.class, "cart-low-stock:" + productId + ":%"))
+            .containsOnly("장바구니에 담아둔 '상품'의 재고가 2권 남았어요.");
+
+        final String secondOrderKey = order(orderingUserId, productId, 1);
+        assertThat(notificationCount(productId)).isEqualTo(2);
+
+        orderService.cancelOrder(new CancelOrderCommand(orderingUserId, firstOrderKey));
+        orderService.cancelOrder(new CancelOrderCommand(orderingUserId, secondOrderKey));
+        order(orderingUserId, productId, 3);
+        awaitNotificationCount(productId, 4);
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(DISTINCT event_key) FROM notifications WHERE event_key LIKE ?", Integer.class,
+            "cart-low-stock:" + productId + ":%")).isEqualTo(4);
+    }
+
+    @Test
+    void 재고가_5개에서_0개가_되면_알림을_보내지_않는다() throws Exception {
+        final long userId = insertUser();
+        final long productId = insertProduct(5, userId);
+
+        order(userId, productId, 5);
+        Thread.sleep(100);
+
+        assertThat(notificationCount(productId)).isZero();
     }
 
     @Test
@@ -206,5 +251,23 @@ class OrderInventoryIntegrationTest {
     private List<Integer> inventory(final long productId) {
         return jdbc.queryForObject("SELECT on_hand_quantity, reserved_quantity FROM product_inventory WHERE product_id = ?",
             (final ResultSet resultSet, final int row) -> List.of(resultSet.getInt(1), resultSet.getInt(2)), productId);
+    }
+
+    private int notificationCount(final long productId) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE event_key LIKE ?", Integer.class,
+            "cart-low-stock:" + productId + ":%");
+    }
+
+    private List<Long> notificationUserIds(final long productId) {
+        return jdbc.queryForList("SELECT user_id FROM notifications WHERE event_key LIKE ? ORDER BY user_id", Long.class,
+            "cart-low-stock:" + productId + ":%");
+    }
+
+    private void awaitNotificationCount(final long productId, final int expectedCount) throws InterruptedException {
+        final long deadline = System.nanoTime() + 5_000_000_000L;
+        while (notificationCount(productId) != expectedCount && System.nanoTime() < deadline) {
+            Thread.sleep(25);
+        }
+        assertThat(notificationCount(productId)).isEqualTo(expectedCount);
     }
 }

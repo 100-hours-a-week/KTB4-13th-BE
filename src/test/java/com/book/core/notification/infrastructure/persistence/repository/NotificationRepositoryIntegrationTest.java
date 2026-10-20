@@ -48,4 +48,16 @@ class NotificationRepositoryIntegrationTest {
         assertThatThrownBy(() -> jdbc.update("INSERT INTO notifications (user_id, title, body) VALUES (1, ' ', '본문')"))
             .isInstanceOf(DataAccessException.class);
     }
+
+    @Test
+    void 같은_이벤트_키는_한_번만_저장한다() {
+        final var command = new CreateNotificationCommand(42L, "제목", "본문", "cart-low-stock:1:1:42");
+
+        final Long firstId = createUseCase.execute(command);
+        final Long secondId = createUseCase.execute(command);
+
+        assertThat(secondId).isEqualTo(firstId);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE event_key = ?", Integer.class, command.eventKey()))
+            .isEqualTo(1);
+    }
 }

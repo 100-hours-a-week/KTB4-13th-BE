@@ -40,4 +40,16 @@ interface CartItemJpaRepository extends JpaRepository<CartItem, Long> {
     int countByCartIdAndDeletedAtIsNull(final Long cartId);
 
     List<CartItem> findByCartIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(final Long cartId);
+
+    @Query("""
+            select distinct cart.userId
+            from Cart cart
+            where cart.deletedAt is null
+              and cart.id in (
+                  select item.cartId from CartItem item
+                  where item.productId = :productId and item.deletedAt is null
+              )
+            order by cart.userId
+            """)
+    List<Long> findActiveUserIdsByProductId(@Param("productId") final Long productId);
 }

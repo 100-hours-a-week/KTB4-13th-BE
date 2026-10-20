@@ -14,4 +14,10 @@ class NotificationRepositoryAdapter implements NotificationRepositoryPort {
     public Notification save(final Notification notification) {
         return jpaRepository.save(notification);
     }
+
+    @Override
+    public Notification saveIfAbsent(final Notification notification) {
+        jpaRepository.insertIfAbsent(notification.userId(), notification.title(), notification.body(), notification.eventKey());
+        return jpaRepository.findByEventKeyAndDeletedAtIsNull(notification.eventKey()).orElseThrow();
+    }
 }

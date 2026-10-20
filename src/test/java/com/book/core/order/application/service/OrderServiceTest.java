@@ -1,6 +1,7 @@
 package com.book.core.order.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -36,6 +37,7 @@ import com.book.core.order.domain.Order;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.command.ProductQuantitiesCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
+import com.book.core.product.application.result.LowStockReservationResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.application.usecase.ReleaseProductInventoryUseCase;
 import com.book.core.product.application.usecase.ReserveProductInventoryUseCase;
@@ -48,6 +50,9 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.core.task.TaskRejectedException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 class OrderServiceTest {
     private final GetAddressUseCase getAddressUseCase = mock(GetAddressUseCase.class);
@@ -118,6 +123,22 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.createOrder(command(new CreateOrderItemCommand(701L, 2)))).isInstanceOf(CoreException.class);
         verifyNoInteractions(createOrderUseCase);
+    }
+
+    @Test
+    void 커밋_후_알림_작업_등록에_실패해도_주문_응답에_영향을_주지_않는다() {
+        when(reserveProductInventoryUseCase.execute(any())).thenReturn(List.of(new LowStockReservationResult(701L, 2, 1L, List.of(7L))));
+        doThrow(new TaskRejectedException("거절")).when(notificationService).createAllAsync(any());
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.createOrder(command(new CreateOrderItemCommand(701L, 2)));
+
+            assertThatCode(() -> TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit))
+                .doesNotThrowAnyException();
+            verify(notificationService).createAllAsync(any());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test

@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -47,6 +48,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
     private static final Duration RESERVATION_DURATION = Duration.ofMinutes(10);
 
@@ -143,7 +145,11 @@ public class OrderService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                notificationService.createAllAsync(commands);
+                try {
+                    notificationService.createAllAsync(commands);
+                } catch (final RuntimeException exception) {
+                    log.error("품절 임박 알림 작업 등록에 실패했습니다. notificationCount={}", commands.size(), exception);
+                }
             }
         });
     }

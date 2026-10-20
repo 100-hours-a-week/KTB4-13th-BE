@@ -17,6 +17,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -66,6 +67,15 @@ public class OrderItem extends BaseTimeEntity {
     @Column(name = "canceled_quantity", nullable = false)
     private long canceledQuantity = 0L;
 
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
+
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
+    @Column(name = "confirmation_reminder_sent_at")
+    private LocalDateTime confirmationReminderSentAt;
+
     @Column(name = "owned_coupon_id", nullable = false)
     private Long ownedCouponId = -1L;
 
@@ -112,8 +122,9 @@ public class OrderItem extends BaseTimeEntity {
         return quantity >= MIN_QUANTITY && quantity <= MAX_QUANTITY;
     }
 
-    void paid() {
+    void paid(final LocalDateTime paidAt) {
         status = OrderItemStatus.PAID;
+        this.paidAt = paidAt;
     }
 
     public void applyPaymentAllocation(final Long ownedCouponId, final CouponType couponType, final BigDecimal couponDiscountValue,
@@ -129,6 +140,32 @@ public class OrderItem extends BaseTimeEntity {
         this.couponMinOrderAmount = couponMinOrderAmount;
         this.couponMaxDiscountAmount = couponMaxDiscountAmount;
         this.usedPointAmount = usedPointAmount;
+    }
+
+    public void confirm(final LocalDateTime confirmedAt) {
+        if (confirmedAt == null || this.confirmedAt != null || isAllCanceled()
+            || (status != OrderItemStatus.PAID && status != OrderItemStatus.PARTIAL_CANCELED)) {
+            throw new CoreException(ErrorCode.ORDER_CANNOT_BE_CONFIRMED);
+        }
+        status = OrderItemStatus.CONFIRMED;
+        this.confirmedAt = confirmedAt;
+    }
+
+    public boolean isConfirmationDue(final LocalDateTime now) {
+        return isConfirmationEligible() && paidAt != null && !paidAt.plusDays(7).isAfter(now);
+    }
+
+    public boolean isConfirmationReminderDue(final LocalDateTime now) {
+        return isConfirmationEligible() && paidAt != null && confirmationReminderSentAt == null && paidAt.plusDays(6).compareTo(now) <= 0
+            && paidAt.plusDays(7).isAfter(now);
+    }
+
+    public boolean markConfirmationReminderSent(final LocalDateTime sentAt) {
+        if (sentAt == null || !isConfirmationReminderDue(sentAt)) {
+            return false;
+        }
+        confirmationReminderSentAt = sentAt;
+        return true;
     }
 
     public BigDecimal couponDiscountForRemainingQuantity() {
@@ -196,6 +233,10 @@ public class OrderItem extends BaseTimeEntity {
         final long largerUnitCount = division[1].longValueExact();
         final long largerUnitsInRange = Math.max(0L, Math.min(start + count, largerUnitCount) - start);
         return division[0].multiply(BigDecimal.valueOf(count)).add(BigDecimal.valueOf(largerUnitsInRange));
+    }
+
+    private boolean isConfirmationEligible() {
+        return confirmedAt == null && !isAllCanceled() && (status == OrderItemStatus.PAID || status == OrderItemStatus.PARTIAL_CANCELED);
     }
 
     public void cancel(final long cancelQuantity) {

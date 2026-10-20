@@ -8,6 +8,8 @@ import com.book.core.coupon.application.usecase.UseOwnedCouponUseCase;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
+import com.book.core.notification.application.command.CreateNotificationCommand;
+import com.book.core.notification.application.usecase.CreateNotificationUseCase;
 import com.book.core.payment.application.port.PaymentHistoryRepositoryPort;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.application.result.ApprovedPaymentResult;
@@ -32,6 +34,7 @@ public class CompletePaymentUseCase {
     private final DeductPointUseCase deductPointUseCase;
     private final CreateCancelBalanceUseCase createCancelBalanceUseCase;
     private final PaymentHistoryRepositoryPort paymentHistoryRepository;
+    private final CreateNotificationUseCase createNotificationUseCase;
 
     @Transactional
     public Long execute(final String orderKey, final ApprovedPaymentResult approval) {
@@ -53,6 +56,8 @@ public class CompletePaymentUseCase {
         createCancelBalanceUseCase.execute(order.id(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount());
         paymentHistoryRepository.save(new PaymentHistory(TransactionType.PAYMENT, payment.userId(), payment.orderId(), payment.id(),
             approval.paymentKey(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "결제 성공", payment.paidAt()));
+        createNotificationUseCase.execute(
+            new CreateNotificationCommand(payment.userId(), "결제가 완료되었습니다.", "주문 결제가 완료되었습니다.", "payment-success:" + payment.id()));
         log.info("결제 승인 처리를 마쳤습니다. paymentId={}, orderId={}, traceId={}", payment.id(), order.id(), MDC.get("traceId"));
         return payment.id();
     }

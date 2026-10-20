@@ -38,4 +38,45 @@ interface OrderJpaRepository extends JpaRepository<Order, Long> {
     List<Order> findPaidOrders(@Param("userId") final Long userId, @Param("status") final OrderStatus status,
         @Param("paidAtFrom") final LocalDateTime paidAtFrom, @Param("paidAtBefore") final LocalDateTime paidAtBefore,
         @Param("cursorPaidAt") final LocalDateTime cursorPaidAt, @Param("cursorId") final Long cursorId, final Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT orders FROM Order orders
+        WHERE orders.deletedAt IS NULL
+            AND orders.status IN :statuses
+            AND EXISTS (
+                SELECT item.id FROM OrderItem item
+                WHERE item.order = orders
+                    AND item.paidAt <= :paidAtBefore
+                    AND item.confirmedAt IS NULL
+                    AND item.canceledQuantity < item.quantity
+                    AND item.status IN (com.book.core.order.domain.OrderItemStatus.PAID,
+                        com.book.core.order.domain.OrderItemStatus.PARTIAL_CANCELED)
+            )
+        ORDER BY orders.paidAt ASC, orders.id ASC
+        """)
+    List<Order> findOrdersForAutoConfirmation(@Param("statuses") final List<OrderStatus> statuses,
+        @Param("paidAtBefore") final LocalDateTime paidAtBefore, final Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT orders FROM Order orders
+        WHERE orders.deletedAt IS NULL
+            AND orders.status IN :statuses
+            AND EXISTS (
+                SELECT item.id FROM OrderItem item
+                WHERE item.order = orders
+                    AND item.paidAt > :paidAtAfter
+                    AND item.paidAt <= :paidAtBefore
+                    AND item.confirmedAt IS NULL
+                    AND item.confirmationReminderSentAt IS NULL
+                    AND item.canceledQuantity < item.quantity
+                    AND item.status IN (com.book.core.order.domain.OrderItemStatus.PAID,
+                        com.book.core.order.domain.OrderItemStatus.PARTIAL_CANCELED)
+            )
+        ORDER BY orders.paidAt ASC, orders.id ASC
+        """)
+    List<Order> findOrdersForConfirmationReminder(@Param("statuses") final List<OrderStatus> statuses,
+        @Param("paidAtAfter") final LocalDateTime paidAtAfter, @Param("paidAtBefore") final LocalDateTime paidAtBefore,
+        final Pageable pageable);
 }

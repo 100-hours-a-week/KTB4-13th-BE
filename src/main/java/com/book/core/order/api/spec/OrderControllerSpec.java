@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -84,4 +85,17 @@ public interface OrderControllerSpec {
     ResponseEntity<com.book.common.response.ApiResponse<Void>> cancelOrder(@Parameter(hidden = true) final Long userId,
         @Parameter(in = ParameterIn.PATH, required = true, description = "주문 키") @NotBlank @Size(max = 255)
         @PathVariable("orderKey") final String orderKey);
+
+    @Operation(summary = "주문상품 구매 확정", description = "결제된 주문의 상품 하나를 확정하고 해당 상품의 일반 결제 금액 1%를 포인트로 적립합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "주문상품 구매 확정 완료"),
+        @ApiResponse(responseCode = "400", description = "이미 확정되었거나 취소된 상품 또는 결제되지 않은 주문"),
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"), @ApiResponse(responseCode = "403", description = "주문 소유자가 아님"),
+        @ApiResponse(responseCode = "404", description = "주문 또는 주문상품 없음")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> confirmOrderItem(@Parameter(hidden = true) final Long userId,
+        @Parameter(in = ParameterIn.PATH, required = true, description = "주문 키") @NotBlank @Size(max = 255)
+        @PathVariable("orderKey") final String orderKey,
+        @Parameter(in = ParameterIn.PATH, required = true, description = "주문상품 ID") @Positive
+        @PathVariable("orderItemId") final Long orderItemId);
 }

@@ -1,5 +1,7 @@
 package com.book.core.user.application.usecase;
 
+import com.book.core.notification.application.usecase.DeleteNotificationsForUserUseCase;
+import com.book.core.coupon.application.usecase.RetainSignupCouponReceiptUseCase;
 import com.book.core.user.application.port.UserProviderRepositoryPort;
 import com.book.core.user.application.port.UserRepositoryPort;
 import com.book.core.user.domain.User;
@@ -16,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class CompleteUserDeletionUseCase {
     private final UserRepositoryPort userRepository;
     private final UserProviderRepositoryPort userProviderRepository;
+    private final DeleteNotificationsForUserUseCase deleteNotificationsForUserUseCase;
+    private final RetainSignupCouponReceiptUseCase retainSignupCouponReceiptUseCase;
     private final Clock clock;
 
     @Transactional
@@ -31,6 +35,8 @@ public class CompleteUserDeletionUseCase {
         }
         providers.forEach(UserProvider::withdraw);
         user.completeWithdrawal();
+        retainSignupCouponReceiptUseCase.execute(userId, now);
+        deleteNotificationsForUserUseCase.execute(userId);
         return true;
     }
 }

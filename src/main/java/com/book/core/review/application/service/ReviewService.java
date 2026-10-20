@@ -4,6 +4,8 @@ import com.book.common.paging.Page;
 import com.book.core.point.application.usecase.DeductPointUseCase;
 import com.book.core.point.application.usecase.EarnPointUseCase;
 import com.book.core.point.domain.enums.PointType;
+import com.book.core.notification.application.command.CreateNotificationCommand;
+import com.book.core.notification.application.usecase.CreateNotificationUseCase;
 import com.book.core.review.application.command.AddReviewCommand;
 import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.core.review.application.command.RemoveReviewCommand;
@@ -22,9 +24,10 @@ import com.book.core.review.domain.enums.ReviewEventType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class ReviewService {
     private final GetReviewsUseCase getReviewsUseCase;
     private final AddReviewUseCase addReviewUseCase;
@@ -34,6 +37,15 @@ public class ReviewService {
     private final ReviewHistoryRecorder historyRecorder;
     private final EarnPointUseCase earnPointUseCase;
     private final DeductPointUseCase deductPointUseCase;
+    private final CreateNotificationUseCase createNotificationUseCase;
+
+    public ReviewService(final GetReviewsUseCase getReviewsUseCase, final AddReviewUseCase addReviewUseCase,
+        final UpdateReviewUseCase updateReviewUseCase, final DeleteReviewUseCase deleteReviewUseCase,
+        final ValidateReviewPolicyUseCase validateReviewPolicyUseCase, final ReviewHistoryRecorder historyRecorder,
+        final EarnPointUseCase earnPointUseCase, final DeductPointUseCase deductPointUseCase) {
+        this(getReviewsUseCase, addReviewUseCase, updateReviewUseCase, deleteReviewUseCase, validateReviewPolicyUseCase, historyRecorder,
+            earnPointUseCase, deductPointUseCase, null);
+    }
 
     public Page<ReviewItemResult> findReviews(final GetReviewsCommand command) {
         return getReviewsUseCase.execute(command.target(), command.offsetLimit());
@@ -46,6 +58,10 @@ public class ReviewService {
         historyRecorder.record(reviewId, ReviewEventType.CREATE);
         final ReviewProcessResult result = new ReviewProcessResult(reviewId, ReviewFormat.TEXT);
         earnPointUseCase.execute(command.userId(), PointType.REVIEW, result.id(), result.pointAmount());
+        if (createNotificationUseCase != null) {
+            createNotificationUseCase.execute(new CreateNotificationCommand(command.userId(), "리뷰 포인트가 적립되었습니다.",
+                result.pointAmount().stripTrailingZeros().toPlainString() + " 포인트를 적립했습니다.", "review-point-earned:" + reviewId));
+        }
         return result.id();
     }
 

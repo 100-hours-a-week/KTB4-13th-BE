@@ -7,6 +7,7 @@ import com.book.core.address.application.usecase.GetAddressUseCase;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.order.application.command.CancelOrderCommand;
+import com.book.core.order.application.command.ConfirmOrderItemCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
 import com.book.core.order.application.command.GetOrderCommand;
@@ -15,6 +16,7 @@ import com.book.core.order.application.result.CreateOrderResult;
 import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
+import com.book.core.order.application.usecase.ConfirmOrderItemUseCase;
 import com.book.core.order.application.usecase.CreateOrderUseCase;
 import com.book.core.order.application.usecase.GetOrderDetailUseCase;
 import com.book.core.order.application.usecase.GetOrdersUseCase;
@@ -29,17 +31,27 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class OrderService {
     private final GetAddressUseCase getAddressUseCase;
     private final GetCartUseCase getCartUseCase;
     private final GetProductDetailUseCase getProductDetailUseCase;
     private final CreateOrderUseCase createOrderUseCase;
     private final CancelOrderUseCase cancelOrderUseCase;
+    private final ConfirmOrderItemUseCase confirmOrderItemUseCase;
     private final GetOrdersUseCase getOrdersUseCase;
     private final GetOrderDetailUseCase getOrderDetailUseCase;
+
+    public OrderService(final GetAddressUseCase getAddressUseCase, final GetCartUseCase getCartUseCase,
+        final GetProductDetailUseCase getProductDetailUseCase, final CreateOrderUseCase createOrderUseCase,
+        final CancelOrderUseCase cancelOrderUseCase, final GetOrdersUseCase getOrdersUseCase,
+        final GetOrderDetailUseCase getOrderDetailUseCase) {
+        this(getAddressUseCase, getCartUseCase, getProductDetailUseCase, createOrderUseCase, cancelOrderUseCase, null, getOrdersUseCase,
+            getOrderDetailUseCase);
+    }
 
     public GetOrdersResult getOrders(final GetOrdersCommand command) {
         return getOrdersUseCase.execute(command);
@@ -51,6 +63,13 @@ public class OrderService {
 
     public void cancelOrder(final CancelOrderCommand command) {
         cancelOrderUseCase.execute(command);
+    }
+
+    public void confirmOrderItem(final ConfirmOrderItemCommand command) {
+        if (confirmOrderItemUseCase == null) {
+            throw new IllegalStateException("구매 확정 UseCase가 구성되지 않았습니다.");
+        }
+        confirmOrderItemUseCase.execute(command);
     }
 
     public CreateOrderResult createOrder(final CreateOrderCommand command) {

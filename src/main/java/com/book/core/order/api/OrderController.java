@@ -14,6 +14,7 @@ import com.book.core.order.application.service.OrderService;
 import com.book.core.order.domain.OrderStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
@@ -76,6 +77,15 @@ class OrderController implements OrderControllerSpec {
         @NotBlank @Size(max = 255) @PathVariable("orderKey") final String orderKey) {
         final CancelOrderCommand command = commandConverter.toCancelOrderCommand(userId, orderKey);
         orderService.cancelOrder(command);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @PostMapping("/{orderKey}/items/{orderItemId}/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmOrderItem(@UserId final Long userId,
+        @NotBlank @Size(max = 255) @PathVariable("orderKey") final String orderKey,
+        @Positive @PathVariable("orderItemId") final Long orderItemId) {
+        orderService.confirmOrderItem(commandConverter.toConfirmOrderItemCommand(userId, orderKey, orderItemId));
         return ResponseEntity.ok(ApiResponse.ok());
     }
 }

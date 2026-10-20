@@ -50,6 +50,19 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
     }
 
     @Override
+    public List<Order> findOrdersForAutoConfirmation(final LocalDateTime paidAtBefore, final int limit) {
+        return jpaRepository.findOrdersForAutoConfirmation(List.of(OrderStatus.PAID, OrderStatus.PARTIAL_CANCELED), paidAtBefore,
+            PageRequest.of(0, limit));
+    }
+
+    @Override
+    public List<Order> findOrdersForConfirmationReminder(final LocalDateTime paidAtAfter, final LocalDateTime paidAtBefore,
+        final int limit) {
+        return jpaRepository.findOrdersForConfirmationReminder(List.of(OrderStatus.PAID, OrderStatus.PARTIAL_CANCELED), paidAtAfter,
+            paidAtBefore, PageRequest.of(0, limit));
+    }
+
+    @Override
     public Optional<OrderItem> findActiveOrderItem(final Long orderItemId) {
         return orderItemJpaRepository.findByIdAndDeletedAtIsNullAndOrder_DeletedAtIsNull(orderItemId);
     }

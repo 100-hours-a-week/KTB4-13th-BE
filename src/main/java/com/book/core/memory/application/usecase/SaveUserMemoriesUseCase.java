@@ -24,13 +24,19 @@ public class SaveUserMemoriesUseCase {
         }
         final List<UserMemory> extracted =
             command.extractions().stream().map((final UserMemoryExtraction extraction) -> toMemory(command, extraction)).toList();
-        final List<UserMemory> deleted = userMemoryRepository.findDeletedByUserId(command.userId());
-        final List<UserMemory> memories =
-            extracted.stream().filter((final UserMemory memory) -> deleted.stream().noneMatch(memory::hasSameKeywordAs)).toList();
+        final List<UserMemory> memories = withoutDeletedKeywords(command.userId(), extracted);
 
         userMemoryRepository.deleteActiveByUserIdAndConversationId(command.userId(), command.conversationId());
         userMemoryRepository.saveAll(memories);
         return true;
+    }
+
+    private List<UserMemory> withoutDeletedKeywords(final Long userId, final List<UserMemory> extracted) {
+        if (extracted.isEmpty()) {
+            return extracted;
+        }
+        final List<UserMemory> deleted = userMemoryRepository.findDeletedByUserId(userId);
+        return extracted.stream().filter((final UserMemory memory) -> deleted.stream().noneMatch(memory::hasSameKeywordAs)).toList();
     }
 
     private UserMemory toMemory(final SaveUserMemoriesCommand command, final UserMemoryExtraction extraction) {

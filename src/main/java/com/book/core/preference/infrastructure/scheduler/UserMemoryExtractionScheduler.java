@@ -12,7 +12,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-// ⑥ 프로필 갱신과 ⑨ 추천 재생성이 연결되기 전에는 운영에서 켜지 않습니다.
 @Component
 @ConditionalOnProperty(name = "app.memory-extraction.enabled", havingValue = "true")
 @RequiredArgsConstructor

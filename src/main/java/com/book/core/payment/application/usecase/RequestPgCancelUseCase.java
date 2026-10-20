@@ -25,7 +25,7 @@ public class RequestPgCancelUseCase {
         if (amount.signum() == 0) {
             return new CanceledPaymentResult("", OffsetDateTime.now());
         }
-        final PgPaymentResult result = client.cancel(payment.externalPaymentKey(), amount, refundableAmount, idempotencyKey);
+        final PgPaymentResult result = client.cancel(payment.externalPaymentKey(), amount, idempotencyKey);
         final BigDecimal expectedBalance = refundableAmount.subtract(amount);
         if (result == null || !orderKey.equals(result.orderKey()) || !payment.externalPaymentKey().equals(result.paymentKey())
             || result.totalAmount() == null || result.totalAmount().compareTo(payment.paidAmount()) != 0 || result.balanceAmount() == null

@@ -36,6 +36,11 @@ import com.book.core.point.application.usecase.EarnPointUseCase;
 import com.book.core.point.domain.PointAmount;
 import com.book.core.point.domain.enums.PointType;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -52,14 +57,15 @@ class CancelUseCasesTest {
     private final EarnPointUseCase earn = mock(EarnPointUseCase.class);
     private final DeductPointUseCase deduct = mock(DeductPointUseCase.class);
     private final RecordPaymentHistoryUseCase histories = mock(RecordPaymentHistoryUseCase.class);
+    private final Clock clock = Clock.fixed(Instant.EPOCH, ZoneId.of("Asia/Seoul"));
 
     @Test
     void 전체취소는_쿠폰과_포인트를_복원하고_적립포인트를_회수하며_이력을_기록한다() {
         final Order order = order(3);
         final CancelBalance balance = prepare(order, 10L);
+        final OffsetDateTime pgCanceledAt = OffsetDateTime.parse("2026-10-20T01:00:00Z");
         assertThat(full().execute(new CancelAction("order"),
-            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", java.time.OffsetDateTime.now())))
-            .isEqualTo(5L);
+            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", pgCanceledAt))).isEqualTo(5L);
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
         assertThat(balance.cancellablePaidAmount()).isEqualByComparingTo("0");
         verify(coupons).execute(10L);
@@ -70,6 +76,7 @@ class CancelUseCasesTest {
         assertThat(capture.getValue().type()).isEqualTo(CancelType.ALL);
         assertThat(capture.getValue().orderItemId()).isEqualTo(-1L);
         assertThat(capture.getValue().canceledQuantity()).isEqualTo(-1L);
+        assertThat(capture.getValue().canceledAt()).isEqualTo(LocalDateTime.parse("2026-10-20T10:00:00"));
         final ArgumentCaptor<PaymentHistory> history = ArgumentCaptor.forClass(PaymentHistory.class);
         verify(histories).execute(history.capture());
         assertThat(history.getValue().type()).isEqualTo(TransactionType.CANCEL);
@@ -94,8 +101,9 @@ class CancelUseCasesTest {
         final Order order = order(3);
         prepare(order, -1L);
         final CancelCalculated calculated = new CancelCalculated(BigDecimal.valueOf(1000), BigDecimal.ZERO, BigDecimal.ZERO, false);
+        final OffsetDateTime pgCanceledAt = OffsetDateTime.parse("2026-10-20T01:00:00Z");
         partial().execute(new PartialCancelAction("order", 4L, 1L), calculated,
-            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", java.time.OffsetDateTime.now()));
+            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", pgCanceledAt));
         assertThat(order.status()).isEqualTo(OrderStatus.PARTIAL_CANCELED);
         assertThat(order.items().getFirst().canceledQuantity()).isEqualTo(1);
         verify(deduct).execute(1L, PointType.PAYMENT, 3L, PointAmount.PAYMENT);
@@ -105,6 +113,7 @@ class CancelUseCasesTest {
         assertThat(capture.getValue().type()).isEqualTo(CancelType.PARTIAL);
         assertThat(capture.getValue().orderItemId()).isEqualTo(4L);
         assertThat(capture.getValue().canceledPaidAmount()).isEqualByComparingTo("1000");
+        assertThat(capture.getValue().canceledAt()).isEqualTo(LocalDateTime.parse("2026-10-20T10:00:00"));
     }
 
     @Test
@@ -163,11 +172,11 @@ class CancelUseCasesTest {
     }
 
     private CancelPaymentUseCase full() {
-        return new CancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories);
+        return new CancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories, clock);
     }
 
     private PartialCancelPaymentUseCase partial() {
-        return new PartialCancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories, items);
+        return new PartialCancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories, items, clock);
     }
 
     private CancelBalance prepare(final Order order, final Long ownedCouponId) {

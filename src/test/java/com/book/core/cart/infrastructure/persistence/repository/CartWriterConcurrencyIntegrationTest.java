@@ -380,6 +380,7 @@ class CartWriterConcurrencyIntegrationTest {
                 INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity)
                 VALUES (?, ?, '상품', 20000, 18000, 10000, 500)
                 """, productId, productId);
+        jdbc.update("INSERT INTO product_inventory (product_id, on_hand_quantity) VALUES (?, ?)", productId, 500);
     }
 
     private void createItem(final long itemId, final long cartId, final long productId, final int quantity) {

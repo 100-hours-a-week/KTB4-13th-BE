@@ -1,14 +1,15 @@
-package com.book.core.inventory.domain;
+package com.book.core.product.domain;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import com.book.core.product.domain.Product;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,13 +21,17 @@ import lombok.experimental.Accessors;
 @Getter
 @Accessors(fluent = true)
 public class ProductInventory {
+    public static final int INITIAL_ON_HAND_QUANTITY = 20;
+    public static final int DEFAULT_REORDER_POINT = 3;
+    public static final int DEFAULT_TARGET_STOCK = 20;
+
     @Id
-    @Column(name = "product_id", nullable = false)
+    @Column(name = "product_id")
     private Long productId;
 
+    @MapsId
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "product_id", insertable = false, updatable = false,
-        foreignKey = @ForeignKey(name = "fk_product_inventory_product"))
+    @JoinColumn(name = "product_id")
     private Product product;
 
     @Column(name = "on_hand_quantity", nullable = false)
@@ -41,24 +46,25 @@ public class ProductInventory {
     @Column(name = "target_stock", nullable = false)
     private int targetStock;
 
-    public ProductInventory(final Long productId, final int onHandQuantity, final int reservedQuantity,
-        final int reorderPoint, final int targetStock) {
-        if (productId == null || productId <= 0 || onHandQuantity < 0 || reservedQuantity < 0
-            || reservedQuantity > onHandQuantity || reorderPoint < 0 || targetStock <= reorderPoint) {
-            throw new IllegalArgumentException("유효하지 않은 상품 재고 정보입니다.");
+    ProductInventory(final Product product, final int onHandQuantity) {
+        if (product == null || onHandQuantity < 0) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        this.productId = productId;
+        this.product = product;
         this.onHandQuantity = onHandQuantity;
-        this.reservedQuantity = reservedQuantity;
-        this.reorderPoint = reorderPoint;
-        this.targetStock = targetStock;
-    }
-
-    public static ProductInventory initial(final Long productId) {
-        return new ProductInventory(productId, 20, 0, 3, 20);
+        this.reorderPoint = DEFAULT_REORDER_POINT;
+        this.targetStock = DEFAULT_TARGET_STOCK;
     }
 
     public int availableQuantity() {
         return onHandQuantity - reservedQuantity;
+    }
+
+    public boolean needsRestock() {
+        return onHandQuantity <= reorderPoint;
+    }
+
+    public int restockQuantity() {
+        return targetStock - onHandQuantity;
     }
 }

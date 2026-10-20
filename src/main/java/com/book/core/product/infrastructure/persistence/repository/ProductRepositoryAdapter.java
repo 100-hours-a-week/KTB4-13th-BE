@@ -1,8 +1,5 @@
 package com.book.core.product.infrastructure.persistence.repository;
 
-import com.book.core.inventory.application.port.ProductInventoryRepositoryPort;
-import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorCode;
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.CartChangeProductRepositoryPort;
@@ -28,7 +25,6 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort, CartChan
     private final ProductJpaRepository jpaRepository;
     private final ProductQueryRepository queryRepository;
     private final EntityManager entityManager;
-    private final ProductInventoryRepositoryPort inventoryRepository;
 
     @Override
     public Map<Long, CartChangeProductResult> findByIdsForChange(final List<Long> productIds) {
@@ -37,16 +33,9 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort, CartChan
         }
         final List<Product> found = jpaRepository.findByIdInWithBook(productIds);
         final Map<Long, CartChangeProductResult> products = new LinkedHashMap<>();
-        final Map<Long, Integer> quantities = new java.util.HashMap<>();
-        inventoryRepository.findByProductIds(found.stream().map(Product::id).toList())
-            .forEach(inventory -> quantities.put(inventory.productId(), inventory.availableQuantity()));
         for (final Product product : found.stream().sorted(Comparator.comparing(Product::id)).toList()) {
             entityManager.lock(product, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
-            final Integer availableQuantity = quantities.get(product.id());
-            if (availableQuantity == null) {
-                throw new CoreException(ErrorCode.ORDER_DATA_INCONSISTENT);
-            }
-            products.put(product.id(), new CartChangeProductResult(product.id(), product.discountedPrice(), availableQuantity,
+            products.put(product.id(), new CartChangeProductResult(product.id(), product.discountedPrice(), product.stockQuantity(),
                 product.isActive() && product.book().isActive()));
         }
         for (final Product product : found.stream().sorted(Comparator.comparing((final Product value) -> value.book().id())).toList()) {

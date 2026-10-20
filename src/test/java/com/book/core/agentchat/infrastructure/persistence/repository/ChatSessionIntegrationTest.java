@@ -273,5 +273,6 @@ class ChatSessionIntegrationTest {
             INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity, created_at, updated_at)
             VALUES (?, ?, '상품', 15000, 12000, 9000, 10, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
             """, userId, userId);
+        jdbc.update("INSERT INTO product_inventory (product_id, on_hand_quantity) VALUES (?, ?)", userId, 10);
     }
 }

@@ -115,6 +115,7 @@ class ShoppingAgentChatIntegrationTest {
             userId, ISBN);
         jdbc.update("INSERT INTO products (id,book_id,name,sale_price,discounted_price,cost_price,stock_quantity) "
             + "VALUES (?,?,'상품',15000,12000,9000,3)", userId, userId);
+        jdbc.update("INSERT INTO product_inventory (product_id, on_hand_quantity) VALUES (?, ?)", userId, 3);
         sessionId = chats.create(userId);
         when(ai.chat(any(), anyLong(), anyLong(), any())).thenAnswer((final InvocationOnMock call) -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();

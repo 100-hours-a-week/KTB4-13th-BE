@@ -2,6 +2,7 @@ package com.book.core.product.domain;
 
 import com.book.common.domain.BaseEntity;
 import com.book.core.book.domain.Book;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -44,8 +45,9 @@ public class Product extends BaseEntity {
     @Column(name = "cost_price", nullable = false, precision = 19, scale = 2)
     private BigDecimal costPrice;
 
-    @Column(name = "stock_quantity", nullable = false)
-    private Integer stockQuantity;
+    @Getter(AccessLevel.NONE)
+    @OneToOne(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    private ProductInventory inventory;
 
     public Product(final Long id, final Book book, final String name, final String thumbnailUrl, final BigDecimal salePrice,
         final BigDecimal discountedPrice, final BigDecimal costPrice, final Integer stockQuantity) {
@@ -56,6 +58,13 @@ public class Product extends BaseEntity {
         this.salePrice = salePrice;
         this.discountedPrice = discountedPrice;
         this.costPrice = costPrice;
-        this.stockQuantity = stockQuantity;
+        this.inventory = new ProductInventory(this, stockQuantity);
+    }
+
+    public Integer stockQuantity() {
+        if (inventory == null) {
+            return 0;
+        }
+        return inventory.availableQuantity();
     }
 }

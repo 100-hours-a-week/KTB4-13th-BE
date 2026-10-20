@@ -120,6 +120,7 @@ class ShoppingQueryCountIntegrationTest {
                 + "VALUES (?, '책', '작가', '출판사', '소설', '2026-01-01')", id);
             jdbc.update("INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity) "
                 + "VALUES (?, ?, '상품', 20000, 18000, 10000, 50)", id, id);
+            jdbc.update("INSERT INTO product_inventory (product_id, on_hand_quantity) VALUES (?, ?)", id, 50);
         }
         return ids;
     }

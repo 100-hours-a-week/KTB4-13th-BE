@@ -9,5 +9,7 @@ public interface ProductInventoryRepositoryPort {
 
     boolean restore(final Long productId, final int quantity);
 
+    boolean receive(final Long productId, final int quantity);
+
     int initializeMissing();
 }

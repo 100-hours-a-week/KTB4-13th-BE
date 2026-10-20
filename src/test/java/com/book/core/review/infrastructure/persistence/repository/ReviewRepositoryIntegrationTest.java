@@ -1,5 +1,7 @@
 package com.book.core.review.infrastructure.persistence.repository;
 
+import com.book.common.paging.Page;
+import com.book.core.review.application.result.ReviewItemResult;
 import com.book.core.review.domain.ReviewContent;
 import com.book.core.review.domain.ReviewKey;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -99,21 +101,24 @@ class ReviewRepositoryIntegrationTest {
         for (int index = 0; index < 6; index++) {
             activeIds.add(saveReview(9601L, "활성 " + index).id());
         }
-        final var deleted = saveReview(9601L, "삭제");
+        final Review deleted = saveReview(9601L, "삭제");
         deleted.delete();
         reviewRepository.save(deleted);
         saveReview(9602L, "다른 상품");
 
-        final var page = reviewRepository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 9601L), new OffsetLimit(3, 2));
+        final Page<ReviewItemResult> page =
+            reviewRepository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 9601L), new OffsetLimit(3, 2));
         assertThat(page.content()).extracting(item -> item.id()).containsExactly(activeIds.get(2), activeIds.get(1));
         assertThat(page.content()).allSatisfy(item -> {
             assertThat(item.target().type()).isEqualTo(ReviewTargetType.PRODUCT);
             assertThat(item.target().id()).isEqualTo(9601L);
             assertThat(item.isSpoiler()).isTrue();
+            assertThat(item.userId()).isEqualTo(42L);
         });
         assertThat(page.hasNext()).isTrue();
 
-        final var last = reviewRepository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 9601L), new OffsetLimit(5, 2));
+        final Page<ReviewItemResult> last =
+            reviewRepository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 9601L), new OffsetLimit(5, 2));
         assertThat(last.content()).extracting(item -> item.id()).containsExactly(activeIds.getFirst());
         assertThat(last.hasNext()).isFalse();
         assertThat(reviewRepository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 9601L), new OffsetLimit(6, 2)).content())
@@ -126,11 +131,11 @@ class ReviewRepositoryIntegrationTest {
         insertBook(19702L);
         insertProduct(19801L, 19701L);
         insertProduct(19802L, 19702L);
-        final var cutoff = LocalDateTime.of(2026, 10, 12, 9, 0).minusDays(7);
-        final var eligible = saveOrderItem(19801L, "기간 경계");
-        final var old = saveOrderItem(19801L, "기간 초과");
-        final var other = saveOrderItem(19802L, "다른 대상");
-        final var deleted = saveOrderItem(19801L, "삭제 주문상품");
+        final LocalDateTime cutoff = LocalDateTime.of(2026, 10, 12, 9, 0).minusDays(7);
+        final Long eligible = saveOrderItem(19801L, "기간 경계");
+        final Long old = saveOrderItem(19801L, "기간 초과");
+        final Long other = saveOrderItem(19802L, "다른 대상");
+        final Long deleted = saveOrderItem(19801L, "삭제 주문상품");
         markPaid(eligible, cutoff);
         jdbc.update("UPDATE orders SET created_at = ? WHERE id = (SELECT order_id FROM order_item WHERE id = ?)", cutoff.minusDays(30),
             eligible);
@@ -158,7 +163,7 @@ class ReviewRepositoryIntegrationTest {
     private Long saveOrderItem(final Long productId, final String orderNumber) {
         final Order order = Order.create(42L, orderNumber, null);
         order.addItem(productId, "리뷰 테스트 상품", null, "저자", new BigDecimal("20.00"), new BigDecimal("17.25"), 1);
-        final var saved = orderRepository.save(order);
+        final Order saved = orderRepository.save(order);
         return jdbc.queryForObject("SELECT id FROM order_item WHERE order_id = ?", Long.class, saved.id());
     }
 

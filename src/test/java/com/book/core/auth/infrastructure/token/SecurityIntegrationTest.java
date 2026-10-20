@@ -140,7 +140,7 @@ class SecurityIntegrationTest {
     @Test
     void 만료된_Access_Token은_401을_응답한다() throws Exception {
         final Instant expiredIssuedAt = Instant.now().minus(Duration.ofHours(2));
-        final var expiredIssuer = new JwtTokenIssuer(jwtEncoder, properties, Clock.fixed(expiredIssuedAt, ZoneOffset.UTC));
+        final JwtTokenIssuer expiredIssuer = new JwtTokenIssuer(jwtEncoder, properties, Clock.fixed(expiredIssuedAt, ZoneOffset.UTC));
 
         assertUnauthorized(expiredIssuer.issue(USER_ID).accessToken());
     }
@@ -151,19 +151,19 @@ class SecurityIntegrationTest {
         Arrays.fill(otherSecretBytes, (byte) 1);
         final SecretKey otherSecretKey = new SecretKeySpec(otherSecretBytes, "HmacSHA512");
         final JwtEncoder otherEncoder = NimbusJwtEncoder.withSecretKey(otherSecretKey).algorithm(MacAlgorithm.HS512).build();
-        final var otherIssuer = new JwtTokenIssuer(otherEncoder, properties, Clock.systemUTC());
+        final JwtTokenIssuer otherIssuer = new JwtTokenIssuer(otherEncoder, properties, Clock.systemUTC());
 
         assertUnauthorized(otherIssuer.issue(USER_ID).accessToken());
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행"})
+    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행", "/api/v1/reviews"})
     void 공개_조회_API는_Token_없이_Controller까지_도달한다(final String path) throws Exception {
         mvc.perform(get(path)).andExpect(status().isOk()).andExpect(jsonPath("$.result").value("PUBLIC"));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행"})
+    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행", "/api/v1/reviews"})
     void 공개_조회_API는_유효한_Access_Token으로도_요청할_수_있다(final String path) throws Exception {
         final String accessToken = tokenIssuer.issue(USER_ID).accessToken();
 
@@ -208,6 +208,16 @@ class SecurityIntegrationTest {
             .andExpect(jsonPath("$.message").value("인증 정보가 유효하지 않습니다.")).andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 
+    @Test
+    void 리뷰_조회도_잘못된_토큰을_익명으로_처리하지_않는다() throws Exception {
+        mvc.perform(get("/api/v1/reviews").header(HttpHeaders.AUTHORIZATION, bearer("invalid-token"))).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 리뷰_작성은_비로그인_요청을_거부한다() throws Exception {
+        mvc.perform(post("/api/v1/reviews")).andExpect(status().isUnauthorized());
+    }
+
     private void assertUnauthorized(final String token) throws Exception {
         mvc.perform(get("/test/protected").header(HttpHeaders.AUTHORIZATION, bearer(token))).andExpect(status().isUnauthorized())
             .andExpect(header().exists("X-Trace-Id")).andExpect(jsonPath("$.success").value(false))
@@ -226,7 +236,7 @@ class SecurityIntegrationTest {
             return Map.of("result", "SUCCESS");
         }
 
-        @GetMapping({"/api/v1/items", "/api/v1/categories", "/api/v1/products/{productId}", "/api/v1/search"})
+        @GetMapping({"/api/v1/items", "/api/v1/categories", "/api/v1/products/{productId}", "/api/v1/search", "/api/v1/reviews"})
         Map<String, String> publicReadEndpoint() {
             return Map.of("result", "PUBLIC");
         }

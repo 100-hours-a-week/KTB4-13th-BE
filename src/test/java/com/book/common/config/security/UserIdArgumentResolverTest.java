@@ -40,6 +40,18 @@ class UserIdArgumentResolverTest {
             .isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void 선택적_회원_ID는_비로그인일_때_null을_반환한다() throws Exception {
+        assertThat(resolver.resolveArgument(parameter("optionalUserId", Long.class), null, null, null)).isNull();
+    }
+
+    @Test
+    void 선택적_회원_ID도_인증된_JWT의_사용자를_반환한다() throws Exception {
+        final Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "none").subject("42").build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+        assertThat(resolver.resolveArgument(parameter("optionalUserId", Long.class), null, null, null)).isEqualTo(42L);
+    }
+
     private MethodParameter parameter(final String methodName, final Class<?> parameterType) throws NoSuchMethodException {
         final Method method = ResolverMethods.class.getDeclaredMethod(methodName, parameterType);
         return new MethodParameter(method, 0);
@@ -47,6 +59,8 @@ class UserIdArgumentResolverTest {
 
     private static class ResolverMethods {
         void userId(@UserId final Long userId) {}
+
+        void optionalUserId(@UserId(required = false) final Long userId) {}
 
         void unannotated(final Long userId) {}
 

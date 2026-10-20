@@ -166,9 +166,10 @@ class ReviewControllerTest {
 
     @Test
     void 회원은_대상별_리뷰_페이지를_조회할_수_있다() throws Exception {
-        final var target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
-        final var paging = new OffsetLimit(3, 2);
-        final var item = new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문", true);
+        final ReviewTarget target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
+        final OffsetLimit paging = new OffsetLimit(3, 2);
+        final ReviewItemResult item =
+            new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문", true, 42L);
         when(reviewService.findReviews(new GetReviewsCommand(target, paging))).thenReturn(new Page<>(List.of(item), true));
 
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("offset", "3").param("limit", "2"))
@@ -176,15 +177,16 @@ class ReviewControllerTest {
             .andExpect(jsonPath("$.data.content[0].targetType").value("PRODUCT"))
             .andExpect(jsonPath("$.data.content[0].targetId").value(10)).andExpect(jsonPath("$.data.content[0].rate").value(4.5))
             .andExpect(jsonPath("$.data.content[0].isSpoiler").value(true)).andExpect(jsonPath("$.data.content[0].content").value("본문"))
-            .andExpect(jsonPath("$.data.content[0].userId").doesNotExist()).andExpect(jsonPath("$.data.hasNext").value(true));
+            .andExpect(jsonPath("$.data.content[0].isMyReview").value(false)).andExpect(jsonPath("$.data.content[0].userId").doesNotExist())
+            .andExpect(jsonPath("$.data.hasNext").value(true));
 
         verify(reviewService).findReviews(new GetReviewsCommand(target, paging));
     }
 
     @Test
     void 리뷰가_없으면_회원에게_빈_페이지를_반환한다() throws Exception {
-        final var target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
-        final var paging = new OffsetLimit(0, 20);
+        final ReviewTarget target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
+        final OffsetLimit paging = new OffsetLimit(0, 20);
         when(reviewService.findReviews(new GetReviewsCommand(target, paging))).thenReturn(new Page<>(List.of(), false));
 
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10")).andExpect(status().isOk())
@@ -202,6 +204,21 @@ class ReviewControllerTest {
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("limit", "101"))
             .andExpect(status().isBadRequest());
         verifyNoInteractions(reviewService);
+    }
+
+    @Test
+    void 인증_회원은_본인과_타인의_리뷰를_구분하며_요청한_회원_ID는_무시한다() throws Exception {
+        authenticateAs(42L);
+        final ReviewTarget target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
+        final ReviewItemResult own = new ReviewItemResult(8L, target, new BigDecimal("4.5"), "본인", false, 42L);
+        final ReviewItemResult other = new ReviewItemResult(9L, target, new BigDecimal("4.0"), "타인", true, 99L);
+        when(reviewService.findReviews(new GetReviewsCommand(target, new OffsetLimit(0, 20))))
+            .thenReturn(new Page<>(List.of(own, other), false));
+
+        mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10").param("userId", "99"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[0].isMyReview").value(true))
+            .andExpect(jsonPath("$.data.content[1].isMyReview").value(false))
+            .andExpect(jsonPath("$.data.content[0].userId").doesNotExist());
     }
 
     private void authenticateAs(final Long userId) {

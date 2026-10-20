@@ -504,33 +504,40 @@ CREATE TEMPORARY TABLE onboarding_candidate_seed_validation (
     is_valid TINYINT NOT NULL CHECK (is_valid = 1)
 );
 INSERT INTO onboarding_candidate_seed_validation (is_valid)
+SELECT IF(COUNT(*) = 490, 1, 0)
+FROM onboarding_candidate_seed;
+INSERT INTO onboarding_candidate_seed_validation (is_valid)
+SELECT IF(COUNT(DISTINCT subcategory_code) = 49, 1, 0)
+FROM onboarding_candidate_seed;
+INSERT INTO onboarding_candidate_seed_validation (is_valid)
 SELECT IF(
-    (SELECT COUNT(*) FROM onboarding_candidate_seed) = 490
-    AND (SELECT COUNT(DISTINCT subcategory_code) FROM onboarding_candidate_seed) = 49
-    AND (
-        SELECT COUNT(*)
-        FROM onboarding_candidate_seed seed
-        JOIN books ON books.id = seed.book_id
-          AND CAST(books.title AS BINARY) = CAST(seed.title AS BINARY)
-    ) = 490
-    AND (
-        SELECT COUNT(DISTINCT options.code)
-        FROM onboarding_candidate_seed seed
-        JOIN onboarding_options options
-          ON options.onboarding_questions_id = 4
-         AND options.code = seed.subcategory_code
-    ) = 49
-    AND NOT EXISTS (
-        SELECT 1
-        FROM onboarding_candidate_seed seed
-        JOIN onboarding_book_candidates candidate
-          ON candidate.subcategory_code = seed.subcategory_code
-         AND candidate.book_id = seed.book_id
-        WHERE candidate.display_order <> seed.display_order
-    ),
+    COUNT(*) = 10
+    AND MIN(display_order) = 1
+    AND MAX(display_order) = 10
+    AND COUNT(DISTINCT display_order) = 10,
     1,
     0
-);
+)
+FROM onboarding_candidate_seed
+GROUP BY subcategory_code;
+INSERT INTO onboarding_candidate_seed_validation (is_valid)
+SELECT IF(COUNT(*) = 490, 1, 0)
+FROM onboarding_candidate_seed seed
+JOIN books ON books.id = seed.book_id
+  AND CAST(books.title AS BINARY) = CAST(seed.title AS BINARY);
+INSERT INTO onboarding_candidate_seed_validation (is_valid)
+SELECT IF(COUNT(DISTINCT options.code) = 49, 1, 0)
+FROM onboarding_candidate_seed seed
+JOIN onboarding_options options
+  ON options.onboarding_questions_id = 4
+ AND options.code = seed.subcategory_code;
+INSERT INTO onboarding_candidate_seed_validation (is_valid)
+SELECT IF(COUNT(*) = 0, 1, 0)
+FROM onboarding_candidate_seed seed
+JOIN onboarding_book_candidates candidate
+  ON candidate.subcategory_code = seed.subcategory_code
+ AND candidate.book_id = seed.book_id
+WHERE candidate.display_order <> seed.display_order;
 
 INSERT INTO onboarding_book_candidates (subcategory_code, book_id, display_order)
 SELECT seed.subcategory_code, seed.book_id, seed.display_order

@@ -42,6 +42,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import com.book.core.recommendation.application.command.GetRecommendationCardCommand;
+import com.book.core.recommendation.application.usecase.GetRecommendationCardUseCase;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,6 +74,8 @@ class ChatSessionIntegrationTest {
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
     @Autowired
     private ChatSessionService service;
+    @Autowired
+    private GetRecommendationCardUseCase getCard;
     @Autowired
     private BeginChatRequestUseCase begin;
     @Autowired
@@ -146,6 +152,27 @@ class ChatSessionIntegrationTest {
         Mockito.doReturn(response("새 답변")).when(ai).chat(any());
         service.send(command("new", "다음 질문"));
         assertThat(service.history(new GetChatHistoryCommand(userId, sessionId, 0, 100))).hasSize(2);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   ", "긴 추천 이유"})
+    void 긴_이유의_부재와_기존_문자열을_저장하고_상세_및_과거_응답으로_복원한다(final String reason) {
+        createProduct();
+        when(ai.chat(any())).thenReturn(new AiRecommendationChatResult(Map.of("intent", "semantic"), "추천합니다",
+            List.of(new AiRecommendationCard(userId, 93, "짧은 이유", reason)), null, List.of(), false));
+        final SendChatMessageCommand request = command("nullable-reason", "추천해 줘");
+
+        final ChatResponseSnapshot sent = service.send(request);
+        final Long cardId = sent.cards().getFirst().recommendationCardId();
+
+        assertThat(sent.cards().getFirst().reasonLong()).isEqualTo(reason);
+        assertThat(getCard.execute(new GetRecommendationCardCommand(userId, cardId)).reasonLong()).isEqualTo(reason);
+        assertThat(jdbc.queryForObject("SELECT reason_long FROM recommendation_cards WHERE id = ?", String.class, cardId))
+            .isEqualTo(reason);
+        assertThat(service.history(new GetChatHistoryCommand(userId, sessionId, 0, 100)).getLast().response()).isEqualTo(sent);
+        assertThat(service.send(request)).isEqualTo(sent);
+        verify(ai, times(1)).chat(any());
     }
 
     @Test

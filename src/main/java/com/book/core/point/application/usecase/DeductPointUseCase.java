@@ -3,7 +3,6 @@ package com.book.core.point.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.common.filter.RequestMdcFilter;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.application.port.PointHistoryRepositoryPort;
 import com.book.core.point.domain.PointBalance;
@@ -12,7 +11,6 @@ import com.book.core.point.domain.enums.PointType;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
 import org.springframework.transaction.annotation.Transactional;
 
 @UseCase
@@ -25,12 +23,11 @@ public class DeductPointUseCase {
     @Transactional
     public void execute(final Long userId, final PointType type, final Long referenceId, final BigDecimal amount) {
         if (amount.compareTo(BigDecimal.ZERO) == 0) {
-            log.debug("금액이 0이어서 포인트 차감을 생략합니다. type={}, referenceId={}, requestId={}", type, referenceId,
-                MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
+            log.atDebug().addKeyValue("referenceId", referenceId).log("[POINT] 금액이 0이어서 포인트 차감을 생략합니다. type={}, referenceId={}", type,
+                referenceId);
             return;
         }
-        log.debug("포인트 차감 처리를 시작합니다. type={}, referenceId={}, requestId={}", type, referenceId,
-            MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
+        log.atDebug().addKeyValue("referenceId", referenceId).log("[POINT] 포인트 차감 처리를 시작합니다. type={}, referenceId={}", type, referenceId);
 
         final PointBalance balance =
             pointBalanceRepository.findByUserId(userId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
@@ -38,7 +35,6 @@ public class DeductPointUseCase {
         balance.apply(deductedAmount);
         pointHistoryRepository.save(PointHistory.builder().userId(userId).type(type).referenceId(referenceId).amount(deductedAmount)
             .balanceAfter(balance.balance()).build());
-        log.info("포인트 차감 처리를 마쳤습니다. type={}, referenceId={}, requestId={}", type, referenceId,
-            MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
+        log.atInfo().addKeyValue("referenceId", referenceId).log("[POINT] 포인트 차감 처리를 마쳤습니다. type={}, referenceId={}", type, referenceId);
     }
 }

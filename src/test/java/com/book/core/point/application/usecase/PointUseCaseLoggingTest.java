@@ -77,7 +77,8 @@ class PointUseCaseLoggingTest {
 
         assertThat(appender.list).singleElement().satisfies((final var event) -> {
             assertThat(event.getLevel()).isEqualTo(Level.DEBUG);
-            assertThat(event.getFormattedMessage()).isEqualTo("포인트 조회를 시작합니다. requestId=point-test-request");
+            assertThat(event.getFormattedMessage()).isEqualTo("[POINT] 포인트 조회를 시작합니다.");
+            assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "point-test-request");
         });
     }
 
@@ -91,9 +92,11 @@ class PointUseCaseLoggingTest {
         assertThat(appender.list).extracting(ILoggingEvent::getLevel).containsExactly(Level.DEBUG, Level.INFO);
         assertThat(appender.list.getFirst().getFormattedMessage()).contains("처리를 시작합니다.");
         assertThat(appender.list.getLast().getFormattedMessage()).contains("처리를 마쳤습니다.");
-        assertThat(appender.list).allSatisfy((final var event) -> assertThat(event.getFormattedMessage())
-            .contains("type=REVIEW", "referenceId=10", "requestId=point-test-request")
-            .doesNotContain("traceId=", "123.45", "amount=", "balanceAfter=", "userId="));
+        assertThat(appender.list).allSatisfy((final var event) -> {
+            assertThat(event.getFormattedMessage()).contains("[POINT]", "type=REVIEW", "referenceId=10").doesNotContain("requestId=",
+                "traceId=", "123.45", "amount=", "balanceAfter=", "userId=");
+            assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "point-test-request");
+        });
     }
 
     @ParameterizedTest
@@ -104,8 +107,8 @@ class PointUseCaseLoggingTest {
         verifyNoInteractions(balances, histories);
         assertThat(appender.list).singleElement().satisfies((final var event) -> {
             assertThat(event.getLevel()).isEqualTo(Level.DEBUG);
-            assertThat(event.getFormattedMessage()).contains("생략합니다.", "requestId=point-test-request").doesNotContain("traceId=",
-                "처리를 시작합니다.");
+            assertThat(event.getFormattedMessage()).contains("[POINT]", "생략합니다.").doesNotContain("requestId=", "traceId=", "처리를 시작합니다.");
+            assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "point-test-request");
         });
     }
 

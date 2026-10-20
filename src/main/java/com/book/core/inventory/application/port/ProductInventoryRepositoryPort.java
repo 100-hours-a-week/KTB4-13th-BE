@@ -5,4 +5,6 @@ import java.util.List;
 
 public interface ProductInventoryRepositoryPort {
     List<ProductInventory> findByProductIds(List<Long> productIds);
+
+    ProductInventory save(ProductInventory inventory);
 }

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
@@ -23,6 +25,7 @@ import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.application.service.PaymentService;
 import com.book.core.payment.application.usecase.CompletePaymentUseCase;
+import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
 import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.enums.PaymentMethod;
 import com.book.core.payment.domain.enums.PaymentState;
@@ -85,6 +88,8 @@ class TossPaymentRecoveryIntegrationTest {
     }
 
     @Autowired
+    private com.book.core.order.application.usecase.CancelOrderUseCase cancelOrder;
+    @Autowired
     private PaymentService payments;
     @Autowired
     private CancelService cancels;
@@ -104,6 +109,8 @@ class TossPaymentRecoveryIntegrationTest {
     private CompletePaymentUseCase completePayment;
     @MockitoSpyBean
     private CancelPaymentUseCase completeCancel;
+    @MockitoSpyBean
+    private PostProcessPaymentUseCase postProcessPayment;
 
     @Test
     void 승인_성공후_DB실패는_요청을_보존하고_조회로_내부_반영을_복구한다() {
@@ -114,6 +121,9 @@ class TossPaymentRecoveryIntegrationTest {
         assertThatThrownBy(() -> payments.success(command)).isInstanceOf(CoreException.class);
         assertThat(fixture.pg().approvals).isEqualTo(1);
         assertThat(pending(fixture)).isEqualTo(1L);
+        assertThatThrownBy(() -> cancelOrder
+            .execute(new com.book.core.order.application.command.CancelOrderCommand(fixture.order().userId(), fixture.order().key())))
+            .isInstanceOfSatisfying(CoreException.class, error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
         assertThat(orders.findActiveOrderByKey(fixture.order().key()).orElseThrow().status()).isEqualTo(OrderStatus.CREATED);
         final Long result = payments.success(command);
         assertThat(payments.success(command)).isEqualTo(result);
@@ -122,6 +132,7 @@ class TossPaymentRecoveryIntegrationTest {
         assertThat(jdbc.queryForObject("select count(*) from transaction_history where order_id = ? and type = 'PAYMENT'", Long.class,
             fixture.order().id())).isEqualTo(1L);
         assertThat(points.findByUserId(fixture.order().userId()).orElseThrow().balance()).isEqualByComparingTo("22000");
+        verify(postProcessPayment, times(1)).execute(result, fixture.order().key());
     }
 
     @Test
@@ -208,6 +219,22 @@ class TossPaymentRecoveryIntegrationTest {
         assertThatThrownBy(() -> cancels.partialCancel(command)).isInstanceOfSatisfying(CoreException.class,
             error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REVIEW_REQUIRED));
         assertThat(fixture.pg().refunds).isEqualTo(1);
+    }
+
+    @Test
+    void 만료된_PG승인은_거절로_기록하고_새_결제키의_승인을_허용한다() {
+        final Fixture fixture = fixture(false, 1);
+        fixture.pg().terminalState = "EXPIRED";
+        final var failed = new ApprovePaymentCommand(fixture.order().key(), fixture.key(), fixture.pg().total);
+        assertThatThrownBy(() -> payments.success(failed)).isInstanceOfSatisfying(CoreException.class,
+            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
+        assertThat(pending(fixture)).isZero();
+        final String newKey = "pg-" + UUID.randomUUID();
+        final GatewayPayment replacement = new GatewayPayment(fixture.order().key(), newKey, fixture.pg().total, false);
+        gateway.put(newKey, replacement);
+        payments.success(new ApprovePaymentCommand(fixture.order().key(), newKey, fixture.pg().total));
+        assertThat(replacement.approvals).isEqualTo(1);
+        assertThat(fixture.pg().approvals).isZero();
     }
 
     private long pending(final Fixture fixture) {
@@ -351,6 +378,7 @@ class TossPaymentRecoveryIntegrationTest {
         private final BigDecimal total;
         private BigDecimal balance;
         private boolean paid;
+        private String terminalState;
         private int approvals;
         private int refunds;
         private volatile boolean dropResponse;
@@ -375,6 +403,9 @@ class TossPaymentRecoveryIntegrationTest {
             }
             if (balance.signum() == 0) {
                 state = "CANCELED";
+            }
+            if (terminalState != null) {
+                state = terminalState;
             }
             return "{\"paymentKey\":\"" + key + "\",\"orderId\":\"" + orderKey + "\",\"totalAmount\":" + total + ",\"balanceAmount\":"
                 + balance + ",\"status\":\"" + state + "\",\"method\":\"카드\",\"card\":{\"approveNo\":\"12345678\"},\"cancels\":["

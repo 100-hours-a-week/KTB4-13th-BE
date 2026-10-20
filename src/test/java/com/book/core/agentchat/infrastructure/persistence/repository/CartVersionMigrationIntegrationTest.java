@@ -33,7 +33,6 @@ class CartVersionMigrationIntegrationTest {
             INSERT INTO products (book_id, name, sale_price, discounted_price, cost_price, stock_quantity)
             VALUES (1, 'migration product', 12000, 10000, 8000, 5)
             """);
-        jdbc.update("INSERT INTO product_inventory (product_id, on_hand_quantity) VALUES (?, ?)", 1L, 5);
         jdbc.update("INSERT INTO cart_item (cart_id, product_id, quantity) VALUES (1, 1, 3)");
 
         Flyway.configure().dataSource(dataSource).load().migrate();

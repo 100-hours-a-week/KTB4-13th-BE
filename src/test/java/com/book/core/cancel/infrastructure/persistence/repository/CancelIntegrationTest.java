@@ -94,7 +94,8 @@ class CancelIntegrationTest {
         final long[] paid = {10000, 5000, 0};
         final long[] point = {0, 5000, 10000};
         for (int i = 0; i < 3; i++) {
-            service.partialCancel(new PartialCancelCommand(10002L, new PartialCancelAction(order.key(), itemId, 1L)));
+            service.partialCancel(
+                new PartialCancelCommand(10002L, new PartialCancelAction(order.key(), itemId, 1L), UUID.randomUUID().toString()));
             assertThat(jdbc.queryForObject("select canceled_paid_amount from `cancel` where order_id = ? order by id desc limit 1",
                 BigDecimal.class, order.id())).isEqualByComparingTo(BigDecimal.valueOf(paid[i]));
             assertThat(jdbc.queryForObject("select canceled_point_amount from `cancel` where order_id = ? order by id desc limit 1",
@@ -114,13 +115,16 @@ class CancelIntegrationTest {
     void 쿠폰_최소금액이_깨지는_부분취소에만_쿠폰을_복원한다() {
         final Order order = fixture(10003L, 5, true, true);
         final Long itemId = itemId(order);
-        service.partialCancel(new PartialCancelCommand(10003L, new PartialCancelAction(order.key(), itemId, 1L)));
+        service.partialCancel(
+            new PartialCancelCommand(10003L, new PartialCancelAction(order.key(), itemId, 1L), UUID.randomUUID().toString()));
         assertThat(coupons.findByUserIdAndCouponId(10003L, 10003L).orElseThrow().status()).isEqualTo(OwnedCouponStatus.USED);
-        service.partialCancel(new PartialCancelCommand(10003L, new PartialCancelAction(order.key(), itemId, 1L)));
+        service.partialCancel(
+            new PartialCancelCommand(10003L, new PartialCancelAction(order.key(), itemId, 1L), UUID.randomUUID().toString()));
         assertThat(coupons.findByUserIdAndCouponId(10003L, 10003L).orElseThrow().status()).isEqualTo(OwnedCouponStatus.ISSUED);
         assertThat(jdbc.queryForObject("select canceled_coupon_amount from `cancel` where order_id = ? order by id desc limit 1",
             BigDecimal.class, order.id())).isEqualByComparingTo("10000");
-        service.partialCancel(new PartialCancelCommand(10003L, new PartialCancelAction(order.key(), itemId, 1L)));
+        service.partialCancel(
+            new PartialCancelCommand(10003L, new PartialCancelAction(order.key(), itemId, 1L), UUID.randomUUID().toString()));
         assertThat(coupons.findByUserIdAndCouponId(10003L, 10003L).orElseThrow().usedCount()).isZero();
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.PARTIAL_CANCELED);
     }
@@ -155,8 +159,8 @@ class CancelIntegrationTest {
         final Order other = fixture(10007L, 3, false, false);
         assertThatThrownBy(() -> service.cancel(new CancelCommand(999L, new CancelAction(order.key()), "request")))
             .isInstanceOf(CoreException.class);
-        assertThatThrownBy(
-            () -> service.partialCancel(new PartialCancelCommand(10006L, new PartialCancelAction(order.key(), itemId(other), 1L))))
+        assertThatThrownBy(() -> service.partialCancel(
+            new PartialCancelCommand(10006L, new PartialCancelAction(order.key(), itemId(other), 1L), UUID.randomUUID().toString())))
             .isInstanceOf(CoreException.class);
         assertThat(jdbc.queryForObject("select count(*) from `cancel` where order_id = ?", Long.class, order.id())).isZero();
     }

@@ -36,8 +36,8 @@ class CancelController implements CancelControllerSpec {
     @Override
     @PostMapping("/api/v1/partial-cancel")
     public ResponseEntity<ApiResponse<Void>> partialCancel(@UserId final Long userId,
-        @Valid @RequestBody final PartialCancelRequest request) {
-        cancelService.partialCancel(commandConverter.toPartialCancelCommand(userId, request));
+        @RequestHeader("Idempotency-Key") final String requestKey, @Valid @RequestBody final PartialCancelRequest request) {
+        cancelService.partialCancel(commandConverter.toPartialCancelCommand(userId, requestKey, request));
         return ResponseEntity.ok(ApiResponse.ok());
     }
 }

@@ -101,7 +101,9 @@ class CancelUseCasesTest {
         final Order order = order(3);
         prepare(order, -1L);
         final CancelCalculated calculated = new CancelCalculated(BigDecimal.valueOf(1000), BigDecimal.ZERO, BigDecimal.ZERO, false);
-        partial().execute(new PartialCancelAction("order", 4L, 1L), calculated);
+        final OffsetDateTime pgCanceledAt = OffsetDateTime.parse("2026-10-20T01:00:00Z");
+        partial().execute(new PartialCancelAction("order", 4L, 1L), calculated,
+            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", pgCanceledAt));
         assertThat(order.status()).isEqualTo(OrderStatus.PARTIAL_CANCELED);
         assertThat(order.items().getFirst().canceledQuantity()).isEqualTo(1);
         verify(deduct).execute(1L, PointType.PAYMENT, 3L, PointAmount.PAYMENT);
@@ -111,6 +113,7 @@ class CancelUseCasesTest {
         assertThat(capture.getValue().type()).isEqualTo(CancelType.PARTIAL);
         assertThat(capture.getValue().orderItemId()).isEqualTo(4L);
         assertThat(capture.getValue().canceledPaidAmount()).isEqualByComparingTo("1000");
+        assertThat(capture.getValue().canceledAt()).isEqualTo(LocalDateTime.parse("2026-10-20T10:00:00"));
     }
 
     @Test
@@ -119,7 +122,8 @@ class CancelUseCasesTest {
         prepare(order, 10L);
         when(cancels.countByOrderId(2L)).thenReturn(1L);
         final CancelCalculated calculated = new CancelCalculated(BigDecimal.ZERO, BigDecimal.valueOf(1000), BigDecimal.valueOf(100), true);
-        partial().execute(new PartialCancelAction("order", 4L, 1L), calculated);
+        partial().execute(new PartialCancelAction("order", 4L, 1L), calculated,
+            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", java.time.OffsetDateTime.now()));
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
         verify(coupons).execute(10L);
         verify(earn).execute(1L, PointType.PAYMENT, 3L, BigDecimal.valueOf(100));
@@ -172,7 +176,7 @@ class CancelUseCasesTest {
     }
 
     private PartialCancelPaymentUseCase partial() {
-        return new PartialCancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories, items);
+        return new PartialCancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories, items, clock);
     }
 
     private CancelBalance prepare(final Order order, final Long ownedCouponId) {

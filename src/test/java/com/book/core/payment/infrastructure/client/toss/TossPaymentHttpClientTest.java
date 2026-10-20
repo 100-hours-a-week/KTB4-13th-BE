@@ -87,16 +87,15 @@ class TossPaymentHttpClientTest {
         try {
             withClient(server, "test_sk_wire", client -> {
                 assertThat(client.find("test-key").status()).isEqualTo("DONE");
-                assertThat(client.cancel("test-key", java.math.BigDecimal.ONE, "cancel-001")
-                    .cancellations().getFirst().transactionKey()).isEqualTo("txn-001");
+                assertThat(client.cancel("test-key", java.math.BigDecimal.ONE, "cancel-001").cancellations().getFirst().transactionKey())
+                    .isEqualTo("txn-001");
             });
             assertThat(findPath.get()).isEqualTo("/v1/payments/test-key");
             assertThat(findAuthorization.get()).isEqualTo("Basic dGVzdF9za193aXJlOg==");
             assertThat(cancelPath.get()).isEqualTo("/v1/payments/test-key/cancel");
             assertThat(cancelAuthorization.get()).isEqualTo("Basic dGVzdF9za193aXJlOg==");
             assertThat(cancelIdempotencyKey.get()).isEqualTo("cancel-001");
-            assertThat(cancelBody.get()).contains("\"cancelReason\":\"고객 요청\"", "\"cancelAmount\":1")
-                .doesNotContain("refundableAmount");
+            assertThat(cancelBody.get()).contains("\"cancelReason\":\"고객 요청\"", "\"cancelAmount\":1").doesNotContain("refundableAmount");
         } finally {
             server.stop(0);
         }
@@ -180,9 +179,8 @@ class TossPaymentHttpClientTest {
                         .isInstanceOfSatisfying(CoreException.class,
                             error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
                 }
-                assertThatThrownBy(() -> client.cancel("test-key", java.math.BigDecimal.ONE, "request-004"))
-                    .isInstanceOfSatisfying(CoreException.class,
-                        error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE));
+                assertThatThrownBy(() -> client.cancel("test-key", java.math.BigDecimal.ONE, "request-004")).isInstanceOfSatisfying(
+                    CoreException.class, error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE));
             });
             assertThat(requests.get()).isEqualTo(4);
         } finally {

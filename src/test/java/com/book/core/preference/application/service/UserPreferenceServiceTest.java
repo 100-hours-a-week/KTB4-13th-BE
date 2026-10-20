@@ -2,7 +2,11 @@ package com.book.core.preference.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -25,11 +29,15 @@ import com.book.core.onboarding.application.result.OnboardingOptionResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.usecase.CheckPersonalizationAgreementUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
+import com.book.core.onboarding.application.usecase.GetProfileRefreshTargetsUseCase;
+import com.book.core.onboarding.application.usecase.PersonalizationProfileUseCase;
 import com.book.core.onboarding.domain.OnboardingStatus;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 class UserPreferenceServiceTest {
     private static final Long USER_ID = 42L;
@@ -38,10 +46,12 @@ class UserPreferenceServiceTest {
     private final GetUserMemoriesUseCase getUserMemoriesUseCase = mock(GetUserMemoriesUseCase.class);
     private final DeleteUserMemoriesUseCase deleteUserMemoriesUseCase = mock(DeleteUserMemoriesUseCase.class);
     private final DeleteAllUserMemoriesUseCase deleteAllUserMemoriesUseCase = mock(DeleteAllUserMemoriesUseCase.class);
-    private final UserPreferenceService userPreferenceService =
-        new UserPreferenceService(getOnboardingProgressUseCase, getUserMemoriesUseCase, deleteUserMemoriesUseCase,
-            deleteAllUserMemoriesUseCase, mock(CheckPersonalizationAgreementUseCase.class), mock(ExtractUserMemoriesUseCase.class),
-            mock(SaveUserMemoriesUseCase.class), mock(GetChatHistoryUseCase.class), mock(GetMemoryExtractionTargetsUseCase.class));
+    private final PersonalizationProfileUseCase personalizationProfileUseCase = mock(PersonalizationProfileUseCase.class);
+    private final GetProfileRefreshTargetsUseCase getProfileRefreshTargetsUseCase = mock(GetProfileRefreshTargetsUseCase.class);
+    private final UserPreferenceService userPreferenceService = new UserPreferenceService(getOnboardingProgressUseCase,
+        getUserMemoriesUseCase, deleteUserMemoriesUseCase, deleteAllUserMemoriesUseCase, mock(CheckPersonalizationAgreementUseCase.class),
+        mock(ExtractUserMemoriesUseCase.class), mock(SaveUserMemoriesUseCase.class), mock(GetChatHistoryUseCase.class),
+        mock(GetMemoryExtractionTargetsUseCase.class), personalizationProfileUseCase, getProfileRefreshTargetsUseCase);
 
     @Test
     void 온보딩을_완료하지_않았으면_취향_조회와_삭제를_진행하지_않고_409를_던진다() {
@@ -65,6 +75,35 @@ class UserPreferenceServiceTest {
 
         verify(deleteUserMemoriesUseCase).execute(command);
         verify(deleteAllUserMemoriesUseCase).execute(USER_ID);
+    }
+
+    @Test
+    void 취향_기억을_실제로_지웠을_때만_AI_취향_프로필을_갱신하고_갱신_실패는_삭제_결과에_전파하지_않는다() {
+        final var command = new DeleteUserMemoriesCommand(USER_ID, List.of(101L));
+        when(getOnboardingProgressUseCase.executeCompleted(new GetOnboardingProgressCommand(USER_ID)))
+            .thenReturn(new OnboardingProgressResult(OnboardingStatus.COMPLETED, null, List.of(), List.of()));
+        when(deleteUserMemoriesUseCase.execute(command)).thenReturn(1);
+        when(deleteAllUserMemoriesUseCase.execute(USER_ID)).thenReturn(0);
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).when(personalizationProfileUseCase).executeUpdate(USER_ID);
+
+        userPreferenceService.deleteMemories(command);
+        userPreferenceService.deleteAllMemories(USER_ID);
+
+        verify(personalizationProfileUseCase, times(1)).executeUpdate(USER_ID);
+    }
+
+    @Test
+    void 야간_프로필_갱신은_기억과_이력이_바뀐_회원을_중복_없이_한_명씩_갱신하고_실패해도_다음_회원을_계속_갱신한다() {
+        when(getProfileRefreshTargetsUseCase.execute()).thenReturn(List.of(7L, 3L));
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).when(personalizationProfileUseCase).executeUpdate(3L);
+
+        userPreferenceService.refreshNightlyProfiles(Set.of(7L, 5L));
+
+        final InOrder order = inOrder(personalizationProfileUseCase);
+        order.verify(personalizationProfileUseCase).executeUpdate(3L);
+        order.verify(personalizationProfileUseCase).executeUpdate(5L);
+        order.verify(personalizationProfileUseCase).executeUpdate(7L);
+        verify(personalizationProfileUseCase, times(3)).executeUpdate(any());
     }
 
     @Test

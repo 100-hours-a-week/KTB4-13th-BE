@@ -4,6 +4,8 @@ import com.book.common.annotation.UseCase;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileClient;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
+import com.book.core.onboarding.application.port.ProfileHistoryRepositoryPort;
+import com.book.core.onboarding.application.port.ProfileMemoryRepositoryPort;
 import com.book.core.onboarding.application.port.TermRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
@@ -24,6 +26,7 @@ public class PersonalizationProfileUseCase {
     private static final Long CRITERIA_QUESTION_ID = 2L;
     private static final Long CATEGORY_QUESTION_ID = 3L;
     private static final Long TAG_QUESTION_ID = 4L;
+    private static final int MAX_MEMORIES = 500;
 
     private final TermRepositoryPort termRepository;
     private final UserTermAgreementRepositoryPort agreementRepository;
@@ -31,6 +34,8 @@ public class PersonalizationProfileUseCase {
     private final OnboardingOptionRepositoryPort optionRepository;
     private final UserOnboardingBookRepositoryPort bookRepository;
     private final AiPersonalizationProfileClient profileClient;
+    private final ProfileMemoryRepositoryPort memoryRepository;
+    private final ProfileHistoryRepositoryPort historyRepository;
 
     public void execute(final Long userId) {
         profileRequestOf(userId).ifPresent(profileClient::createProfile);
@@ -53,7 +58,8 @@ public class PersonalizationProfileUseCase {
         final var likedBookIds = bookRepository.findByUserId(userId).stream().map(UserOnboardingBook::bookId).sorted().toList();
         return Optional.of(new AiPersonalizationProfileRequest(userId, contentsOf(answeredOptions, READING_TIME_QUESTION_ID),
             contentsOf(answeredOptions, CRITERIA_QUESTION_ID), contentsOf(answeredOptions, CATEGORY_QUESTION_ID),
-            contentsOf(answeredOptions, TAG_QUESTION_ID), likedBookIds));
+            contentsOf(answeredOptions, TAG_QUESTION_ID), likedBookIds, memoryRepository.findLatestActive(userId, MAX_MEMORIES),
+            historyRepository.findHistory(userId)));
     }
 
     private static List<String> contentsOf(final List<OnboardingOption> options, final Long questionId) {

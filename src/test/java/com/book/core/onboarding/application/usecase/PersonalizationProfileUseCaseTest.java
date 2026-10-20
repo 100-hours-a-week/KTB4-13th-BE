@@ -3,8 +3,11 @@ package com.book.core.onboarding.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.core.onboarding.application.port.AiPersonalizationProfileClient;
+import com.book.core.onboarding.application.port.AiPersonalizationProfileHistory;
+import com.book.core.onboarding.application.port.AiPersonalizationProfileMemory;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
+import com.book.core.onboarding.application.port.ProfileHistoryRepositoryPort;
 import com.book.core.onboarding.application.port.TermRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
@@ -15,6 +18,8 @@ import com.book.core.onboarding.domain.TermType;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
 import com.book.core.onboarding.domain.UserTermAgreement;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -30,8 +35,21 @@ class PersonalizationProfileUseCaseTest {
     private final FakeOptionRepository optionRepository = new FakeOptionRepository();
     private final FakeBookRepository bookRepository = new FakeBookRepository();
     private final FakeProfileClient profileClient = new FakeProfileClient();
-    private final PersonalizationProfileUseCase useCase = new PersonalizationProfileUseCase(termRepository, agreementRepository,
-        answerRepository, optionRepository, bookRepository, profileClient);
+    private final List<AiPersonalizationProfileMemory> memories = new ArrayList<>();
+    private AiPersonalizationProfileHistory history = AiPersonalizationProfileHistory.EMPTY;
+    private final PersonalizationProfileUseCase useCase =
+        new PersonalizationProfileUseCase(termRepository, agreementRepository, answerRepository, optionRepository, bookRepository,
+            profileClient, (userId, limit) -> memories.stream().limit(limit).toList(), new ProfileHistoryRepositoryPort() {
+                @Override
+                public AiPersonalizationProfileHistory findHistory(final Long userId) {
+                    return history;
+                }
+
+                @Override
+                public List<Long> findChangedUserIds(final Instant from, final Instant before) {
+                    throw new UnsupportedOperationException();
+                }
+            });
 
     @Test
     void 개인화_추천에_동의했으면_AI_취향_프로필_생성을_요청한다() {
@@ -92,6 +110,24 @@ class PersonalizationProfileUseCaseTest {
 
         assertThat(profileClient.requests).singleElement().isEqualTo(new AiPersonalizationProfileRequest(USER_ID,
             List.of("아침, 하루를 시작할 때", "잠들기 전"), List.of("베스트셀러"), List.of("소설"), List.of("SF"), List.of(100L, 300L)));
+    }
+
+    @Test
+    void 취향_기억은_최근_500건까지_이력은_전체를_함께_보낸다() {
+        termRepository.activeTerm = personalizationTerm();
+        agreementRepository.agreed = true;
+        for (int index = 0; index < 501; index++) {
+            memories.add(new AiPersonalizationProfileMemory("topic", "추리 소설을 좋아함", 2, List.of(), "추리 소설",
+                LocalDateTime.of(2026, 10, 20, 2, 0), List.of(0.1f), 1));
+        }
+        history = new AiPersonalizationProfileHistory(List.of("9788900000011"), List.of(), List.of());
+
+        useCase.executeUpdate(USER_ID);
+
+        assertThat(profileClient.updateRequests).singleElement().satisfies(request -> {
+            assertThat(request.memories()).hasSize(500);
+            assertThat(request.history()).isEqualTo(history);
+        });
     }
 
     private static Term personalizationTerm() {

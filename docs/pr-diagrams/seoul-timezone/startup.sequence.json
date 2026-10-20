@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "JVM 기본 시간대로 서울 날짜 사용",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1060,
+      560
+    ],
+    "column_fit": "spread",
+    "animation": "none"
+  },
+  "participants": [
+    {
+      "id": "launcher",
+      "type": "external",
+      "label": "실행 설정",
+      "sublabel": "Docker / bootRun"
+    },
+    {
+      "id": "runtime",
+      "type": "backend",
+      "label": "JVM",
+      "sublabel": "기본 시간대"
+    },
+    {
+      "id": "application",
+      "type": "backend",
+      "label": "애플리케이션",
+      "sublabel": "Spring Boot"
+    },
+    {
+      "id": "javaTime",
+      "type": "backend",
+      "label": "java.time",
+      "sublabel": "LocalDate / ZoneId"
+    }
+  ],
+  "messages": [
+    {
+      "id": "start",
+      "from": "launcher",
+      "to": "runtime",
+      "y": 175,
+      "label": "-Duser.timezone=Asia/Seoul"
+    },
+    {
+      "id": "launch",
+      "from": "runtime",
+      "to": "application",
+      "y": 235,
+      "label": "서울 시간대 설정 후 앱 시작"
+    },
+    {
+      "id": "today",
+      "from": "application",
+      "to": "javaTime",
+      "y": 295,
+      "label": "LocalDate.now()"
+    },
+    {
+      "id": "zone",
+      "from": "javaTime",
+      "to": "runtime",
+      "y": 355,
+      "label": "ZoneId.systemDefault()"
+    },
+    {
+      "id": "seoul",
+      "from": "runtime",
+      "to": "javaTime",
+      "y": 415,
+      "label": "Asia/Seoul",
+      "variant": "return"
+    },
+    {
+      "id": "date",
+      "from": "javaTime",
+      "to": "application",
+      "y": 475,
+      "label": "서울 기준 오늘 날짜",
+      "variant": "return"
+    }
+  ]
+}

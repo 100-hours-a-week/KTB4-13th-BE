@@ -12,7 +12,9 @@ record AiProfileHistory(
         @JsonProperty("reviews") List<AiProfileReview> reviews) {
     static AiProfileHistory from(final AiPersonalizationProfileHistory history) {
         return new AiProfileHistory(history.purchasedIsbns(), history.libraryIsbns(), history.reviews().stream()
-                .map((final AiPersonalizationProfileHistory.Review review) -> new AiProfileReview(review.isbn(), review.rating(), review.content())).toList());
+                .map((final AiPersonalizationProfileHistory.Review review) ->
+                    new AiProfileReview(review.isbn(), review.rating(), review.content()))
+                .toList());
     }
 
     record AiProfileReview(

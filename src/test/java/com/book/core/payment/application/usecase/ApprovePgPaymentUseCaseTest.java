@@ -62,12 +62,23 @@ class ApprovePgPaymentUseCaseTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"READY", "ABORTED", "EXPIRED"})
-    void 승인이_거절되거나_만료된_토스_상태는_결제_거절로_처리한다(final String status) {
+    @ValueSource(strings = {"ABORTED", "EXPIRED"})
+    void 토스에서_종료된_상태만_결제_거절로_처리한다(final String status) {
         prepare(command);
         when(client.find("key")).thenReturn(result(status, "order"));
         assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
+    }
+
+    @Test
+    void READY는_인증전_상태라_요청을_미확정으로_유지한다() {
+        prepare(command);
+        when(client.find("key")).thenReturn(result("READY", "order"));
+        assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
+        assertThat(operation.rejected()).isFalse();
+        assertThat(operation.completed()).isFalse();
+        verifyNoInteractions(complete);
     }
 
     @Test

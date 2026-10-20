@@ -38,8 +38,11 @@ public class ApprovePgPaymentUseCase {
             PgPaymentResult result = client.find(command.externalPaymentKey());
             verify(command, result);
             TossPaymentStatus status = TossPaymentStatus.from(result.status());
-            if (status == TossPaymentStatus.ABORTED || status == TossPaymentStatus.EXPIRED || status == TossPaymentStatus.READY) {
+            if (status == TossPaymentStatus.ABORTED || status == TossPaymentStatus.EXPIRED) {
                 throw new CoreException(ErrorCode.PG_REJECTED);
+            }
+            if (status == TossPaymentStatus.READY) {
+                throw new CoreException(ErrorCode.PG_PENDING);
             }
             if (status == TossPaymentStatus.IN_PROGRESS) {
                 if (result.method() == null) {

@@ -7,10 +7,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.usecase.FindOwnedCouponsForCheckoutUseCase;
 import com.book.core.coupon.application.usecase.GetCouponTargetsUseCase;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
@@ -19,7 +22,9 @@ import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
 import com.book.core.payment.application.command.FailPaymentCommand;
-import com.book.core.payment.application.usecase.CompletePaymentUseCase;
+import com.book.core.payment.application.usecase.ApprovePgPaymentUseCase;
+import com.book.core.payment.application.usecase.PreparePgOperationUseCase;
+import com.book.core.payment.application.usecase.RejectPgOperationUseCase;
 import com.book.core.payment.application.usecase.CreatePaymentUseCase;
 import com.book.core.payment.application.usecase.FailPaymentUseCase;
 import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
@@ -41,10 +46,13 @@ class PaymentServiceTest {
     private final GetPointBalanceUseCase balance = mock(GetPointBalanceUseCase.class);
     private final CreatePaymentUseCase create = mock(CreatePaymentUseCase.class);
     private final ValidatePaymentUseCase validate = mock(ValidatePaymentUseCase.class);
-    private final CompletePaymentUseCase complete = mock(CompletePaymentUseCase.class);
+    private final ApprovePgPaymentUseCase complete = mock(ApprovePgPaymentUseCase.class);
+    private final PreparePgOperationUseCase prepare = mock(PreparePgOperationUseCase.class);
+    private final RejectPgOperationUseCase reject = mock(RejectPgOperationUseCase.class);
     private final FailPaymentUseCase fail = mock(FailPaymentUseCase.class);
     private final PostProcessPaymentUseCase post = mock(PostProcessPaymentUseCase.class);
-    private final PaymentService service = new PaymentService(orders, targets, coupons, balance, create, validate, complete, fail, post);
+    private final PaymentService service =
+        new PaymentService(orders, targets, coupons, balance, create, validate, complete, prepare, reject, fail, post);
 
     @Test
     void 일반_결제는_주문과_체크아웃_후보_잔액을_조합하고_원값을_전달한다() {
@@ -63,21 +71,41 @@ class PaymentServiceTest {
     @Test
     void 성공은_검증_완료_후처리_순서로_실행한다() {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
-        when(complete.execute("order", "test-key")).thenReturn(3L);
+        when(complete.execute(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN)))
+            .thenReturn(new com.book.core.payment.application.result.PaymentCompletionResult(3L, true));
         assertThat(service.success(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN))).isEqualTo(3L);
-        final InOrder sequence = inOrder(validate, complete, post);
-        sequence.verify(validate).validateForApprove(2L, BigDecimal.TEN);
-        sequence.verify(complete).execute("order", "test-key");
+        final InOrder sequence = inOrder(prepare, complete, post);
+        sequence.verify(prepare).execute(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN).operation());
+        sequence.verify(complete).execute(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN));
         sequence.verify(post).execute(3L, "order");
+    }
+
+    @Test
+    void 완료된_승인_재요청은_장바구니_정리를_반복하지_않는다() {
+        final var command = new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN);
+        when(complete.execute(command)).thenReturn(new com.book.core.payment.application.result.PaymentCompletionResult(3L, false));
+        assertThat(service.success(command)).isEqualTo(3L);
+        verifyNoInteractions(post);
     }
 
     @Test
     void 승인_검증_실패는_완료와_후처리를_실행하지_않는다() {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
-        doThrow(new IllegalStateException("test")).when(validate).validateForApprove(2L, BigDecimal.TEN);
+        doThrow(new IllegalStateException("test")).when(prepare).execute(any());
         assertThatThrownBy(() -> service.success(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN)))
             .isInstanceOf(IllegalStateException.class);
         verifyNoInteractions(complete, post);
+    }
+
+    @Test
+    void 미확정_PG결과는_요청을_거절로_기록하지_않는다() {
+        final var command = new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN);
+        doThrow(new CoreException(ErrorCode.PG_PENDING)).when(complete).execute(command);
+        assertThatThrownBy(() -> service.success(command)).isInstanceOfSatisfying(CoreException.class,
+            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
+        verify(prepare).execute(command.operation());
+        verify(reject, never()).execute(command.operation());
+        verifyNoInteractions(post);
     }
 
     @Test

@@ -1,14 +1,5 @@
 package com.book.core.cart.api;
 
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import com.book.common.config.security.UserIdMvcConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
@@ -19,20 +10,36 @@ import com.book.core.cart.application.command.DeleteCartItemCommand;
 import com.book.core.cart.application.command.DeleteCartItemsCommand;
 import com.book.core.cart.application.command.ModifyCartItemCommand;
 import com.book.core.cart.application.service.CartService;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+
 
 @WebMvcTest(CartController.class)
 @Import({CartCommandConverter.class, CartResultConverter.class, UserIdMvcConfig.class})
@@ -96,6 +103,38 @@ class CartControllerTest {
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(cartService);
+    }
+
+    @Test
+    void 최종_커밋의_낙관적_충돌은_409로_응답한다() throws Exception {
+        authenticateAs(42L);
+        doThrow(new ObjectOptimisticLockingFailureException("Cart", 42L)).when(cartService)
+            .addCartItem(new AddCartItemCommand(42L, 20L, 3));
+        mvc.perform(post("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"productId\":20,\"quantity\":3}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONCURRENT_CHANGE"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"uk_cart_item_cart_product", "chat_requests.uk_chat_request_key"})
+    void 알려진_중복_제약_경합만_409로_응답한다(final String key) throws Exception {
+        authenticateAs(42L);
+        final ConstraintViolationException cause =
+            new ConstraintViolationException("database details", new SQLException("duplicate", "23000", 1062), key);
+        doThrow(new DataIntegrityViolationException("database details", cause)).when(cartService)
+            .addCartItem(new AddCartItemCommand(42L, 20L, 3));
+        mvc.perform(post("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"productId\":20,\"quantity\":3}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONCURRENT_CHANGE"));
+    }
+
+    @Test
+    void 관련_없는_DB_제약_실패는_409로_잘못_분류하지_않는다() throws Exception {
+        authenticateAs(42L);
+        final ConstraintViolationException cause =
+            new ConstraintViolationException("database details", new SQLException("foreign key", "23000", 1452), "fk_cart_item_cart");
+        doThrow(new DataIntegrityViolationException("database details", cause)).when(cartService)
+            .addCartItem(new AddCartItemCommand(42L, 20L, 3));
+        mvc.perform(post("/api/v1/cart/items").contentType(MediaType.APPLICATION_JSON).content("{\"productId\":20,\"quantity\":3}"))
+            .andExpect(status().isInternalServerError()).andExpect(jsonPath("$.code").value("E500"));
     }
 
     private void authenticateAs(final Long userId) {

@@ -6,6 +6,7 @@ import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderStatus;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -39,15 +40,27 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
     }
 
     @Override
-    public List<Order> findActiveOrders(final Long userId, final OrderStatus status, final LocalDateTime from, final LocalDateTime to,
-        final OrderListCursor cursor, final int limit) {
-        final LocalDateTime cursorCreatedAt = cursor == null ? null : cursor.createdAt();
-        final Long cursorId = cursor == null ? null : cursor.orderId();
-        return jpaRepository.findActiveOrders(userId, status, from, to, cursorCreatedAt, cursorId, PageRequest.of(0, limit));
+    public List<Order> findPaidOrders(final Long userId, final OrderStatus status, final LocalDateTime paidAtFrom,
+        final LocalDateTime paidAtBefore, final OrderListCursor cursor, final int limit) {
+        final PageRequest page = PageRequest.of(0, limit);
+        if (cursor == null) {
+            return jpaRepository.findPaidOrders(userId, status, paidAtFrom, paidAtBefore, null, null, page);
+        }
+        return jpaRepository.findPaidOrders(userId, status, paidAtFrom, paidAtBefore, cursor.paidAt(), cursor.orderId(), page);
     }
 
     @Override
     public Optional<OrderItem> findActiveOrderItem(final Long orderItemId) {
         return orderItemJpaRepository.findByIdAndDeletedAtIsNullAndOrder_DeletedAtIsNull(orderItemId);
+    }
+
+    @Override
+    public List<OrderItem> findOrderItemsByOrderIdIn(final Collection<Long> orderIds) {
+        return orderItemJpaRepository.findByOrder_IdIn(orderIds);
+    }
+
+    @Override
+    public List<OrderItem> findOrderItemsByIdIn(final Collection<Long> orderItemIds) {
+        return orderItemJpaRepository.findByIdIn(orderItemIds);
     }
 }

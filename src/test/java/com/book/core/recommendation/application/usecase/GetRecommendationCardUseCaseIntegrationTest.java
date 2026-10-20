@@ -11,22 +11,13 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
 @Tag("integration")
 class GetRecommendationCardUseCaseIntegrationTest {
-    @Container
-    @ServiceConnection
-    static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
-
     @Autowired
     RecommendationCardRepositoryPort recommendationCardRepository;
 
@@ -37,14 +28,15 @@ class GetRecommendationCardUseCaseIntegrationTest {
     JdbcTemplate jdbc;
 
     @Test
-    void MySQL에_저장한_카드의_ID로_상세_추천_이유를_다시_조회한다() {
-        insertUser(9005L, "닉네임9005");
-        insertBook(9105L, "상세 재조회 검증 도서");
-        final var saved = recommendationCardRepository.save(RecommendationCard.create(9005L, 9105L, "저장된 상세 추천 이유"));
+    void DB에_저장한_카드의_ID로_상세_추천_이유를_다시_조회한다() {
+        insertUser(29905L, "닉네임29905");
+        insertBook(29915L, "상세 재조회 검증 도서");
+        final RecommendationCard saved = recommendationCardRepository.save(RecommendationCard.create(29905L, 29915L, "저장된 상세 추천 이유"));
 
-        final var detail = getRecommendationCardUseCase.execute(new GetRecommendationCardCommand(9005L, saved.id()));
+        final RecommendationCardDetailResult detail =
+            getRecommendationCardUseCase.execute(new GetRecommendationCardCommand(29905L, saved.id()));
 
-        assertThat(detail).isEqualTo(new RecommendationCardDetailResult(saved.id(), 9105L, "저장된 상세 추천 이유"));
+        assertThat(detail).isEqualTo(new RecommendationCardDetailResult(saved.id(), 29915L, "저장된 상세 추천 이유"));
     }
 
     private void insertUser(final long id, final String nickname) {

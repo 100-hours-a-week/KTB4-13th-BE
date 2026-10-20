@@ -25,9 +25,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "mysql-test"})
 @Testcontainers
 @Tag("integration")
+@Tag("mysql-migration")
 class NotificationRepositoryIntegrationTest {
     @Container
     @ServiceConnection

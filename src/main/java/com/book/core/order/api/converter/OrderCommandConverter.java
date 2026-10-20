@@ -9,18 +9,20 @@ import com.book.core.order.application.command.GetOrdersCommand;
 import com.book.core.order.application.command.OrderListCursor;
 import com.book.core.order.domain.OrderStatus;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
 @Component
 public class OrderCommandConverter {
-    public GetOrdersCommand toGetOrdersCommand(final Long userId, final OrderStatus status, final LocalDateTime from,
-        final LocalDateTime to, final String cursor, final Integer limit) {
-        final LocalDateTime normalizedTo = to == null ? LocalDate.now().atTime(23, 59, 59, 999_999_999) : to;
-        final LocalDateTime normalizedFrom = from == null ? normalizedTo.minusYears(1) : from;
-        final OrderListCursor parsedCursor = OrderListCursor.parse(cursor, status, normalizedFrom, normalizedTo);
-        return new GetOrdersCommand(userId, status, normalizedFrom, normalizedTo, parsedCursor, limit == null ? 20 : limit);
+    private static final int DEFAULT_ORDER_LIST_LIMIT = 20;
+
+    public GetOrdersCommand toGetOrdersCommand(final Long userId, final OrderStatus status, final LocalDate from, final LocalDate to,
+        final String cursor, final Integer limit) {
+        final OrderListCursor parsedCursor = OrderListCursor.parse(cursor, status, from, to);
+        if (limit == null) {
+            return new GetOrdersCommand(userId, status, from, to, parsedCursor, DEFAULT_ORDER_LIST_LIMIT);
+        }
+        return new GetOrdersCommand(userId, status, from, to, parsedCursor, limit);
     }
 
     public GetOrderCommand toGetOrderCommand(final Long userId, final String orderKey) {

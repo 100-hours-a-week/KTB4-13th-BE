@@ -22,7 +22,8 @@ import com.book.core.point.application.usecase.DeductPointUseCase;
 import com.book.core.point.application.usecase.EarnPointUseCase;
 import com.book.core.point.domain.PointAmount;
 import com.book.core.point.domain.enums.PointType;
-import java.time.LocalDateTime;
+import java.time.Clock;
+import com.book.core.payment.application.result.CanceledPaymentResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -40,9 +41,10 @@ public class CancelPaymentUseCase {
     private final DeductPointUseCase deductPointUseCase;
     private final CancelRepositoryPort cancelRepository;
     private final RecordPaymentHistoryUseCase recordPaymentHistoryUseCase;
+    private final Clock clock;
 
     @Transactional
-    public Long execute(final CancelAction action) {
+    public Long execute(final CancelAction action, final CanceledPaymentResult result) {
         final Order order = getOrderForCancelUseCase.execute(action.orderKey());
         if (order.status() != OrderStatus.PAID) {
             throw new CoreException(ErrorCode.NOT_FOUND_DATA);
@@ -59,7 +61,8 @@ public class CancelPaymentUseCase {
         cancelBalance.cancel(payment.paidAmount(), payment.usedPoint(), payment.couponDiscount());
         final Cancel cancel = cancelRepository.save(new Cancel(payment.userId(), CancelType.ALL, payment.orderId(), -1L, payment.id(),
             payment.originAmount(), payment.ownedCouponId(), payment.couponDiscount(), payment.usedPoint(), payment.paidAmount(), -1L,
-            payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "PG_API_응답_취소_고유_값_저장", LocalDateTime.now()));
+            payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), result.transactionKey(),
+            result.canceledAt().atZoneSameInstant(clock.getZone()).toLocalDateTime()));
         recordPaymentHistoryUseCase.execute(
             new PaymentHistory(TransactionType.CANCEL, payment.userId(), payment.orderId(), payment.id(), payment.externalPaymentKey(),
                 payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "취소 성공", cancel.canceledAt()));

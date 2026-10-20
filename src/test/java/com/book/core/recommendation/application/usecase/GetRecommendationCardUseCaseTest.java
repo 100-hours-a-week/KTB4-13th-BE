@@ -23,7 +23,7 @@ class GetRecommendationCardUseCaseTest {
     void 소유자의_카드에서_ID_도서_ID와_상세_추천_이유를_반환한다() {
         cardRepository.cards.put(1L, RecommendationCard.restore(1L, 42L, 10L, "긴 추천 이유", null));
 
-        final var result = useCase.execute(new GetRecommendationCardCommand(42L, 1L));
+        final RecommendationCardDetailResult result = useCase.execute(new GetRecommendationCardCommand(42L, 1L));
 
         assertThat(result).isEqualTo(new RecommendationCardDetailResult(1L, 10L, "긴 추천 이유"));
     }

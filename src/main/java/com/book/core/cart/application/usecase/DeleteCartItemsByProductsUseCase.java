@@ -17,8 +17,9 @@ public class DeleteCartItemsByProductsUseCase {
 
     @Transactional
     public void execute(final Long userId, final Collection<Long> productIds) {
-        cartRepository.findByUserId(userId).ifPresent((final Cart cart) -> {
-            cartItemRepository.findActiveByCartId(cart.id()).stream().filter((final CartItem item) -> productIds.contains(item.productId()))
+        cartRepository.findByUserIdForChange(userId).ifPresent((final Cart cart) -> {
+            cartItemRepository.findAllByCartIdForChange(cart.id()).stream()
+                .filter((final CartItem item) -> item.isActive() && productIds.contains(item.productId()))
                 .forEach((final CartItem item) -> item.delete());
         });
     }

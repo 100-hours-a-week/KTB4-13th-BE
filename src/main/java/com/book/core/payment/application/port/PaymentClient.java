@@ -8,5 +8,5 @@ public interface PaymentClient {
 
     PgPaymentResult find(String paymentKey);
 
-    PgPaymentResult cancel(String paymentKey, BigDecimal amount, BigDecimal refundableAmount, String idempotencyKey);
+    PgPaymentResult cancel(String paymentKey, BigDecimal amount, String idempotencyKey);
 }

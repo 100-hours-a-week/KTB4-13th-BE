@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.core.library.application.command.AddLibraryBooksCommand;
 import com.book.core.library.application.command.DeleteLibraryBooksCommand;
 import com.book.core.library.application.port.UserLibraryBookRepositoryPort;
+import com.book.core.library.application.result.LibraryBookResult;
 import com.book.core.library.domain.UserLibraryBook;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,6 +32,9 @@ class LibraryBooksIntegrationTest {
 
     @Autowired
     DeleteLibraryBooksUseCase deleteUseCase;
+
+    @Autowired
+    GetLibraryBooksUseCase getUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -113,6 +117,35 @@ class LibraryBooksIntegrationTest {
         }
 
         assertThat(activeIds(userId)).containsExactlyInAnyOrder(first, second);
+    }
+
+    @Test
+    void 목록은_본인의_활성_항목만_최근_추가_순으로_도서와_활성_상품을_함께_조회한다() {
+        final Long userId = insertUser("도서관조회회원");
+        final Long otherUserId = insertUser("도서관조회타인회원");
+        final Long olderBookId = insertBook(910501L);
+        final Long newerBookId = insertBook(910502L);
+        final Long older = insertLibraryBook(userId, olderBookId, false);
+        final Long newer = insertLibraryBook(userId, newerBookId, false);
+        jdbc.update("UPDATE user_library_books SET added_at = ? WHERE id = ?", ADDED_AT.plusDays(1), newer);
+        insertLibraryBook(userId, insertBook(910503L), true);
+        insertLibraryBook(otherUserId, insertBook(910504L), false);
+        jdbc.update("""
+            INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity)
+            VALUES (910501, ?, '상품', 10000, 9000, 5000, 10)
+            """, olderBookId);
+
+        assertThat(getUseCase.execute(userId)).containsExactly(
+            new LibraryBookResult(newer, newerBookId, null, "제목", "저자", null, ADDED_AT.plusDays(1)),
+            new LibraryBookResult(older, olderBookId, 910501L, "제목", "저자", null, ADDED_AT));
+    }
+
+    @Test
+    void 활성_항목이_없으면_빈_목록을_반환한다() {
+        final Long userId = insertUser("도서관빈목록회원");
+        insertLibraryBook(userId, insertBook(910601L), true);
+
+        assertThat(getUseCase.execute(userId)).isEmpty();
     }
 
     private List<Long> activeIds(final Long userId) {

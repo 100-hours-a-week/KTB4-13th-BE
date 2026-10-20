@@ -1,9 +1,13 @@
 package com.book.common.exception;
 
+import com.book.common.filter.RequestMdcFilter;
 import com.book.common.response.ErrorResponse;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.slf4j.event.Level;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
@@ -16,16 +20,19 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
+@Slf4j
 class GlobalExceptionHandler {
     @ExceptionHandler(CoreException.class)
     ResponseEntity<ErrorResponse> handleCoreException(final CoreException exception) {
         final ErrorCode errorCode = exception.errorCode();
+        logBusinessError(errorCode);
         return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode, exception.data()));
     }
 
     @ExceptionHandler(RetryAfterException.class)
     ResponseEntity<ErrorResponse> handleRetryAfter(final RetryAfterException exception) {
         final ErrorCode errorCode = exception.errorCode();
+        logBusinessError(errorCode);
         return ResponseEntity.status(errorCode.status()).header(HttpHeaders.RETRY_AFTER, String.valueOf(exception.retryAfterSeconds()))
             .body(ErrorResponse.of(errorCode));
     }
@@ -34,11 +41,13 @@ class GlobalExceptionHandler {
         MethodArgumentTypeMismatchException.class, MissingRequestValueException.class, ConstraintViolationException.class})
     ResponseEntity<ErrorResponse> handleInvalidRequest(final Exception exception) {
         final ErrorCode errorCode = ErrorCode.INVALID_REQUEST;
+        logBusinessError(errorCode);
         return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode));
     }
 
     @ExceptionHandler({OptimisticLockingFailureException.class, OptimisticLockException.class})
     ResponseEntity<ErrorResponse> handleConcurrentChange(final Exception exception) {
+        logBusinessError(ErrorCode.CONCURRENT_CHANGE);
         return ResponseEntity.status(ErrorCode.CONCURRENT_CHANGE.status()).body(ErrorResponse.of(ErrorCode.CONCURRENT_CHANGE));
     }
 
@@ -64,6 +73,13 @@ class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     ResponseEntity<ErrorResponse> handleUnexpected(final Exception exception) {
         final ErrorCode errorCode = ErrorCode.DEFAULT_ERROR;
+        log.error("요청 처리 중 오류가 발생했습니다. errorCode={}, code={}, requestId={}", errorCode.name(), errorCode.code(),
+            MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY), exception);
         return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode));
+    }
+
+    private void logBusinessError(final ErrorCode errorCode) {
+        log.atLevel(Level.valueOf(errorCode.logLevel().name())).log("요청을 처리할 수 없습니다. errorCode={}, code={}, requestId={}", errorCode.name(),
+            errorCode.code(), MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
     }
 }

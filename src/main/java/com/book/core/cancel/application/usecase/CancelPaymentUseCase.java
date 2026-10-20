@@ -22,6 +22,7 @@ import com.book.core.point.application.usecase.DeductPointUseCase;
 import com.book.core.point.application.usecase.EarnPointUseCase;
 import com.book.core.point.domain.PointAmount;
 import com.book.core.point.domain.enums.PointType;
+import java.time.Clock;
 import com.book.core.payment.application.result.CanceledPaymentResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,7 @@ public class CancelPaymentUseCase {
     private final DeductPointUseCase deductPointUseCase;
     private final CancelRepositoryPort cancelRepository;
     private final RecordPaymentHistoryUseCase recordPaymentHistoryUseCase;
+    private final Clock clock;
 
     @Transactional
     public Long execute(final CancelAction action, final CanceledPaymentResult result) {
@@ -57,10 +59,10 @@ public class CancelPaymentUseCase {
         earnPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), payment.usedPoint());
         deductPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), PointAmount.PAYMENT);
         cancelBalance.cancel(payment.paidAmount(), payment.usedPoint(), payment.couponDiscount());
-        final Cancel cancel =
-            cancelRepository.save(new Cancel(payment.userId(), CancelType.ALL, payment.orderId(), -1L, payment.id(), payment.originAmount(),
-                payment.ownedCouponId(), payment.couponDiscount(), payment.usedPoint(), payment.paidAmount(), -1L, payment.paidAmount(),
-                payment.usedPoint(), payment.couponDiscount(), result.transactionKey(), result.canceledAt().toLocalDateTime()));
+        final Cancel cancel = cancelRepository.save(new Cancel(payment.userId(), CancelType.ALL, payment.orderId(), -1L, payment.id(),
+            payment.originAmount(), payment.ownedCouponId(), payment.couponDiscount(), payment.usedPoint(), payment.paidAmount(), -1L,
+            payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), result.transactionKey(),
+            result.canceledAt().atZoneSameInstant(clock.getZone()).toLocalDateTime()));
         recordPaymentHistoryUseCase.execute(
             new PaymentHistory(TransactionType.CANCEL, payment.userId(), payment.orderId(), payment.id(), payment.externalPaymentKey(),
                 payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "취소 성공", cancel.canceledAt()));

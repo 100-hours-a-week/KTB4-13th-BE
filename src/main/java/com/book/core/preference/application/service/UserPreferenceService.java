@@ -21,6 +21,8 @@ import com.book.core.onboarding.application.command.GetOnboardingProgressCommand
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.usecase.CheckPersonalizationAgreementUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
+import com.book.core.onboarding.application.usecase.GetProfileRefreshTargetsUseCase;
+import com.book.core.onboarding.application.usecase.PersonalizationProfileUseCase;
 import com.book.core.preference.application.result.UserPreferencesResult;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -28,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -48,6 +51,8 @@ public class UserPreferenceService {
     private final SaveUserMemoriesUseCase saveUserMemoriesUseCase;
     private final GetChatHistoryUseCase getChatHistoryUseCase;
     private final GetMemoryExtractionTargetsUseCase getMemoryExtractionTargetsUseCase;
+    private final PersonalizationProfileUseCase personalizationProfileUseCase;
+    private final GetProfileRefreshTargetsUseCase getProfileRefreshTargetsUseCase;
 
     public UserPreferencesResult getPreferences(final Long userId) {
         final OnboardingProgressResult onboarding = getCompletedOnboarding(userId);
@@ -56,15 +61,24 @@ public class UserPreferenceService {
 
     public void deleteMemories(final DeleteUserMemoriesCommand command) {
         getCompletedOnboarding(command.userId());
-        deleteUserMemoriesUseCase.execute(command);
+        if (deleteUserMemoriesUseCase.execute(command) > 0) {
+            refreshProfile(command.userId());
+        }
     }
 
     public void deleteAllMemories(final Long userId) {
         getCompletedOnboarding(userId);
-        deleteAllUserMemoriesUseCase.execute(userId);
+        if (deleteAllUserMemoriesUseCase.execute(userId) > 0) {
+            refreshProfile(userId);
+        }
     }
 
-    public void extractNightlyMemories() {
+    public void runNightlyBatch() {
+        refreshNightlyProfiles(extractNightlyMemories());
+    }
+
+    public Set<Long> extractNightlyMemories() {
+        final Set<Long> memoryChangedUserIds = new HashSet<>();
         final Set<Long> failedUserIds = new HashSet<>();
         for (final List<MemoryExtractionTarget> chunk : conversationChunks(getMemoryExtractionTargetsUseCase.execute())) {
             final Map<Long, List<ChatHistoryMessage>> conversations = conversations(chunk, failedUserIds);
@@ -73,7 +87,9 @@ public class UserPreferenceService {
                     continue;
                 }
                 try {
-                    extractMemories(target, conversations.get(target.sessionId()));
+                    if (extractMemories(target, conversations.get(target.sessionId()))) {
+                        memoryChangedUserIds.add(target.userId());
+                    }
                 } catch (final RuntimeException exception) {
                     failedUserIds.add(target.userId());
                     log.error("대화 취향 기억 추출에 실패해 다음 밤에 다시 처리합니다. userId={}, sessionId={}, sequence={}, cause={}", target.userId(),
@@ -81,6 +97,13 @@ public class UserPreferenceService {
                 }
             }
         }
+        return memoryChangedUserIds;
+    }
+
+    public void refreshNightlyProfiles(final Set<Long> memoryChangedUserIds) {
+        final Set<Long> userIds = new TreeSet<>(memoryChangedUserIds);
+        userIds.addAll(getProfileRefreshTargetsUseCase.execute());
+        userIds.forEach(this::refreshProfile);
     }
 
     private Map<Long, List<ChatHistoryMessage>> conversations(final List<MemoryExtractionTarget> chunk, final Set<Long> failedUserIds) {
@@ -93,9 +116,9 @@ public class UserPreferenceService {
         }
     }
 
-    private void extractMemories(final MemoryExtractionTarget target, final List<ChatHistoryMessage> history) {
+    private boolean extractMemories(final MemoryExtractionTarget target, final List<ChatHistoryMessage> history) {
         if (!checkPersonalizationAgreementUseCase.execute(target.userId())) {
-            return;
+            return false;
         }
         if (history == null) {
             throw new CoreException(ErrorCode.CHAT_NOT_FOUND);
@@ -111,7 +134,16 @@ public class UserPreferenceService {
             waitFor(exception.retryAfterSeconds());
             extractions = extractUserMemoriesUseCase.execute(extractCommand);
         }
-        saveUserMemoriesUseCase.execute(new SaveUserMemoriesCommand(target.userId(), target.sessionId(), target.sequence(), extractions));
+        return saveUserMemoriesUseCase
+            .execute(new SaveUserMemoriesCommand(target.userId(), target.sessionId(), target.sequence(), extractions));
+    }
+
+    private void refreshProfile(final Long userId) {
+        try {
+            personalizationProfileUseCase.executeUpdate(userId);
+        } catch (final RuntimeException exception) {
+            log.warn("AI 취향 프로필 갱신에 실패했습니다. userId={}, cause={}", userId, cause(exception));
+        }
     }
 
     private static List<List<MemoryExtractionTarget>> conversationChunks(final List<MemoryExtractionTarget> targets) {

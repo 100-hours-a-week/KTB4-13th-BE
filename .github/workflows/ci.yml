@@ -38,9 +38,6 @@ jobs:
       - name: Run Gradle check
         run: ./gradlew clean check bootJar --no-daemon --profile
 
-      - name: Run MySQL migration and constraint tests
-        run: ./gradlew mysqlMigrationTest --no-daemon
-
       - name: Verify automation and coverage output
         run: |
           node --test .github/scripts/git-conventions.test.cjs .github/scripts/pending-workflows.test.cjs

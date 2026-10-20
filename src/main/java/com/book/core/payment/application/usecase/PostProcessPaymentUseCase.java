@@ -25,7 +25,7 @@ public class PostProcessPaymentUseCase {
 
     @Async
     public void execute(final Long paymentId, final String orderKey) {
-        log.debug("결제 후처리를 시작합니다. paymentId={}", paymentId);
+        log.atDebug().addKeyValue("paymentId", paymentId).log("[PAYMENT] 결제 후처리를 시작합니다. paymentId={}", paymentId);
         try {
             final Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
             if (payment.state() != PaymentState.SUCCESS) {
@@ -36,9 +36,10 @@ public class PostProcessPaymentUseCase {
                 throw new CoreException(ErrorCode.NOT_FOUND_DATA);
             }
             deleteCartItemsByProductsUseCase.execute(payment.userId(), order.items().stream().map(OrderItem::productId).toList());
-            log.info("결제 후처리를 마쳤습니다. paymentId={}", paymentId);
+            log.atInfo().addKeyValue("paymentId", paymentId).log("[PAYMENT] 결제 후처리를 마쳤습니다. paymentId={}", paymentId);
         } catch (final Exception exception) {
-            log.error("결제 후처리에 실패했습니다. paymentId={}, orderKey={}", paymentId, orderKey, exception);
+            log.atError().addKeyValue("paymentId", paymentId).addKeyValue("orderKey", orderKey)
+                .log("[PAYMENT] 결제 후처리에 실패했습니다. paymentId={}, orderKey={}", paymentId, orderKey, exception);
         }
     }
 }

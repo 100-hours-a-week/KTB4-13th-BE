@@ -76,9 +76,11 @@ class PaymentProcessingLoggingTest {
         useCase.execute("order", "private-external-code", "private-external-message");
 
         assertThat(appender.list).extracting(ILoggingEvent::getLevel).containsExactly(Level.DEBUG, Level.INFO);
-        assertThat(appender.list).allSatisfy((final ILoggingEvent event) -> assertThat(event.getFormattedMessage())
-            .contains("paymentId=3", "orderId=2", "requestId=payment-test-request")
-            .doesNotContain("traceId=", "private-external-code", "private-external-message", "externalPaymentKey=", "amount="));
+        assertThat(appender.list).allSatisfy((final ILoggingEvent event) -> {
+            assertThat(event.getFormattedMessage()).contains("[PAYMENT]", "paymentId=3", "orderId=2").doesNotContain("requestId=",
+                "traceId=", "private-external-code", "private-external-message", "externalPaymentKey=", "amount=");
+            assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "payment-test-request");
+        });
     }
 
     @Test

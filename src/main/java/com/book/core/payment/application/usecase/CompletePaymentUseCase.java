@@ -3,7 +3,6 @@ package com.book.core.payment.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.common.filter.RequestMdcFilter;
 import com.book.core.cancel.application.usecase.CreateCancelBalanceUseCase;
 import com.book.core.coupon.application.usecase.UseOwnedCouponUseCase;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
@@ -21,7 +20,6 @@ import com.book.core.point.domain.PointAmount;
 import com.book.core.point.domain.enums.PointType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
 import org.springframework.transaction.annotation.Transactional;
 
 @UseCase
@@ -51,8 +49,8 @@ public class CompletePaymentUseCase {
         createCancelBalanceUseCase.execute(order.id(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount());
         paymentHistoryRepository.save(new PaymentHistory(TransactionType.PAYMENT, payment.userId(), payment.orderId(), payment.id(),
             approval.paymentKey(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "결제 성공", payment.paidAt()));
-        log.info("결제 승인 처리를 마쳤습니다. paymentId={}, orderId={}, requestId={}", payment.id(), order.id(),
-            MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
+        log.atInfo().addKeyValue("paymentId", payment.id()).addKeyValue("orderId", order.id())
+            .log("[PAYMENT] 결제 승인 처리를 마쳤습니다. paymentId={}, orderId={}", payment.id(), order.id());
         return payment.id();
     }
 }

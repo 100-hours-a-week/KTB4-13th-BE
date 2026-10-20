@@ -11,6 +11,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.book.common.exception.CoreException;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.point.application.command.GetPointCommand;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.application.port.PointHistoryRepositoryPort;
@@ -49,7 +50,7 @@ class PointUseCaseLoggingTest {
             logger.setAdditive(false);
             logger.addAppender(appender);
         }
-        MDC.put("traceId", "point-test-trace");
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "point-test-request");
     }
 
     @AfterEach
@@ -76,7 +77,7 @@ class PointUseCaseLoggingTest {
 
         assertThat(appender.list).singleElement().satisfies((final var event) -> {
             assertThat(event.getLevel()).isEqualTo(Level.DEBUG);
-            assertThat(event.getFormattedMessage()).isEqualTo("포인트 조회를 시작합니다. traceId=point-test-trace");
+            assertThat(event.getFormattedMessage()).isEqualTo("포인트 조회를 시작합니다. requestId=point-test-request");
         });
     }
 
@@ -91,8 +92,8 @@ class PointUseCaseLoggingTest {
         assertThat(appender.list.getFirst().getFormattedMessage()).contains("처리를 시작합니다.");
         assertThat(appender.list.getLast().getFormattedMessage()).contains("처리를 마쳤습니다.");
         assertThat(appender.list).allSatisfy((final var event) -> assertThat(event.getFormattedMessage())
-            .contains("type=REVIEW", "referenceId=10", "traceId=point-test-trace")
-            .doesNotContain("123.45", "amount=", "balanceAfter=", "userId="));
+            .contains("type=REVIEW", "referenceId=10", "requestId=point-test-request")
+            .doesNotContain("traceId=", "123.45", "amount=", "balanceAfter=", "userId="));
     }
 
     @ParameterizedTest
@@ -103,7 +104,8 @@ class PointUseCaseLoggingTest {
         verifyNoInteractions(balances, histories);
         assertThat(appender.list).singleElement().satisfies((final var event) -> {
             assertThat(event.getLevel()).isEqualTo(Level.DEBUG);
-            assertThat(event.getFormattedMessage()).contains("생략합니다.", "traceId=point-test-trace").doesNotContain("처리를 시작합니다.");
+            assertThat(event.getFormattedMessage()).contains("생략합니다.", "requestId=point-test-request").doesNotContain("traceId=",
+                "처리를 시작합니다.");
         });
     }
 

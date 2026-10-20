@@ -11,6 +11,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
@@ -48,7 +49,7 @@ class PaymentProcessingLoggingTest {
         logger.setAdditive(false);
         appender.start();
         logger.addAppender(appender);
-        MDC.put("traceId", "payment-test-trace");
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "payment-test-request");
         final Order order = Order.create(1L, "order", null);
         ReflectionTestUtils.setField(order, "id", 2L);
         final Payment payment =
@@ -76,8 +77,8 @@ class PaymentProcessingLoggingTest {
 
         assertThat(appender.list).extracting(ILoggingEvent::getLevel).containsExactly(Level.DEBUG, Level.INFO);
         assertThat(appender.list).allSatisfy((final ILoggingEvent event) -> assertThat(event.getFormattedMessage())
-            .contains("paymentId=3", "orderId=2", "traceId=payment-test-trace")
-            .doesNotContain("private-external-code", "private-external-message", "externalPaymentKey=", "amount="));
+            .contains("paymentId=3", "orderId=2", "requestId=payment-test-request")
+            .doesNotContain("traceId=", "private-external-code", "private-external-message", "externalPaymentKey=", "amount="));
     }
 
     @Test

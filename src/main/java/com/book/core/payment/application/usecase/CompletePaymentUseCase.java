@@ -3,6 +3,7 @@ package com.book.core.payment.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.cancel.application.usecase.CreateCancelBalanceUseCase;
 import com.book.core.coupon.application.usecase.UseOwnedCouponUseCase;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
@@ -50,7 +51,8 @@ public class CompletePaymentUseCase {
         createCancelBalanceUseCase.execute(order.id(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount());
         paymentHistoryRepository.save(new PaymentHistory(TransactionType.PAYMENT, payment.userId(), payment.orderId(), payment.id(),
             approval.paymentKey(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "결제 성공", payment.paidAt()));
-        log.info("결제 승인 처리를 마쳤습니다. paymentId={}, orderId={}, traceId={}", payment.id(), order.id(), MDC.get("traceId"));
+        log.info("결제 승인 처리를 마쳤습니다. paymentId={}, orderId={}, requestId={}", payment.id(), order.id(),
+            MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
         return payment.id();
     }
 }

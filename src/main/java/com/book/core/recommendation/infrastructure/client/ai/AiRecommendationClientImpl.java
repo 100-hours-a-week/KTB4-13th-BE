@@ -4,7 +4,7 @@ import com.book.common.config.ai.AiRestClientConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
-import com.book.common.logging.TraceIdFilter;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.recommendation.application.command.RecommendationSpec;
 import com.book.core.recommendation.application.command.RecommendationTurn;
 import com.book.core.recommendation.application.port.AiRecommendationCard;
@@ -103,8 +103,8 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
     }
 
     private String currentRequestId() {
-        final String traceId = MDC.get(TraceIdFilter.TRACE_ID_MDC_KEY);
-        return traceId != null ? traceId : UUID.randomUUID().toString();
+        final String requestId = MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY);
+        return requestId != null ? requestId : UUID.randomUUID().toString();
     }
 
     private AiChatRequest toAiChatRequest(final AiRecommendationChatRequest request) {

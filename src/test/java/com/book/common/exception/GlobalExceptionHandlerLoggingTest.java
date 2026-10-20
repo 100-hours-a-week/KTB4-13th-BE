@@ -6,8 +6,10 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.book.common.logging.TraceIdFilter;
+import com.book.common.filter.RequestMdcFilter;
+import java.sql.SQLException;
 import java.util.Map;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
 
@@ -36,7 +39,7 @@ class GlobalExceptionHandlerLoggingTest {
         logger.setAdditive(false);
         appender.start();
         logger.addAppender(appender);
-        MDC.put(TraceIdFilter.TRACE_ID_MDC_KEY, "test-trace-id");
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "test-request-id");
     }
 
     @AfterEach
@@ -53,18 +56,19 @@ class GlobalExceptionHandlerLoggingTest {
 
     @ParameterizedTest
     @EnumSource(ErrorCode.class)
-    void 업무_오류는_정의된_레벨로_한_번_기록하고_응답을_유지한다(final ErrorCode errorCode) {
+    void 업무_오류는_정의된_레벨로_한_번_기록하고_기존_응답을_유지한다(final ErrorCode errorCode) {
         final var response = handler.handleCoreException(new CoreException(errorCode, "private-data"));
 
         assertThat(appender.list).hasSize(1);
         final var event = appender.list.getFirst();
         assertThat(event.getLevel().levelStr).isEqualTo(errorCode.logLevel().name());
         assertThat(event.getFormattedMessage())
-            .contains("errorCode=" + errorCode.name(), "code=" + errorCode.code(), "traceId=test-trace-id").doesNotContain("private-data");
+            .contains("errorCode=" + errorCode.name(), "code=" + errorCode.code(), "requestId=test-request-id")
+            .doesNotContain("private-data");
         assertThat(event.getThrowableProxy()).isNull();
         assertThat(response.getStatusCode()).isEqualTo(errorCode.status());
         assertThat(response.getBody().data()).isEqualTo("private-data");
-        assertThat(response.getBody().traceId()).isEqualTo("test-trace-id");
+        assertThat(response.getBody().traceId()).isEqualTo("test-request-id");
     }
 
     @Test
@@ -77,7 +81,7 @@ class GlobalExceptionHandlerLoggingTest {
         assertThat(appender.list).hasSize(1);
         final var event = appender.list.getFirst();
         assertThat(event.getLevel()).isEqualTo(Level.ERROR);
-        assertThat(event.getFormattedMessage()).contains("errorCode=DEFAULT_ERROR", "code=E500", "traceId=test-trace-id");
+        assertThat(event.getFormattedMessage()).contains("errorCode=DEFAULT_ERROR", "code=E500", "requestId=test-request-id");
         assertThat(event.getThrowableProxy().getClassName()).isEqualTo(exception.getClass().getName());
         assertThat(event.getThrowableProxy().getCause().getClassName()).isEqualTo(cause.getClass().getName());
         assertThat(response.getBody().message()).isEqualTo(ErrorCode.DEFAULT_ERROR.message());
@@ -88,32 +92,55 @@ class GlobalExceptionHandlerLoggingTest {
     void 입력_검증_오류는_요청_원문_없이_한_번_기록한다() {
         final var exception = new HttpMessageNotReadableException("private-request-body", new MockHttpInputMessage(new byte[0]));
 
-        handler.handleInvalidRequest(exception);
+        final var response = handler.handleInvalidRequest(exception);
 
         assertThat(appender.list).hasSize(1);
         final var event = appender.list.getFirst();
         assertThat(event.getLevel()).isEqualTo(Level.INFO);
-        assertThat(event.getFormattedMessage()).contains("errorCode=INVALID_REQUEST").doesNotContain("private-request-body");
+        assertThat(event.getFormattedMessage()).contains("errorCode=INVALID_REQUEST", "requestId=test-request-id")
+            .doesNotContain("private-request-body");
         assertThat(event.getThrowableProxy()).isNull();
+        assertThat(response.getStatusCode()).isEqualTo(ErrorCode.INVALID_REQUEST.status());
     }
 
     @Test
-    void 재시도_오류는_한_번_기록하고_재시도_헤더를_유지한다() {
+    void 알_수_없는_제약_오류는_예외와_원인을_기록하고_안전한_응답을_유지한다() {
+        final var cause = new IllegalStateException("database unavailable");
+        final var exception = new DataIntegrityViolationException("connection failed", cause);
+
+        final var response = handler.handleConstraintConflict(exception);
+
+        assertThat(appender.list).hasSize(1);
+        final var event = appender.list.getFirst();
+        assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+        assertThat(event.getFormattedMessage()).contains("errorCode=DEFAULT_ERROR", "code=E500", "requestId=test-request-id");
+        assertThat(event.getThrowableProxy().getClassName()).isEqualTo(exception.getClass().getName());
+        assertThat(event.getThrowableProxy().getCause().getClassName()).isEqualTo(cause.getClass().getName());
+        assertThat(response.getStatusCode()).isEqualTo(ErrorCode.DEFAULT_ERROR.status());
+        assertThat(response.getBody().data()).isNull();
+    }
+
+    @Test
+    void 알려진_제약_경합은_충돌_로그를_한_번_기록하고_409_응답을_유지한다() {
+        final var cause =
+            new ConstraintViolationException("duplicate", new SQLException("duplicate", "23000", 1062), "uk_chat_request_key");
+        final var exception = new DataIntegrityViolationException("database details", cause);
+
+        final var response = handler.handleConstraintConflict(exception);
+
+        assertThat(appender.list).hasSize(1);
+        assertThat(appender.list.getFirst().getLevel()).isEqualTo(Level.INFO);
+        assertThat(appender.list.getFirst().getFormattedMessage()).contains("errorCode=CONCURRENT_CHANGE", "requestId=test-request-id");
+        assertThat(response.getStatusCode()).isEqualTo(ErrorCode.CONCURRENT_CHANGE.status());
+        assertThat(response.getBody().code()).isEqualTo(ErrorCode.CONCURRENT_CHANGE.code());
+    }
+
+    @Test
+    void 재시도_오류는_한_번_기록하고_Retry_After_헤더를_유지한다() {
         final var response = handler.handleRetryAfter(new RetryAfterException(ErrorCode.AI_RECOMMENDATION_RATE_LIMITED, 30));
 
         assertThat(appender.list).hasSize(1);
         assertThat(appender.list.getFirst().getLevel()).isEqualTo(Level.INFO);
         assertThat(response.getHeaders().getFirst("Retry-After")).isEqualTo("30");
-    }
-
-    @Test
-    void 추적_값이_없는_호출에서도_새로운_ID를_만들지_않는다() {
-        MDC.remove(TraceIdFilter.TRACE_ID_MDC_KEY);
-
-        final var response = handler.handleCoreException(new CoreException(ErrorCode.INVALID_REQUEST));
-
-        assertThat(appender.list).hasSize(1);
-        assertThat(appender.list.getFirst().getFormattedMessage()).contains("traceId=null");
-        assertThat(response.getBody().traceId()).isNull();
     }
 }

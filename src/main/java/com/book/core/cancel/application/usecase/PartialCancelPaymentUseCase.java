@@ -3,6 +3,7 @@ package com.book.core.cancel.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.cancel.application.port.CancelBalanceRepositoryPort;
 import com.book.core.cancel.application.port.CancelRepositoryPort;
 import com.book.core.cancel.domain.Cancel;
@@ -78,8 +79,8 @@ public class PartialCancelPaymentUseCase {
         recordPaymentHistoryUseCase.execute(new PaymentHistory(TransactionType.PARTIAL_CANCEL, payment.userId(), payment.orderId(),
             payment.id(), payment.externalPaymentKey(), calculated.paidAmount(), calculated.pointAmount(), calculated.couponAmount(),
             "부분 취소 성공", cancel.canceledAt()));
-        log.info("결제 부분 취소 처리를 마쳤습니다. cancelId={}, paymentId={}, orderId={}, traceId={}", cancel.id(), payment.id(), order.id(),
-            MDC.get("traceId"));
+        log.info("결제 부분 취소 처리를 마쳤습니다. cancelId={}, paymentId={}, orderId={}, requestId={}", cancel.id(), payment.id(), order.id(),
+            MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
         return cancel.id();
     }
 }

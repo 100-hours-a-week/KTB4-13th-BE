@@ -12,7 +12,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.common.logging.TraceIdFilter;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileHistory;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileMemory;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
@@ -44,14 +44,14 @@ class AiPersonalizationProfileClientImplTest {
 
     @AfterEach
     void clearMdc() {
-        MDC.remove(TraceIdFilter.TRACE_ID_MDC_KEY);
+        MDC.remove(RequestMdcFilter.REQUEST_ID_MDC_KEY);
     }
 
     @Test
     void POST_preferences_profile에_Bearer_토큰과_X_Request_Id를_담아_요청한다() {
-        MDC.put(TraceIdFilter.TRACE_ID_MDC_KEY, "trace-abc-123");
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "request-abc-123");
         server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.POST))
-            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "trace-abc-123"))
+            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "request-abc-123"))
             .andRespond(withSuccess());
 
         client.createProfile(profileRequest());
@@ -92,10 +92,10 @@ class AiPersonalizationProfileClientImplTest {
 
     @Test
     void 갱신은_생성과_같은_인증_헤더와_요청_본문으로_PUT_preferences_profile을_요청한다() {
-        MDC.put(TraceIdFilter.TRACE_ID_MDC_KEY, "trace-put-456");
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "request-put-456");
         final AiPersonalizationProfileRequest request = profileRequest();
         server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT))
-            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "trace-put-456"))
+            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "request-put-456"))
             .andExpect(jsonPath("$.user_id").value(42))
             .andExpect(jsonPath("$.idempotency_key").value(idempotencyKeyGenerator.generate(request)))
             .andExpect(jsonPath("$.onboarding.reading_times[0]").value("잠들기 전"))

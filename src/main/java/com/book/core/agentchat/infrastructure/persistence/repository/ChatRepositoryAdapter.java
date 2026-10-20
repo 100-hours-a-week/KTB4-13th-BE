@@ -85,7 +85,6 @@ public class ChatRepositoryAdapter implements ChatRepositoryPort {
 
     @Override
     public List<MemoryExtractionTarget> findMemoryExtractionTargets(final Instant before) {
-        // created_at은 JVM 기본 시간대의 LocalDateTime으로 저장되므로 같은 시간대로 바꿔 비교합니다.
         return sessions.findMemoryExtractionTargets(LocalDateTime.ofInstant(before, ZoneId.systemDefault()));
     }
 }

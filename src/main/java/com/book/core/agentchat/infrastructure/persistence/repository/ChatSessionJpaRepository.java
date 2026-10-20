@@ -21,7 +21,6 @@ public interface ChatSessionJpaRepository extends JpaRepository<ChatSession, Lon
     @Query("select s from ChatSession s where s.id = :sessionId")
     Optional<ChatSession> findForChangeById(Long sessionId);
 
-    // 진행 중인 대화의 낙관적 잠금과 충돌하지 않도록 version을 올리지 않습니다.
     @Modifying
     @Query("update ChatSession s set s.memoryExtractedSequence = :sequence "
         + "where s.id = :sessionId and s.userId = :userId and s.memoryExtractedSequence < :sequence")

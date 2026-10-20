@@ -16,43 +16,72 @@ import com.book.core.order.application.result.GetOrderResult;
 import com.book.core.order.application.result.GetOrdersResult;
 import com.book.core.order.application.usecase.CancelOrderUseCase;
 import com.book.core.order.application.usecase.CreateOrderUseCase;
-import com.book.core.order.application.usecase.GetOrderUseCase;
+import com.book.core.order.application.usecase.ExpireOrderUseCase;
+import com.book.core.order.application.usecase.GetExpiredOrderKeysUseCase;
+import com.book.core.order.application.usecase.GetOrderDetailUseCase;
 import com.book.core.order.application.usecase.GetOrdersUseCase;
+import com.book.core.order.application.usecase.GetReservedOrderQuantitiesUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.product.application.command.GetProductDetailCommand;
+import com.book.core.product.application.command.ProductQuantitiesCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
+import com.book.core.product.application.usecase.ReleaseProductInventoryUseCase;
+import com.book.core.product.application.usecase.ReserveProductInventoryUseCase;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class OrderService {
+    private static final Duration RESERVATION_DURATION = Duration.ofMinutes(10);
+
     private final GetAddressUseCase getAddressUseCase;
     private final GetCartUseCase getCartUseCase;
     private final GetProductDetailUseCase getProductDetailUseCase;
     private final CreateOrderUseCase createOrderUseCase;
     private final CancelOrderUseCase cancelOrderUseCase;
     private final GetOrdersUseCase getOrdersUseCase;
-    private final GetOrderUseCase getOrderUseCase;
+    private final GetOrderDetailUseCase getOrderDetailUseCase;
+    private final ReserveProductInventoryUseCase reserveProductInventoryUseCase;
+    private final ReleaseProductInventoryUseCase releaseProductInventoryUseCase;
+    private final GetReservedOrderQuantitiesUseCase getReservedOrderQuantitiesUseCase;
+    private final GetExpiredOrderKeysUseCase getExpiredOrderKeysUseCase;
+    private final ExpireOrderUseCase expireOrderUseCase;
 
     public GetOrdersResult getOrders(final GetOrdersCommand command) {
         return getOrdersUseCase.execute(command);
     }
 
     public GetOrderResult getOrder(final GetOrderCommand command) {
-        return getOrderUseCase.execute(command);
+        return getOrderDetailUseCase.execute(command);
     }
 
+    @Transactional
     public void cancelOrder(final CancelOrderCommand command) {
         cancelOrderUseCase.execute(command);
+        release(getReservedOrderQuantitiesUseCase.execute(command.orderKey()));
     }
 
+    public List<String> getExpiredOrderKeys() {
+        return getExpiredOrderKeysUseCase.execute(LocalDateTime.now());
+    }
+
+    @Transactional
+    public void expireOrder(final String orderKey) {
+        release(expireOrderUseCase.execute(orderKey, LocalDateTime.now()));
+    }
+
+    @Transactional
     public CreateOrderResult createOrder(final CreateOrderCommand command) {
         final OrderAddress orderAddress =
             getAddressUseCase.execute(command.userId()).map((final GetAddressItemResult address) -> OrderAddress
@@ -80,11 +109,20 @@ public class OrderService {
         }
 
         final Order order = Order.create(command.userId(), "order_" + UUID.randomUUID(), orderAddress);
+        order.reserveUntil(LocalDateTime.now().plus(RESERVATION_DURATION));
         for (final CreateOrderItemCommand item : command.items()) {
             final GetProductDetailResult product = productsByProductId.get(item.productId());
             order.addItem(item.productId(), product.itemName(), product.thumbnailUrl(), product.author(), product.salePrice(),
                 product.discountedPrice(), item.quantity());
         }
+        reserveProductInventoryUseCase.execute(new ProductQuantitiesCommand(order.reservedQuantities()));
         return createOrderUseCase.execute(order);
     }
+
+    private void release(final Map<Long, Integer> quantities) {
+        if (!quantities.isEmpty()) {
+            releaseProductInventoryUseCase.execute(new ProductQuantitiesCommand(quantities));
+        }
+    }
+
 }

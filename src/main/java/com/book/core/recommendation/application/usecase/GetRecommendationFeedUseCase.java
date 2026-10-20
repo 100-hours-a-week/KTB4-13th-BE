@@ -27,8 +27,8 @@ public class GetRecommendationFeedUseCase {
         // The AI feed returns only bookIds; the product detail link needs the active product's own ID.
         final Map<Long, Long> productIdsByBookId =
             findProductIdsByBookIdsUseCase.execute(feedResult.items().stream().map(RecommendationFeedItem::bookId).toList());
-        final List<RecommendationFeedItemResult> items =
-            feedResult.items().stream().map((final var item) -> toItemResult(item, productIdsByBookId.get(item.bookId()))).toList();
+        final List<RecommendationFeedItemResult> items = feedResult.items().stream()
+            .map((final RecommendationFeedItem item) -> toItemResult(item, productIdsByBookId.get(item.bookId()))).toList();
         return new GetRecommendationFeedResult(items, feedResult.nextCursor(), feedResult.coldStart(), feedResult.degraded());
     }
 

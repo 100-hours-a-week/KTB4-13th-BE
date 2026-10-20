@@ -8,6 +8,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 interface CartItemJpaRepository extends JpaRepository<CartItem, Long> {
+    @Query("select item from CartItem item where item.cartId = :cartId order by item.id")
+    List<CartItem> findAllByCartIdForChange(@Param("cartId") final Long cartId);
+
     @Query("""
             select item
             from CartItem item

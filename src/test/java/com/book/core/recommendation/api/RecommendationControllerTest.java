@@ -27,6 +27,7 @@ import com.book.core.recommendation.application.result.RecommendationFeedItemRes
 import com.book.core.recommendation.application.service.RecommendationService;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -94,7 +95,7 @@ class RecommendationControllerTest {
             .andExpect(jsonPath("$.data.cards[0].reasonShort").value("한 줄 추천 이유"))
             .andExpect(jsonPath("$.data.cards[0].reasonLong").value("긴 추천 이유"));
 
-        final var expectedSpec = new java.util.HashMap<String, Object>();
+        final HashMap<String, Object> expectedSpec = new java.util.HashMap<String, Object>();
         expectedSpec.put("intent", "semantic");
         expectedSpec.put("exact", Map.of());
         expectedSpec.put("filters", Map.of());
@@ -154,6 +155,16 @@ class RecommendationControllerTest {
             """.formatted(SPEC_JSON, turns))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(recommendationService);
+    }
+
+    @Test
+    void 긴_이유가_없는_카드_상세도_정상_응답한다() throws Exception {
+        authenticateAs(42L);
+        when(recommendationService.getCard(new GetRecommendationCardCommand(42L, 1L)))
+            .thenReturn(new RecommendationCardDetailResult(1L, 10L, null));
+
+        mvc.perform(get("/api/v1/recommend/cards/{recommendationCardId}", 1L)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.recommendationCardId").value(1)).andExpect(jsonPath("$.data.reasonLong").value(nullValue()));
     }
 
     @Test

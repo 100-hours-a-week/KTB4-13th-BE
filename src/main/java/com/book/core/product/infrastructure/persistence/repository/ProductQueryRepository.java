@@ -52,14 +52,16 @@ class ProductQueryRepository {
             GROUP BY order_item.product_id
         ) sales ON sales.product_id = product.id
         LEFT JOIN (
-            SELECT order_item.product_id, COUNT(review.id) AS review_count, AVG(review.rating) AS review_rate
+            SELECT review.target_id AS product_id, COUNT(review.id) AS review_count, AVG(review.rate) AS review_rate
             FROM reviews review
-            JOIN order_item ON order_item.id = review.order_item_id
+            JOIN order_item ON review.review_key = CONCAT('ORDER_ITEM_', order_item.id)
+              AND order_item.product_id = review.target_id
             JOIN orders ON orders.id = order_item.order_id
-            WHERE review.deleted_at IS NULL
+            WHERE review.target_type = 'PRODUCT'
+              AND review.deleted_at IS NULL
               AND order_item.deleted_at IS NULL
               AND orders.deleted_at IS NULL
-            GROUP BY order_item.product_id
+            GROUP BY review.target_id
         ) reviews ON reviews.product_id = product.id
         """;
 
@@ -82,7 +84,7 @@ class ProductQueryRepository {
 
     private List<ProductListItem> findByCreatedAt(final Long categoryId, final BooleanExpression publishedAtPredicate,
         final ProductListCursor cursor, final int limit) {
-        return queryFactory.selectFrom(product).join(product.book, book).fetchJoin()
+        return queryFactory.selectFrom(product).join(product.book, book).fetchJoin().leftJoin(product.inventory).fetchJoin()
             .where(product.deletedAt.isNull(), book.deletedAt.isNull(), createdAtCursorPredicate(cursor),
                 categoryPredicate(categoryId, product.id), publishedAtPredicate)
             .orderBy(product.createdAt.desc(), product.id.desc()).limit(limit).fetch().stream()
@@ -104,8 +106,8 @@ class ProductQueryRepository {
             return List.of();
         }
         final var ids = ranked.stream().map((final var tuple) -> tuple.get(snapshot.productId)).toList();
-        final var products = queryFactory.selectFrom(product).join(product.book, book).fetchJoin().where(product.id.in(ids)).fetch()
-            .stream().collect(Collectors.toMap((final var item) -> item.id(), Function.identity()));
+        final var products = queryFactory.selectFrom(product).join(product.book, book).fetchJoin().leftJoin(product.inventory).fetchJoin()
+            .where(product.id.in(ids)).fetch().stream().collect(Collectors.toMap((final var item) -> item.id(), Function.identity()));
         return ranked.stream().map((final var tuple) -> new ProductListItem(products.get(tuple.get(snapshot.productId)),
             tuple.get(snapshot.salesQuantity), tuple.get(snapshot.reviewCount), tuple.get(snapshot.reviewRate))).toList();
     }

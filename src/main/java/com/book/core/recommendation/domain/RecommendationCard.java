@@ -29,7 +29,7 @@ public class RecommendationCard {
     @Column(name = "book_id", nullable = false)
     private Long bookId;
 
-    @Column(name = "reason_long", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "reason_long", columnDefinition = "TEXT")
     private String reasonLong;
 
     @CreationTimestamp

@@ -1,0 +1,126 @@
+package com.book.core.payment.application.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
+import com.book.core.coupon.application.usecase.FindOwnedCouponsForCheckoutUseCase;
+import com.book.core.coupon.application.usecase.GetCouponTargetsUseCase;
+import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
+import com.book.core.order.domain.Order;
+import com.book.core.order.domain.OrderStatus;
+import com.book.core.payment.application.command.ApprovePaymentCommand;
+import com.book.core.payment.application.command.CreatePaymentCommand;
+import com.book.core.payment.application.command.FailPaymentCommand;
+import com.book.core.payment.application.usecase.ApprovePgPaymentUseCase;
+import com.book.core.payment.application.usecase.PreparePgOperationUseCase;
+import com.book.core.payment.application.usecase.RejectPgOperationUseCase;
+import com.book.core.payment.application.usecase.CreatePaymentUseCase;
+import com.book.core.payment.application.usecase.FailPaymentUseCase;
+import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
+import com.book.core.payment.application.usecase.ValidatePaymentUseCase;
+import com.book.core.payment.domain.PaymentDiscount;
+import com.book.core.point.application.usecase.GetPointBalanceUseCase;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+import org.springframework.test.util.ReflectionTestUtils;
+
+class PaymentServiceTest {
+    private final GetPaymentOrderUseCase orders = mock(GetPaymentOrderUseCase.class);
+    private final GetCouponTargetsUseCase targets = mock(GetCouponTargetsUseCase.class);
+    private final FindOwnedCouponsForCheckoutUseCase coupons = mock(FindOwnedCouponsForCheckoutUseCase.class);
+    private final GetPointBalanceUseCase balance = mock(GetPointBalanceUseCase.class);
+    private final CreatePaymentUseCase create = mock(CreatePaymentUseCase.class);
+    private final ValidatePaymentUseCase validate = mock(ValidatePaymentUseCase.class);
+    private final ApprovePgPaymentUseCase complete = mock(ApprovePgPaymentUseCase.class);
+    private final PreparePgOperationUseCase prepare = mock(PreparePgOperationUseCase.class);
+    private final RejectPgOperationUseCase reject = mock(RejectPgOperationUseCase.class);
+    private final FailPaymentUseCase fail = mock(FailPaymentUseCase.class);
+    private final PostProcessPaymentUseCase post = mock(PostProcessPaymentUseCase.class);
+    private final PaymentService service =
+        new PaymentService(orders, targets, coupons, balance, create, validate, complete, prepare, reject, fail, post);
+
+    @Test
+    void 일반_결제는_주문과_체크아웃_후보_잔액을_조합하고_원값을_전달한다() {
+        final Order order = order();
+        when(orders.execute(1L, "order")).thenReturn(order);
+        when(targets.execute(List.of())).thenReturn(Set.of());
+        when(coupons.execute(eq(1L), eq(Set.of()), any())).thenReturn(List.of());
+        when(balance.execute(1L)).thenReturn(BigDecimal.ZERO);
+        when(create.execute(eq(order), eq(1L), any())).thenReturn(3L);
+        assertThat(service.create(new CreatePaymentCommand(1L, "order", -1L, BigDecimal.valueOf(-1)))).isEqualTo(3L);
+        final ArgumentCaptor<PaymentDiscount> captured = ArgumentCaptor.forClass(PaymentDiscount.class);
+        verify(create).execute(eq(order), eq(1L), captured.capture());
+        assertThat(captured.getValue().paidAmount(BigDecimal.valueOf(10000))).isEqualByComparingTo("10001");
+    }
+
+    @Test
+    void 성공은_검증_완료_후처리_순서로_실행한다() {
+        when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
+        when(complete.execute(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN)))
+            .thenReturn(new com.book.core.payment.application.result.PaymentCompletionResult(3L, true));
+        assertThat(service.success(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN))).isEqualTo(3L);
+        final InOrder sequence = inOrder(prepare, complete, post);
+        sequence.verify(prepare).execute(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN).operation());
+        sequence.verify(complete).execute(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN));
+        sequence.verify(post).execute(3L, "order");
+    }
+
+    @Test
+    void 완료된_승인_재요청은_장바구니_정리를_반복하지_않는다() {
+        final var command = new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN);
+        when(complete.execute(command)).thenReturn(new com.book.core.payment.application.result.PaymentCompletionResult(3L, false));
+        assertThat(service.success(command)).isEqualTo(3L);
+        verifyNoInteractions(post);
+    }
+
+    @Test
+    void 승인_검증_실패는_완료와_후처리를_실행하지_않는다() {
+        when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
+        doThrow(new IllegalStateException("test")).when(prepare).execute(any());
+        assertThatThrownBy(() -> service.success(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN)))
+            .isInstanceOf(IllegalStateException.class);
+        verifyNoInteractions(complete, post);
+    }
+
+    @Test
+    void 미확정_PG결과는_요청을_거절로_기록하지_않는다() {
+        final var command = new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN);
+        doThrow(new CoreException(ErrorCode.PG_PENDING)).when(complete).execute(command);
+        assertThatThrownBy(() -> service.success(command)).isInstanceOfSatisfying(CoreException.class,
+            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
+        verify(prepare).execute(command.operation());
+        verify(reject, never()).execute(command.operation());
+        verifyNoInteractions(post);
+    }
+
+    @Test
+    void 실패는_실패_검증_후_기록만_실행한다() {
+        when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
+        service.fail(new FailPaymentCommand("order", "FAIL", "test"));
+        final InOrder sequence = inOrder(validate, fail);
+        sequence.verify(validate).validateForFail(2L);
+        sequence.verify(fail).execute("order", "FAIL", "test");
+        verifyNoInteractions(complete, post);
+    }
+
+    private static Order order() {
+        final Order order = Order.create(1L, "order", null);
+        ReflectionTestUtils.setField(order, "id", 2L);
+        return order;
+    }
+}

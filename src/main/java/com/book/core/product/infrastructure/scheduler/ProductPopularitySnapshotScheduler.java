@@ -39,12 +39,12 @@ public class ProductPopularitySnapshotScheduler {
             }
             try {
                 productService.refreshProductPopularitySnapshot();
-                log.info("상품 인기도 스냅샷을 갱신했습니다.");
+                log.info("[PRODUCT] 상품 인기도 스냅샷을 갱신했습니다.");
             } finally {
                 releaseLock(lockConnection);
             }
         } catch (final Exception exception) {
-            log.error("상품 인기도 스냅샷 갱신에 실패했습니다.", exception);
+            log.error("[PRODUCT] 상품 인기도 스냅샷 갱신에 실패했습니다.", exception);
         }
     }
 
@@ -69,11 +69,11 @@ public class ProductPopularitySnapshotScheduler {
             statement.setString(1, LOCK_NAME);
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (!resultSet.next() || resultSet.getInt(1) != 1) {
-                    log.warn("상품 인기도 스냅샷 갱신 잠금을 해제하지 못했습니다.");
+                    log.warn("[PRODUCT] 상품 인기도 스냅샷 갱신 잠금을 해제하지 못했습니다.");
                 }
             }
         } catch (final SQLException exception) {
-            log.warn("상품 인기도 스냅샷 갱신 잠금 해제 중 오류가 발생했습니다.", exception);
+            log.warn("[PRODUCT] 상품 인기도 스냅샷 갱신 잠금 해제 중 오류가 발생했습니다.", exception);
         }
     }
 }

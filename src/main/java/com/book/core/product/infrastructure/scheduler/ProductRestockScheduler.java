@@ -22,7 +22,7 @@ public class ProductRestockScheduler {
         try {
             productService.getReceivableRestocks().forEach(this::receiveRestock);
         } catch (final Exception exception) {
-            log.error("입고할 발주 조회에 실패했습니다.", exception);
+            log.error("[PRODUCT] 입고할 발주 조회에 실패했습니다.", exception);
         }
     }
 
@@ -30,7 +30,7 @@ public class ProductRestockScheduler {
         try {
             productService.receiveRestock(restockId);
         } catch (final Exception exception) {
-            log.error("발주 입고에 실패했습니다. restockId={}", restockId, exception);
+            log.atError().addKeyValue("restockId", restockId).log("[PRODUCT] 발주 입고에 실패했습니다. restockId={}", restockId, exception);
         }
     }
 
@@ -38,7 +38,7 @@ public class ProductRestockScheduler {
         try {
             productService.getRestockCandidates().forEach(this::createRestock);
         } catch (final Exception exception) {
-            log.error("발주 대상 상품 조회에 실패했습니다.", exception);
+            log.error("[PRODUCT] 발주 대상 상품 조회에 실패했습니다.", exception);
         }
     }
 
@@ -46,7 +46,7 @@ public class ProductRestockScheduler {
         try {
             productService.createRestock(productId);
         } catch (final Exception exception) {
-            log.error("상품 발주 생성에 실패했습니다. productId={}", productId, exception);
+            log.atError().addKeyValue("productId", productId).log("[PRODUCT] 상품 발주 생성에 실패했습니다. productId={}", productId, exception);
         }
     }
 }

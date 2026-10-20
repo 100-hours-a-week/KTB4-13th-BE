@@ -22,7 +22,6 @@ public class GetLibraryBooksUseCase {
     private final GetBooksUseCase getBooksUseCase;
     private final FindProductIdsByBookIdsUseCase findProductIdsByBookIdsUseCase;
 
-    /** 최근에 추가한 순서로 반환합니다. 도서·상품은 목록 단위로 한 번씩 조회하며, 판매 중인 상품이 없으면 productId는 null입니다. */
     @Transactional(readOnly = true)
     public List<LibraryBookResult> execute(final Long userId) {
         final List<UserLibraryBook> libraryBooks = libraryBookRepository.findActiveByUserId(userId).stream()

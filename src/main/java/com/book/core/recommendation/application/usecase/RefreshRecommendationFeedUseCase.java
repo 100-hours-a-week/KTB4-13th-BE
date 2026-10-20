@@ -4,6 +4,7 @@ import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.recommendation.application.port.RecommendationFeedRefreshClient;
+import com.book.core.recommendation.application.port.RecommendationFeedRefreshResult;
 import lombok.RequiredArgsConstructor;
 
 @UseCase
@@ -12,13 +13,12 @@ public class RefreshRecommendationFeedUseCase {
     private final RecommendationFeedRefreshClient feedRefreshClient;
 
     public void execute() {
-        int remainingFeedCount = feedRefreshClient.refreshFeed();
-        while (remainingFeedCount > 0) {
-            final int nextRemainingFeedCount = feedRefreshClient.refreshFeed();
-            if (nextRemainingFeedCount >= remainingFeedCount) {
+        RecommendationFeedRefreshResult refreshResult = feedRefreshClient.refreshFeed();
+        while (refreshResult.remainingCount() > 0) {
+            if (refreshResult.refreshedCount() == 0) {
                 throw new CoreException(ErrorCode.AI_FEED_FAILURE);
             }
-            remainingFeedCount = nextRemainingFeedCount;
+            refreshResult = feedRefreshClient.refreshFeed();
         }
     }
 }

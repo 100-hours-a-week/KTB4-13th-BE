@@ -5,6 +5,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.logging.TraceIdFilter;
 import com.book.core.recommendation.application.port.RecommendationFeedRefreshClient;
+import com.book.core.recommendation.application.port.RecommendationFeedRefreshResult;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.MDC;
@@ -28,7 +29,7 @@ public class RecommendationFeedRefreshClientImpl implements RecommendationFeedRe
     }
 
     @Override
-    public int refreshFeed() {
+    public RecommendationFeedRefreshResult refreshFeed() {
         final AiFeedRefreshEnvelope envelope;
         try {
             envelope = restClient.post().uri(REFRESH_PATH).header(REQUEST_ID_HEADER, currentRequestId())
@@ -39,10 +40,11 @@ public class RecommendationFeedRefreshClientImpl implements RecommendationFeedRe
             throw new CoreException(ErrorCode.AI_FEED_FAILURE, exception);
         }
         if (envelope == null || !SUCCESS_MESSAGE.equals(envelope.message()) || envelope.data() == null
-            || envelope.data().remaining() == null || envelope.data().remaining() < 0) {
+            || envelope.data().refreshed() == null || envelope.data().refreshed() < 0 || envelope.data().remaining() == null
+            || envelope.data().remaining() < 0) {
             throw new CoreException(ErrorCode.AI_FEED_FAILURE);
         }
-        return envelope.data().remaining();
+        return new RecommendationFeedRefreshResult(envelope.data().refreshed(), envelope.data().remaining());
     }
 
     private String currentRequestId() {

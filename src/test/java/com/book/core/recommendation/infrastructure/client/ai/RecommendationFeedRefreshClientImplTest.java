@@ -12,6 +12,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.recommendation.application.port.RecommendationFeedRefreshResult;
 import java.net.SocketTimeoutException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -30,13 +31,13 @@ class RecommendationFeedRefreshClientImplTest {
     private final RecommendationFeedRefreshClientImpl client = new RecommendationFeedRefreshClientImpl(builder.build());
 
     @Test
-    void 서비스_토큰과_빈_본문으로_POST하고_남은_목록_수를_반환한다() {
+    void 서비스_토큰과_빈_본문으로_POST하고_다시_뽑은_목록_수와_남은_목록_수를_반환한다() {
         server.expect(requestTo(REFRESH_URL)).andExpect(method(HttpMethod.POST))
             .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer service-token")).andExpect(content().json("{}")).andRespond(withSuccess("""
                 {"message": "refresh_success", "data": {"refreshed": 12, "remaining": 30}}
                 """, MediaType.APPLICATION_JSON));
 
-        assertThat(client.refreshFeed()).isEqualTo(30);
+        assertThat(client.refreshFeed()).isEqualTo(new RecommendationFeedRefreshResult(12, 30));
 
         server.verify();
     }
@@ -45,7 +46,7 @@ class RecommendationFeedRefreshClientImplTest {
     void 서버_오류나_잘못된_응답은_실패로_시간_초과는_시간_초과로_구분한다() {
         server.expect(requestTo(REFRESH_URL)).andRespond(withServerError());
         server.expect(requestTo(REFRESH_URL)).andRespond(withSuccess("""
-            {"message": "refresh_success", "data": {"refreshed": 0}}
+            {"message": "refresh_success", "data": {"remaining": 0}}
             """, MediaType.APPLICATION_JSON));
         server.expect(requestTo(REFRESH_URL)).andRespond(withException(new SocketTimeoutException("timeout")));
 

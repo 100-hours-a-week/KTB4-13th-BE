@@ -95,6 +95,7 @@ public class Order extends BaseTimeEntity {
     }
 
     public void canceled() {
+        items.forEach(OrderItem::cancelRemaining);
         status = OrderStatus.CANCELED;
     }
 

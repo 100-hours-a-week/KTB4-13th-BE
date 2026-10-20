@@ -110,7 +110,10 @@ public enum ErrorCode {
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "E2001", "결제 금액이 일치하지 않습니다.", LogLevel.INFO),
     PAYMENT_INVALID_AMOUNT(HttpStatus.BAD_REQUEST, "E2002", "결제 금액이 0보다 작을 수 없습니다.", LogLevel.INFO),
     OWNED_COUPON_MIN_AMOUNT_NOT_REACHED(HttpStatus.BAD_REQUEST, "E5002", "쿠폰 사용 가능 최소 금액이 부족합니다.", LogLevel.INFO),
-    POINT_EXCEEDS_BALANCE(HttpStatus.BAD_REQUEST, "E6000", "보유 포인트를 초과하여 사용할 수 없습니다.", LogLevel.INFO);
+    POINT_EXCEEDS_BALANCE(HttpStatus.BAD_REQUEST, "E6000", "보유 포인트를 초과하여 사용할 수 없습니다.", LogLevel.INFO),
+    POINT_INVALID_AMOUNT(HttpStatus.BAD_REQUEST, "E6001", "포인트는 10포인트 단위로 사용할 수 있습니다.", LogLevel.INFO),
+    ORDER_CANNOT_BE_CONFIRMED(HttpStatus.CONFLICT, "ORDER_CANNOT_BE_CONFIRMED", "현재 상태의 주문은 구매 확정할 수 없습니다.", LogLevel.INFO),
+    POINT_DATA_INCONSISTENT(HttpStatus.CONFLICT, "POINT_DATA_INCONSISTENT", "포인트 사용 내역이 일치하지 않습니다.", LogLevel.ERROR);
 
     private final HttpStatus status;
     private final String code;

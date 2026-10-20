@@ -2,6 +2,7 @@ package com.book.core.point.domain;
 
 import com.book.common.domain.BaseEntity;
 import com.book.core.point.domain.enums.PointType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -24,6 +25,9 @@ public class PointHistory extends BaseEntity {
     private BigDecimal amount;
     private BigDecimal balanceAfter;
 
+    @Column(name = "event_key", length = 150)
+    private String eventKey;
+
     @Builder
     public PointHistory(final Long id, final Long userId, final PointType type, final Long referenceId, final BigDecimal amount,
         final BigDecimal balanceAfter) {
@@ -33,6 +37,11 @@ public class PointHistory extends BaseEntity {
         this.referenceId = referenceId;
         this.amount = amount;
         this.balanceAfter = balanceAfter;
+    }
+
+    public PointHistory withEventKey(final String eventKey) {
+        this.eventKey = eventKey;
+        return this;
     }
 
 }

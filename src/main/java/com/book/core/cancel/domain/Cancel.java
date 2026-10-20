@@ -75,4 +75,8 @@ public class Cancel extends BaseEntity {
         this.externalCancelKey = externalCancelKey;
         this.canceledAt = canceledAt;
     }
+
+    public void recordPointRestoration(final BigDecimal canceledPointAmount) {
+        this.canceledPointAmount = canceledPointAmount;
+    }
 }

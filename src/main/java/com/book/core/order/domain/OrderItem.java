@@ -152,6 +152,38 @@ public class OrderItem extends BaseTimeEntity {
         return cappedDiscount.min(amount).max(BigDecimal.ZERO);
     }
 
+    public BigDecimal pointAllocationForNextCanceledUnits(final long cancelQuantity) {
+        if (cancelQuantity <= 0 || canceledQuantity + cancelQuantity > quantity) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        return pointAllocationForRange(canceledQuantity, cancelQuantity);
+    }
+
+    public BigDecimal pointAllocationForRemainingUnits() {
+        return pointAllocationForRange(canceledQuantity, cancellableQuantity());
+    }
+
+    public BigDecimal remainingGeneralPaymentAmount() {
+        return generalPaymentAmountForQuantity(cancellableQuantity(), canceledQuantity);
+    }
+
+    public BigDecimal remainingGeneralPaymentAmountAfterCancel(final long cancelQuantity) {
+        if (cancelQuantity <= 0 || canceledQuantity + cancelQuantity > quantity) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        final long remainingQuantity = cancellableQuantity() - cancelQuantity;
+        return generalPaymentAmountForQuantity(remainingQuantity, canceledQuantity + cancelQuantity);
+    }
+
+    private BigDecimal generalPaymentAmountForQuantity(final long itemQuantity, final long pointAllocationStart) {
+        final BigDecimal amount = unitPrice.multiply(BigDecimal.valueOf(itemQuantity)).subtract(couponDiscountForQuantity(itemQuantity))
+            .subtract(pointAllocationForRange(pointAllocationStart, itemQuantity));
+        if (amount.signum() < 0) {
+            throw new CoreException(ErrorCode.POINT_DATA_INCONSISTENT);
+        }
+        return amount;
+    }
+
     public boolean hasAppliedCoupon() {
         return ownedCouponId != null && ownedCouponId > 0;
     }
@@ -167,7 +199,10 @@ public class OrderItem extends BaseTimeEntity {
     }
 
     public void cancel(final long cancelQuantity) {
-        if (this.canceledQuantity + cancelQuantity > this.quantity) {
+        if (status == OrderItemStatus.CONFIRMED || status == OrderItemStatus.CANCELED) {
+            throw new CoreException(ErrorCode.ORDER_CANNOT_BE_CANCELED);
+        }
+        if (cancelQuantity <= 0 || this.canceledQuantity + cancelQuantity > this.quantity) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         this.canceledQuantity += cancelQuantity;
@@ -180,6 +215,13 @@ public class OrderItem extends BaseTimeEntity {
 
     public long cancellableQuantity() {
         return quantity - canceledQuantity;
+    }
+
+    void cancelRemaining() {
+        final long remainingQuantity = cancellableQuantity();
+        if (remainingQuantity > 0) {
+            cancel(remainingQuantity);
+        }
     }
 
     public boolean isAllCanceled() {

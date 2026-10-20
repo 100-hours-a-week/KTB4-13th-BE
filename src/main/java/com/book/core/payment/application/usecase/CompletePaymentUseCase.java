@@ -10,14 +10,13 @@ import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.port.PaymentHistoryRepositoryPort;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
+import com.book.core.payment.application.result.ApprovedPaymentResult;
 import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.PaymentHistory;
-import com.book.core.payment.application.result.ApprovedPaymentResult;
 import com.book.core.payment.domain.enums.TransactionType;
 import com.book.core.point.application.usecase.DeductPointUseCase;
-import com.book.core.point.application.usecase.EarnPointUseCase;
-import com.book.core.point.domain.PointAmount;
 import com.book.core.point.domain.enums.PointType;
+import java.util.LinkedHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -31,7 +30,6 @@ public class CompletePaymentUseCase {
     private final GetPaymentOrderUseCase getPaymentOrderUseCase;
     private final UseOwnedCouponUseCase useOwnedCouponUseCase;
     private final DeductPointUseCase deductPointUseCase;
-    private final EarnPointUseCase earnPointUseCase;
     private final CreateCancelBalanceUseCase createCancelBalanceUseCase;
     private final PaymentHistoryRepositoryPort paymentHistoryRepository;
 
@@ -44,8 +42,14 @@ public class CompletePaymentUseCase {
         order.items().stream().filter((final var item) -> item.hasAppliedCoupon()).map((final var item) -> item.ownedCouponId()).distinct()
             .forEach(useOwnedCouponUseCase::execute);
         // TODO(#330): 승인 시 사용 포인트 부족을 재검증하거나 예약하고, 보너스 회수 정책과 분리한다.
-        deductPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), payment.usedPoint());
-        earnPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), PointAmount.PAYMENT);
+        final var pointAllocationsByOrderItem = new LinkedHashMap<Long, java.math.BigDecimal>();
+        order.items().stream().filter((final var item) -> item.usedPointAmount().signum() > 0)
+            .forEach((final var item) -> pointAllocationsByOrderItem.put(item.id(), item.usedPointAmount()));
+        if (pointAllocationsByOrderItem.isEmpty()) {
+            deductPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), payment.usedPoint());
+        } else {
+            deductPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), payment.usedPoint(), pointAllocationsByOrderItem);
+        }
         createCancelBalanceUseCase.execute(order.id(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount());
         paymentHistoryRepository.save(new PaymentHistory(TransactionType.PAYMENT, payment.userId(), payment.orderId(), payment.id(),
             approval.paymentKey(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "결제 성공", payment.paidAt()));

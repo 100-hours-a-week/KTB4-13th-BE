@@ -114,6 +114,26 @@ class TossPaymentRecoveryIntegrationTest {
     private PostProcessPaymentUseCase postProcessPayment;
 
     @Test
+    void 승인전_카드정보가_없어도_승인후_주문과_결제를_완료한다() {
+        final Fixture fixture = fixture(false, 1);
+        final var command = new ApprovePaymentCommand(fixture.order().key(), fixture.key(), fixture.pg().total);
+
+        final Long paymentId = payments.success(command);
+
+        final Payment payment = paymentRepository.findById(paymentId).orElseThrow();
+        assertThat(payment.state()).isEqualTo(PaymentState.SUCCESS);
+        assertThat(payment.method()).isEqualTo(PaymentMethod.CARD);
+        assertThat(payment.approveCode()).isEqualTo("12345678");
+        assertThat(orders.findActiveOrderByKey(fixture.order().key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
+        assertThat(payments.success(command)).isEqualTo(paymentId);
+        assertThat(fixture.pg().approvals).isEqualTo(1);
+        assertThat(pending(fixture)).isZero();
+        assertThat(points.findByUserId(fixture.order().userId()).orElseThrow().balance()).isEqualByComparingTo("22000");
+        assertThat(jdbc.queryForObject("select count(*) from transaction_history where order_id = ? and type = 'PAYMENT'", Long.class,
+            fixture.order().id())).isEqualTo(1L);
+    }
+
+    @Test
     void 승인_성공후_DB실패는_요청을_보존하고_조회로_내부_반영을_복구한다() {
         final Fixture fixture = fixture(false, 1);
         final var command = new ApprovePaymentCommand(fixture.order().key(), fixture.key(), fixture.pg().total);
@@ -408,8 +428,9 @@ class TossPaymentRecoveryIntegrationTest {
             if (terminalState != null) {
                 state = terminalState;
             }
+            final String card = paid ? "{\"approveNo\":\"12345678\"}" : "null";
             return "{\"paymentKey\":\"" + key + "\",\"orderId\":\"" + orderKey + "\",\"totalAmount\":" + total + ",\"balanceAmount\":"
-                + balance + ",\"status\":\"" + state + "\",\"method\":\"카드\",\"card\":{\"approveNo\":\"12345678\"},\"cancels\":["
+                + balance + ",\"status\":\"" + state + "\",\"method\":\"카드\",\"card\":" + card + ",\"cancels\":["
                 + String.join(",", cancellations) + "]}";
         }
     }

@@ -54,6 +54,42 @@ class ApprovePgPaymentUseCaseTest {
     }
 
     @Test
+    void 승인전_카드정보가_없어도_인증완료_결제를_승인한다() {
+        prepare(command);
+        when(client.find("key"))
+            .thenReturn(new PgPaymentResult("key", "order", BigDecimal.TEN, BigDecimal.TEN, "IN_PROGRESS", null, null, List.of()));
+        when(client.approve("key", "order", BigDecimal.TEN, operation.pgIdempotencyKey())).thenReturn(result("DONE", "order"));
+
+        assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
+        verify(client).approve("key", "order", BigDecimal.TEN, operation.pgIdempotencyKey());
+        verify(complete).execute("order",
+            new com.book.core.payment.application.result.ApprovedPaymentResult("key", PaymentMethod.CARD, "1234"));
+        assertThat(operation.completed()).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"method", "approveCode", "blankApproveCode"})
+    void 승인후_결제수단이나_승인번호가_없으면_내부_결제를_완료하지_않는다(final String missingField) {
+        prepare(command);
+        when(client.find("key"))
+            .thenReturn(new PgPaymentResult("key", "order", BigDecimal.TEN, BigDecimal.TEN, "IN_PROGRESS", null, null, List.of()));
+        final PaymentMethod method = "method".equals(missingField) ? null : PaymentMethod.CARD;
+        final String approveCode = switch (missingField) {
+            case "approveCode" -> null;
+            case "blankApproveCode" -> " ";
+            default -> "1234";
+        };
+        when(client.approve("key", "order", BigDecimal.TEN, operation.pgIdempotencyKey()))
+            .thenReturn(new PgPaymentResult("key", "order", BigDecimal.TEN, BigDecimal.TEN, "DONE", method, approveCode, List.of()));
+
+        assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_RESPONSE_MISMATCH));
+        verify(client).approve("key", "order", BigDecimal.TEN, operation.pgIdempotencyKey());
+        verifyNoInteractions(complete);
+        assertThat(operation.completed()).isFalse();
+    }
+
+    @Test
     void PG성공후_DB실패_재요청은_조회결과로_내부_완료만_재개한다() {
         prepare(command);
         when(client.find("key")).thenReturn(result("DONE", "order"));

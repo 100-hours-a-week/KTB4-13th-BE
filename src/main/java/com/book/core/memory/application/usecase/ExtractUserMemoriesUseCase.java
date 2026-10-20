@@ -15,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 @UseCase
 @RequiredArgsConstructor
 public class ExtractUserMemoriesUseCase {
-    private static final int MAX_MESSAGES = 40;
+    public static final int MAX_MESSAGES = 40;
 
     private final AiMemoryExtractionClient aiMemoryExtractionClient;
 

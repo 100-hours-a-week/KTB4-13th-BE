@@ -1,12 +1,22 @@
 package com.book.core.agentchat.infrastructure.persistence.repository;
 
+import static com.book.core.agentchat.domain.QChatMessage.chatMessage;
+
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.agentchat.application.port.ChatRepositoryPort;
+import com.book.core.agentchat.application.result.MemoryExtractionTarget;
 import com.book.core.agentchat.domain.ChatMessage;
 import com.book.core.agentchat.domain.ChatRequest;
 import com.book.core.agentchat.domain.ChatSession;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +28,7 @@ public class ChatRepositoryAdapter implements ChatRepositoryPort {
     private final ChatSessionJpaRepository sessions;
     private final ChatRequestJpaRepository requests;
     private final ChatMessageJpaRepository messages;
+    private final JPAQueryFactory queryFactory;
 
     @Override
     public ChatSession saveSession(final ChatSession session) {
@@ -32,6 +43,11 @@ public class ChatRepositoryAdapter implements ChatRepositoryPort {
     @Override
     public List<ChatSession> findSessions(final Long userId, final Long beforeId, final int limit) {
         return sessions.findSessions(userId, beforeId, PageRequest.ofSize(limit));
+    }
+
+    @Override
+    public List<ChatSession> findSessionsByIds(final Collection<Long> sessionIds) {
+        return sessions.findAllById(sessionIds);
     }
 
     @Override
@@ -70,6 +86,14 @@ public class ChatRepositoryAdapter implements ChatRepositoryPort {
     }
 
     @Override
+    public List<ChatMessage> recentMessagesUpTo(final Map<Long, Long> lastSequenceBySessionId, final int limit) {
+        final BooleanBuilder ranges = new BooleanBuilder();
+        lastSequenceBySessionId.forEach((final Long sessionId, final Long lastSequence) -> ranges.or(chatMessage.sessionId.eq(sessionId)
+            .and(chatMessage.sequence.gt(lastSequence - limit)).and(chatMessage.sequence.loe(lastSequence))));
+        return queryFactory.selectFrom(chatMessage).where(ranges).orderBy(chatMessage.sessionId.asc(), chatMessage.sequence.asc()).fetch();
+    }
+
+    @Override
     public Optional<ChatMessage> latestCardResponse(final Long sessionId) {
         return messages.latestCardResponse(sessionId);
     }
@@ -77,5 +101,10 @@ public class ChatRepositoryAdapter implements ChatRepositoryPort {
     @Override
     public Optional<ChatMessage> responseFor(final Long requestId) {
         return messages.findByRequestIdAndRole(requestId, "assistant");
+    }
+
+    @Override
+    public List<MemoryExtractionTarget> findMemoryExtractionTargets(final Instant before) {
+        return sessions.findMemoryExtractionTargets(LocalDateTime.ofInstant(before, ZoneId.systemDefault()));
     }
 }

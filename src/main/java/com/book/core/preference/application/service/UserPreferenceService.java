@@ -22,7 +22,6 @@ import com.book.core.onboarding.application.usecase.CheckPersonalizationAgreemen
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
 import com.book.core.onboarding.application.usecase.GetProfileRefreshTargetsUseCase;
 import com.book.core.onboarding.application.usecase.PersonalizationProfileUseCase;
-import com.book.core.preference.application.command.ExtractChatMemoriesCommand;
 import com.book.core.preference.application.result.UserPreferencesResult;
 import com.book.core.recommendation.application.usecase.RefreshRecommendationFeedUseCase;
 import java.time.Duration;
@@ -86,7 +85,7 @@ public class UserPreferenceService {
                 continue;
             }
             try {
-                if (extractMemories(new ExtractChatMemoriesCommand(target.userId(), target.sessionId(), target.sequence()))) {
+                if (extractMemories(target)) {
                     memoryChangedUserIds.add(target.userId());
                 }
             } catch (final RuntimeException exception) {
@@ -106,13 +105,13 @@ public class UserPreferenceService {
         userIds.forEach(this::refreshProfile);
     }
 
-    public boolean extractMemories(final ExtractChatMemoriesCommand command) {
-        if (!checkPersonalizationAgreementUseCase.execute(command.userId())) {
+    private boolean extractMemories(final MemoryExtractionTarget target) {
+        if (!checkPersonalizationAgreementUseCase.execute(target.userId())) {
             return false;
         }
-        final List<ConversationMessage> messages = conversation(command);
+        final List<ConversationMessage> messages = conversation(target);
         final ExtractUserMemoriesCommand extractCommand =
-            new ExtractUserMemoriesCommand(command.userId(), String.valueOf(command.sessionId()), messages);
+            new ExtractUserMemoriesCommand(target.userId(), String.valueOf(target.sessionId()), messages);
         List<UserMemoryExtraction> extractions;
         try {
             extractions = extractUserMemoriesUseCase.execute(extractCommand);
@@ -121,7 +120,7 @@ public class UserPreferenceService {
             extractions = extractUserMemoriesUseCase.execute(extractCommand);
         }
         return saveUserMemoriesUseCase
-            .execute(new SaveUserMemoriesCommand(command.userId(), command.sessionId(), command.sequence(), extractions));
+            .execute(new SaveUserMemoriesCommand(target.userId(), target.sessionId(), target.sequence(), extractions));
     }
 
     private void refreshRecommendationFeed() {
@@ -140,16 +139,16 @@ public class UserPreferenceService {
         }
     }
 
-    private List<ConversationMessage> conversation(final ExtractChatMemoriesCommand command) {
+    private List<ConversationMessage> conversation(final MemoryExtractionTarget target) {
         final List<ConversationMessage> messages = new ArrayList<>();
         long afterSequence = 0;
-        while (afterSequence < command.sequence()) {
+        while (afterSequence < target.sequence()) {
             final List<ChatHistoryMessage> page =
-                getChatHistoryUseCase.execute(command.userId(), command.sessionId(), afterSequence, HISTORY_PAGE_SIZE);
+                getChatHistoryUseCase.execute(target.userId(), target.sessionId(), afterSequence, HISTORY_PAGE_SIZE);
             if (page.isEmpty()) {
                 break;
             }
-            page.stream().filter((final ChatHistoryMessage message) -> message.sequence() <= command.sequence())
+            page.stream().filter((final ChatHistoryMessage message) -> message.sequence() <= target.sequence())
                 .map((final ChatHistoryMessage message) -> new ConversationMessage(message.role(), message.text())).forEach(messages::add);
             afterSequence = page.getLast().sequence();
         }

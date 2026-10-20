@@ -23,10 +23,10 @@ public class UserMemoryExtractionScheduler {
     private final UserPreferenceService userPreferenceService;
 
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Seoul")
-    public void extractNightlyMemories() {
+    public void runNightlyBatch() {
         try (Connection lockConnection = dataSource.getConnection()) {
             if (!acquireLock(lockConnection)) {
-                log.info("다른 인스턴스가 대화 취향 기억 추출을 실행 중이어서 건너뜁니다.");
+                log.info("다른 인스턴스가 야간 취향 배치를 실행 중이어서 건너뜁니다.");
                 return;
             }
             try {
@@ -35,7 +35,7 @@ public class UserMemoryExtractionScheduler {
                 releaseLock(lockConnection);
             }
         } catch (final Exception exception) {
-            log.error("대화 취향 기억 추출 스케줄 실행에 실패했습니다. 다음 실행에서 재시도합니다.", exception);
+            log.error("야간 취향 배치 실행에 실패했습니다. 다음 실행에서 재시도합니다.", exception);
         }
     }
 
@@ -60,11 +60,11 @@ public class UserMemoryExtractionScheduler {
             statement.setString(1, LOCK_NAME);
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (!resultSet.next() || resultSet.getInt(1) != 1) {
-                    log.warn("대화 취향 기억 추출 잠금을 해제하지 못했습니다.");
+                    log.warn("야간 취향 배치 잠금을 해제하지 못했습니다.");
                 }
             }
         } catch (final SQLException exception) {
-            log.warn("대화 취향 기억 추출 잠금 해제 중 오류가 발생했습니다.", exception);
+            log.warn("야간 취향 배치 잠금 해제 중 오류가 발생했습니다.", exception);
         }
     }
 }

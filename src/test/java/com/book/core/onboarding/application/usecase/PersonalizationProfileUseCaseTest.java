@@ -8,6 +8,7 @@ import com.book.core.onboarding.application.port.AiPersonalizationProfileMemory;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.ProfileHistoryRepositoryPort;
+import com.book.core.onboarding.application.port.ProfileMemoryRepositoryPort;
 import com.book.core.onboarding.application.port.TermRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
@@ -37,19 +38,28 @@ class PersonalizationProfileUseCaseTest {
     private final FakeProfileClient profileClient = new FakeProfileClient();
     private final List<AiPersonalizationProfileMemory> memories = new ArrayList<>();
     private AiPersonalizationProfileHistory history = AiPersonalizationProfileHistory.EMPTY;
-    private final PersonalizationProfileUseCase useCase =
-        new PersonalizationProfileUseCase(termRepository, agreementRepository, answerRepository, optionRepository, bookRepository,
-            profileClient, (userId, limit) -> memories.stream().limit(limit).toList(), new ProfileHistoryRepositoryPort() {
-                @Override
-                public AiPersonalizationProfileHistory findHistory(final Long userId) {
-                    return history;
-                }
+    private final PersonalizationProfileUseCase useCase = new PersonalizationProfileUseCase(termRepository, agreementRepository,
+        answerRepository, optionRepository, bookRepository, profileClient, new ProfileMemoryRepositoryPort() {
+            @Override
+            public List<AiPersonalizationProfileMemory> findLatestActive(final Long userId, final int limit) {
+                return memories.stream().limit(limit).toList();
+            }
 
-                @Override
-                public List<Long> findChangedUserIds(final Instant from, final Instant before) {
-                    throw new UnsupportedOperationException();
-                }
-            });
+            @Override
+            public List<Long> findChangedUserIds(final Instant from, final Instant before) {
+                throw new UnsupportedOperationException();
+            }
+        }, new ProfileHistoryRepositoryPort() {
+            @Override
+            public AiPersonalizationProfileHistory findHistory(final Long userId) {
+                return history;
+            }
+
+            @Override
+            public List<Long> findChangedUserIds(final Instant from, final Instant before) {
+                throw new UnsupportedOperationException();
+            }
+        });
 
     @Test
     void 개인화_추천에_동의했으면_AI_취향_프로필_생성을_요청한다() {

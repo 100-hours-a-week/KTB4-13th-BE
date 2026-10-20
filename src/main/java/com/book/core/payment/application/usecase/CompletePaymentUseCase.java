@@ -12,7 +12,7 @@ import com.book.core.payment.application.port.PaymentHistoryRepositoryPort;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.PaymentHistory;
-import com.book.core.payment.domain.enums.PaymentMethod;
+import com.book.core.payment.application.result.ApprovedPaymentResult;
 import com.book.core.payment.domain.enums.TransactionType;
 import com.book.core.point.application.usecase.DeductPointUseCase;
 import com.book.core.point.application.usecase.EarnPointUseCase;
@@ -36,10 +36,10 @@ public class CompletePaymentUseCase {
     private final PaymentHistoryRepositoryPort paymentHistoryRepository;
 
     @Transactional
-    public Long execute(final String orderKey, final String externalPaymentKey) {
+    public Long execute(final String orderKey, final ApprovedPaymentResult approval) {
         final Order order = getPaymentOrderUseCase.execute(orderKey, OrderStatus.CREATED);
         final Payment payment = paymentRepository.findByOrderId(order.id()).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
-        payment.success(externalPaymentKey, PaymentMethod.CARD, "PG 승인 API 호출의 응답 값 중 `승인번호` 넣기");
+        payment.success(approval.paymentKey(), approval.method(), approval.approveCode());
         order.paid();
         if (payment.hasAppliedCoupon()) {
             useOwnedCouponUseCase.execute(payment.ownedCouponId());
@@ -49,7 +49,7 @@ public class CompletePaymentUseCase {
         earnPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), PointAmount.PAYMENT);
         createCancelBalanceUseCase.execute(order.id(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount());
         paymentHistoryRepository.save(new PaymentHistory(TransactionType.PAYMENT, payment.userId(), payment.orderId(), payment.id(),
-            externalPaymentKey, payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "결제 성공", payment.paidAt()));
+            approval.paymentKey(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "결제 성공", payment.paidAt()));
         log.info("결제 승인 처리를 마쳤습니다. paymentId={}, orderId={}, traceId={}", payment.id(), order.id(), MDC.get("traceId"));
         return payment.id();
     }

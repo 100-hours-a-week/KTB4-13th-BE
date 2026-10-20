@@ -100,7 +100,8 @@ class PaymentUseCasesTest {
         final Payment payment = payment(10L);
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order);
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
-        assertThat(complete().execute("order", "test-external")).isEqualTo(3L);
+        assertThat(complete().execute("order", new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
+            com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678"))).isEqualTo(3L);
         assertThat(order.status()).isEqualTo(OrderStatus.PAID);
         assertThat(order.items()).allSatisfy((final OrderItem item) -> assertThat(item.status()).isEqualTo(OrderItemStatus.PAID));
         assertThat(payment.state()).isEqualTo(PaymentState.SUCCESS);
@@ -119,7 +120,8 @@ class PaymentUseCasesTest {
     void 쿠폰_없는_성공은_쿠폰_사용을_생략한다() {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment(-1L)));
-        complete().execute("order", "test-external");
+        complete().execute("order", new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
+            com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678"));
         verifyNoInteractions(coupons);
     }
 
@@ -128,7 +130,10 @@ class PaymentUseCasesTest {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment(10L)));
         doThrow(new CoreException(ErrorCode.OWNED_COUPON_INVALID_USAGE)).when(coupons).execute(10L);
-        assertThatThrownBy(() -> complete().execute("order", "test-external")).isInstanceOf(CoreException.class);
+        assertThatThrownBy(
+            () -> complete().execute("order", new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
+                com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678")))
+            .isInstanceOf(CoreException.class);
         verifyNoInteractions(deduct, earn, cancel, histories);
     }
 

@@ -78,9 +78,11 @@ class IssueCouponLoggingTest {
 
         assertThat(appender.list).extracting(ILoggingEvent::getLevel).containsExactly(Level.DEBUG, Level.INFO);
         assertThat(appender.list.subList(0, 2))
-            .allSatisfy((final var event) -> assertThat(event.getFormattedMessage()).contains("쿠폰 발급", "couponId=10"));
-        assertThat(appender.list).allSatisfy((final var event) -> assertThat(event.getFormattedMessage())
-            .contains("requestId=coupon-test-request").doesNotContain("traceId=", "userId=", "discount=", "minOrderAmount="));
+            .allSatisfy((final var event) -> assertThat(event.getFormattedMessage()).contains("[COUPON]", "쿠폰 발급", "couponId=10"));
+        assertThat(appender.list).allSatisfy((final var event) -> {
+            assertThat(event.getFormattedMessage()).doesNotContain("requestId=", "traceId=", "userId=", "discount=", "minOrderAmount=");
+            assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "coupon-test-request");
+        });
     }
 
     @Test

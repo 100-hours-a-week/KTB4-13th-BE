@@ -69,12 +69,14 @@ class CouponUseCaseLoggingTest {
         new RevertOwnedCouponUseCase(ownedCoupons).execute(1L);
 
         assertThat(appender.list).extracting(ILoggingEvent::getLevel).containsExactly(Level.DEBUG, Level.INFO, Level.DEBUG, Level.INFO);
-        assertThat(appender.list.subList(0, 2))
-            .allSatisfy((final var event) -> assertThat(event.getFormattedMessage()).contains("쿠폰 사용", "ownedCouponId=1"));
-        assertThat(appender.list.subList(2, 4))
-            .allSatisfy((final var event) -> assertThat(event.getFormattedMessage()).contains("쿠폰 복원", "ownedCouponId=1"));
-        assertThat(appender.list).allSatisfy((final var event) -> assertThat(event.getFormattedMessage())
-            .contains("requestId=coupon-test-request").doesNotContain("traceId=", "userId=", "discount=", "minOrderAmount="));
+        assertThat(appender.list.subList(0, 2)).allSatisfy(
+            (final var event) -> assertThat(event.getFormattedMessage()).contains("[OWNED_COUPON]", "쿠폰 사용", "ownedCouponId=1"));
+        assertThat(appender.list.subList(2, 4)).allSatisfy(
+            (final var event) -> assertThat(event.getFormattedMessage()).contains("[OWNED_COUPON]", "쿠폰 복원", "ownedCouponId=1"));
+        assertThat(appender.list).allSatisfy((final var event) -> {
+            assertThat(event.getFormattedMessage()).doesNotContain("requestId=", "traceId=", "userId=", "discount=", "minOrderAmount=");
+            assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "coupon-test-request");
+        });
     }
 
     @Test

@@ -10,6 +10,7 @@ import com.book.core.agentchat.domain.ChatSession;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,11 @@ public class ChatRepositoryAdapter implements ChatRepositoryPort {
     @Override
     public List<ChatSession> findSessions(final Long userId, final Long beforeId, final int limit) {
         return sessions.findSessions(userId, beforeId, PageRequest.ofSize(limit));
+    }
+
+    @Override
+    public List<ChatSession> findSessionsByIds(final Collection<Long> sessionIds) {
+        return sessions.findAllById(sessionIds);
     }
 
     @Override
@@ -71,6 +77,11 @@ public class ChatRepositoryAdapter implements ChatRepositoryPort {
     @Override
     public List<ChatMessage> messagesAfter(final Long sessionId, final long afterSequence, final int limit) {
         return messages.findBySessionIdAndSequenceGreaterThanOrderBySequenceAsc(sessionId, afterSequence, PageRequest.ofSize(limit));
+    }
+
+    @Override
+    public List<ChatMessage> messagesUpTo(final Collection<Long> sessionIds, final long maxSequence) {
+        return messages.findBySessionIdInAndSequenceLessThanEqualOrderBySessionIdAscSequenceAsc(sessionIds, maxSequence);
     }
 
     @Override

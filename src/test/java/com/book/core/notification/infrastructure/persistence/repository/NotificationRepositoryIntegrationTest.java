@@ -6,6 +6,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.core.notification.application.command.CreateNotificationCommand;
 import com.book.core.notification.application.usecase.CreateNotificationUseCase;
 import com.book.core.notification.application.port.NotificationRepositoryPort;
+import com.book.core.notification.application.command.ReadNotificationCommand;
+import com.book.core.notification.application.usecase.ReadNotificationUseCase;
+import com.book.common.exception.CoreException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +35,8 @@ class NotificationRepositoryIntegrationTest {
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
     @Autowired
     CreateNotificationUseCase createUseCase;
+    @Autowired
+    ReadNotificationUseCase readUseCase;
     @Autowired
     JdbcTemplate jdbc;
     @Autowired
@@ -70,5 +78,43 @@ class NotificationRepositoryIntegrationTest {
         jdbc.update("UPDATE notifications SET read_at = CURRENT_TIMESTAMP(6) WHERE id = ?", items.getFirst().id());
         assertThat(repository.countUnreadByUserId(userId)).isEqualTo(24L);
         assertThat(repository.findRecentByUserId(10003L)).isEmpty();
+    }
+
+    @Test
+    void 타인과_삭제와_없는_알림은_읽음_상태를_변경하지_못한다() {
+        final Long id = createUseCase.execute(new CreateNotificationCommand(20001L, "본인 알림", "본문"));
+        assertThatThrownBy(() -> readUseCase.execute(new ReadNotificationCommand(20002L, id))).isInstanceOf(CoreException.class);
+        assertThat(jdbc.queryForMap("SELECT read_at FROM notifications WHERE id = ?", id)).containsEntry("read_at", null);
+        assertThatThrownBy(() -> readUseCase.execute(new ReadNotificationCommand(20001L, Long.MAX_VALUE)))
+            .isInstanceOf(CoreException.class);
+        jdbc.update("UPDATE notifications SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", id);
+        assertThatThrownBy(() -> readUseCase.execute(new ReadNotificationCommand(20001L, id))).isInstanceOf(CoreException.class);
+    }
+
+    @Test
+    void 동시_읽음_요청을_완료하고_반복_요청은_최초_시각을_유지한다() throws Exception {
+        final Long id = createUseCase.execute(new CreateNotificationCommand(20003L, "동시 읽음", "본문"));
+        final var command = new ReadNotificationCommand(20003L, id);
+        final var start = new CountDownLatch(1);
+        try (final var executor = Executors.newFixedThreadPool(2)) {
+            final var first = executor.submit(() -> {
+                start.await();
+                readUseCase.execute(command);
+                return null;
+            });
+            final var second = executor.submit(() -> {
+                start.await();
+                readUseCase.execute(command);
+                return null;
+            });
+            start.countDown();
+            first.get(10, TimeUnit.SECONDS);
+            second.get(10, TimeUnit.SECONDS);
+        }
+        final var readAt = jdbc.queryForMap("SELECT read_at FROM notifications WHERE id = ?", id).get("read_at");
+        assertThat(readAt).isNotNull();
+        readUseCase.execute(command);
+        assertThat(jdbc.queryForMap("SELECT read_at FROM notifications WHERE id = ?", id)).containsEntry("read_at", readAt);
+        assertThat(repository.countUnreadByUserId(20003L)).isZero();
     }
 }

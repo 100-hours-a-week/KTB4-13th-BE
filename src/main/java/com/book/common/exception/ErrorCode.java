@@ -16,6 +16,7 @@ public enum ErrorCode {
     PG_RESPONSE_MISMATCH(HttpStatus.BAD_GATEWAY, "PG_RESPONSE_MISMATCH", "결제 서비스 응답이 요청과 일치하지 않습니다.", LogLevel.ERROR),
     PG_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "PG_NOT_CONFIGURED", "결제 서비스 설정이 필요합니다.", LogLevel.ERROR),
     DEFAULT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E500", "알 수 없는 오류가 발생했습니다.", LogLevel.ERROR),
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_NOT_FOUND", "알림을 찾을 수 없습니다.", LogLevel.INFO),
     CONCURRENT_CHANGE(HttpStatus.CONFLICT, "CONCURRENT_CHANGE", "다른 요청이 먼저 변경했습니다. 상태를 확인한 후 다시 요청해 주세요.", LogLevel.INFO),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "E400", "요청 형식이 올바르지 않습니다.", LogLevel.INFO),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "E401", "인증 정보가 유효하지 않습니다.", LogLevel.INFO),

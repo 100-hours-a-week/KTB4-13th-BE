@@ -2,6 +2,7 @@ package com.book.core.notification.infrastructure.persistence.repository;
 
 import com.book.core.notification.application.port.NotificationRepositoryPort;
 import com.book.core.notification.domain.Notification;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -13,5 +14,15 @@ class NotificationRepositoryAdapter implements NotificationRepositoryPort {
     @Override
     public Notification save(final Notification notification) {
         return jpaRepository.save(notification);
+    }
+
+    @Override
+    public List<Notification> findRecentByUserId(final Long userId) {
+        return jpaRepository.findTop20ByUserIdAndDeletedAtIsNullOrderByIdDesc(userId);
+    }
+
+    @Override
+    public long countUnreadByUserId(final Long userId) {
+        return jpaRepository.countByUserIdAndDeletedAtIsNullAndReadAtIsNull(userId);
     }
 }

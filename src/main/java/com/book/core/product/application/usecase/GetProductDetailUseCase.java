@@ -22,7 +22,7 @@ public class GetProductDetailUseCase {
             .orElseThrow(() -> new CoreException(ErrorCode.PRODUCT_NOT_FOUND));
         final var inventory = inventoryRepository.findByProductIds(java.util.List.of(product.id())).stream().findFirst()
             .orElseThrow(() -> new CoreException(ErrorCode.ORDER_DATA_INCONSISTENT));
-        return GetProductDetailResult.from(product).withStockQuantity(inventory.availableQuantity());
+        return GetProductDetailResult.from(product, inventory.availableQuantity());
     }
 
     @Transactional(readOnly = true)

@@ -3,6 +3,7 @@ package com.book.core.preference.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -13,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.agentchat.application.result.MemoryExtractionTarget;
 import com.book.core.agentchat.application.usecase.GetChatHistoryUseCase;
 import com.book.core.agentchat.application.usecase.GetMemoryExtractionTargetsUseCase;
 import com.book.core.memory.application.command.DeleteUserMemoriesCommand;
@@ -34,8 +36,11 @@ import com.book.core.onboarding.application.usecase.PersonalizationProfileUseCas
 import com.book.core.onboarding.domain.OnboardingStatus;
 import com.book.core.recommendation.application.usecase.RefreshRecommendationFeedUseCase;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.LongStream;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -51,11 +56,12 @@ class UserPreferenceServiceTest {
     private final RefreshRecommendationFeedUseCase refreshRecommendationFeedUseCase = mock(RefreshRecommendationFeedUseCase.class);
     private final PersonalizationProfileUseCase personalizationProfileUseCase = mock(PersonalizationProfileUseCase.class);
     private final GetProfileRefreshTargetsUseCase getProfileRefreshTargetsUseCase = mock(GetProfileRefreshTargetsUseCase.class);
+    private final GetChatHistoryUseCase getChatHistoryUseCase = mock(GetChatHistoryUseCase.class);
     private final UserPreferenceService userPreferenceService =
         new UserPreferenceService(getOnboardingProgressUseCase, getUserMemoriesUseCase, deleteUserMemoriesUseCase,
             deleteAllUserMemoriesUseCase, mock(CheckPersonalizationAgreementUseCase.class), mock(ExtractUserMemoriesUseCase.class),
-            mock(SaveUserMemoriesUseCase.class), mock(GetChatHistoryUseCase.class), getMemoryExtractionTargetsUseCase,
-            personalizationProfileUseCase, getProfileRefreshTargetsUseCase, refreshRecommendationFeedUseCase);
+            mock(SaveUserMemoriesUseCase.class), getChatHistoryUseCase, getMemoryExtractionTargetsUseCase, personalizationProfileUseCase,
+            getProfileRefreshTargetsUseCase, refreshRecommendationFeedUseCase);
 
     @Test
     void 온보딩을_완료하지_않았으면_취향_조회와_삭제를_진행하지_않고_409를_던진다() {
@@ -138,6 +144,27 @@ class UserPreferenceServiceTest {
 
         assertThat(result.onboarding()).isEqualTo(answers);
         assertThat(result.memories()).isEqualTo(memories);
+    }
+
+    @Test
+    void 추출_대상을_세션_100개나_메시지_1000개_단위로_순서대로_묶어_대화를_조회한다() {
+        final List<MemoryExtractionTarget> large =
+            List.of(new MemoryExtractionTarget(1L, 1L, 600), new MemoryExtractionTarget(2L, 2L, 1200));
+        final List<MemoryExtractionTarget> small =
+            LongStream.rangeClosed(3, 103).mapToObj((final long id) -> new MemoryExtractionTarget(id, id, 2)).toList();
+        final List<MemoryExtractionTarget> targets = new ArrayList<>(large);
+        targets.addAll(small);
+        when(getMemoryExtractionTargetsUseCase.execute()).thenReturn(targets);
+        when(getChatHistoryUseCase.executeForMemoryExtraction(anyList())).thenReturn(Map.of());
+
+        userPreferenceService.extractNightlyMemories();
+
+        final InOrder order = inOrder(getChatHistoryUseCase);
+        order.verify(getChatHistoryUseCase).executeForMemoryExtraction(large.subList(0, 1));
+        order.verify(getChatHistoryUseCase).executeForMemoryExtraction(large.subList(1, 2));
+        order.verify(getChatHistoryUseCase).executeForMemoryExtraction(small.subList(0, 100));
+        order.verify(getChatHistoryUseCase).executeForMemoryExtraction(small.subList(100, 101));
+        order.verifyNoMoreInteractions();
     }
 
     private void assertNotCompleted(final ThrowingCallable call) {

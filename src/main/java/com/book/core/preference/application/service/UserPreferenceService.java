@@ -1,6 +1,7 @@
 package com.book.core.preference.application.service;
 
 import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
 import com.book.core.agentchat.application.result.ChatHistoryMessage;
 import com.book.core.agentchat.application.result.MemoryExtractionTarget;
@@ -28,6 +29,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +40,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class UserPreferenceService {
-    private static final int HISTORY_PAGE_SIZE = 100;
+    private static final int CONVERSATION_CHUNK_SESSIONS = 100;
+    private static final long CONVERSATION_CHUNK_MESSAGES = 1_000;
 
     private final GetOnboardingProgressUseCase getOnboardingProgressUseCase;
     private final GetUserMemoriesUseCase getUserMemoriesUseCase;
@@ -80,18 +83,21 @@ public class UserPreferenceService {
     public Set<Long> extractNightlyMemories() {
         final Set<Long> memoryChangedUserIds = new HashSet<>();
         final Set<Long> failedUserIds = new HashSet<>();
-        for (final MemoryExtractionTarget target : getMemoryExtractionTargetsUseCase.execute()) {
-            if (failedUserIds.contains(target.userId())) {
-                continue;
-            }
-            try {
-                if (extractMemories(target)) {
-                    memoryChangedUserIds.add(target.userId());
+        for (final List<MemoryExtractionTarget> chunk : conversationChunks(getMemoryExtractionTargetsUseCase.execute())) {
+            final Map<Long, List<ChatHistoryMessage>> conversations = conversations(chunk, failedUserIds);
+            for (final MemoryExtractionTarget target : chunk) {
+                if (failedUserIds.contains(target.userId())) {
+                    continue;
                 }
-            } catch (final RuntimeException exception) {
-                failedUserIds.add(target.userId());
-                log.error("대화 취향 기억 추출에 실패해 다음 밤에 다시 처리합니다. userId={}, sessionId={}, sequence={}, cause={}", target.userId(),
-                    target.sessionId(), target.sequence(), cause(exception));
+                try {
+                    if (extractMemories(target, conversations.get(target.sessionId()))) {
+                        memoryChangedUserIds.add(target.userId());
+                    }
+                } catch (final RuntimeException exception) {
+                    failedUserIds.add(target.userId());
+                    log.error("대화 취향 기억 추출에 실패해 다음 밤에 다시 처리합니다. userId={}, sessionId={}, sequence={}, cause={}", target.userId(),
+                        target.sessionId(), target.sequence(), cause(exception));
+                }
             }
         }
         return memoryChangedUserIds;
@@ -103,11 +109,25 @@ public class UserPreferenceService {
         userIds.forEach(this::refreshProfile);
     }
 
-    private boolean extractMemories(final MemoryExtractionTarget target) {
+    private Map<Long, List<ChatHistoryMessage>> conversations(final List<MemoryExtractionTarget> chunk, final Set<Long> failedUserIds) {
+        try {
+            return getChatHistoryUseCase.executeForMemoryExtraction(chunk);
+        } catch (final RuntimeException exception) {
+            chunk.forEach((final MemoryExtractionTarget target) -> failedUserIds.add(target.userId()));
+            log.error("대화 기록 조회에 실패해 다음 밤에 다시 처리합니다. sessionCount={}, cause={}", chunk.size(), cause(exception));
+            return Map.of();
+        }
+    }
+
+    private boolean extractMemories(final MemoryExtractionTarget target, final List<ChatHistoryMessage> history) {
         if (!checkPersonalizationAgreementUseCase.execute(target.userId())) {
             return false;
         }
-        final List<ConversationMessage> messages = conversation(target);
+        if (history == null) {
+            throw new CoreException(ErrorCode.CHAT_NOT_FOUND);
+        }
+        final List<ConversationMessage> messages =
+            history.stream().map((final ChatHistoryMessage message) -> new ConversationMessage(message.role(), message.text())).toList();
         final ExtractUserMemoriesCommand extractCommand =
             new ExtractUserMemoriesCommand(target.userId(), String.valueOf(target.sessionId()), messages);
         List<UserMemoryExtraction> extractions;
@@ -137,20 +157,24 @@ public class UserPreferenceService {
         }
     }
 
-    private List<ConversationMessage> conversation(final MemoryExtractionTarget target) {
-        final List<ConversationMessage> messages = new ArrayList<>();
-        long afterSequence = 0;
-        while (afterSequence < target.sequence()) {
-            final List<ChatHistoryMessage> page =
-                getChatHistoryUseCase.execute(target.userId(), target.sessionId(), afterSequence, HISTORY_PAGE_SIZE);
-            if (page.isEmpty()) {
-                break;
+    private static List<List<MemoryExtractionTarget>> conversationChunks(final List<MemoryExtractionTarget> targets) {
+        final List<List<MemoryExtractionTarget>> chunks = new ArrayList<>();
+        List<MemoryExtractionTarget> chunk = new ArrayList<>();
+        long chunkMessages = 0;
+        for (final MemoryExtractionTarget target : targets) {
+            if (!chunk.isEmpty()
+                && (chunk.size() == CONVERSATION_CHUNK_SESSIONS || chunkMessages + target.sequence() > CONVERSATION_CHUNK_MESSAGES)) {
+                chunks.add(chunk);
+                chunk = new ArrayList<>();
+                chunkMessages = 0;
             }
-            page.stream().filter((final ChatHistoryMessage message) -> message.sequence() <= target.sequence())
-                .map((final ChatHistoryMessage message) -> new ConversationMessage(message.role(), message.text())).forEach(messages::add);
-            afterSequence = page.getLast().sequence();
+            chunk.add(target);
+            chunkMessages += target.sequence();
         }
-        return messages;
+        if (!chunk.isEmpty()) {
+            chunks.add(chunk);
+        }
+        return chunks;
     }
 
     private static void waitFor(final long seconds) {

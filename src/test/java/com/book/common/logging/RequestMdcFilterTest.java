@@ -20,21 +20,19 @@ class RequestMdcFilterTest {
         MDC.remove(RequestMdcFilter.REQUEST_ID_MDC_KEY);
         MDC.remove(RequestMdcFilter.REQUEST_METHOD_MDC_KEY);
         MDC.remove(RequestMdcFilter.REQUEST_URI_MDC_KEY);
-        MDC.remove(RequestMdcFilter.CLIENT_IP_MDC_KEY);
         MDC.remove("existingContext");
     }
 
     @Test
     void 요청_ID가_없으면_UUID를_생성해_MDC와_응답_header에_설정한다() throws ServletException, IOException {
         final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/books");
-        request.setRemoteAddr("192.0.2.10");
         final MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter.doFilter(request, response, (final var servletRequest, final var servletResponse) -> {
             assertThat(MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY)).isNotBlank();
             assertThat(MDC.get(RequestMdcFilter.REQUEST_METHOD_MDC_KEY)).isEqualTo("GET");
             assertThat(MDC.get(RequestMdcFilter.REQUEST_URI_MDC_KEY)).isEqualTo("/api/v1/books");
-            assertThat(MDC.get(RequestMdcFilter.CLIENT_IP_MDC_KEY)).isEqualTo("192.0.2.10");
+            assertThat(MDC.get("clientIp")).isNull();
         });
 
         final String requestId = response.getHeader(RequestMdcFilter.REQUEST_ID_HEADER);
@@ -75,6 +73,5 @@ class RequestMdcFilterTest {
         assertThat(MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY)).isNull();
         assertThat(MDC.get(RequestMdcFilter.REQUEST_METHOD_MDC_KEY)).isNull();
         assertThat(MDC.get(RequestMdcFilter.REQUEST_URI_MDC_KEY)).isNull();
-        assertThat(MDC.get(RequestMdcFilter.CLIENT_IP_MDC_KEY)).isNull();
     }
 }

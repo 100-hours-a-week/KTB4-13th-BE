@@ -95,8 +95,9 @@ public class UserPreferenceService {
                     }
                 } catch (final RuntimeException exception) {
                     failedUserIds.add(target.userId());
-                    log.error("대화 취향 기억 추출에 실패해 다음 밤에 다시 처리합니다. userId={}, sessionId={}, sequence={}, cause={}", target.userId(),
-                        target.sessionId(), target.sequence(), cause(exception));
+                    log.atError().addKeyValue("userId", target.userId()).addKeyValue("sessionId", target.sessionId()).log(
+                        "[USER_PREFERENCE] 대화 취향 기억 추출에 실패해 다음 밤에 다시 처리합니다. userId={}, sessionId={}, sequence={}, cause={}",
+                        target.userId(), target.sessionId(), target.sequence(), cause(exception));
                 }
             }
         }
@@ -114,7 +115,7 @@ public class UserPreferenceService {
             return getChatHistoryUseCase.executeForMemoryExtraction(chunk, ExtractUserMemoriesUseCase.MAX_MESSAGES);
         } catch (final RuntimeException exception) {
             chunk.forEach((final MemoryExtractionTarget target) -> failedUserIds.add(target.userId()));
-            log.error("대화 기록 조회에 실패해 다음 밤에 다시 처리합니다. sessionCount={}, cause={}", chunk.size(), cause(exception));
+            log.error("[USER_PREFERENCE] 대화 기록 조회에 실패해 다음 밤에 다시 처리합니다. sessionCount={}, cause={}", chunk.size(), cause(exception));
             return Map.of();
         }
     }
@@ -145,7 +146,7 @@ public class UserPreferenceService {
         try {
             refreshRecommendationFeedUseCase.execute();
         } catch (final RuntimeException exception) {
-            log.error("추천 목록 다시 뽑기에 실패해 오늘 밤은 중단하고 다음 밤에 다시 부릅니다. cause={}", cause(exception));
+            log.error("[USER_PREFERENCE] 추천 목록 다시 뽑기에 실패해 오늘 밤은 중단하고 다음 밤에 다시 부릅니다. cause={}", cause(exception));
         }
     }
 
@@ -153,7 +154,8 @@ public class UserPreferenceService {
         try {
             personalizationProfileUseCase.executeUpdate(userId);
         } catch (final RuntimeException exception) {
-            log.warn("AI 취향 프로필 갱신에 실패했습니다. userId={}, cause={}", userId, cause(exception));
+            log.atWarn().addKeyValue("userId", userId).log("[USER_PREFERENCE] AI 취향 프로필 갱신에 실패했습니다. userId={}, cause={}", userId,
+                cause(exception));
         }
     }
 

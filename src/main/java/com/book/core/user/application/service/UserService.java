@@ -66,9 +66,9 @@ public class UserService {
                 }
             } catch (final RuntimeException exception) {
                 failed++;
-                log.error("회원 최종 탈퇴에 실패했습니다. 다음 실행에서 재시도합니다. userId={}", userId, exception);
+                log.atError().addKeyValue("userId", userId).log("[USER] 회원 최종 탈퇴에 실패했습니다. 다음 실행에서 재시도합니다. userId={}", userId, exception);
             }
         }
-        log.info("회원 최종 탈퇴를 실행했습니다. target={}, completed={}, skipped={}, failed={}", userIds.size(), completed, skipped, failed);
+        log.info("[USER] 회원 최종 탈퇴를 실행했습니다. target={}, completed={}, skipped={}, failed={}", userIds.size(), completed, skipped, failed);
     }
 }

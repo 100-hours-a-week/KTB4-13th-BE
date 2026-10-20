@@ -17,7 +17,7 @@ public class OrderExpirationScheduler {
         try {
             orderService.getExpiredOrderKeys().forEach(this::expireOrder);
         } catch (final Exception exception) {
-            log.error("만료 주문 조회에 실패했습니다.", exception);
+            log.error("[ORDER] 만료 주문 조회에 실패했습니다.", exception);
         }
     }
 
@@ -25,7 +25,7 @@ public class OrderExpirationScheduler {
         try {
             orderService.expireOrder(orderKey);
         } catch (final Exception exception) {
-            log.error("주문 예약 만료 처리에 실패했습니다. orderKey={}", orderKey, exception);
+            log.atError().addKeyValue("orderKey", orderKey).log("[ORDER] 주문 예약 만료 처리에 실패했습니다. orderKey={}", orderKey, exception);
         }
     }
 }

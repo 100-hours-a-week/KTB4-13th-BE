@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "토스 결제 RestClient 요청 흐름",
+    "output": "docs/pr-diagrams/toss/client.html",
+    "viewBox": [1080, 560],
+    "column_fit": "spread",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    { "id": "usecase", "type": "backend", "label": "Payment UseCase", "sublabel": "결제 처리" },
+    { "id": "adapter", "type": "backend", "label": "PaymentClientImpl", "sublabel": "내부 Port Adapter" },
+    { "id": "service", "type": "backend", "label": "TossPaymentHttpClient", "sublabel": "@HttpExchange 프록시" },
+    { "id": "restclient", "type": "backend", "label": "RestClient", "sublabel": "HTTP 요청 · 응답 변환" },
+    { "id": "toss", "type": "external", "label": "Toss Payments", "sublabel": "서버 API v1" }
+  ],
+  "messages": [
+    { "id": "operation", "from": "usecase", "to": "adapter", "y": 160, "label": "승인 · 조회 · 취소 요청", "variant": "emphasis" },
+    { "id": "request-dto", "from": "adapter", "to": "service", "y": 180, "label": "외부 DTO · POST 멱등키 전달", "variant": "default" },
+    { "id": "proxy-call", "from": "service", "to": "restclient", "y": 200, "label": "HTTP Service Client 프록시 호출", "variant": "default" },
+    { "id": "approve-request", "from": "restclient", "to": "toss", "y": 230, "label": "POST /v1/payments/confirm · Basic 인증", "variant": "security", "note": "연결 3초 · 응답 10초 · 자동 재시도 없음" },
+    { "id": "approve-response", "from": "toss", "to": "restclient", "y": 260, "label": "승인 응답 · 문서화된 카드 거절", "variant": "return" },
+    { "id": "find-request", "from": "restclient", "to": "toss", "y": 295, "label": "GET /v1/payments/{paymentKey}", "variant": "default" },
+    { "id": "find-response", "from": "toss", "to": "restclient", "y": 325, "label": "조회 응답 · HTTP 오류", "variant": "return" },
+    { "id": "cancel-request", "from": "restclient", "to": "toss", "y": 360, "label": "POST /v1/payments/{paymentKey}/cancel · 멱등키", "variant": "security" },
+    { "id": "cancel-response", "from": "toss", "to": "restclient", "y": 390, "label": "취소 응답 · HTTP 오류", "variant": "return" },
+    { "id": "response-decode", "from": "restclient", "to": "service", "y": 425, "label": "JSON 변환 · 상태 코드 분류", "variant": "return" },
+    { "id": "mapped-response", "from": "service", "to": "adapter", "y": 450, "label": "TossPaymentResponse", "variant": "return" },
+    { "id": "result", "from": "adapter", "to": "usecase", "y": 475, "label": "PgPaymentResult 또는 안전한 PG 오류", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "usecase", "from": 155, "to": 480, "type": "backend" },
+    { "participant": "adapter", "from": 175, "to": 480, "type": "backend" },
+    { "participant": "service", "from": 195, "to": 460, "type": "backend" },
+    { "participant": "restclient", "from": 225, "to": 430, "type": "backend" },
+    { "participant": "toss", "from": 245, "to": 400, "type": "external" }
+  ]
+}

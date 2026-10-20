@@ -25,6 +25,7 @@ import com.book.core.point.application.usecase.EarnPointUseCase;
 import com.book.core.point.domain.PointAmount;
 import com.book.core.point.domain.enums.PointType;
 import java.math.BigDecimal;
+import java.time.Clock;
 import com.book.core.payment.application.result.CanceledPaymentResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public class PartialCancelPaymentUseCase {
     private final CancelRepositoryPort cancelRepository;
     private final RecordPaymentHistoryUseCase recordPaymentHistoryUseCase;
     private final GetOrderItemForCancelUseCase getOrderItemForCancelUseCase;
+    private final Clock clock;
 
     @Transactional
     public Long execute(final PartialCancelAction action, final CancelCalculated calculated, final CanceledPaymentResult result) {
@@ -72,7 +74,7 @@ public class PartialCancelPaymentUseCase {
         final Cancel cancel = cancelRepository.save(new Cancel(payment.userId(), CancelType.PARTIAL, payment.orderId(),
             action.orderItemId(), payment.id(), payment.originAmount(), payment.ownedCouponId(), calculated.couponAmount(),
             calculated.pointAmount(), calculated.paidAmount(), action.quantity(), calculated.paidAmount(), calculated.pointAmount(),
-            calculated.couponAmount(), result.transactionKey(), result.canceledAt().toLocalDateTime()));
+            calculated.couponAmount(), result.transactionKey(), result.canceledAt().atZoneSameInstant(clock.getZone()).toLocalDateTime()));
         recordPaymentHistoryUseCase.execute(new PaymentHistory(TransactionType.PARTIAL_CANCEL, payment.userId(), payment.orderId(),
             payment.id(), payment.externalPaymentKey(), calculated.paidAmount(), calculated.pointAmount(), calculated.couponAmount(),
             "부분 취소 성공", cancel.canceledAt()));

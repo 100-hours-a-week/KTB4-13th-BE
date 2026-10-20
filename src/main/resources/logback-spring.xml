@@ -12,7 +12,7 @@
         </encoder>
     </appender>
 
-    <springProfile name="local,test">
+    <springProfile name="local,test,dev">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
@@ -21,7 +21,7 @@
         <logger name="org.springframework.security" level="DEBUG"/>
     </springProfile>
 
-    <springProfile name="!local &amp; !test">
+    <springProfile name="!local &amp; !test &amp; !dev">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>

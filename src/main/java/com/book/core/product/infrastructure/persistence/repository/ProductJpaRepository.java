@@ -12,6 +12,7 @@ interface ProductJpaRepository extends JpaRepository<Product, Long> {
             select product
             from Product product
             join fetch product.book
+            left join fetch product.inventory
             where product.id in :productIds
             """)
     List<Product> findByIdInWithBook(@Param("productIds") List<Long> productIds);
@@ -20,6 +21,7 @@ interface ProductJpaRepository extends JpaRepository<Product, Long> {
             select product
             from Product product
             join fetch product.book book
+            left join fetch product.inventory
             where product.id = :productId
               and product.deletedAt is null
               and book.deletedAt is null
@@ -30,6 +32,7 @@ interface ProductJpaRepository extends JpaRepository<Product, Long> {
             select product
             from Product product
             join fetch product.book book
+            left join fetch product.inventory
             where book.id = :bookId
               and product.deletedAt is null
               and book.deletedAt is null
@@ -40,6 +43,7 @@ interface ProductJpaRepository extends JpaRepository<Product, Long> {
             select product
             from Product product
             join fetch product.book book
+            left join fetch product.inventory
             where book.id in :bookIds
               and product.deletedAt is null
               and book.deletedAt is null

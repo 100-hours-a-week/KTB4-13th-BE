@@ -149,12 +149,12 @@ class CartChangeIntegrationTest {
 
     @Test
     void 한_상품만_품절이어도_전체_미적용하고_같은_요청의_거절을_재생한다() {
-        jdbc.update("UPDATE products SET stock_quantity = 0 WHERE id = ?", secondProductId);
+        jdbc.update("UPDATE product_inventory SET on_hand_quantity = 0 WHERE product_id = ?", secondProductId);
         final Long requestId = prepare.prepareDirect(command("out-of-stock",
             List.of(line(CartChangeOperation.ADD, firstProductId, 0, 2), line(CartChangeOperation.ADD, secondProductId, 0, 1))));
 
         final CartChangeResult rejected = execute.execute(userId, requestId);
-        jdbc.update("UPDATE products SET stock_quantity = 100 WHERE id = ?", secondProductId);
+        jdbc.update("UPDATE product_inventory SET on_hand_quantity = 100 WHERE product_id = ?", secondProductId);
         final CartChangeResult replay = execute.execute(userId, requestId);
 
         assertThat(rejected.rejection()).isEqualTo(ErrorCode.INSUFFICIENT_PRODUCT_STOCK);
@@ -356,7 +356,8 @@ class CartChangeIntegrationTest {
     @Test
     void ISBN이_없고_상품과_도서가_삭제되어도_가격과_재고_없이_제거한다() {
         add.execute(new AddCartItemCommand(userId, firstProductId, 3));
-        jdbc.update("UPDATE products SET deleted_at = CURRENT_TIMESTAMP(6), stock_quantity = 0 WHERE id = ?", firstProductId);
+        jdbc.update("UPDATE products SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", firstProductId);
+        jdbc.update("UPDATE product_inventory SET on_hand_quantity = 0 WHERE product_id = ?", firstProductId);
         jdbc.update("UPDATE books SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", firstProductId + 1000000);
         final Long requestId = prepare.prepareDirect(
             command("remove-deleted", List.of(new CartChangeLine(CartChangeOperation.REMOVE, firstProductId, 3, null, null))));
@@ -565,6 +566,7 @@ class CartChangeIntegrationTest {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
                 """, productId, bookId, "상품" + productId, new BigDecimal("20000.00"), UNIT_PRICE, new BigDecimal("12000.00"),
             stockQuantity);
+        jdbc.update("INSERT INTO product_inventory (product_id, on_hand_quantity) VALUES (?, ?)", productId, stockQuantity);
     }
 
     private Long cartItemId(final long productId) {

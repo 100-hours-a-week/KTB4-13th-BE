@@ -243,6 +243,7 @@ class CartRepositoryIntegrationTest {
                     id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
                 """, productId, bookId, "상품" + productId, 20000.00, 18000.00, 12000.00, stockQuantity);
+        jdbc.update("INSERT INTO product_inventory (product_id, on_hand_quantity) VALUES (?, ?)", productId, stockQuantity);
     }
 
     private int quantityOf(final Long cartItemId) {

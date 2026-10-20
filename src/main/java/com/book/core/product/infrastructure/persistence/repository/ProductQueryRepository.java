@@ -84,7 +84,7 @@ class ProductQueryRepository {
 
     private List<ProductListItem> findByCreatedAt(final Long categoryId, final BooleanExpression publishedAtPredicate,
         final ProductListCursor cursor, final int limit) {
-        return queryFactory.selectFrom(product).join(product.book, book).fetchJoin()
+        return queryFactory.selectFrom(product).join(product.book, book).fetchJoin().leftJoin(product.inventory).fetchJoin()
             .where(product.deletedAt.isNull(), book.deletedAt.isNull(), createdAtCursorPredicate(cursor),
                 categoryPredicate(categoryId, product.id), publishedAtPredicate)
             .orderBy(product.createdAt.desc(), product.id.desc()).limit(limit).fetch().stream()
@@ -106,8 +106,8 @@ class ProductQueryRepository {
             return List.of();
         }
         final var ids = ranked.stream().map((final var tuple) -> tuple.get(snapshot.productId)).toList();
-        final var products = queryFactory.selectFrom(product).join(product.book, book).fetchJoin().where(product.id.in(ids)).fetch()
-            .stream().collect(Collectors.toMap((final var item) -> item.id(), Function.identity()));
+        final var products = queryFactory.selectFrom(product).join(product.book, book).fetchJoin().leftJoin(product.inventory).fetchJoin()
+            .where(product.id.in(ids)).fetch().stream().collect(Collectors.toMap((final var item) -> item.id(), Function.identity()));
         return ranked.stream().map((final var tuple) -> new ProductListItem(products.get(tuple.get(snapshot.productId)),
             tuple.get(snapshot.salesQuantity), tuple.get(snapshot.reviewCount), tuple.get(snapshot.reviewRate))).toList();
     }

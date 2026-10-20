@@ -62,7 +62,7 @@ class CartChangeProductRepositoryIntegrationTest {
         insertProduct(950011L);
         insertProduct(950012L);
         insertProduct(950013L);
-        jdbc.update("UPDATE products SET stock_quantity = 0 WHERE id = ?", 950011L);
+        jdbc.update("UPDATE product_inventory SET on_hand_quantity = 0 WHERE product_id = ?", 950011L);
         jdbc.update("UPDATE products SET deleted_at = NOW() WHERE id = ?", 950012L);
         jdbc.update("UPDATE books SET deleted_at = NOW(), version = version + 1 WHERE id = ?", 950013L);
 
@@ -91,8 +91,7 @@ class CartChangeProductRepositoryIntegrationTest {
             assertThat(previous.book().isActive()).isTrue();
 
             externalChange.executeWithoutResult((final TransactionStatus other) -> {
-                jdbc.update("UPDATE products SET discounted_price = 19500, stock_quantity = 7, version = version + 1 WHERE id = ?",
-                    950021L);
+                jdbc.update("UPDATE products SET discounted_price = 19500, version = version + 1 WHERE id = ?", 950021L);
                 jdbc.update("UPDATE books SET deleted_at = NOW(), version = version + 1 WHERE id = ?", 950021L);
             });
             assertThat(entityManager.find(Product.class, 950021L)).isSameAs(previous);
@@ -107,7 +106,7 @@ class CartChangeProductRepositoryIntegrationTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(strings = {"price", "stock", "product_delete", "book_delete"})
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"price", "product_delete", "book_delete"})
     void 조회_뒤_상품과_도서_변경은_대기하지_않고_완료되며_기존_트랜잭션은_커밋_실패한다(final String change) {
         final long id = 960000L + change.hashCode() % 100000;
         insertProduct(id);
@@ -117,7 +116,6 @@ class CartChangeProductRepositoryIntegrationTest {
                 final Future<Integer> changed = executor.submit(() -> {
                     final String sql = switch (change) {
                         case "price" -> "UPDATE products SET discounted_price = 19500, version = version + 1 WHERE id = ?";
-                        case "stock" -> "UPDATE products SET stock_quantity = 9, version = version + 1 WHERE id = ?";
                         case "product_delete" -> "UPDATE products SET deleted_at = NOW(), version = version + 1 WHERE id = ?";
                         case "book_delete" -> "UPDATE books SET deleted_at = NOW(), version = version + 1 WHERE id = ?";
                         default -> throw new IllegalArgumentException(change);
@@ -143,5 +141,6 @@ class CartChangeProductRepositoryIntegrationTest {
                     created_at, updated_at)
                 VALUES (?, ?, '상품', 20000, 18000, 12000, 5, NOW(), NOW())
                 """, id, id);
+        jdbc.update("INSERT INTO product_inventory (product_id, on_hand_quantity) VALUES (?, ?)", id, 5);
     }
 }

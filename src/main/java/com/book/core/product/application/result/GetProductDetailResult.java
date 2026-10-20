@@ -16,6 +16,11 @@ public record GetProductDetailResult(Long productId, String itemName, String thu
             0L, BigDecimal.ZERO, product.stockQuantity(), List.of());
     }
 
+    public GetProductDetailResult withStockQuantity(final int availableQuantity) {
+        return new GetProductDetailResult(productId, itemName, thumbnailUrl, author, publisher, publishedAt, category, description,
+            salePrice, discountedPrice, reviewCount, reviewRate, availableQuantity, couponIds);
+    }
+
     public GetProductDetailResult withCouponIds(final List<Long> couponIds) {
         return new GetProductDetailResult(productId, itemName, thumbnailUrl, author, publisher, publishedAt, category, description,
             salePrice, discountedPrice, reviewCount, reviewRate, stockQuantity, couponIds);

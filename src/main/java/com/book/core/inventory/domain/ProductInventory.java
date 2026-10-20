@@ -54,6 +54,10 @@ public class ProductInventory {
         this.targetStock = targetStock;
     }
 
+    public static ProductInventory initial(final Long productId) {
+        return new ProductInventory(productId, 20, 0, 3, 20);
+    }
+
     public int availableQuantity() {
         return onHandQuantity - reservedQuantity;
     }

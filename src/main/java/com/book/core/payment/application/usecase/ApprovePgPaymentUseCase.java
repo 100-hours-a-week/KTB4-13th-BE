@@ -45,9 +45,6 @@ public class ApprovePgPaymentUseCase {
                 throw new CoreException(ErrorCode.PG_PENDING);
             }
             if (status == TossPaymentStatus.IN_PROGRESS) {
-                if (result.method() == null) {
-                    throw new CoreException(ErrorCode.PG_REJECTED);
-                }
                 result = client.approve(command.externalPaymentKey(), command.orderKey(), command.amount(), operation.pgIdempotencyKey());
                 verify(command, result);
                 status = TossPaymentStatus.from(result.status());

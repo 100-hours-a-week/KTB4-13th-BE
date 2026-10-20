@@ -12,6 +12,11 @@ public class ProductInventoryRepositoryAdapter implements ProductInventoryReposi
     private final ProductInventoryJpaRepository repository;
 
     @Override
+    public ProductInventory save(final ProductInventory inventory) {
+        return repository.save(inventory);
+    }
+
+    @Override
     public List<ProductInventory> findByProductIds(final List<Long> productIds) {
         return productIds.isEmpty() ? List.of() : repository.findByProductIdIn(productIds);
     }

@@ -12,7 +12,6 @@ import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.application.usecase.GetProductsUseCase;
 import com.book.core.product.application.usecase.GetReceivableRestocksUseCase;
 import com.book.core.product.application.usecase.GetRestockCandidatesUseCase;
-import com.book.core.product.application.usecase.InitializeProductInventoriesUseCase;
 import com.book.core.product.application.usecase.ReceiveProductRestockUseCase;
 import com.book.core.product.application.usecase.RefreshProductPopularitySnapshotUseCase;
 import java.time.LocalDateTime;
@@ -28,7 +27,6 @@ public class ProductService {
     private final RefreshProductPopularitySnapshotUseCase refreshProductPopularitySnapshotUseCase;
     private final GetCouponTargetsUseCase couponTargetReader;
     private final GetCouponsUseCase couponReader;
-    private final InitializeProductInventoriesUseCase initializeProductInventoriesUseCase;
     private final GetRestockCandidatesUseCase getRestockCandidatesUseCase;
     private final CreateProductRestockUseCase createProductRestockUseCase;
     private final GetReceivableRestocksUseCase getReceivableRestocksUseCase;
@@ -47,10 +45,6 @@ public class ProductService {
 
     public void refreshProductPopularitySnapshot() {
         refreshProductPopularitySnapshotUseCase.execute();
-    }
-
-    public int initializeInventories() {
-        return initializeProductInventoriesUseCase.execute();
     }
 
     public List<Long> getRestockCandidates() {

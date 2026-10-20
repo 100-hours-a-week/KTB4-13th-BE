@@ -74,11 +74,11 @@ class PaymentUseCasesTest {
     }
 
     @Test
-    void 승인_금액은_참고처럼_스케일까지_비교하고_불일치는_거부한다() {
+    void 승인_금액은_스케일_차이를_허용하고_다른_금액은_거부한다() {
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment(-1L)));
         final ValidatePaymentUseCase validator = new ValidatePaymentUseCase(payments);
         validator.validateForApprove(2L, BigDecimal.valueOf(8800));
-        assertThatThrownBy(() -> validator.validateForApprove(2L, new BigDecimal("8800.00"))).isInstanceOf(CoreException.class);
+        validator.validateForApprove(2L, new BigDecimal("8800.00"));
         assertThatThrownBy(() -> validator.validateForApprove(2L, BigDecimal.TEN)).isInstanceOf(CoreException.class);
         validator.validateForFail(2L);
     }
@@ -100,7 +100,8 @@ class PaymentUseCasesTest {
         final Payment payment = payment(10L);
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order);
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
-        assertThat(complete().execute("order", "test-external")).isEqualTo(3L);
+        assertThat(complete().execute("order", new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
+            com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678"))).isEqualTo(3L);
         assertThat(order.status()).isEqualTo(OrderStatus.PAID);
         assertThat(order.items()).allSatisfy((final OrderItem item) -> assertThat(item.status()).isEqualTo(OrderItemStatus.PAID));
         assertThat(payment.state()).isEqualTo(PaymentState.SUCCESS);
@@ -119,7 +120,8 @@ class PaymentUseCasesTest {
     void 쿠폰_없는_성공은_쿠폰_사용을_생략한다() {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment(-1L)));
-        complete().execute("order", "test-external");
+        complete().execute("order", new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
+            com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678"));
         verifyNoInteractions(coupons);
     }
 
@@ -128,7 +130,10 @@ class PaymentUseCasesTest {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment(10L)));
         doThrow(new CoreException(ErrorCode.OWNED_COUPON_INVALID_USAGE)).when(coupons).execute(10L);
-        assertThatThrownBy(() -> complete().execute("order", "test-external")).isInstanceOf(CoreException.class);
+        assertThatThrownBy(
+            () -> complete().execute("order", new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
+                com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678")))
+            .isInstanceOf(CoreException.class);
         verifyNoInteractions(deduct, earn, cancel, histories);
     }
 

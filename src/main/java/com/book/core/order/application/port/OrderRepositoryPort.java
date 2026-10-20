@@ -17,7 +17,7 @@ public interface OrderRepositoryPort {
 
     List<String> findExpiredOrderKeys(final LocalDateTime now, final int limit);
 
-    boolean hasPayment(final Long orderId);
+    boolean hasPendingPgOperation(final String orderKey);
 
     Optional<Order> findActiveOrderByKeyForUpdate(final String orderKey);
 

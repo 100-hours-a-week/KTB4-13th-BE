@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.CoreException;
 import com.book.core.product.application.service.ProductService;
-import com.book.core.product.infrastructure.scheduler.ProductInventoryScheduler;
+import com.book.core.product.infrastructure.scheduler.ProductRestockScheduler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -37,7 +37,7 @@ class ProductRestockIntegrationTest {
     @Autowired
     private ProductService productService;
     @Autowired
-    private ProductInventoryScheduler scheduler;
+    private ProductRestockScheduler scheduler;
     @Autowired
     private JdbcTemplate jdbc;
 

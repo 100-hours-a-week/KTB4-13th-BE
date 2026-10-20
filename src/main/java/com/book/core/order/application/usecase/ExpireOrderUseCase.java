@@ -16,7 +16,7 @@ public class ExpireOrderUseCase {
     @Transactional
     public Map<Long, Integer> execute(final String orderKey, final LocalDateTime now) {
         final Order order = orderRepository.findActiveOrderByKeyForUpdate(orderKey).orElse(null);
-        if (order == null || orderRepository.hasPayment(order.id()) || !order.expire(now)) {
+        if (order == null || orderRepository.hasPendingPgOperation(order.key()) || !order.expire(now)) {
             return Map.of();
         }
         return order.reservedQuantities();

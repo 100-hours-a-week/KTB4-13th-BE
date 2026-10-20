@@ -108,27 +108,24 @@ class OrderInventoryIntegrationTest {
     }
 
     @Test
-    void 만료된_미결제_주문만_만료하고_결제를_시작한_주문은_재고를_유지한다() {
+    void PG_승인이_진행_중인_주문만_예약을_유지하고_승인_전이거나_거절된_주문은_만료한다() {
         final long userId = insertUser();
-        final long productId = insertProduct(5, userId);
-        final String expired = order(userId, productId, 1);
-        final String paying = order(userId, productId, 2);
-        expireNow(expired);
-        expireNow(paying);
-        jdbc.update("""
-            INSERT INTO payment (created_at, updated_at, user_id, order_id, origin_amount, owned_coupon_id, coupon_discount,
-                used_point, payer_user_id, paid_amount, state, method)
-            SELECT NOW(6), NOW(6), user_id, id, total_price, 0, 0, 0, user_id, total_price, 'READY', 'CARD' FROM orders WHERE `key` = ?
-            """, paying);
+        final long productId = insertProduct(10, userId);
+        final String notStarted = order(userId, productId, 1);
+        final String pending = order(userId, productId, 2);
+        final String rejected = order(userId, productId, 3);
+        List.of(notStarted, pending, rejected).forEach(this::expireNow);
+        insertPayment(notStarted);
+        insertPgOperation(pending, false);
+        insertPgOperation(rejected, true);
 
-        assertThat(orderService.getExpiredOrderKeys()).contains(expired).doesNotContain(paying);
-        orderService.expireOrder(expired);
-        orderService.expireOrder(paying);
-        orderService.expireOrder(expired);
+        assertThat(orderService.getExpiredOrderKeys()).contains(notStarted, rejected).doesNotContain(pending);
+        List.of(notStarted, pending, rejected, notStarted).forEach(orderService::expireOrder);
 
-        assertThat(status(expired)).isEqualTo("EXPIRED");
-        assertThat(status(paying)).isEqualTo("CREATED");
-        assertThat(inventory(productId)).containsExactly(5, 2);
+        assertThat(status(notStarted)).isEqualTo("EXPIRED");
+        assertThat(status(pending)).isEqualTo("CREATED");
+        assertThat(status(rejected)).isEqualTo("EXPIRED");
+        assertThat(inventory(productId)).containsExactly(10, 2);
     }
 
     @Test
@@ -180,6 +177,22 @@ class OrderInventoryIntegrationTest {
     private void addToCart(final long userId, final long productId) {
         jdbc.update("INSERT INTO cart_item (cart_id, product_id, quantity) SELECT id, ?, 1 FROM carts WHERE user_id = ?", productId,
             userId);
+    }
+
+    private void insertPayment(final String orderKey) {
+        jdbc.update("""
+            INSERT INTO payment (created_at, updated_at, user_id, order_id, origin_amount, owned_coupon_id, coupon_discount,
+                used_point, payer_user_id, paid_amount, state, method)
+            SELECT NOW(6), NOW(6), user_id, id, total_price, 0, 0, 0, user_id, total_price, 'READY', 'CARD' FROM orders WHERE `key` = ?
+            """, orderKey);
+    }
+
+    private void insertPgOperation(final String orderKey, final boolean rejected) {
+        jdbc.update("""
+            INSERT INTO pg_operation (order_key, request_hash, input_hash, pg_idempotency_key, type, requested_at, completed, rejected,
+                created_at, updated_at)
+            VALUES (?, ?, 'input', UUID(), 'APPROVE', NOW(6), 0, ?, NOW(6), NOW(6))
+            """, orderKey, "request-" + orderKey, rejected);
     }
 
     private void expireNow(final String orderKey) {

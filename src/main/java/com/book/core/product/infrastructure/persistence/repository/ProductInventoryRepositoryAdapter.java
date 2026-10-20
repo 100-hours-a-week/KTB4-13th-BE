@@ -12,6 +12,14 @@ class ProductInventoryRepositoryAdapter implements ProductInventoryRepositoryPor
 
     @Override
     public boolean reserve(final Long productId, final int quantity) {
+        if (jpaRepository.reserve(productId, quantity) == 1) {
+            return true;
+        }
+        if (jpaRepository.existsById(productId)) {
+            return false;
+        }
+        jpaRepository.insertIfMissing(productId, ProductInventory.INITIAL_ON_HAND_QUANTITY, ProductInventory.DEFAULT_REORDER_POINT,
+            ProductInventory.DEFAULT_TARGET_STOCK);
         return jpaRepository.reserve(productId, quantity) == 1;
     }
 
@@ -33,11 +41,5 @@ class ProductInventoryRepositoryAdapter implements ProductInventoryRepositoryPor
     @Override
     public boolean receive(final Long productId, final int quantity) {
         return jpaRepository.restore(productId, quantity) == 1;
-    }
-
-    @Override
-    public int initializeMissing() {
-        return jpaRepository.initializeMissing(ProductInventory.INITIAL_ON_HAND_QUANTITY, ProductInventory.DEFAULT_REORDER_POINT,
-            ProductInventory.DEFAULT_TARGET_STOCK);
     }
 }

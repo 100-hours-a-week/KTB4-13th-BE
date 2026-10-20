@@ -10,7 +10,11 @@ import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
 import com.book.core.payment.application.command.FailPaymentCommand;
-import com.book.core.payment.application.usecase.CompletePaymentUseCase;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
+import com.book.core.payment.application.usecase.ApprovePgPaymentUseCase;
+import com.book.core.payment.application.usecase.PreparePgOperationUseCase;
+import com.book.core.payment.application.usecase.RejectPgOperationUseCase;
 import com.book.core.payment.application.usecase.CreatePaymentUseCase;
 import com.book.core.payment.application.usecase.FailPaymentUseCase;
 import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
@@ -34,7 +38,9 @@ public class PaymentService {
     private final GetPointBalanceUseCase getPointBalanceUseCase;
     private final CreatePaymentUseCase createPaymentUseCase;
     private final ValidatePaymentUseCase validatePaymentUseCase;
-    private final CompletePaymentUseCase completePaymentUseCase;
+    private final ApprovePgPaymentUseCase approvePgPaymentUseCase;
+    private final PreparePgOperationUseCase preparePgOperationUseCase;
+    private final RejectPgOperationUseCase rejectPgOperationUseCase;
     private final FailPaymentUseCase failPaymentUseCase;
     private final PostProcessPaymentUseCase postProcessPaymentUseCase;
 
@@ -53,11 +59,16 @@ public class PaymentService {
     }
 
     public Long success(final ApprovePaymentCommand command) {
-        final Order order = getPaymentOrderUseCase.execute(command.orderKey(), OrderStatus.CREATED);
-        validatePaymentUseCase.validateForApprove(order.id(), command.amount());
-
-        // TODO(#329): 실제 PG 승인 확인과 실패 보상 정책을 구현한 뒤 결제를 운영에 사용한다.
-        final Long paymentId = completePaymentUseCase.execute(command.orderKey(), command.externalPaymentKey());
+        preparePgOperationUseCase.execute(command.operation());
+        final Long paymentId;
+        try {
+            paymentId = approvePgPaymentUseCase.execute(command);
+        } catch (final CoreException exception) {
+            if (exception.errorCode() == ErrorCode.PG_REJECTED) {
+                rejectPgOperationUseCase.execute(command.operation());
+            }
+            throw exception;
+        }
         postProcessPaymentUseCase.execute(paymentId, command.orderKey());
         return paymentId;
     }

@@ -29,6 +29,9 @@ public class ChatSession extends BaseEntity {
     private Long activeRequestId;
     @Column(name = "next_sequence", nullable = false)
     private long nextSequence;
+    /** 야간 기억 추출이 갱신하므로 대화 진행 중 세션 저장이 덮어쓰지 않도록 읽기 전용으로 매핑합니다. */
+    @Column(name = "memory_extracted_sequence", nullable = false, insertable = false, updatable = false)
+    private long memoryExtractedSequence;
 
     public ChatSession(final Long userId) {
         if (userId == null || userId <= 0) {

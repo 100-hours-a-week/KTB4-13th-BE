@@ -3,6 +3,7 @@ package com.book.core.memory.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.core.memory.application.command.SaveUserMemoriesCommand;
 import com.book.core.memory.application.command.UserMemoryExtraction;
+import com.book.core.memory.application.port.MemoryExtractionProgressPort;
 import com.book.core.memory.application.port.UserMemoryRepositoryPort;
 import com.book.core.memory.domain.UserMemory;
 import java.util.List;
@@ -13,19 +14,24 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SaveUserMemoriesUseCase {
     private final UserMemoryRepositoryPort userMemoryRepository;
+    private final MemoryExtractionProgressPort extractionProgress;
 
+    /** 완료 순번 갱신과 같은 대화의 기억 교체를 한 트랜잭션으로 반영하고, 이미 반영한 순번이면 기억을 바꾸지 않습니다. */
     @Transactional
-    public void execute(final SaveUserMemoriesCommand command) {
+    public boolean execute(final SaveUserMemoriesCommand command) {
         userMemoryRepository.lockByUserId(command.userId());
+        if (!extractionProgress.markExtracted(command.userId(), command.sessionId(), command.sequence())) {
+            return false;
+        }
         final List<UserMemory> extracted =
             command.extractions().stream().map((final UserMemoryExtraction extraction) -> toMemory(command, extraction)).toList();
-        final List<UserMemory> deleted =
-            userMemoryRepository.findDeletedByUserIdAndConversationId(command.userId(), command.conversationId());
+        final List<UserMemory> deleted = userMemoryRepository.findDeletedByUserId(command.userId());
         final List<UserMemory> memories =
             extracted.stream().filter((final UserMemory memory) -> deleted.stream().noneMatch(memory::hasSameKeywordAs)).toList();
 
         userMemoryRepository.deleteActiveByUserIdAndConversationId(command.userId(), command.conversationId());
         userMemoryRepository.saveAll(memories);
+        return true;
     }
 
     private UserMemory toMemory(final SaveUserMemoriesCommand command, final UserMemoryExtraction extraction) {

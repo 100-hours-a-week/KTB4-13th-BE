@@ -3,9 +3,13 @@ package com.book.core.agentchat.infrastructure.persistence.repository;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.agentchat.application.port.ChatRepositoryPort;
+import com.book.core.agentchat.application.result.MemoryExtractionTarget;
 import com.book.core.agentchat.domain.ChatMessage;
 import com.book.core.agentchat.domain.ChatRequest;
 import com.book.core.agentchat.domain.ChatSession;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -77,5 +81,11 @@ public class ChatRepositoryAdapter implements ChatRepositoryPort {
     @Override
     public Optional<ChatMessage> responseFor(final Long requestId) {
         return messages.findByRequestIdAndRole(requestId, "assistant");
+    }
+
+    @Override
+    public List<MemoryExtractionTarget> findMemoryExtractionTargets(final Instant before) {
+        // created_at은 JVM 기본 시간대의 LocalDateTime으로 저장되므로 같은 시간대로 바꿔 비교합니다.
+        return sessions.findMemoryExtractionTargets(LocalDateTime.ofInstant(before, ZoneId.systemDefault()));
     }
 }

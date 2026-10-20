@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.agentchat.application.usecase.GetChatHistoryUseCase;
+import com.book.core.agentchat.application.usecase.GetMemoryExtractionTargetsUseCase;
 import com.book.core.memory.application.command.DeleteUserMemoriesCommand;
 import com.book.core.memory.application.result.UserMemoryGroupResult;
 import com.book.core.memory.application.usecase.DeleteAllUserMemoriesUseCase;
@@ -36,9 +38,10 @@ class UserPreferenceServiceTest {
     private final GetUserMemoriesUseCase getUserMemoriesUseCase = mock(GetUserMemoriesUseCase.class);
     private final DeleteUserMemoriesUseCase deleteUserMemoriesUseCase = mock(DeleteUserMemoriesUseCase.class);
     private final DeleteAllUserMemoriesUseCase deleteAllUserMemoriesUseCase = mock(DeleteAllUserMemoriesUseCase.class);
-    private final UserPreferenceService userPreferenceService = new UserPreferenceService(getOnboardingProgressUseCase,
-        getUserMemoriesUseCase, deleteUserMemoriesUseCase, deleteAllUserMemoriesUseCase, mock(CheckPersonalizationAgreementUseCase.class),
-        mock(ExtractUserMemoriesUseCase.class), mock(SaveUserMemoriesUseCase.class));
+    private final UserPreferenceService userPreferenceService =
+        new UserPreferenceService(getOnboardingProgressUseCase, getUserMemoriesUseCase, deleteUserMemoriesUseCase,
+            deleteAllUserMemoriesUseCase, mock(CheckPersonalizationAgreementUseCase.class), mock(ExtractUserMemoriesUseCase.class),
+            mock(SaveUserMemoriesUseCase.class), mock(GetChatHistoryUseCase.class), mock(GetMemoryExtractionTargetsUseCase.class));
 
     @Test
     void 온보딩을_완료하지_않았으면_취향_조회와_삭제를_진행하지_않고_409를_던진다() {

@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.config.security.UserIdMvcConfig;
+import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
 import com.book.core.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.book.support.config.WebCorsConfiguration;
@@ -43,6 +44,9 @@ class NotificationControllerTest {
     NotificationService service;
     @MockitoBean(name = "serviceJwtDecoder")
     JwtDecoder decoder;
+
+    @MockitoBean
+    CheckUserRestrictionUseCase checkUserRestrictionUseCase;
 
     @AfterEach
     void clearSecurityContext() {

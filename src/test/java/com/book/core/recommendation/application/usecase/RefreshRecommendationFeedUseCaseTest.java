@@ -25,6 +25,15 @@ class RefreshRecommendationFeedUseCaseTest {
     }
 
     @Test
+    void 남은_목록이_줄지_않으면_반복을_멈추고_오류를_전달한다() {
+        when(client.refreshFeed()).thenReturn(30, 30);
+
+        assertThatThrownBy(useCase::execute).isInstanceOf(CoreException.class);
+
+        verify(client, times(2)).refreshFeed();
+    }
+
+    @Test
     void 실패하면_더_부르지_않고_오류를_전달한다() {
         when(client.refreshFeed()).thenReturn(30).thenThrow(new CoreException(ErrorCode.AI_FEED_TIMEOUT));
 

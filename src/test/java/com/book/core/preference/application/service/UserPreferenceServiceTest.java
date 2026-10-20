@@ -32,6 +32,7 @@ import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase
 import com.book.core.onboarding.application.usecase.GetProfileRefreshTargetsUseCase;
 import com.book.core.onboarding.application.usecase.PersonalizationProfileUseCase;
 import com.book.core.onboarding.domain.OnboardingStatus;
+import com.book.core.recommendation.application.usecase.RefreshRecommendationFeedUseCase;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -46,12 +47,15 @@ class UserPreferenceServiceTest {
     private final GetUserMemoriesUseCase getUserMemoriesUseCase = mock(GetUserMemoriesUseCase.class);
     private final DeleteUserMemoriesUseCase deleteUserMemoriesUseCase = mock(DeleteUserMemoriesUseCase.class);
     private final DeleteAllUserMemoriesUseCase deleteAllUserMemoriesUseCase = mock(DeleteAllUserMemoriesUseCase.class);
+    private final GetMemoryExtractionTargetsUseCase getMemoryExtractionTargetsUseCase = mock(GetMemoryExtractionTargetsUseCase.class);
+    private final RefreshRecommendationFeedUseCase refreshRecommendationFeedUseCase = mock(RefreshRecommendationFeedUseCase.class);
     private final PersonalizationProfileUseCase personalizationProfileUseCase = mock(PersonalizationProfileUseCase.class);
     private final GetProfileRefreshTargetsUseCase getProfileRefreshTargetsUseCase = mock(GetProfileRefreshTargetsUseCase.class);
-    private final UserPreferenceService userPreferenceService = new UserPreferenceService(getOnboardingProgressUseCase,
-        getUserMemoriesUseCase, deleteUserMemoriesUseCase, deleteAllUserMemoriesUseCase, mock(CheckPersonalizationAgreementUseCase.class),
-        mock(ExtractUserMemoriesUseCase.class), mock(SaveUserMemoriesUseCase.class), mock(GetChatHistoryUseCase.class),
-        mock(GetMemoryExtractionTargetsUseCase.class), personalizationProfileUseCase, getProfileRefreshTargetsUseCase);
+    private final UserPreferenceService userPreferenceService =
+        new UserPreferenceService(getOnboardingProgressUseCase, getUserMemoriesUseCase, deleteUserMemoriesUseCase,
+            deleteAllUserMemoriesUseCase, mock(CheckPersonalizationAgreementUseCase.class), mock(ExtractUserMemoriesUseCase.class),
+            mock(SaveUserMemoriesUseCase.class), mock(GetChatHistoryUseCase.class), getMemoryExtractionTargetsUseCase,
+            personalizationProfileUseCase, getProfileRefreshTargetsUseCase, refreshRecommendationFeedUseCase);
 
     @Test
     void 온보딩을_완료하지_않았으면_취향_조회와_삭제를_진행하지_않고_409를_던진다() {
@@ -104,6 +108,21 @@ class UserPreferenceServiceTest {
         order.verify(personalizationProfileUseCase).executeUpdate(5L);
         order.verify(personalizationProfileUseCase).executeUpdate(7L);
         verify(personalizationProfileUseCase, times(3)).executeUpdate(any());
+    }
+
+    @Test
+    void 야간_배치는_기억_추출_프로필_갱신_추천_재생성_순으로_실행하고_갱신_대상이_없어도_추천을_다시_뽑는다() {
+        when(getMemoryExtractionTargetsUseCase.execute()).thenReturn(List.of());
+        when(getProfileRefreshTargetsUseCase.execute()).thenReturn(List.of());
+        doThrow(new CoreException(ErrorCode.AI_FEED_FAILURE)).when(refreshRecommendationFeedUseCase).execute();
+
+        userPreferenceService.runNightlyBatch();
+
+        final InOrder order = inOrder(getMemoryExtractionTargetsUseCase, getProfileRefreshTargetsUseCase, refreshRecommendationFeedUseCase);
+        order.verify(getMemoryExtractionTargetsUseCase).execute();
+        order.verify(getProfileRefreshTargetsUseCase).execute();
+        order.verify(refreshRecommendationFeedUseCase).execute();
+        verifyNoInteractions(personalizationProfileUseCase);
     }
 
     @Test

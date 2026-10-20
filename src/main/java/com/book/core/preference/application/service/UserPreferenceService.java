@@ -24,6 +24,7 @@ import com.book.core.onboarding.application.usecase.GetProfileRefreshTargetsUseC
 import com.book.core.onboarding.application.usecase.PersonalizationProfileUseCase;
 import com.book.core.preference.application.command.ExtractChatMemoriesCommand;
 import com.book.core.preference.application.result.UserPreferencesResult;
+import com.book.core.recommendation.application.usecase.RefreshRecommendationFeedUseCase;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -51,6 +52,7 @@ public class UserPreferenceService {
     private final GetMemoryExtractionTargetsUseCase getMemoryExtractionTargetsUseCase;
     private final PersonalizationProfileUseCase personalizationProfileUseCase;
     private final GetProfileRefreshTargetsUseCase getProfileRefreshTargetsUseCase;
+    private final RefreshRecommendationFeedUseCase refreshRecommendationFeedUseCase;
 
     public UserPreferencesResult getPreferences(final Long userId) {
         final OnboardingProgressResult onboarding = getCompletedOnboarding(userId);
@@ -73,6 +75,7 @@ public class UserPreferenceService {
 
     public void runNightlyBatch() {
         refreshNightlyProfiles(extractNightlyMemories());
+        refreshRecommendationFeed();
     }
 
     public Set<Long> extractNightlyMemories() {
@@ -119,6 +122,14 @@ public class UserPreferenceService {
         }
         return saveUserMemoriesUseCase
             .execute(new SaveUserMemoriesCommand(command.userId(), command.sessionId(), command.sequence(), extractions));
+    }
+
+    private void refreshRecommendationFeed() {
+        try {
+            refreshRecommendationFeedUseCase.execute();
+        } catch (final RuntimeException exception) {
+            log.error("추천 목록 다시 뽑기에 실패해 오늘 밤은 중단하고 다음 밤에 다시 부릅니다. cause={}", cause(exception));
+        }
     }
 
     private void refreshProfile(final Long userId) {

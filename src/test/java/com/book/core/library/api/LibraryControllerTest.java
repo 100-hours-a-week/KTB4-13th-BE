@@ -1,16 +1,20 @@
 package com.book.core.library.api;
 
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.config.security.UserIdMvcConfig;
 import com.book.core.library.api.converter.LibraryCommandConverter;
 import com.book.core.library.application.command.DeleteLibraryBooksCommand;
+import com.book.core.library.application.result.LibraryBookResult;
 import com.book.core.library.application.service.LibraryService;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +44,24 @@ class LibraryControllerTest {
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void 목록_조회는_JWT_회원_ID로_조회하고_상품이_없는_항목은_productId를_null로_응답한다() throws Exception {
+        authenticateAs(42L);
+        given(libraryService.getBooks(42L)).willReturn(
+            List.of(new LibraryBookResult(11L, 101L, 201L, "제목", "저자", "https://image.test/cover.jpg", LocalDateTime.of(2026, 10, 2, 9, 0)),
+                new LibraryBookResult(12L, 102L, null, "상품 없는 책", "저자2", null, LocalDateTime.of(2026, 10, 1, 9, 0))));
+
+        mvc.perform(get("/api/v1/library/books").param("userId", "99")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data.books.length()").value(2))
+            .andExpect(jsonPath("$.data.books[0].libraryBookId").value(11)).andExpect(jsonPath("$.data.books[0].bookId").value(101))
+            .andExpect(jsonPath("$.data.books[0].productId").value(201)).andExpect(jsonPath("$.data.books[0].title").value("제목"))
+            .andExpect(jsonPath("$.data.books[0].author").value("저자"))
+            .andExpect(jsonPath("$.data.books[0].coverImageUrl").value("https://image.test/cover.jpg"))
+            .andExpect(jsonPath("$.data.books[0].addedAt").value("2026-10-02T09:00:00"))
+            .andExpect(jsonPath("$.data.books[1].productId").value((Object) null))
+            .andExpect(jsonPath("$.data.books[1].coverImageUrl").value((Object) null));
     }
 
     @Test

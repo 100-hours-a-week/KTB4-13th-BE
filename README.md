@@ -50,6 +50,15 @@ Java 25와 로컬 MySQL이 필요합니다. MySQL에 `book` 데이터베이스�
 ./gradlew bootRun
 ```
 
+`bootRun`과 Docker 이미지의 실행 JVM은 기본 시간대로 `Asia/Seoul`을 사용합니다.
+따라서 `LocalDate.now()`와 `LocalDateTime.now()`도 서울 기준 날짜와 시간을 반환합니다.
+IDE에서 직접 실행할 때는 VM 옵션에 `-Duser.timezone=Asia/Seoul`을 지정합니다.
+JAR를 직접 실행할 때도 같은 옵션을 사용합니다.
+
+```bash
+java -Duser.timezone=Asia/Seoul -jar build/libs/book.jar
+```
+
 기본 프로필은 `local`입니다. `src/main/resources/persistence.yml`에서 DB 설정을 관리하며
 Flyway가 테이블을 생성하고 Hibernate가 매핑을 검증합니다.
 

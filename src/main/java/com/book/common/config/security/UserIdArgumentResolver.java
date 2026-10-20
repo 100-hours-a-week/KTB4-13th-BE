@@ -20,6 +20,9 @@ public final class UserIdArgumentResolver implements HandlerMethodArgumentResolv
         final NativeWebRequest webRequest, final WebDataBinderFactory binderFactory) {
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            if (!parameter.getParameterAnnotation(UserId.class).required()) {
+                return null;
+            }
             throw new IllegalStateException("@UserId requires an authenticated JWT principal.");
         }
         return Long.valueOf(jwt.getSubject());

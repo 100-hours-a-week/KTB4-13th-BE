@@ -13,7 +13,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
-import com.book.common.logging.TraceIdFilter;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.search.application.command.BookSearchSort;
 import com.book.core.search.application.port.BookSearchItem;
 import com.book.core.search.application.port.BookSearchRequest;
@@ -42,12 +42,12 @@ class BookSearchClientImplTest {
 
     @AfterEach
     void clearMdc() {
-        MDC.remove(TraceIdFilter.TRACE_ID_MDC_KEY);
+        MDC.remove(RequestMdcFilter.REQUEST_ID_MDC_KEY);
     }
 
     @Test
     void POST_search에_Bearer_토큰과_X_Request_Id와_snake_case_본문을_보낸다() {
-        MDC.put(TraceIdFilter.TRACE_ID_MDC_KEY, "trace-abc-123");
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "trace-abc-123");
         server.expect(requestTo(SEARCH_URL)).andExpect(method(HttpMethod.POST))
             .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "trace-abc-123"))
             .andExpect(jsonPath("$.query").value("투자 입문")).andExpect(jsonPath("$.filters.category").value("경제경영"))

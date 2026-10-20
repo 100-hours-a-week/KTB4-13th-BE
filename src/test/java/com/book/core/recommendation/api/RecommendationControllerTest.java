@@ -158,6 +158,16 @@ class RecommendationControllerTest {
     }
 
     @Test
+    void 긴_이유가_없는_카드_상세도_정상_응답한다() throws Exception {
+        authenticateAs(42L);
+        when(recommendationService.getCard(new GetRecommendationCardCommand(42L, 1L)))
+            .thenReturn(new RecommendationCardDetailResult(1L, 10L, null));
+
+        mvc.perform(get("/api/v1/recommend/cards/{recommendationCardId}", 1L)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.recommendationCardId").value(1)).andExpect(jsonPath("$.data.reasonLong").value(nullValue()));
+    }
+
+    @Test
     void 카드_상세_조회는_인증된_userId를_Command로_전달한다() throws Exception {
         authenticateAs(42L);
         when(recommendationService.getCard(new GetRecommendationCardCommand(42L, 1L)))

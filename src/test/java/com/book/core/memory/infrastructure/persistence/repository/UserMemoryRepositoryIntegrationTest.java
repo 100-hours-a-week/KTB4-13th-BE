@@ -40,7 +40,7 @@ class UserMemoryRepositoryIntegrationTest {
             List.of(0.054f, -0.0028f, 1.0f), 3, "cv_1")));
         jdbc.update("UPDATE user_memories SET deleted_at = CURRENT_TIMESTAMP(6) WHERE user_id = ?", userId);
 
-        final UserMemory found = userMemoryRepository.findDeletedByUserIdAndConversationId(userId, "cv_1").getFirst();
+        final UserMemory found = userMemoryRepository.findDeletedByUserId(userId).getFirst();
 
         assertThat(found.categories()).containsExactly("추리/스릴러", "소설");
         assertThat(found.vector()).containsExactly(0.054f, -0.0028f, 1.0f);

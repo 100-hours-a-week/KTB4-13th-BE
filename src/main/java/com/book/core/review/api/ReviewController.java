@@ -41,13 +41,13 @@ class ReviewController implements ReviewControllerSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(
+    public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(@UserId(required = false) final Long userId,
         @RequestParam("targetType") final ReviewTargetType targetType, @RequestParam("targetId") final Long targetId,
         @RequestParam(value = "offset", defaultValue = "0") final int offset,
         @RequestParam(value = "limit", defaultValue = "20") final int limit) {
         final GetReviewsCommand command = commandConverter.toGetReviewsCommand(targetType, targetId, offset, limit);
         final Page<ReviewItemResult> result = reviewService.findReviews(command);
-        final PageResponse<ReviewResponse> response = resultConverter.toResponse(result);
+        final PageResponse<ReviewResponse> response = resultConverter.toResponse(result, userId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

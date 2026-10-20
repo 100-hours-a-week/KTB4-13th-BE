@@ -7,10 +7,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.usecase.FindOwnedCouponsForCheckoutUseCase;
 import com.book.core.coupon.application.usecase.GetCouponTargetsUseCase;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
@@ -68,12 +71,21 @@ class PaymentServiceTest {
     @Test
     void 성공은_검증_완료_후처리_순서로_실행한다() {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
-        when(complete.execute(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN))).thenReturn(3L);
+        when(complete.execute(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN)))
+            .thenReturn(new com.book.core.payment.application.result.PaymentCompletionResult(3L, true));
         assertThat(service.success(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN))).isEqualTo(3L);
         final InOrder sequence = inOrder(prepare, complete, post);
         sequence.verify(prepare).execute(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN).operation());
         sequence.verify(complete).execute(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN));
         sequence.verify(post).execute(3L, "order");
+    }
+
+    @Test
+    void 완료된_승인_재요청은_장바구니_정리를_반복하지_않는다() {
+        final var command = new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN);
+        when(complete.execute(command)).thenReturn(new com.book.core.payment.application.result.PaymentCompletionResult(3L, false));
+        assertThat(service.success(command)).isEqualTo(3L);
+        verifyNoInteractions(post);
     }
 
     @Test
@@ -83,6 +95,17 @@ class PaymentServiceTest {
         assertThatThrownBy(() -> service.success(new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN)))
             .isInstanceOf(IllegalStateException.class);
         verifyNoInteractions(complete, post);
+    }
+
+    @Test
+    void 미확정_PG결과는_요청을_거절로_기록하지_않는다() {
+        final var command = new ApprovePaymentCommand("order", "test-key", BigDecimal.TEN);
+        doThrow(new CoreException(ErrorCode.PG_PENDING)).when(complete).execute(command);
+        assertThatThrownBy(() -> service.success(command)).isInstanceOfSatisfying(CoreException.class,
+            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
+        verify(prepare).execute(command.operation());
+        verify(reject, never()).execute(command.operation());
+        verifyNoInteractions(post);
     }
 
     @Test

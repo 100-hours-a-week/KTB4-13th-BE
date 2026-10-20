@@ -27,8 +27,8 @@ class UserMemoryRepositoryAdapter implements UserMemoryRepositoryPort {
     }
 
     @Override
-    public List<UserMemory> findDeletedByUserIdAndConversationId(final Long userId, final String conversationId) {
-        return jpaRepository.findAllByUserIdAndConversationIdAndDeletedAtIsNotNull(userId, conversationId);
+    public List<UserMemory> findDeletedByUserId(final Long userId) {
+        return jpaRepository.findAllByUserIdAndDeletedAtIsNotNull(userId);
     }
 
     @Override

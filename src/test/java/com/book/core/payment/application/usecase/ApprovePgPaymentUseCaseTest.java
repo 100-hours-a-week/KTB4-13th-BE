@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
@@ -22,6 +23,8 @@ import com.book.core.payment.domain.enums.PaymentMethod;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ApprovePgPaymentUseCaseTest {
     private final GetPgOperationUseCase operations = mock(GetPgOperationUseCase.class);
@@ -44,7 +47,7 @@ class ApprovePgPaymentUseCaseTest {
         prepare(command);
         when(client.find("key")).thenReturn(result("IN_PROGRESS", "order"));
         when(client.approve("key", "order", BigDecimal.TEN, operation.pgIdempotencyKey())).thenReturn(result("DONE", "order"));
-        assertThat(useCase.execute(command)).isEqualTo(3L);
+        assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
         assertThat(operation.completed()).isTrue();
         verify(complete).execute("order",
             new com.book.core.payment.application.result.ApprovedPaymentResult("key", PaymentMethod.CARD, "1234"));
@@ -54,15 +57,43 @@ class ApprovePgPaymentUseCaseTest {
     void PG성공후_DB실패_재요청은_조회결과로_내부_완료만_재개한다() {
         prepare(command);
         when(client.find("key")).thenReturn(result("DONE", "order"));
-        assertThat(useCase.execute(command)).isEqualTo(3L);
+        assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
         verify(client, never()).approve(any(), any(), any(), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ABORTED", "EXPIRED"})
+    void 토스에서_종료된_상태만_결제_거절로_처리한다(final String status) {
+        prepare(command);
+        when(client.find("key")).thenReturn(result(status, "order"));
+        assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
+    }
+
+    @Test
+    void READY는_인증전_상태라_요청을_미확정으로_유지한다() {
+        prepare(command);
+        when(client.find("key")).thenReturn(result("READY", "order"));
+        assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
+        assertThat(operation.rejected()).isFalse();
+        assertThat(operation.completed()).isFalse();
+        verifyNoInteractions(complete);
+    }
+
+    @Test
+    void 알_수_없는_토스_상태는_응답_불일치로_처리한다() {
+        prepare(command);
+        when(client.find("key")).thenReturn(result("FUTURE_STATUS", "order"));
+        assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_RESPONSE_MISMATCH));
     }
 
     @Test
     void 완료된_요청은_다시_승인하거나_포인트를_반영하지_않는다() {
         prepare(command);
         operation.complete(3L);
-        assertThat(useCase.execute(command)).isEqualTo(3L);
+        assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
         verifyNoInteractions(client, complete, validate);
     }
 
@@ -79,7 +110,7 @@ class ApprovePgPaymentUseCaseTest {
     void 영원_결제는_PG를_호출하지_않는다() {
         final var zero = new ApprovePaymentCommand("order", "", BigDecimal.ZERO);
         prepare(zero);
-        assertThat(useCase.execute(zero)).isEqualTo(3L);
+        assertThat(useCase.execute(zero).paymentId()).isEqualTo(3L);
         verifyNoInteractions(client);
     }
 

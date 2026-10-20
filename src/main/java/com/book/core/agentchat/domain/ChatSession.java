@@ -29,6 +29,8 @@ public class ChatSession extends BaseEntity {
     private Long activeRequestId;
     @Column(name = "next_sequence", nullable = false)
     private long nextSequence;
+    @Column(name = "memory_extracted_sequence", nullable = false, insertable = false, updatable = false)
+    private long memoryExtractedSequence;
 
     public ChatSession(final Long userId) {
         if (userId == null || userId <= 0) {

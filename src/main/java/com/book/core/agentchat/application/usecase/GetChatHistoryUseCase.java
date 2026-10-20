@@ -7,8 +7,15 @@ import com.book.core.agentchat.application.port.ChatRepositoryPort;
 import com.book.core.agentchat.application.port.ChatResponseCodec;
 import com.book.core.agentchat.application.result.ChatHistoryMessage;
 import com.book.core.agentchat.application.result.ChatResponseSnapshot;
+import com.book.core.agentchat.application.result.MemoryExtractionTarget;
 import com.book.core.agentchat.domain.ChatMessage;
+import com.book.core.agentchat.domain.ChatSession;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,12 +31,36 @@ public class GetChatHistoryUseCase {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         chats.findSession(sessionId).orElseThrow(() -> new CoreException(ErrorCode.CHAT_NOT_FOUND)).requireOwner(userId);
-        return chats.messagesAfter(sessionId, afterSequence, limit).stream().map((final ChatMessage message) -> {
-            ChatResponseSnapshot response = null;
-            if (message.responsePayload() != null) {
-                response = codec.decode(message.responsePayload());
+        return chats.messagesAfter(sessionId, afterSequence, limit).stream().map(this::toHistoryMessage).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, List<ChatHistoryMessage>> executeForMemoryExtraction(final List<MemoryExtractionTarget> targets, final int limit) {
+        final Map<Long, MemoryExtractionTarget> targetsBySessionId =
+            targets.stream().collect(Collectors.toMap(MemoryExtractionTarget::sessionId, Function.identity()));
+        final Map<Long, Long> lastSequenceBySessionId = new HashMap<>();
+        final Map<Long, List<ChatHistoryMessage>> conversations = new HashMap<>();
+        for (final ChatSession session : chats.findSessionsByIds(targetsBySessionId.keySet())) {
+            final MemoryExtractionTarget target = targetsBySessionId.get(session.id());
+            if (session.userId().equals(target.userId())) {
+                lastSequenceBySessionId.put(session.id(), target.sequence());
+                conversations.put(session.id(), new ArrayList<>());
             }
-            return new ChatHistoryMessage(message.id(), message.sequence(), message.role(), message.text(), message.createdAt(), response);
-        }).toList();
+        }
+        if (conversations.isEmpty()) {
+            return conversations;
+        }
+        for (final ChatMessage message : chats.recentMessagesUpTo(lastSequenceBySessionId, limit)) {
+            conversations.get(message.sessionId()).add(toHistoryMessage(message));
+        }
+        return conversations;
+    }
+
+    private ChatHistoryMessage toHistoryMessage(final ChatMessage message) {
+        ChatResponseSnapshot response = null;
+        if (message.responsePayload() != null) {
+            response = codec.decode(message.responsePayload());
+        }
+        return new ChatHistoryMessage(message.id(), message.sequence(), message.role(), message.text(), message.createdAt(), response);
     }
 }

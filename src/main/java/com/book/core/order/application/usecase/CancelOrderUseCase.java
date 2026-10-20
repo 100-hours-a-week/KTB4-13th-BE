@@ -6,6 +6,7 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.domain.Order;
+import com.book.core.payment.application.usecase.AssertNoPendingPgOperationUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CancelOrderUseCase {
     private final OrderRepositoryPort orderRepository;
+    private final AssertNoPendingPgOperationUseCase assertNoPendingPgOperation;
 
     @Transactional
     public void execute(final CancelOrderCommand command) {
@@ -21,6 +23,7 @@ public class CancelOrderUseCase {
         if (!order.userId().equals(command.userId())) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
+        assertNoPendingPgOperation.execute(order.key());
         order.cancel();
     }
 }

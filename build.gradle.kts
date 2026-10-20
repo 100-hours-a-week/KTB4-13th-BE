@@ -49,6 +49,10 @@ tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.add("-parameters")
 }
 
+tasks.bootRun {
+    jvmArgs("-Duser.timezone=Asia/Seoul")
+}
+
 tasks.test {
     useJUnitPlatform {
         excludeTags("integration")

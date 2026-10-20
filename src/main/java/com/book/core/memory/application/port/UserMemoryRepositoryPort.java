@@ -11,7 +11,7 @@ public interface UserMemoryRepositoryPort {
 
     List<UserMemory> findAllByIdIn(final List<Long> ids);
 
-    List<UserMemory> findDeletedByUserIdAndConversationId(final Long userId, final String conversationId);
+    List<UserMemory> findDeletedByUserId(final Long userId);
 
     void deleteActiveByUserIdAndConversationId(final Long userId, final String conversationId);
 

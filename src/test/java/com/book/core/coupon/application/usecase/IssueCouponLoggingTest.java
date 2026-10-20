@@ -11,6 +11,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.book.common.filter.RequestMdcFilter;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.Coupon;
@@ -48,7 +49,7 @@ class IssueCouponLoggingTest {
             logger.setAdditive(false);
             logger.addAppender(appender);
         }
-        MDC.put("traceId", "coupon-test-trace");
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "coupon-test-request");
     }
 
     @AfterEach
@@ -79,7 +80,7 @@ class IssueCouponLoggingTest {
         assertThat(appender.list.subList(0, 2))
             .allSatisfy((final var event) -> assertThat(event.getFormattedMessage()).contains("쿠폰 발급", "couponId=10"));
         assertThat(appender.list).allSatisfy((final var event) -> assertThat(event.getFormattedMessage())
-            .contains("traceId=coupon-test-trace").doesNotContain("userId=", "discount=", "minOrderAmount="));
+            .contains("requestId=coupon-test-request").doesNotContain("traceId=", "userId=", "discount=", "minOrderAmount="));
     }
 
     @Test

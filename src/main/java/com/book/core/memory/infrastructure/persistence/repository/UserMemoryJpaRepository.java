@@ -13,7 +13,7 @@ interface UserMemoryJpaRepository extends JpaRepository<UserMemory, Long> {
 
     List<UserMemory> findAllByUserIdAndDeletedAtIsNull(final Long userId);
 
-    List<UserMemory> findAllByUserIdAndConversationIdAndDeletedAtIsNotNull(final Long userId, final String conversationId);
+    List<UserMemory> findAllByUserIdAndDeletedAtIsNotNull(final Long userId);
 
     @Modifying
     @Query("""

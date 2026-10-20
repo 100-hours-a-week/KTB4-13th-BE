@@ -24,14 +24,14 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
-            final long durationMs = (System.nanoTime() - startTime) / 1_000_000;
-            MDC.put("durationMs", Long.toString(durationMs));
+            final long requestDurationMs = (System.nanoTime() - startTime) / 1_000_000;
+            MDC.put("requestDurationMs", Long.toString(requestDurationMs));
             MDC.put("responseStatus", String.valueOf(response.getStatus()));
             try {
-                LOGGER.info("[HTTP_REQUEST] 요청 처리가 완료되었습니다. method={} uri={} status={} durationMs={}", request.getMethod(),
-                    request.getRequestURI(), response.getStatus(), durationMs);
+                LOGGER.info("[HTTP_REQUEST] 요청 처리가 완료되었습니다. method={} uri={} status={} requestDurationMs={}", request.getMethod(),
+                    request.getRequestURI(), response.getStatus(), requestDurationMs);
             } finally {
-                MDC.remove("durationMs");
+                MDC.remove("requestDurationMs");
                 MDC.remove("responseStatus");
             }
         }

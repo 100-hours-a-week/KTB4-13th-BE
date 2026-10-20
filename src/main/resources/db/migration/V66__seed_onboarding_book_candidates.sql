@@ -511,7 +511,7 @@ SELECT IF(
         SELECT COUNT(*)
         FROM onboarding_candidate_seed seed
         JOIN books ON books.id = seed.book_id
-          AND CAST(books.title AS VARBINARY) = CAST(seed.title AS VARBINARY)
+          AND CAST(books.title AS BINARY) = CAST(seed.title AS BINARY)
     ) = 490
     AND (
         SELECT COUNT(DISTINCT options.code)

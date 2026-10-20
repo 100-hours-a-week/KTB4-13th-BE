@@ -26,7 +26,6 @@ import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.result.GetProductsResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.application.usecase.GetProductsUseCase;
-import com.book.core.product.application.usecase.InitializeProductInventoriesUseCase;
 import com.book.core.product.application.usecase.RefreshProductPopularitySnapshotUseCase;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -38,8 +37,8 @@ class ProductServiceTest {
         mock(RefreshProductPopularitySnapshotUseCase.class);
     private final GetCouponTargetsUseCase couponTargetReader = mock(GetCouponTargetsUseCase.class);
     private final GetCouponsUseCase couponReader = mock(GetCouponsUseCase.class);
-    private final ProductService productService = new ProductService(useCase, getProductsUseCase, refreshProductPopularitySnapshotUseCase,
-        couponTargetReader, couponReader, mock(InitializeProductInventoriesUseCase.class));
+    private final ProductService productService =
+        new ProductService(useCase, getProductsUseCase, refreshProductPopularitySnapshotUseCase, couponTargetReader, couponReader);
 
     @Test
     void 상품_상세에_관련_활성_쿠폰_ID만_연결한다() {

@@ -63,7 +63,7 @@ public class Product extends BaseEntity {
 
     public Integer stockQuantity() {
         if (inventory == null) {
-            return 0;
+            return ProductInventory.INITIAL_ON_HAND_QUANTITY;
         }
         return inventory.availableQuantity();
     }

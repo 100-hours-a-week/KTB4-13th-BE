@@ -27,7 +27,7 @@ class RequestPgCancelUseCaseTest {
         payment.success("key", PaymentMethod.CARD, "1234");
         final var cancellation =
             new PgPaymentResult.Cancellation("cancel-key", BigDecimal.TEN, BigDecimal.ZERO, "DONE", OffsetDateTime.now());
-        when(client.cancel("key", BigDecimal.TEN, BigDecimal.TEN, "request")).thenReturn(new PgPaymentResult("key", "order", BigDecimal.TEN,
+        when(client.cancel("key", BigDecimal.TEN, "request")).thenReturn(new PgPaymentResult("key", "order", BigDecimal.TEN,
             BigDecimal.ZERO, "CANCELED", PaymentMethod.CARD, "1234", List.of(cancellation)));
         assertThat(useCase.execute("order", payment, BigDecimal.TEN, BigDecimal.TEN, "request").transactionKey()).isEqualTo("cancel-key");
     }
@@ -35,7 +35,7 @@ class RequestPgCancelUseCaseTest {
     @Test
     void 다른_취소_응답은_내부_환불에_사용하지_않는다() {
         payment.success("key", PaymentMethod.CARD, "1234");
-        when(client.cancel("key", BigDecimal.TEN, BigDecimal.TEN, "request")).thenReturn(
+        when(client.cancel("key", BigDecimal.TEN, "request")).thenReturn(
             new PgPaymentResult("key", "other", BigDecimal.TEN, BigDecimal.ZERO, "CANCELED", PaymentMethod.CARD, "1234", List.of()));
         assertThatThrownBy(() -> useCase.execute("order", payment, BigDecimal.TEN, BigDecimal.TEN, "request"))
             .isInstanceOf(CoreException.class);

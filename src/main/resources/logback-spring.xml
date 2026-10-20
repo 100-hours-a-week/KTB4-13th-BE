@@ -12,7 +12,14 @@
         </encoder>
     </appender>
 
-    <springProfile name="local,test,dev">
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>logstash</format>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <springProfile name="local,test">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
@@ -21,9 +28,18 @@
         <logger name="org.springframework.security" level="DEBUG"/>
     </springProfile>
 
+    <springProfile name="dev &amp; !local &amp; !test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </root>
+        <logger name="com.book" level="DEBUG"/>
+        <logger name="org.springframework.web" level="DEBUG"/>
+        <logger name="org.springframework.security" level="DEBUG"/>
+    </springProfile>
+
     <springProfile name="!local &amp; !test &amp; !dev">
         <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="CONSOLE_JSON"/>
         </root>
         <logger name="com.book" level="INFO"/>
         <logger name="org.springframework" level="WARN"/>

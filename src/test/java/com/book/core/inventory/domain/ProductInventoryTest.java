@@ -14,6 +14,16 @@ class ProductInventoryTest {
     }
 
     @Test
+    void 신규_상품은_기본_재고로_초기화한다() {
+        final ProductInventory inventory = ProductInventory.initial(1L);
+
+        assertThat(inventory.onHandQuantity()).isEqualTo(20);
+        assertThat(inventory.reservedQuantity()).isZero();
+        assertThat(inventory.reorderPoint()).isEqualTo(3);
+        assertThat(inventory.targetStock()).isEqualTo(20);
+    }
+
+    @Test
     void 보유재고보다_예약수량이_많을_수_없다() {
         assertThatThrownBy(() -> new ProductInventory(1L, 2, 3, 3, 20))
             .isInstanceOf(IllegalArgumentException.class);

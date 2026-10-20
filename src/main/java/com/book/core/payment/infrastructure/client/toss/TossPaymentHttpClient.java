@@ -27,6 +27,6 @@ interface TossPaymentHttpClient {
         }
     }
 
-    record CancelRequest(String cancelReason, BigDecimal cancelAmount, BigDecimal refundableAmount) {
+    record CancelRequest(String cancelReason, BigDecimal cancelAmount) {
     }
 }

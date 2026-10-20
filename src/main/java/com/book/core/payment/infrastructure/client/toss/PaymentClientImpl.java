@@ -26,10 +26,8 @@ class PaymentClientImpl implements PaymentClient {
     }
 
     @Override
-    public PgPaymentResult cancel(final String paymentKey, final BigDecimal amount, final BigDecimal refundableAmount,
-        final String idempotencyKey) {
-        return invoke(
-            () -> client.cancel(paymentKey, idempotencyKey, new TossPaymentHttpClient.CancelRequest("고객 요청", amount, refundableAmount)));
+    public PgPaymentResult cancel(final String paymentKey, final BigDecimal amount, final String idempotencyKey) {
+        return invoke(() -> client.cancel(paymentKey, idempotencyKey, new TossPaymentHttpClient.CancelRequest("고객 요청", amount)));
     }
 
     private PgPaymentResult invoke(final Supplier<TossPaymentResponse> action) {

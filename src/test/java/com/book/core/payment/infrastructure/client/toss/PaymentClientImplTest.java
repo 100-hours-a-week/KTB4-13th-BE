@@ -42,13 +42,13 @@ class PaymentClientImplTest {
     }
 
     @Test
-    void 취소_금액과_환불가능잔액을_함께_전달한다() {
+    void 취소_사유와_취소금액을_전달한다() {
         when(httpClient.cancel(eq("test-key"), eq("operation"), any())).thenReturn(response("카드", null));
-        client.cancel("test-key", BigDecimal.ONE, BigDecimal.TEN, "operation");
+        client.cancel("test-key", BigDecimal.ONE, "operation");
         final var request = ArgumentCaptor.forClass(TossPaymentHttpClient.CancelRequest.class);
         verify(httpClient).cancel(eq("test-key"), eq("operation"), request.capture());
         assertThat(request.getValue().cancelReason()).isEqualTo("고객 요청");
-        assertThat(request.getValue().refundableAmount()).isEqualByComparingTo("10");
+        assertThat(request.getValue().cancelAmount()).isEqualByComparingTo("1");
     }
 
     @Test

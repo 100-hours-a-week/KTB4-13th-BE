@@ -48,6 +48,61 @@ class TossPaymentHttpClientTest {
     }
 
     @Test
+    void 실제_HTTP에서_결제조회와_취소요청_인증_멱등키_본문을_검증한다() throws Exception {
+        final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        final AtomicReference<String> findPath = new AtomicReference<>();
+        final AtomicReference<String> findAuthorization = new AtomicReference<>();
+        final AtomicReference<String> cancelPath = new AtomicReference<>();
+        final AtomicReference<String> cancelAuthorization = new AtomicReference<>();
+        final AtomicReference<String> cancelIdempotencyKey = new AtomicReference<>();
+        final AtomicReference<String> cancelBody = new AtomicReference<>();
+        server.createContext("/v1/payments/test-key/cancel", exchange -> {
+            cancelPath.set(exchange.getRequestURI().getPath());
+            cancelAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            cancelIdempotencyKey.set(exchange.getRequestHeaders().getFirst("Idempotency-Key"));
+            cancelBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            final byte[] response = """
+                {"paymentKey":"test-key","orderId":"order-001","totalAmount":10,"balanceAmount":9,
+                 "status":"PARTIAL_CANCELED","method":"카드","cancels":[{"transactionKey":"txn-001",
+                 "cancelAmount":1,"refundableAmount":9,"cancelStatus":"DONE","canceledAt":"2026-10-20T10:00:00+09:00"}]}
+                """.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.createContext("/v1/payments/test-key", exchange -> {
+            findPath.set(exchange.getRequestURI().getPath());
+            findAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            final byte[] response = """
+                {"paymentKey":"test-key","orderId":"order-001","totalAmount":10,"balanceAmount":10,
+                 "status":"DONE","method":"카드","card":{"approveNo":"12345678"}}
+                """.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            withClient(server, "test_sk_wire", client -> {
+                assertThat(client.find("test-key").status()).isEqualTo("DONE");
+                assertThat(client.cancel("test-key", java.math.BigDecimal.ONE, "cancel-001")
+                    .cancellations().getFirst().transactionKey()).isEqualTo("txn-001");
+            });
+            assertThat(findPath.get()).isEqualTo("/v1/payments/test-key");
+            assertThat(findAuthorization.get()).isEqualTo("Basic dGVzdF9za193aXJlOg==");
+            assertThat(cancelPath.get()).isEqualTo("/v1/payments/test-key/cancel");
+            assertThat(cancelAuthorization.get()).isEqualTo("Basic dGVzdF9za193aXJlOg==");
+            assertThat(cancelIdempotencyKey.get()).isEqualTo("cancel-001");
+            assertThat(cancelBody.get()).contains("\"cancelReason\":\"고객 요청\"", "\"cancelAmount\":1")
+                .doesNotContain("refundableAmount");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void 시크릿키가_없으면_인증_요청을_전송하지_않는다() throws Exception {
         final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         final AtomicInteger requests = new AtomicInteger();
@@ -125,7 +180,7 @@ class TossPaymentHttpClientTest {
                         .isInstanceOfSatisfying(CoreException.class,
                             error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
                 }
-                assertThatThrownBy(() -> client.cancel("test-key", java.math.BigDecimal.ONE, java.math.BigDecimal.TEN, "request-004"))
+                assertThatThrownBy(() -> client.cancel("test-key", java.math.BigDecimal.ONE, "request-004"))
                     .isInstanceOfSatisfying(CoreException.class,
                         error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_UNAVAILABLE));
             });

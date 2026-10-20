@@ -30,6 +30,16 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
     }
 
     @Override
+    public List<String> findExpiredOrderKeys(final LocalDateTime now, final int limit) {
+        return jpaRepository.findExpiredOrderKeys(OrderStatus.CREATED, now, PageRequest.ofSize(limit));
+    }
+
+    @Override
+    public boolean hasPendingPgOperation(final String orderKey) {
+        return jpaRepository.hasPendingPgOperation(orderKey);
+    }
+
+    @Override
     public Optional<Order> findActiveOrderByKeyForUpdate(final String orderKey) {
         return jpaRepository.findByKeyAndDeletedAtIsNull(orderKey);
     }

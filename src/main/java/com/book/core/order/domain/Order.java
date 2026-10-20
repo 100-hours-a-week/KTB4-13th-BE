@@ -21,6 +21,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -56,6 +58,9 @@ public class Order extends BaseTimeEntity {
     @Column(name = "canceled_at")
     private LocalDateTime canceledAt;
 
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = true, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "address_id", nullable = true)
     private OrderAddress address;
@@ -86,6 +91,32 @@ public class Order extends BaseTimeEntity {
         final OrderItem orderItem = OrderItem.created(this, productId, itemName, thumbnailUrl, author, salePrice, unitPrice, quantity);
         this.items.add(orderItem);
         this.totalPrice = this.totalPrice.add(orderItem.totalPrice());
+    }
+
+    public void reserveUntil(final LocalDateTime expiresAt) {
+        if (status != OrderStatus.CREATED || expiresAt == null || this.expiresAt != null) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        this.expiresAt = expiresAt;
+    }
+
+    public boolean hasReservation() {
+        return expiresAt != null;
+    }
+
+    public boolean expire(final LocalDateTime now) {
+        if (status != OrderStatus.CREATED || !hasReservation() || expiresAt.isAfter(now)) {
+            return false;
+        }
+        status = OrderStatus.EXPIRED;
+        return true;
+    }
+
+    public Map<Long, Integer> reservedQuantities() {
+        if (!hasReservation()) {
+            return Map.of();
+        }
+        return items.stream().collect(Collectors.toMap(OrderItem::productId, OrderItem::quantity, Integer::sum));
     }
 
     public void paid() {

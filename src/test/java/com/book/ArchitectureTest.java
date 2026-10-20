@@ -18,6 +18,7 @@ import com.book.core.coupon.domain.OwnedCoupon;
 import com.book.core.memory.domain.UserMemory;
 import com.book.core.merchant.domain.Merchant;
 import com.book.core.merchant.domain.MerchantProductMapping;
+import com.book.core.order.application.service.OrderService;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderAddress;
 import com.book.core.order.domain.OrderItem;
@@ -94,12 +95,13 @@ class ArchitectureTest {
     }
 
     @Test
-    void Service는_회원가입과_리뷰_쓰기_조율을_제외하고_트랜잭션을_소유하지_않는다() {
+    void Service는_회원가입과_리뷰_쓰기와_주문_재고_조율을_제외하고_트랜잭션을_소유하지_않는다() {
         noClasses().that().resideInAPackage("com.book.core..application.service..").should().beAnnotatedWith(Transactional.class)
             .check(CLASSES);
         noMethods().that().areDeclaredInClassesThat().resideInAPackage("com.book.core..application.service..").and()
             .areDeclaredInClassesThat().doNotHaveFullyQualifiedName(SignUpService.class.getName()).and().areDeclaredInClassesThat()
-            .doNotHaveFullyQualifiedName(ReviewService.class.getName()).should().beAnnotatedWith(Transactional.class).check(CLASSES);
+            .doNotHaveFullyQualifiedName(ReviewService.class.getName()).and().areDeclaredInClassesThat()
+            .doNotHaveFullyQualifiedName(OrderService.class.getName()).should().beAnnotatedWith(Transactional.class).check(CLASSES);
     }
 
     @Test

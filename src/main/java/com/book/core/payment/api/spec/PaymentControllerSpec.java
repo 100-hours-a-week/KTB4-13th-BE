@@ -16,7 +16,7 @@ import org.springframework.http.ResponseEntity;
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Payment", description = "일반 결제")
 public interface PaymentControllerSpec {
-    @Operation(summary = "일반 주문 결제 생성", description = "주문상품별 쿠폰과 사용 포인트를 입력합니다. usePoint 미입력은 0으로 처리하며, 승인 콜백에서 토스 결제를 확인합니다.")
+    @Operation(summary = "일반 주문 결제 생성", description = "주문당 쿠폰은 최대 1개까지 적용합니다. usePoint 미입력은 0으로 처리하며, 승인 콜백에서 토스 결제를 확인합니다.")
     ResponseEntity<ApiResponse<CreatePaymentResponse>> create(@Parameter(hidden = true) final Long userId,
         @Valid final CreatePaymentRequest request);
 

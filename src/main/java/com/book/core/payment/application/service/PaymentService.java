@@ -50,6 +50,10 @@ public class PaymentService {
     private final PostProcessPaymentUseCase postProcessPaymentUseCase;
 
     public Long create(final CreatePaymentCommand command) {
+        final List<CouponSelectionCommand> selections = command.couponSelections() == null ? List.of() : command.couponSelections();
+        if (selections.size() > 1 || (command.useOwnedCouponId() > 0 && !selections.isEmpty())) {
+            throw new CoreException(ErrorCode.PAYMENT_INVALID_AMOUNT);
+        }
         final Order order = getPaymentOrderUseCase.execute(command.userId(), command.orderKey());
         final Set<Long> couponIds = getCouponTargetsUseCase.execute(order.items().stream().map(OrderItem::productId).toList());
         final List<PaymentCoupon> ownedCoupons =
@@ -71,12 +75,10 @@ public class PaymentService {
 
     private List<PaymentCoupon> selectCoupons(final CreatePaymentCommand command, final List<OrderItem> items,
         final List<PaymentCoupon> checkoutCoupons) {
-        if (command.useOwnedCouponId() > 0 && !command.couponSelections().isEmpty()) {
-            throw new CoreException(ErrorCode.PAYMENT_INVALID_AMOUNT);
-        }
+        final List<CouponSelectionCommand> requestedSelections = command.couponSelections() == null ? List.of() : command.couponSelections();
         final Map<Long, PaymentCoupon> couponsById =
             checkoutCoupons.stream().collect(Collectors.toMap(PaymentCoupon::id, Function.identity()));
-        final List<CouponSelectionCommand> selections = new java.util.ArrayList<>(command.couponSelections());
+        final List<CouponSelectionCommand> selections = new java.util.ArrayList<>(requestedSelections);
         if (selections.isEmpty() && command.useOwnedCouponId() > 0) {
             final PaymentCoupon selected = couponsById.get(command.useOwnedCouponId());
             if (selected == null) {

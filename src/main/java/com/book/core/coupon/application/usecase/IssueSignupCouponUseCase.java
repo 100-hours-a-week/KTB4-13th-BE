@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 @UseCase
 @RequiredArgsConstructor
 public class IssueSignupCouponUseCase {
-    private static final Long SIGNUP_COUPON_ID = 1L;
+    static final Long SIGNUP_COUPON_ID = 1L;
 
     private final SignupCouponQuotaRepositoryPort quotaRepository;
     private final SignupCouponReceiptRepositoryPort receiptRepository;
@@ -45,7 +45,6 @@ public class IssueSignupCouponUseCase {
         } else {
             receiptRepository.save(new SignupCouponReceipt(SIGNUP_COUPON_ID, email, userId, now));
         }
-        quota.issue();
         return true;
     }
 }

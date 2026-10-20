@@ -50,6 +50,9 @@ public class PaymentDiscount {
         if (items.isEmpty()) {
             throw new CoreException(ErrorCode.PAYMENT_INVALID_AMOUNT);
         }
+        if (selectedCoupons.size() > 1) {
+            throw new CoreException(ErrorCode.PAYMENT_INVALID_AMOUNT);
+        }
         final BigDecimal pointAmount = requestedPoints.signum() > 0 ? validatePoints(pointBalance, requestedPoints) : BigDecimal.ZERO;
         final var couponByItem = new java.util.HashMap<Long, PaymentCoupon>();
         final Set<Long> usedCouponIds = new HashSet<>();

@@ -41,9 +41,8 @@ public class CompletePaymentUseCase {
         final Payment payment = paymentRepository.findByOrderId(order.id()).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
         payment.success(approval.paymentKey(), approval.method(), approval.approveCode());
         order.paid();
-        if (payment.hasAppliedCoupon()) {
-            useOwnedCouponUseCase.execute(payment.ownedCouponId());
-        }
+        order.items().stream().filter((final var item) -> item.hasAppliedCoupon()).map((final var item) -> item.ownedCouponId()).distinct()
+            .forEach(useOwnedCouponUseCase::execute);
         // TODO(#330): 승인 시 사용 포인트 부족을 재검증하거나 예약하고, 보너스 회수 정책과 분리한다.
         deductPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), payment.usedPoint());
         earnPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), PointAmount.PAYMENT);

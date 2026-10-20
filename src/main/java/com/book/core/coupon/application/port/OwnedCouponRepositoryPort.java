@@ -13,6 +13,10 @@ public interface OwnedCouponRepositoryPort {
 
     Optional<OwnedCoupon> findById(final Long ownedCouponId);
 
+    default Optional<OwnedCoupon> findByIdForUpdate(final Long ownedCouponId) {
+        return findById(ownedCouponId);
+    }
+
     List<OwnedCoupon> findOwnedCouponIds(final Long userId, final Collection<Long> couponIds, final LocalDateTime expiredAtAfter);
 
     OwnedCoupon save(final OwnedCoupon ownedCoupon);

@@ -8,6 +8,7 @@ import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
+import com.book.core.payment.application.command.CouponSelectionCommand;
 import com.book.core.payment.application.command.CreatePaymentCommand;
 import com.book.core.payment.application.command.FailPaymentCommand;
 import com.book.common.exception.CoreException;
@@ -21,11 +22,15 @@ import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
 import com.book.core.payment.application.usecase.ValidatePaymentUseCase;
 import com.book.core.payment.domain.PaymentCoupon;
 import com.book.core.payment.domain.PaymentDiscount;
+import com.book.core.payment.domain.PaymentItemPrice;
 import com.book.core.point.application.usecase.GetPointBalanceUseCase;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -49,13 +54,55 @@ public class PaymentService {
         final Set<Long> couponIds = getCouponTargetsUseCase.execute(order.items().stream().map(OrderItem::productId).toList());
         final List<PaymentCoupon> ownedCoupons =
             findOwnedCouponsForCheckoutUseCase.execute(command.userId(), couponIds, LocalDateTime.now()).stream()
-                .map((final OwnedCouponResult item) -> new PaymentCoupon(item.id(), item.coupon().type(), item.coupon().discount(),
-                    item.coupon().minOrderAmount()))
+                .map((final OwnedCouponResult item) -> new PaymentCoupon(null, item.id(), item.coupon().id(), item.coupon().type(),
+                    item.coupon().discount(), item.coupon().minOrderAmount(), item.coupon().maxDiscountAmount()))
                 .toList();
         final BigDecimal pointBalance = getPointBalanceUseCase.execute(command.userId());
-        final PaymentDiscount paymentDiscount =
-            new PaymentDiscount(ownedCoupons, pointBalance, command.useOwnedCouponId(), command.usePoint());
+        final PaymentDiscount paymentDiscount;
+        if (order.items().isEmpty()) {
+            paymentDiscount = new PaymentDiscount(ownedCoupons, pointBalance, command.useOwnedCouponId(), command.usePoint());
+        } else {
+            paymentDiscount = new PaymentDiscount(order.items().stream()
+                .map((final OrderItem item) -> new PaymentItemPrice(item.id(), item.unitPrice(), item.quantity())).toList(),
+                selectCoupons(command, order.items(), ownedCoupons), pointBalance, command.usePoint());
+        }
         return createPaymentUseCase.execute(order, command.userId(), paymentDiscount);
+    }
+
+    private List<PaymentCoupon> selectCoupons(final CreatePaymentCommand command, final List<OrderItem> items,
+        final List<PaymentCoupon> checkoutCoupons) {
+        if (command.useOwnedCouponId() > 0 && !command.couponSelections().isEmpty()) {
+            throw new CoreException(ErrorCode.PAYMENT_INVALID_AMOUNT);
+        }
+        final Map<Long, PaymentCoupon> couponsById =
+            checkoutCoupons.stream().collect(Collectors.toMap(PaymentCoupon::id, Function.identity()));
+        final List<CouponSelectionCommand> selections = new java.util.ArrayList<>(command.couponSelections());
+        if (selections.isEmpty() && command.useOwnedCouponId() > 0) {
+            final PaymentCoupon selected = couponsById.get(command.useOwnedCouponId());
+            if (selected == null) {
+                throw new CoreException(ErrorCode.OWNED_COUPON_INVALID);
+            }
+            final List<OrderItem> applicableItems = items.stream()
+                .filter((final OrderItem item) -> getCouponTargetsUseCase.execute(List.of(item.productId())).contains(selected.couponId()))
+                .toList();
+            if (applicableItems.size() != 1) {
+                throw new CoreException(ErrorCode.PAYMENT_INVALID_AMOUNT);
+            }
+            selections.add(new CouponSelectionCommand(applicableItems.getFirst().id(), selected.id()));
+        }
+        return selections.stream().map((final CouponSelectionCommand selection) -> {
+            final OrderItem item = items.stream().filter((final OrderItem candidate) -> candidate.id().equals(selection.orderItemId()))
+                .findFirst().orElseThrow(() -> new CoreException(ErrorCode.PAYMENT_INVALID_AMOUNT));
+            final PaymentCoupon coupon = couponsById.get(selection.ownedCouponId());
+            if (coupon == null) {
+                throw new CoreException(ErrorCode.OWNED_COUPON_INVALID);
+            }
+            if (!getCouponTargetsUseCase.execute(List.of(item.productId())).contains(coupon.couponId())) {
+                throw new CoreException(ErrorCode.OWNED_COUPON_INVALID);
+            }
+            return new PaymentCoupon(item.id(), coupon.id(), coupon.couponId(), coupon.type(), coupon.discount(), coupon.minOrderAmount(),
+                coupon.maxDiscountAmount());
+        }).toList();
     }
 
     public Long success(final ApprovePaymentCommand command) {

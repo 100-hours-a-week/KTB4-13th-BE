@@ -36,17 +36,26 @@ public class Coupon extends BaseEntity {
     @Column(name = "min_order_amount", nullable = false, precision = 38, scale = 2)
     private BigDecimal minOrderAmount;
 
+    @Column(name = "max_discount_amount", precision = 38, scale = 2)
+    private BigDecimal maxDiscountAmount;
+
     @Column(name = "expired_at", nullable = false)
     private LocalDateTime expiredAt;
 
     public Coupon(final Long id, final String name, final CouponType type, final BigDecimal discount, final long maxUseCount,
         final BigDecimal minOrderAmount, final LocalDateTime expiredAt) {
+        this(id, name, type, discount, maxUseCount, minOrderAmount, null, expiredAt);
+    }
+
+    public Coupon(final Long id, final String name, final CouponType type, final BigDecimal discount, final long maxUseCount,
+        final BigDecimal minOrderAmount, final BigDecimal maxDiscountAmount, final LocalDateTime expiredAt) {
         super(id);
         this.name = name;
         this.type = type;
         this.discount = discount;
         this.maxUseCount = maxUseCount;
         this.minOrderAmount = minOrderAmount;
+        this.maxDiscountAmount = maxDiscountAmount;
         this.expiredAt = expiredAt;
     }
 }

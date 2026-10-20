@@ -4,7 +4,10 @@ import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
+import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.domain.OwnedCoupon;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -15,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RevertOwnedCouponUseCase {
     private final OwnedCouponRepositoryPort ownedCouponRepository;
+    private final CouponRepositoryPort couponRepository;
+    private final Clock clock;
 
     /**
      * 보유 쿠폰의 사용 횟수를 감소시킨다.
@@ -26,11 +31,16 @@ public class RevertOwnedCouponUseCase {
     public void execute(final Long ownedCouponId) {
         log.debug("쿠폰 복원 처리를 시작합니다. ownedCouponId={}, traceId={}", ownedCouponId, MDC.get("traceId"));
         final OwnedCoupon ownedCoupon =
-            ownedCouponRepository.findById(ownedCouponId).orElseThrow(() -> new CoreException(ErrorCode.OWNED_COUPON_INVALID));
+            ownedCouponRepository.findByIdForUpdate(ownedCouponId).orElseThrow(() -> new CoreException(ErrorCode.OWNED_COUPON_INVALID));
 
         if (ownedCoupon.isUnused()) {
-            log.error("[OWNED_COUPON] 비정상적인 쿠폰 복원- 미사용 쿠폰 복원 시도 ownedCouponId={}", ownedCouponId);
-            throw new CoreException(ErrorCode.OWNED_COUPON_INVALID_USAGE);
+            log.info("사용하지 않은 쿠폰이어서 복원을 생략했습니다. ownedCouponId={}, traceId={}", ownedCouponId, MDC.get("traceId"));
+            return;
+        }
+        final var coupon = couponRepository.findById(ownedCoupon.couponId()).orElse(null);
+        if (coupon == null || coupon.isDeleted() || !coupon.expiredAt().isAfter(LocalDateTime.now(clock))) {
+            log.info("만료되었거나 삭제된 쿠폰이어서 복원을 생략했습니다. ownedCouponId={}, traceId={}", ownedCouponId, MDC.get("traceId"));
+            return;
         }
 
         ownedCoupon.revert();

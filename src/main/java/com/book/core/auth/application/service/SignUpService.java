@@ -1,6 +1,7 @@
 package com.book.core.auth.application.service;
 
 import com.book.core.cart.application.usecase.CreateCartUseCase;
+import com.book.core.coupon.application.usecase.IssueSignupCouponUseCase;
 import com.book.core.point.application.usecase.CreatePointBalanceUseCase;
 import com.book.core.user.application.command.UserRegistrationCommand;
 import com.book.core.user.application.usecase.UserRegistrationUseCase;
@@ -15,12 +16,14 @@ public class SignUpService {
     private final UserRegistrationUseCase userRegistrationUseCase;
     private final CreateCartUseCase createCartUseCase;
     private final CreatePointBalanceUseCase createPointBalanceUseCase;
+    private final IssueSignupCouponUseCase issueSignupCouponUseCase;
 
     @Transactional
     public Long signUp(final UserRegistrationCommand command) {
         final Long userId = userRegistrationUseCase.execute(command);
         createCartUseCase.execute(userId);
         createPointBalanceUseCase.execute(userId);
+        issueSignupCouponUseCase.execute(userId, command.providerEmail());
         return userId;
     }
 }

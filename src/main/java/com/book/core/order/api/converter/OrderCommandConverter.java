@@ -2,6 +2,7 @@ package com.book.core.order.api.converter;
 
 import com.book.core.order.api.request.CreateOrderRequest;
 import com.book.core.order.application.command.CancelOrderCommand;
+import com.book.core.order.application.command.ConfirmOrderItemCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
 import com.book.core.order.application.command.GetOrderCommand;
@@ -31,6 +32,10 @@ public class OrderCommandConverter {
 
     public CancelOrderCommand toCancelOrderCommand(final Long userId, final String orderKey) {
         return new CancelOrderCommand(userId, orderKey);
+    }
+
+    public ConfirmOrderItemCommand toConfirmOrderItemCommand(final Long userId, final String orderKey, final Long orderItemId) {
+        return new ConfirmOrderItemCommand(userId, orderKey, orderItemId);
     }
 
     public CreateOrderCommand toCreateOrderCommand(final Long userId, final CreateOrderRequest request) {

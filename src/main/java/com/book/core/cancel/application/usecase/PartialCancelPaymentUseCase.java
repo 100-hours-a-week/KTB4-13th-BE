@@ -20,10 +20,7 @@ import com.book.core.payment.application.usecase.RecordPaymentHistoryUseCase;
 import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.PaymentHistory;
 import com.book.core.payment.domain.enums.TransactionType;
-import com.book.core.point.application.usecase.DeductPointUseCase;
-import com.book.core.point.application.usecase.EarnPointUseCase;
-import com.book.core.point.domain.PointAmount;
-import com.book.core.point.domain.enums.PointType;
+import com.book.core.point.application.usecase.RestorePaymentPointsUseCase;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -39,8 +36,7 @@ public class PartialCancelPaymentUseCase {
     private final GetPaymentUseCase getPaymentUseCase;
     private final CancelBalanceRepositoryPort cancelBalanceRepository;
     private final RevertOwnedCouponUseCase revertOwnedCouponUseCase;
-    private final EarnPointUseCase earnPointUseCase;
-    private final DeductPointUseCase deductPointUseCase;
+    private final RestorePaymentPointsUseCase restorePaymentPointsUseCase;
     private final CancelRepositoryPort cancelRepository;
     private final RecordPaymentHistoryUseCase recordPaymentHistoryUseCase;
     private final GetOrderItemForCancelUseCase getOrderItemForCancelUseCase;
@@ -59,23 +55,20 @@ public class PartialCancelPaymentUseCase {
             order.partialCanceled();
         }
         if (calculated.isRestoreCoupon()) {
-            revertOwnedCouponUseCase.execute(payment.ownedCouponId());
-        }
-        if (calculated.pointAmount().compareTo(BigDecimal.ZERO) > 0) {
-            earnPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), calculated.pointAmount());
-        }
-
-        if (cancelRepository.countByOrderId(order.id()) == 0L) {
-            deductPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), PointAmount.PAYMENT);
+            revertOwnedCouponUseCase.execute(targetItem.ownedCouponId());
         }
         cancelBalance.cancel(calculated.paidAmount(), calculated.pointAmount(), calculated.couponAmount());
         final Cancel cancel = cancelRepository.save(
             new Cancel(payment.userId(), CancelType.PARTIAL, payment.orderId(), action.orderItemId(), payment.id(), payment.originAmount(),
-                payment.ownedCouponId(), calculated.couponAmount(), calculated.pointAmount(), calculated.paidAmount(), action.quantity(),
+                targetItem.ownedCouponId(), calculated.couponAmount(), calculated.pointAmount(), calculated.paidAmount(), action.quantity(),
                 calculated.paidAmount(), calculated.pointAmount(), calculated.couponAmount(), "PG_API_응답_취소_고유_값_저장", LocalDateTime.now()));
+        final BigDecimal restoredPointAmount = restorePaymentPointsUseCase.execute(payment.userId(), payment.id(), cancel.id(),
+            calculated.pointAmount(), action.orderItemId());
+        cancel.recordPointRestoration(restoredPointAmount);
+        cancelRepository.save(cancel);
         recordPaymentHistoryUseCase.execute(new PaymentHistory(TransactionType.PARTIAL_CANCEL, payment.userId(), payment.orderId(),
-            payment.id(), payment.externalPaymentKey(), calculated.paidAmount(), calculated.pointAmount(), calculated.couponAmount(),
-            "부분 취소 성공", cancel.canceledAt()));
+            payment.id(), payment.externalPaymentKey(), calculated.paidAmount(), restoredPointAmount, calculated.couponAmount(), "부분 취소 성공",
+            cancel.canceledAt()));
         log.info("결제 부분 취소 처리를 마쳤습니다. cancelId={}, paymentId={}, orderId={}, traceId={}", cancel.id(), payment.id(), order.id(),
             MDC.get("traceId"));
         return cancel.id();

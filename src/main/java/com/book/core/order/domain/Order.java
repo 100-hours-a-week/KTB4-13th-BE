@@ -91,10 +91,11 @@ public class Order extends BaseTimeEntity {
     public void paid() {
         status = OrderStatus.PAID;
         paidAt = LocalDateTime.now();
-        items.forEach(OrderItem::paid);
+        items.forEach((final OrderItem item) -> item.paid(paidAt));
     }
 
     public void canceled() {
+        items.forEach(OrderItem::cancelRemaining);
         status = OrderStatus.CANCELED;
     }
 

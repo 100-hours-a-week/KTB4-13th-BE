@@ -32,6 +32,11 @@ public class OwnedCouponRepositoryAdapter implements OwnedCouponRepositoryPort {
     }
 
     @Override
+    public Optional<OwnedCoupon> findByIdForUpdate(final Long ownedCouponId) {
+        return ownedCouponRepository.findByIdAndDeletedAtIsNull(ownedCouponId);
+    }
+
+    @Override
     public List<OwnedCoupon> findOwnedCouponIds(final Long userId, final Collection<Long> couponIds, final LocalDateTime expiredAtAfter) {
         return ownedCouponRepository.findOwnedCouponIds(userId, couponIds, expiredAtAfter, OwnedCouponStatus.ISSUED);
     }

@@ -11,8 +11,16 @@ public interface CouponTargetJpaRepository extends JpaRepository<CouponTarget, L
     List<CouponTarget> findByTargetTypeAndTargetIdInAndDeletedAtIsNull(final CouponTargetType targetType, final Collection<Long> targetIds);
 
     @Query("""
-        SELECT productCategory.category.id FROM ProductCategory productCategory
-        WHERE productCategory.product.id IN :productIds AND productCategory.deletedAt IS NULL
+        SELECT DISTINCT targetCategory.id
+        FROM ProductCategory productCategory
+        JOIN productCategory.category productCategoryNode
+        JOIN Category targetCategory
+          ON productCategoryNode.path = targetCategory.path
+          OR productCategoryNode.path LIKE CONCAT(targetCategory.path, '/%')
+        WHERE productCategory.product.id IN :productIds
+          AND productCategory.deletedAt IS NULL
+          AND productCategoryNode.deletedAt IS NULL
+          AND targetCategory.deletedAt IS NULL
         """)
     List<Long> findCategoryIdsByProductIds(final Collection<Long> productIds);
 }

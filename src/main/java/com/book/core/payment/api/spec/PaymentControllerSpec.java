@@ -16,7 +16,7 @@ import org.springframework.http.ResponseEntity;
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Payment", description = "일반 결제")
 public interface PaymentControllerSpec {
-    @Operation(summary = "일반 주문 결제 생성", description = "usePoint 미입력 시 참고의 -1 계산을 유지합니다. PG 승인은 아직 연동되지 않았습니다.")
+    @Operation(summary = "일반 주문 결제 생성", description = "주문상품별 쿠폰 선택과 전체 사용 포인트를 입력합니다. usePoint 미입력은 0으로 처리합니다. PG 승인은 아직 연동되지 않았습니다.")
     ResponseEntity<ApiResponse<CreatePaymentResponse>> create(@Parameter(hidden = true) final Long userId,
         @Valid final CreatePaymentRequest request);
 

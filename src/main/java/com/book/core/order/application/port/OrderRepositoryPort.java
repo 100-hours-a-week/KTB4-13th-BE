@@ -22,6 +22,15 @@ public interface OrderRepositoryPort {
     List<Order> findPaidOrders(final Long userId, final OrderStatus status, final LocalDateTime paidAtFrom,
         final LocalDateTime paidAtBefore, final OrderListCursor cursor, final int limit);
 
+    default List<Order> findOrdersForAutoConfirmation(final LocalDateTime paidAtBefore, final int limit) {
+        return List.of();
+    }
+
+    default List<Order> findOrdersForConfirmationReminder(final LocalDateTime paidAtAfter, final LocalDateTime paidAtBefore,
+        final int limit) {
+        return List.of();
+    }
+
     Optional<OrderItem> findActiveOrderItem(final Long orderItemId);
 
     List<OrderItem> findOrderItemsByOrderIdIn(final Collection<Long> orderIds);

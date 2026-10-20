@@ -11,14 +11,15 @@ import org.springframework.stereotype.Component;
 public class CouponResultConverter {
     public List<CouponResponse> toCouponResponses(final List<CouponResult> coupons) {
         return coupons.stream().map((final var coupon) -> new CouponResponse(coupon.id(), coupon.name(), coupon.type(), coupon.discount(),
-            coupon.minOrderAmount(), coupon.expiredAt())).toList();
+            coupon.minOrderAmount(), coupon.maxDiscountAmount(), coupon.expiredAt())).toList();
     }
 
     public List<OwnedCouponResponse> toOwnedCouponResponses(final List<OwnedCouponResult> ownedCoupons) {
         return ownedCoupons.stream().map((final var ownedCoupon) -> {
             final var coupon = ownedCoupon.coupon();
             return new OwnedCouponResponse(ownedCoupon.id(), ownedCoupon.state(), coupon.name(), coupon.type(), coupon.discount(),
-                coupon.minOrderAmount(), ownedCoupon.maxUseCount(), ownedCoupon.usedCount(), coupon.expiredAt());
+                coupon.minOrderAmount(), coupon.maxDiscountAmount(), ownedCoupon.maxUseCount(), ownedCoupon.usedCount(),
+                coupon.expiredAt());
         }).toList();
     }
 }

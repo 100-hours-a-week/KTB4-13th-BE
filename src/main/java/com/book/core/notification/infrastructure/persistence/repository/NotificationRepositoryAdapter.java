@@ -2,6 +2,7 @@ package com.book.core.notification.infrastructure.persistence.repository;
 
 import com.book.core.notification.application.port.NotificationRepositoryPort;
 import com.book.core.notification.domain.Notification;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -13,5 +14,21 @@ class NotificationRepositoryAdapter implements NotificationRepositoryPort {
     @Override
     public Notification save(final Notification notification) {
         return jpaRepository.save(notification);
+    }
+
+    @Override
+    public Notification saveIfAbsent(final Notification notification) {
+        jpaRepository.insertIfAbsent(notification.userId(), notification.title(), notification.body(), notification.eventKey());
+        return jpaRepository.findByEventKeyAndDeletedAtIsNull(notification.eventKey()).orElseThrow();
+    }
+
+    @Override
+    public void deleteAllByUserId(final Long userId) {
+        jpaRepository.deleteAllByUserId(userId);
+    }
+
+    @Override
+    public void deleteCreatedBefore(final LocalDateTime createdAt) {
+        jpaRepository.deleteCreatedBefore(createdAt);
     }
 }

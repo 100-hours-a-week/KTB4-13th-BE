@@ -2,9 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches:
-      - main
-    types: [opened, reopened, synchronize]
+    types: [opened, edited, reopened, synchronize, ready_for_review]
   push:
     branches:
       - main
@@ -38,7 +36,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Gradle check
-        run: ./gradlew clean check bootJar --no-daemon
+        run: ./gradlew clean check bootJar --no-daemon --profile
+
+      - name: Run MySQL migration and constraint tests
+        run: ./gradlew mysqlMigrationTest --no-daemon
 
       - name: Verify automation and coverage output
         run: |
@@ -56,6 +57,20 @@ jobs:
             build/reports/jacoco/test/jacocoTestReport.xml
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload test diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-diagnostics
+          path: |
+            build/test-results/test/
+            build/test-results/integrationTest/
+            build/reports/tests/test/
+            build/reports/tests/integrationTest/
+            build/reports/profile/
+          if-no-files-found: warn
+          retention-days: 7
 
   publish-image:
     name: Publish backend image

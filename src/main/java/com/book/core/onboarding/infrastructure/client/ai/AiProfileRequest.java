@@ -9,11 +9,13 @@ record AiProfileRequest(
         @JsonProperty("user_id") Long userId,
         @JsonProperty("idempotency_key") String idempotencyKey,
         @JsonProperty("onboarding") AiProfileOnboarding onboarding,
-        @JsonProperty("memories") List<Object> memories) {
+        @JsonProperty("memories") List<AiProfileMemory> memories,
+        @JsonProperty("history") AiProfileHistory history) {
     static AiProfileRequest from(final AiPersonalizationProfileRequest request, final String idempotencyKey) {
         final AiProfileOnboarding onboarding = new AiProfileOnboarding(request.readingTimes(), request.criteria(), request.categories(),
                 request.tags(), request.likedBookIds());
-        return new AiProfileRequest(request.userId(), idempotencyKey, onboarding, List.of());
+        return new AiProfileRequest(request.userId(), idempotencyKey, onboarding,
+                request.memories().stream().map(AiProfileMemory::from).toList(), AiProfileHistory.from(request.history()));
     }
 }
 // @formatter:on

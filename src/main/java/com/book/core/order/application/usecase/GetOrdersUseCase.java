@@ -18,17 +18,19 @@ public class GetOrdersUseCase {
 
     @Transactional(readOnly = true)
     public GetOrdersResult execute(final GetOrdersCommand command) {
-        final List<Order> fetched = orderRepository.findActiveOrders(command.userId(), command.status(), command.from(), command.to(),
-            command.cursor(), command.limit() + 1);
-        final boolean hasNext = fetched.size() > command.limit();
-        final List<Order> page = hasNext ? fetched.subList(0, command.limit()) : fetched;
-        final String nextCursor;
-        if (hasNext) {
-            final Order lastOrder = page.getLast();
-            nextCursor = new OrderListCursor(lastOrder.createdAt(), lastOrder.id()).toToken(command.status(), command.from(), command.to());
-        } else {
-            nextCursor = null;
+        final List<Order> fetched = orderRepository.findPaidOrders(command.userId(), command.status(), command.paidAtFrom(),
+            command.paidAtBefore(), command.cursor(), command.limit() + 1);
+        if (fetched.size() <= command.limit()) {
+            return GetOrdersResult.of(toSummaries(fetched), null);
         }
-        return GetOrdersResult.of(page.stream().map(OrderSummaryResult::from).toList(), nextCursor);
+        final List<Order> page = fetched.subList(0, command.limit());
+        final Order lastOrder = page.getLast();
+        final String nextCursor =
+            new OrderListCursor(lastOrder.paidAt(), lastOrder.id()).toToken(command.status(), command.from(), command.to());
+        return GetOrdersResult.of(toSummaries(page), nextCursor);
+    }
+
+    private static List<OrderSummaryResult> toSummaries(final List<Order> orders) {
+        return orders.stream().map(OrderSummaryResult::from).toList();
     }
 }

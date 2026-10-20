@@ -5,13 +5,12 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
 import com.book.common.filter.RequestMdcFilter;
+import com.book.core.recommendation.application.command.RecommendationSpec;
 import com.book.core.recommendation.application.command.RecommendationTurn;
 import com.book.core.recommendation.application.port.AiRecommendationCard;
 import com.book.core.recommendation.application.port.AiRecommendationChatRequest;
 import com.book.core.recommendation.application.port.AiRecommendationChatResult;
 import com.book.core.recommendation.application.port.AiRecommendationClient;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,7 +29,7 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
     private static final String CHAT_PATH = "/recommendations/chat";
     private static final String REQUEST_ID_HEADER = "X-Request-Id";
     private static final long DEFAULT_RETRY_AFTER_SECONDS = 1;
-    private static final Map<String, Object> INITIAL_SPEC = initialSpec();
+    private static final Map<String, Object> INITIAL_SPEC = RecommendationSpec.initial();
 
     private final RestClient restClient;
 
@@ -129,19 +128,4 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
             response.degraded());
     }
 
-    private static Map<String, Object> initialSpec() {
-        final Map<String, Object> exact = new HashMap<>();
-        exact.put("title", null);
-        exact.put("author", null);
-        exact.put("publisher", null);
-
-        final Map<String, Object> spec = new HashMap<>();
-        spec.put("intent", "semantic");
-        spec.put("exact", Collections.unmodifiableMap(exact));
-        spec.put("filters", Map.of());
-        spec.put("semantic", null);
-        spec.put("anchor_book", null);
-        spec.put("exclude", List.of());
-        return Collections.unmodifiableMap(spec);
-    }
 }

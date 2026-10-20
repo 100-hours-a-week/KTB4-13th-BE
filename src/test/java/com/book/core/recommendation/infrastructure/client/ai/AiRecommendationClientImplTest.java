@@ -71,6 +71,22 @@ class AiRecommendationClientImplTest {
     }
 
     @Test
+    void AI가_null인_긴_이유를_보내도_카드를_버리지_않는다() {
+        final RestClient.Builder builder = restClientBuilder();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        final AiRecommendationClientImpl client = new AiRecommendationClientImpl(builder.build());
+        final String body = successBody().replace("\"reason_long\": \"긴 추천 이유\"", "\"reason_long\": null");
+        assertThat(body).contains("\"reason_long\": null");
+        server.expect(requestTo(BASE_URL + "/recommendations/chat")).andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+
+        final AiRecommendationChatResult result = client.chat(chatRequest());
+
+        assertThat(result.cards()).hasSize(1);
+        assertThat(result.cards().getFirst().reasonLong()).isNull();
+        server.verify();
+    }
+
+    @Test
     void 정상_응답을_결과로_매핑한다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();

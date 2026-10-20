@@ -10,6 +10,7 @@ import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingRepositoryPort;
+import com.book.core.onboarding.application.result.OnboardingOptionResult;
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
 import com.book.core.onboarding.domain.OnboardingOption;
@@ -55,6 +56,14 @@ class GetOnboardingProgressUseCaseTest {
     }
 
     @Test
+    void 완료된_온보딩만_조회하면_진행중인_온보딩은_예외를_던진다() {
+        userOnboardingRepository.byUserId.put(42L, new UserOnboarding(1L, 42L, OnboardingStatus.IN_PROGRESS, null));
+
+        assertThatThrownBy(() -> useCase.executeCompleted(new GetOnboardingProgressCommand(42L))).isInstanceOf(CoreException.class)
+            .extracting("errorCode").isEqualTo(ErrorCode.ONBOARDING_NOT_COMPLETED);
+    }
+
+    @Test
     void 응답을_질문별로_그룹핑한다() {
         userOnboardingRepository.byUserId.put(42L, new UserOnboarding(1L, 42L, OnboardingStatus.IN_PROGRESS, null));
         answerRepository.byUserId.put(42L,
@@ -68,6 +77,7 @@ class GetOnboardingProgressUseCaseTest {
         assertThat(result.answers()).hasSize(2);
         assertThat(result.answers().get(0).questionId()).isEqualTo(1L);
         assertThat(result.answers().get(0).optionIds()).containsExactly(1L, 2L);
+        assertThat(result.answers().get(0).options()).extracting(OnboardingOptionResult::content).containsExactly("아침", "점심");
         assertThat(result.answers().get(1).questionId()).isEqualTo(3L);
         assertThat(result.answers().get(1).optionIds()).containsExactly(9L);
     }
@@ -94,6 +104,11 @@ class GetOnboardingProgressUseCaseTest {
         @Override
         public Optional<UserOnboarding> findActiveByUserId(final Long userId) {
             return Optional.ofNullable(byUserId.get(userId));
+        }
+
+        @Override
+        public Optional<UserOnboarding> findActiveByUserIdForUpdate(final Long userId) {
+            return findActiveByUserId(userId);
         }
 
         @Override
@@ -143,6 +158,11 @@ class GetOnboardingProgressUseCaseTest {
 
         @Override
         public void deleteByUserId(final Long userId) {}
+
+        @Override
+        public void deleteByUserIdAndBookIdIn(final Long userId, final List<Long> bookIds) {
+            throw new UnsupportedOperationException();
+        }
 
         @Override
         public List<UserOnboardingBook> saveAll(final List<UserOnboardingBook> books) {

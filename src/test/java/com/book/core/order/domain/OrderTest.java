@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class OrderTest {
@@ -33,16 +35,48 @@ class OrderTest {
     }
 
     @Test
-    void 주문명은_첫_상품명과_나머지_상품_건수로_계산한다() {
-        final Order order = Order.create(42L, "order_name", OrderAddress.from("06236", "서울 주소", null));
+    void 예약_만료_시각이_지난_미결제_주문만_만료하고_상품별_예약_수량을_합산한다() {
+        final LocalDateTime expiresAt = LocalDateTime.of(2026, 10, 20, 10, 10);
+        final Order order = Order.create(42L, "order_expire", null);
+        addOrderItem(order, 101L, 2, BigDecimal.TEN);
         addOrderItem(order, 101L, 1, BigDecimal.TEN);
+        addOrderItem(order, 102L, 4, BigDecimal.TEN);
+        order.reserveUntil(expiresAt);
 
-        assertThat(order.name()).isEqualTo("상품 101");
+        assertThat(order.reservedQuantities()).containsExactlyInAnyOrderEntriesOf(Map.of(101L, 3, 102L, 4));
+        assertThat(order.expire(expiresAt.minusNanos(1000))).isFalse();
+        assertThat(order.expire(expiresAt)).isTrue();
+        assertThat(order.status()).isEqualTo(OrderStatus.EXPIRED);
+        assertThat(order.expire(expiresAt.plusMinutes(1))).isFalse();
+    }
 
-        addOrderItem(order, 102L, 1, BigDecimal.TEN);
-        addOrderItem(order, 103L, 1, BigDecimal.TEN);
+    @Test
+    void 예약_없이_만든_기존_주문은_만료하거나_반환할_예약이_없다() {
+        final Order order = Order.create(42L, "order_legacy", null);
+        addOrderItem(order, 101L, 2, BigDecimal.TEN);
 
-        assertThat(order.name()).isEqualTo("상품 101 외 2건");
+        assertThat(order.hasReservation()).isFalse();
+        assertThat(order.reservedQuantities()).isEmpty();
+        assertThat(order.expire(LocalDateTime.MAX)).isFalse();
+        assertThatThrownBy(() -> order.reserveUntil(null)).isInstanceOf(CoreException.class);
+    }
+
+    @Test
+    void 대표_상품은_취소_여부와_무관하게_첫_주문상품이다() {
+        final Order order = Order.create(42L, "order_representative", null);
+        addOrderItem(order, 101L, 1, BigDecimal.TEN);
+        addOrderItem(order, 102L, 2, BigDecimal.TEN);
+        order.items().getFirst().cancel(1L);
+
+        assertThat(order.representativeItem().itemName()).isEqualTo("상품 101");
+    }
+
+    @Test
+    void 주문상품이_없는_주문의_대표_상품은_정합성_오류다() {
+        final Order order = Order.create(42L, "order_without_items", null);
+
+        assertThatThrownBy(order::representativeItem).isInstanceOf(CoreException.class)
+            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.ORDER_DATA_INCONSISTENT);
     }
 
     @Test

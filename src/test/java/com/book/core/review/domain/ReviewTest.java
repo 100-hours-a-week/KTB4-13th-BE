@@ -1,5 +1,6 @@
 package com.book.core.review.domain;
 
+import com.book.core.review.domain.enums.ReviewTargetType;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -10,60 +11,86 @@ import org.junit.jupiter.api.Test;
 
 class ReviewTest {
     @Test
-    void creates_review_with_rating_normalized_to_one_decimal() {
-        final Review review = Review.create(42L, 701L, new BigDecimal("4.00"), "재미있게 읽었습니다.", false);
+    void 리뷰를_생성하면_별점을_소수_첫째_자리로_정규화한다() {
+        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
+            new ReviewContent(new BigDecimal("4.00"), "재미있게 읽었습니다.", false));
 
         assertThat(review.userId()).isEqualTo(42L);
-        assertThat(review.orderItemId()).isEqualTo(701L);
-        assertThat(review.rating()).isEqualByComparingTo("4.0");
+        assertThat(review.targetId()).isEqualTo(701L);
+        assertThat(review.rate()).isEqualByComparingTo("4.0");
         assertThat(review.isSpoiler()).isFalse();
     }
 
     @Test
-    void accepts_rating_bounds_in_tenth_steps() {
-        assertThat(Review.create(42L, 701L, new BigDecimal("0.0"), "평점 0", false).rating()).isEqualByComparingTo("0.0");
-        assertThat(Review.create(42L, 702L, new BigDecimal("10.0"), "평점 10", false).rating()).isEqualByComparingTo("10.0");
+    void 리뷰_별점은_0_5점부터_5점까지_0_5점_간격으로_허용한다() {
+        assertThat(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
+            new ReviewContent(new BigDecimal("0.5"), "평점 0.5", false)).rate()).isEqualByComparingTo("0.5");
+        assertThat(Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 702L), new ReviewTarget(ReviewTargetType.PRODUCT, 702L),
+            new ReviewContent(new BigDecimal("5.0"), "평점 5", false)).rate()).isEqualByComparingTo("5.0");
     }
 
     @Test
-    void rejects_rating_outside_bounds_or_between_tenth_steps() {
+    void 허용_범위를_벗어나거나_0_5점_단위가_아닌_별점을_거부한다() {
         assertInvalidReview(new BigDecimal("-0.1"), "내용");
         assertInvalidReview(new BigDecimal("10.1"), "내용");
         assertInvalidReview(new BigDecimal("4.05"), "내용");
     }
 
     @Test
-    void rejects_missing_ids_or_content_over_255_characters() {
-        assertThatThrownBy(() -> Review.create(0L, 701L, BigDecimal.ONE, "내용", false)).isInstanceOf(CoreException.class)
-            .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
-        assertThatThrownBy(() -> Review.create(42L, 701L, BigDecimal.ONE, "x".repeat(256), false)).isInstanceOf(CoreException.class)
+    void 리뷰_본문이_255자를_초과하면_작성을_거부한다() {
+        assertThatThrownBy(() -> Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
+            new ReviewContent(BigDecimal.ONE, "x".repeat(256), false))).isInstanceOf(CoreException.class)
             .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
     }
 
     @Test
-    void updates_only_fields_that_were_provided() {
-        final Review review = Review.create(42L, 701L, new BigDecimal("4.0"), "기존 내용", false);
+    void 리뷰를_수정하면_별점과_본문을_함께_변경한다() {
+        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
+            new ReviewContent(new BigDecimal("4.0"), "기존 내용", false));
 
-        review.update(new BigDecimal("8.7"), null, true);
+        review.updateContent(new ReviewContent(new BigDecimal("4.5"), "수정 내용", true));
 
-        assertThat(review.rating()).isEqualByComparingTo("8.7");
-        assertThat(review.content()).isEqualTo("기존 내용");
+        assertThat(review.rate()).isEqualByComparingTo("4.5");
+        assertThat(review.content()).isEqualTo("수정 내용");
         assertThat(review.isSpoiler()).isTrue();
     }
 
     @Test
-    void rejects_invalid_partial_update_without_mutating_other_fields() {
-        final Review review = Review.create(42L, 701L, new BigDecimal("4.0"), "기존 내용", false);
+    void 유효하지_않은_본문으로_수정하면_별점과_스포일러_설정을_변경하지_않는다() {
+        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
+            new ReviewContent(new BigDecimal("4.0"), "기존 내용", false));
 
-        assertThatThrownBy(() -> review.update(new BigDecimal("4.5"), "x".repeat(256), true)).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> review.updateContent(new ReviewContent(new BigDecimal("4.5"), "x".repeat(256), true)))
+            .isInstanceOf(CoreException.class);
 
-        assertThat(review.rating()).isEqualByComparingTo("4.0");
+        assertThat(review.rate()).isEqualByComparingTo("4.0");
         assertThat(review.content()).isEqualTo("기존 내용");
         assertThat(review.isSpoiler()).isFalse();
     }
 
+    @Test
+    void 구매_키를_주문_상품_ID로_해석하지_않고_그대로_저장한다() {
+        final Review review = Review.create(new ReviewKey(42L, "PURCHASE_REFERENCE_ABC"), new ReviewTarget(ReviewTargetType.PRODUCT, 10L),
+            new ReviewContent(new BigDecimal("4.5"), "본문", false));
+
+        assertThat(review.userId()).isEqualTo(42L);
+        assertThat(review.reviewKey()).isEqualTo("PURCHASE_REFERENCE_ABC");
+        assertThat(review.targetId()).isEqualTo(10L);
+    }
+
     private static void assertInvalidReview(final BigDecimal rating, final String content) {
-        assertThatThrownBy(() -> Review.create(42L, 701L, rating, content, false)).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> Review.create(new ReviewKey(42L, "ORDER_ITEM_" + 701L), new ReviewTarget(ReviewTargetType.PRODUCT, 701L),
+            new ReviewContent(rating, content, false))).isInstanceOf(CoreException.class)
             .extracting(exception -> ((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
     }
+
+    @Test
+    void 회원이_수정_요청에서_스포일러_설정을_생략하면_기존_설정을_유지한다() {
+        final Review review = Review.create(new ReviewKey(42L, "ORDER_ITEM_703"), new ReviewTarget(ReviewTargetType.PRODUCT, 10L),
+            new ReviewContent(new BigDecimal("4.5"), "기존 본문", true));
+        review.updateContent(new ReviewContent(new BigDecimal("3.5"), "새 본문", null));
+        assertThat(review.isSpoiler()).isTrue();
+    }
+
+
 }

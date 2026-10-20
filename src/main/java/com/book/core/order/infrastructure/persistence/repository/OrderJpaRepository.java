@@ -17,6 +17,28 @@ interface OrderJpaRepository extends JpaRepository<Order, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Order> findByKeyAndDeletedAtIsNull(final String key);
 
+    @Query("""
+            SELECT orders.key
+            FROM Order orders
+            WHERE orders.status = :status
+              AND orders.expiresAt <= :now
+              AND orders.deletedAt IS NULL
+              AND NOT EXISTS (
+                SELECT 1 FROM PgOperation operation
+                WHERE operation.orderKey = orders.key AND operation.completed = false AND operation.rejected = false
+              )
+            ORDER BY orders.expiresAt ASC, orders.id ASC
+            """)
+    List<String> findExpiredOrderKeys(@Param("status") final OrderStatus status, @Param("now") final LocalDateTime now,
+        final Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(operation) > 0
+            FROM PgOperation operation
+            WHERE operation.orderKey = :orderKey AND operation.completed = false AND operation.rejected = false
+            """)
+    boolean hasPendingPgOperation(@Param("orderKey") final String orderKey);
+
     @EntityGraph(attributePaths = "items")
     @Query("SELECT orders FROM Order orders WHERE orders.key = :key AND orders.deletedAt IS NULL")
     Optional<Order> findActiveWithItemsByKey(@Param("key") final String key);
@@ -26,15 +48,16 @@ interface OrderJpaRepository extends JpaRepository<Order, Long> {
             FROM Order orders
             WHERE orders.userId = :userId
               AND orders.deletedAt IS NULL
+              AND orders.paidAt IS NOT NULL
               AND (:status IS NULL OR orders.status = :status)
-              AND orders.createdAt >= :from
-              AND orders.createdAt <= :to
-              AND (:cursorCreatedAt IS NULL
-                   OR orders.createdAt < :cursorCreatedAt
-                   OR (orders.createdAt = :cursorCreatedAt AND orders.id < :cursorId))
-            ORDER BY orders.createdAt DESC, orders.id DESC
+              AND (:paidAtFrom IS NULL OR orders.paidAt >= :paidAtFrom)
+              AND (:paidAtBefore IS NULL OR orders.paidAt < :paidAtBefore)
+              AND (:cursorPaidAt IS NULL
+                   OR orders.paidAt < :cursorPaidAt
+                   OR (orders.paidAt = :cursorPaidAt AND orders.id < :cursorId))
+            ORDER BY orders.paidAt DESC, orders.id DESC
             """)
-    List<Order> findActiveOrders(@Param("userId") final Long userId, @Param("status") final OrderStatus status,
-        @Param("from") final LocalDateTime from, @Param("to") final LocalDateTime to,
-        @Param("cursorCreatedAt") final LocalDateTime cursorCreatedAt, @Param("cursorId") final Long cursorId, final Pageable pageable);
+    List<Order> findPaidOrders(@Param("userId") final Long userId, @Param("status") final OrderStatus status,
+        @Param("paidAtFrom") final LocalDateTime paidAtFrom, @Param("paidAtBefore") final LocalDateTime paidAtBefore,
+        @Param("cursorPaidAt") final LocalDateTime cursorPaidAt, @Param("cursorId") final Long cursorId, final Pageable pageable);
 }

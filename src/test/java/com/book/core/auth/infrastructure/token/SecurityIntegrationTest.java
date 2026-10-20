@@ -2,6 +2,7 @@ package com.book.core.auth.infrastructure.token;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.book.core.auth.infrastructure.security.SecurityConfiguration;
+import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import com.book.support.config.WebCorsConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
@@ -37,6 +39,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -62,6 +65,9 @@ class SecurityIntegrationTest {
     @Autowired
     TokenIssuer tokenIssuer;
 
+    @MockitoBean
+    CheckUserRestrictionUseCase checkUserRestrictionUseCase;
+
     @Autowired
     TokenProperties properties;
 
@@ -69,9 +75,10 @@ class SecurityIntegrationTest {
     @Qualifier(JwtTokenConfiguration.TOKEN_JWT_ENCODER)
     JwtEncoder jwtEncoder;
 
-    @Test
-    void Login_endpoint는_Access_Token_없이_접근할_수_있다() throws Exception {
-        mvc.perform(post("/api/v1/auth/kakao/login")).andExpect(status().isOk());
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/auth/kakao/login", "/api/v1/auth/kakao/signup"})
+    void Login과_Signup_endpoint는_Access_Token_없이_접근할_수_있다(final String path) throws Exception {
+        mvc.perform(post(path)).andExpect(status().isOk());
     }
 
     @Test
@@ -112,6 +119,13 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void 탈퇴_신청_회원의_유효한_Access_Token은_401을_응답한다() throws Exception {
+        when(checkUserRestrictionUseCase.execute(USER_ID)).thenReturn(true);
+
+        assertUnauthorized(tokenIssuer.issue(USER_ID).accessToken());
+    }
+
+    @Test
     void 인증된_API_응답에_캐시_저장_금지_헤더를_적용한다() throws Exception {
         final String accessToken = tokenIssuer.issue(USER_ID).accessToken();
 
@@ -129,7 +143,7 @@ class SecurityIntegrationTest {
     @Test
     void 만료된_Access_Token은_401을_응답한다() throws Exception {
         final Instant expiredIssuedAt = Instant.now().minus(Duration.ofHours(2));
-        final var expiredIssuer = new JwtTokenIssuer(jwtEncoder, properties, Clock.fixed(expiredIssuedAt, ZoneOffset.UTC));
+        final JwtTokenIssuer expiredIssuer = new JwtTokenIssuer(jwtEncoder, properties, Clock.fixed(expiredIssuedAt, ZoneOffset.UTC));
 
         assertUnauthorized(expiredIssuer.issue(USER_ID).accessToken());
     }
@@ -140,19 +154,19 @@ class SecurityIntegrationTest {
         Arrays.fill(otherSecretBytes, (byte) 1);
         final SecretKey otherSecretKey = new SecretKeySpec(otherSecretBytes, "HmacSHA512");
         final JwtEncoder otherEncoder = NimbusJwtEncoder.withSecretKey(otherSecretKey).algorithm(MacAlgorithm.HS512).build();
-        final var otherIssuer = new JwtTokenIssuer(otherEncoder, properties, Clock.systemUTC());
+        final JwtTokenIssuer otherIssuer = new JwtTokenIssuer(otherEncoder, properties, Clock.systemUTC());
 
         assertUnauthorized(otherIssuer.issue(USER_ID).accessToken());
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행"})
+    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행", "/api/v1/reviews"})
     void 공개_조회_API는_Token_없이_Controller까지_도달한다(final String path) throws Exception {
         mvc.perform(get(path)).andExpect(status().isOk()).andExpect(jsonPath("$.result").value("PUBLIC"));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행"})
+    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행", "/api/v1/reviews"})
     void 공개_조회_API는_유효한_Access_Token으로도_요청할_수_있다(final String path) throws Exception {
         final String accessToken = tokenIssuer.issue(USER_ID).accessToken();
 
@@ -199,6 +213,16 @@ class SecurityIntegrationTest {
         assertTraceIdMatchesErrorResponse(result);
     }
 
+    @Test
+    void 리뷰_조회도_잘못된_토큰을_익명으로_처리하지_않는다() throws Exception {
+        mvc.perform(get("/api/v1/reviews").header(HttpHeaders.AUTHORIZATION, bearer("invalid-token"))).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 리뷰_작성은_비로그인_요청을_거부한다() throws Exception {
+        mvc.perform(post("/api/v1/reviews")).andExpect(status().isUnauthorized());
+    }
+
     private void assertUnauthorized(final String token) throws Exception {
         final MvcResult result = mvc.perform(get("/test/protected").header(HttpHeaders.AUTHORIZATION, bearer(token)))
             .andExpect(status().isUnauthorized()).andExpect(header().exists("X-Request-Id")).andExpect(jsonPath("$.success").value(false))
@@ -218,12 +242,12 @@ class SecurityIntegrationTest {
 
     @RestController
     public static class ProtectedTestController {
-        @PostMapping("/api/v1/auth/{providerType}/login")
+        @PostMapping({"/api/v1/auth/{providerType}/login", "/api/v1/auth/{providerType}/signup"})
         Map<String, String> loginEndpoint() {
             return Map.of("result", "SUCCESS");
         }
 
-        @GetMapping({"/api/v1/items", "/api/v1/categories", "/api/v1/products/{productId}", "/api/v1/search"})
+        @GetMapping({"/api/v1/items", "/api/v1/categories", "/api/v1/products/{productId}", "/api/v1/search", "/api/v1/reviews"})
         Map<String, String> publicReadEndpoint() {
             return Map.of("result", "PUBLIC");
         }

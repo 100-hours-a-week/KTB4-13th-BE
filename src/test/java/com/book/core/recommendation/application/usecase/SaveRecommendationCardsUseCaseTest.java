@@ -3,6 +3,7 @@ package com.book.core.recommendation.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.core.recommendation.application.port.RecommendationCardRepositoryPort;
+import com.book.core.recommendation.application.result.RecommendationCardResult;
 import com.book.core.recommendation.application.result.ResolvedRecommendationCard;
 import com.book.core.recommendation.domain.RecommendationCard;
 import java.util.ArrayList;
@@ -16,21 +17,23 @@ class SaveRecommendationCardsUseCaseTest {
 
     @Test
     void 사용자와_카드_목록으로_RecommendationCard를_생성해_저장한다() {
-        final var resolved = List.of(new ResolvedRecommendationCard(1L, null, "제목1", "작가1", null, null, 80, "짧은 이유1", "이유1"),
-            new ResolvedRecommendationCard(2L, null, "제목2", "작가2", null, null, 70, "짧은 이유2", "이유2"));
+        final List<ResolvedRecommendationCard> resolved =
+            List.of(new ResolvedRecommendationCard(1L, null, "제목1", "작가1", null, null, 80, "짧은 이유1", "이유1"),
+                new ResolvedRecommendationCard(2L, null, "제목2", "작가2", null, null, 70, "짧은 이유2", "이유2"));
 
-        final List<RecommendationCard> saved = useCase.execute(42L, resolved);
+        final List<RecommendationCardResult> saved = useCase.execute(42L, resolved);
 
         assertThat(saved).hasSize(2);
-        assertThat(saved.get(0).userId()).isEqualTo(42L);
+        assertThat(repository.savedUserIds).containsExactly(42L, 42L);
         assertThat(saved.get(0).bookId()).isEqualTo(1L);
         assertThat(saved.get(0).reasonLong()).isEqualTo("이유1");
-        assertThat(saved.get(0).id()).isNotNull();
+        assertThat(saved.get(0).recommendationCardId()).isNotNull();
         assertThat(saved.get(1).bookId()).isEqualTo(2L);
     }
 
     private static class FakeRecommendationCardRepository implements RecommendationCardRepositoryPort {
         private long nextId = 1;
+        private final List<Long> savedUserIds = new ArrayList<>();
 
         @Override
         public RecommendationCard save(final RecommendationCard card) {
@@ -41,6 +44,7 @@ class SaveRecommendationCardsUseCaseTest {
         public List<RecommendationCard> saveAll(final List<RecommendationCard> cards) {
             final List<RecommendationCard> result = new ArrayList<>();
             for (final RecommendationCard card : cards) {
+                savedUserIds.add(card.userId());
                 result.add(RecommendationCard.restore(nextId++, card.userId(), card.bookId(), card.reasonLong(), null));
             }
             return result;

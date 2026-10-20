@@ -88,11 +88,11 @@ class SaveOnboardingBooksUseCaseTest {
     }
 
     @Test
-    void 도서_저장에_성공하면_온보딩_상태를_완료로_전환한다() {
+    void 도서_저장에_성공하면_온보딩_상태를_완료로_전환하고_최초_완료를_반환한다() {
         userOnboardingRepository.byUserId.put(42L, UserOnboarding.start(42L));
         bookRepository.booksById.put(10L, book(10L));
 
-        useCase.execute(new PutOnboardingBooksCommand(42L, List.of(10L)));
+        assertThat(useCase.execute(new PutOnboardingBooksCommand(42L, List.of(10L))).firstCompleted()).isTrue();
 
         final UserOnboarding saved = userOnboardingRepository.byUserId.get(42L);
         assertThat(saved.onboardingStatus()).isEqualTo(OnboardingStatus.COMPLETED);
@@ -100,11 +100,11 @@ class SaveOnboardingBooksUseCaseTest {
     }
 
     @Test
-    void 완료_시각은_최초_1회만_설정된다() {
+    void 이미_완료한_온보딩은_완료_시각을_유지하고_최초_완료가_아니다() {
         final LocalDateTime firstCompletedAt = LocalDateTime.of(2025, 6, 1, 0, 0);
         userOnboardingRepository.byUserId.put(42L, new UserOnboarding(1L, 42L, OnboardingStatus.COMPLETED, firstCompletedAt));
 
-        useCase.execute(new PutOnboardingBooksCommand(42L, List.of()));
+        assertThat(useCase.execute(new PutOnboardingBooksCommand(42L, List.of())).firstCompleted()).isFalse();
 
         final UserOnboarding saved = userOnboardingRepository.byUserId.get(42L);
         assertThat(saved.completedAt()).isEqualTo(firstCompletedAt);
@@ -121,6 +121,11 @@ class SaveOnboardingBooksUseCaseTest {
         @Override
         public Optional<UserOnboarding> findActiveByUserId(final Long userId) {
             return Optional.ofNullable(byUserId.get(userId));
+        }
+
+        @Override
+        public Optional<UserOnboarding> findActiveByUserIdForUpdate(final Long userId) {
+            return findActiveByUserId(userId);
         }
 
         @Override
@@ -142,6 +147,11 @@ class SaveOnboardingBooksUseCaseTest {
         @Override
         public void deleteByUserId(final Long userId) {
             deletedUserIds.add(userId);
+        }
+
+        @Override
+        public void deleteByUserIdAndBookIdIn(final Long userId, final List<Long> bookIds) {
+            throw new UnsupportedOperationException();
         }
 
         @Override

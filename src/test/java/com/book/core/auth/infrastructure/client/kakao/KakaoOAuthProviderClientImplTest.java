@@ -48,7 +48,7 @@ class KakaoOAuthProviderClientImplTest {
     }
 
     @Test
-    void 정상_RS256_ID_Token의_sub와_email을_OAuthIdentity로_반환한다() {
+    void 정상_RS256_ID_Token의_sub와_email을_OAuthUserInfo로_반환한다() {
         final String idToken = token(signingKey, SignatureAlgorithm.RS256, PROVIDER_USER_ID, "reader@example.com");
 
         final var identity = client.verify(idToken, EXPECTED_NONCE);

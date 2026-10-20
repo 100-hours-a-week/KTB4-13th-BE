@@ -13,8 +13,12 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.filter.RequestMdcFilter;
+import com.book.core.onboarding.application.port.AiPersonalizationProfileHistory;
+import com.book.core.onboarding.application.port.AiPersonalizationProfileMemory;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
+import java.math.BigDecimal;
 import java.net.SocketTimeoutException;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -45,9 +49,9 @@ class AiPersonalizationProfileClientImplTest {
 
     @Test
     void POST_preferences_profile에_Bearer_토큰과_X_Request_Id를_담아_요청한다() {
-        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "trace-abc-123");
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "request-abc-123");
         server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.POST))
-            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "trace-abc-123"))
+            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "request-abc-123"))
             .andRespond(withSuccess());
 
         client.createProfile(profileRequest());
@@ -84,6 +88,45 @@ class AiPersonalizationProfileClientImplTest {
 
         assertThatThrownBy(() -> client.createProfile(profileRequest())).isInstanceOf(CoreException.class)
             .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
+    }
+
+    @Test
+    void 갱신은_생성과_같은_인증_헤더와_요청_본문으로_PUT_preferences_profile을_요청한다() {
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "request-put-456");
+        final AiPersonalizationProfileRequest request = profileRequest();
+        server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT))
+            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "request-put-456"))
+            .andExpect(jsonPath("$.user_id").value(42))
+            .andExpect(jsonPath("$.idempotency_key").value(idempotencyKeyGenerator.generate(request)))
+            .andExpect(jsonPath("$.onboarding.reading_times[0]").value("잠들기 전"))
+            .andExpect(jsonPath("$.onboarding.liked_book_ids[1]").value(300)).andExpect(jsonPath("$.memories").isEmpty())
+            .andRespond(withSuccess());
+
+        client.updateProfile(request);
+
+        server.verify();
+    }
+
+    @Test
+    void 취향_기억과_이력을_AI_계약의_칸으로_보내고_저장_시각은_마이크로초까지_싣는다() {
+        final AiPersonalizationProfileRequest request =
+            new AiPersonalizationProfileRequest(42L, List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(new AiPersonalizationProfileMemory("author", "김영하의 문장을 좋아함", 2, List.of(), "김영하",
+                    LocalDateTime.of(2026, 9, 4, 0, 12, 30, 123_456_000), List.of(0.02f), 1)),
+                new AiPersonalizationProfileHistory(List.of("9788900000011"), List.of("9788900000042"),
+                    List.of(new AiPersonalizationProfileHistory.Review("9788900000011", new BigDecimal("4.5"), "울컥했어요"))));
+        server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT)).andExpect(jsonPath("$.memories[0].type").value("author"))
+            .andExpect(jsonPath("$.memories[0].strength").value(2)).andExpect(jsonPath("$.memories[0].applies_to").isEmpty())
+            .andExpect(jsonPath("$.memories[0].keyword").value("김영하"))
+            .andExpect(jsonPath("$.memories[0].created_at").value("2026-09-04T00:12:30.123456"))
+            .andExpect(jsonPath("$.memories[0].dim").value(1)).andExpect(jsonPath("$.history.purchased_isbns[0]").value("9788900000011"))
+            .andExpect(jsonPath("$.history.library_isbns[0]").value("9788900000042"))
+            .andExpect(jsonPath("$.history.reviews[0].rating").value(4.5))
+            .andExpect(jsonPath("$.history.reviews[0].content").value("울컥했어요")).andRespond(withSuccess());
+
+        client.updateProfile(request);
+
+        server.verify();
     }
 
     private static AiPersonalizationProfileRequest profileRequest() {

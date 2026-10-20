@@ -32,7 +32,7 @@ public class ApprovePgPaymentUseCase {
         }
         final Order order = getOrder.execute(command.orderKey(), OrderStatus.CREATED);
         validate.validateForApprove(order.id(), command.amount());
-        ApprovedPaymentResult approval = new ApprovedPaymentResult(null, null, null);
+        ApprovedPaymentResult approval = new ApprovedPaymentResult("", null, null);
         if (command.amount().compareTo(BigDecimal.ZERO) > 0) {
             PgPaymentResult result = client.find(command.externalPaymentKey());
             verify(command, result);

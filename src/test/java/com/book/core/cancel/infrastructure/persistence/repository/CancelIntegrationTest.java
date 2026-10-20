@@ -57,10 +57,21 @@ class CancelIntegrationTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.book.core.payment.application.usecase.RequestPgCancelUseCase pg;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubPg() {
+        org.mockito.Mockito
+            .when(pg.execute(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+            .thenReturn(new com.book.core.payment.application.result.CanceledPaymentResult("test-cancel", java.time.OffsetDateTime.now()));
+    }
+
     @Test
     void 전체취소는_쿠폰_포인트_잔액_주문_취소내역과_거래이력을_같이_커밋한다() {
         final Order order = fixture(10001L, 5, true, true);
-        service.cancel(new CancelCommand(10001L, new CancelAction(order.key())));
+        service.cancel(new CancelCommand(10001L, new CancelAction(order.key()), "request"));
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.CANCELED);
         assertThat(balances.findByOrderId(order.id()).orElseThrow().totalCanceledAmount()).isEqualByComparingTo("50000");
         assertThat(coupons.findByUserIdAndCouponId(10001L, 10001L).orElseThrow().status()).isEqualTo(OwnedCouponStatus.ISSUED);
@@ -117,7 +128,7 @@ class CancelIntegrationTest {
     @Test
     void 쿠폰_복원_실패는_앞서_변경한_주문도_롤백하고_취소내역을_남기지_않는다() {
         final Order order = fixture(10004L, 5, true, false);
-        assertThatThrownBy(() -> service.cancel(new CancelCommand(10004L, new CancelAction(order.key()))))
+        assertThatThrownBy(() -> service.cancel(new CancelCommand(10004L, new CancelAction(order.key()), "request")))
             .isInstanceOf(CoreException.class);
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
         assertThat(balances.findByOrderId(order.id()).orElseThrow().totalCanceledAmount()).isEqualByComparingTo("0");
@@ -128,7 +139,7 @@ class CancelIntegrationTest {
     void 거래이력_저장실패는_쿠폰과_포인트_잔액과_취소내역까지_롤백한다() {
         final Order order = fixture(10005L, 5, true, true);
         jdbc.update("update payment set external_payment_key = null where order_id = ?", order.id());
-        assertThatThrownBy(() -> service.cancel(new CancelCommand(10005L, new CancelAction(order.key()))))
+        assertThatThrownBy(() -> service.cancel(new CancelCommand(10005L, new CancelAction(order.key()), "request")))
             .isInstanceOf(DataIntegrityViolationException.class);
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
         assertThat(coupons.findByUserIdAndCouponId(10005L, 10005L).orElseThrow().status()).isEqualTo(OwnedCouponStatus.USED);
@@ -142,7 +153,8 @@ class CancelIntegrationTest {
     void 다른_회원과_다른_주문의_상품은_취소할_수_없다() {
         final Order order = fixture(10006L, 3, false, false);
         final Order other = fixture(10007L, 3, false, false);
-        assertThatThrownBy(() -> service.cancel(new CancelCommand(999L, new CancelAction(order.key())))).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> service.cancel(new CancelCommand(999L, new CancelAction(order.key()), "request")))
+            .isInstanceOf(CoreException.class);
         assertThatThrownBy(
             () -> service.partialCancel(new PartialCancelCommand(10006L, new PartialCancelAction(order.key(), itemId(other), 1L))))
             .isInstanceOf(CoreException.class);

@@ -36,6 +36,11 @@ import com.book.core.point.application.usecase.EarnPointUseCase;
 import com.book.core.point.domain.PointAmount;
 import com.book.core.point.domain.enums.PointType;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -52,12 +57,15 @@ class CancelUseCasesTest {
     private final EarnPointUseCase earn = mock(EarnPointUseCase.class);
     private final DeductPointUseCase deduct = mock(DeductPointUseCase.class);
     private final RecordPaymentHistoryUseCase histories = mock(RecordPaymentHistoryUseCase.class);
+    private final Clock clock = Clock.fixed(Instant.EPOCH, ZoneId.of("Asia/Seoul"));
 
     @Test
     void 전체취소는_쿠폰과_포인트를_복원하고_적립포인트를_회수하며_이력을_기록한다() {
         final Order order = order(3);
         final CancelBalance balance = prepare(order, 10L);
-        assertThat(full().execute(new CancelAction("order"))).isEqualTo(5L);
+        final OffsetDateTime pgCanceledAt = OffsetDateTime.parse("2026-10-20T01:00:00Z");
+        assertThat(full().execute(new CancelAction("order"),
+            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", pgCanceledAt))).isEqualTo(5L);
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
         assertThat(balance.cancellablePaidAmount()).isEqualByComparingTo("0");
         verify(coupons).execute(10L);
@@ -68,6 +76,7 @@ class CancelUseCasesTest {
         assertThat(capture.getValue().type()).isEqualTo(CancelType.ALL);
         assertThat(capture.getValue().orderItemId()).isEqualTo(-1L);
         assertThat(capture.getValue().canceledQuantity()).isEqualTo(-1L);
+        assertThat(capture.getValue().canceledAt()).isEqualTo(LocalDateTime.parse("2026-10-20T10:00:00"));
         final ArgumentCaptor<PaymentHistory> history = ArgumentCaptor.forClass(PaymentHistory.class);
         verify(histories).execute(history.capture());
         assertThat(history.getValue().type()).isEqualTo(TransactionType.CANCEL);
@@ -78,10 +87,13 @@ class CancelUseCasesTest {
     void 전체취소는_쿠폰이_없으면_복원을_생략하고_부분취소된_주문은_거부한다() {
         final Order order = order(3);
         prepare(order, -1L);
-        full().execute(new CancelAction("order"));
+        full().execute(new CancelAction("order"),
+            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", java.time.OffsetDateTime.now()));
         verifyNoInteractions(coupons);
         order.partialCanceled();
-        assertThatThrownBy(() -> full().execute(new CancelAction("order"))).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> full().execute(new CancelAction("order"),
+            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", java.time.OffsetDateTime.now())))
+            .isInstanceOf(CoreException.class);
     }
 
     @Test
@@ -118,7 +130,9 @@ class CancelUseCasesTest {
     void 쿠폰_복원_실패는_전파하고_후속_포인트와_취소기록은_실행하지_않는다() {
         prepare(order(1), 10L);
         doThrow(new CoreException(ErrorCode.OWNED_COUPON_INVALID_USAGE)).when(coupons).execute(10L);
-        assertThatThrownBy(() -> full().execute(new CancelAction("order"))).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> full().execute(new CancelAction("order"),
+            new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", java.time.OffsetDateTime.now())))
+            .isInstanceOf(CoreException.class);
         verifyNoInteractions(earn, deduct, histories);
     }
 
@@ -154,7 +168,7 @@ class CancelUseCasesTest {
     }
 
     private CancelPaymentUseCase full() {
-        return new CancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories);
+        return new CancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories, clock);
     }
 
     private PartialCancelPaymentUseCase partial() {

@@ -35,3 +35,5 @@ auth:
 app:
   user-withdrawal:
     cron: "-"
+  order-expiration:
+    cron: "-"

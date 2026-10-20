@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class OrderTest {
@@ -30,6 +32,33 @@ class OrderTest {
             .containsExactly(
                 org.assertj.core.groups.Tuple.tuple(new BigDecimal("12.35"), new BigDecimal("24.70"), 2, OrderItemStatus.CREATED),
                 org.assertj.core.groups.Tuple.tuple(new BigDecimal("0.01"), new BigDecimal("0.03"), 3, OrderItemStatus.CREATED));
+    }
+
+    @Test
+    void 예약_만료_시각이_지난_미결제_주문만_만료하고_상품별_예약_수량을_합산한다() {
+        final LocalDateTime expiresAt = LocalDateTime.of(2026, 10, 20, 10, 10);
+        final Order order = Order.create(42L, "order_expire", null);
+        addOrderItem(order, 101L, 2, BigDecimal.TEN);
+        addOrderItem(order, 101L, 1, BigDecimal.TEN);
+        addOrderItem(order, 102L, 4, BigDecimal.TEN);
+        order.reserveUntil(expiresAt);
+
+        assertThat(order.reservedQuantities()).containsExactlyInAnyOrderEntriesOf(Map.of(101L, 3, 102L, 4));
+        assertThat(order.expire(expiresAt.minusNanos(1000))).isFalse();
+        assertThat(order.expire(expiresAt)).isTrue();
+        assertThat(order.status()).isEqualTo(OrderStatus.EXPIRED);
+        assertThat(order.expire(expiresAt.plusMinutes(1))).isFalse();
+    }
+
+    @Test
+    void 예약_없이_만든_기존_주문은_만료하거나_반환할_예약이_없다() {
+        final Order order = Order.create(42L, "order_legacy", null);
+        addOrderItem(order, 101L, 2, BigDecimal.TEN);
+
+        assertThat(order.hasReservation()).isFalse();
+        assertThat(order.reservedQuantities()).isEmpty();
+        assertThat(order.expire(LocalDateTime.MAX)).isFalse();
+        assertThatThrownBy(() -> order.reserveUntil(null)).isInstanceOf(CoreException.class);
     }
 
     @Test

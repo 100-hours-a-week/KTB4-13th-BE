@@ -17,6 +17,21 @@ interface OrderJpaRepository extends JpaRepository<Order, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Order> findByKeyAndDeletedAtIsNull(final String key);
 
+    @Query("""
+            SELECT orders.key
+            FROM Order orders
+            WHERE orders.status = :status
+              AND orders.expiresAt <= :now
+              AND orders.deletedAt IS NULL
+              AND NOT EXISTS (SELECT 1 FROM Payment payment WHERE payment.orderId = orders.id)
+            ORDER BY orders.expiresAt ASC, orders.id ASC
+            """)
+    List<String> findExpiredOrderKeys(@Param("status") final OrderStatus status, @Param("now") final LocalDateTime now,
+        final Pageable pageable);
+
+    @Query("SELECT COUNT(payment) > 0 FROM Payment payment WHERE payment.orderId = :orderId")
+    boolean hasPayment(@Param("orderId") final Long orderId);
+
     @EntityGraph(attributePaths = "items")
     @Query("SELECT orders FROM Order orders WHERE orders.key = :key AND orders.deletedAt IS NULL")
     Optional<Order> findActiveWithItemsByKey(@Param("key") final String key);

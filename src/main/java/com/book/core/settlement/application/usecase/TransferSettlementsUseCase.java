@@ -31,24 +31,27 @@ public class TransferSettlementsUseCase {
             final Merchant merchant = merchantMap.get(merchantId);
             try {
                 if (merchant == null) {
-                    log.warn("정산 가맹점 정보 없음 merchantId: {}", merchantId);
+                    log.atWarn().addKeyValue("merchantId", merchantId).log("[SETTLEMENT] 정산 가맹점 정보 없음 merchantId: {}", merchantId);
                     continue;
                 }
                 if (targetDate.getDayOfMonth() % merchant.settlementCycle() != 0) {
-                    log.info("정산 주기 아님 merchantId: {}, settlementCycle: {}, dayOfMonth: {}", merchantId, merchant.settlementCycle(),
-                        targetDate.getDayOfMonth());
+                    log.atDebug().addKeyValue("merchantId", merchantId).log(
+                        "[SETTLEMENT] 정산 주기가 아니어서 지급을 건너뜁니다. merchantId={}, settlementCycle={}, dayOfMonth={}", merchantId,
+                        merchant.settlementCycle(), targetDate.getDayOfMonth());
                     continue;
                 }
                 final BigDecimal transferAmount =
                     settlementGroup.getValue().stream().map(Settlement::settlementAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
                 if (transferAmount.compareTo(BigDecimal.ZERO) <= 0) {
-                    log.warn("가맹점 미정산 금액 확인 필요 merchantId: {}, transferAmount: {}", merchantId, transferAmount);
+                    log.atWarn().addKeyValue("merchantId", merchantId)
+                        .log("[SETTLEMENT] 가맹점 미정산 금액 확인 필요 merchantId: {}, transferAmount: {}", merchantId, transferAmount);
                     continue;
                 }
                 completeSettlementTransferUseCase.execute(settlementGroup.getValue());
-                log.info("가맹점 정산 지급 상태 변경 완료 merchantId: {}, count: {}", merchantId, settlementGroup.getValue().size());
+                log.atInfo().addKeyValue("merchantId", merchantId).log("[SETTLEMENT] 가맹점 정산 지급 상태 변경 완료 merchantId: {}, count: {}",
+                    merchantId, settlementGroup.getValue().size());
             } catch (final Exception exception) {
-                log.error("가맹점 정산 실패 merchantId: {}", merchantId, exception);
+                log.atError().addKeyValue("merchantId", merchantId).log("[SETTLEMENT] 가맹점 정산 실패 merchantId: {}", merchantId, exception);
             }
         }
     }

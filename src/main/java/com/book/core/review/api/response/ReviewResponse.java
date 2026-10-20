@@ -5,5 +5,5 @@ import java.math.BigDecimal;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record ReviewResponse(Long id, ReviewTargetType targetType, Long targetId, BigDecimal rate, String content,
-    @Schema(description = "작성자가 지정한 스포일러 여부") boolean isSpoiler, @Schema(description = "조회한 회원의 작성 여부. 비로그인은 false") boolean isAuthor) {
+    @Schema(description = "작성자가 지정한 스포일러 여부") boolean isSpoiler, @Schema(description = "조회한 회원의 작성 여부. 비로그인은 false") boolean isMyReview) {
 }

@@ -21,12 +21,13 @@ class GetReviewsUseCaseTest {
 
     @Test
     void 대상과_offset을_조회하고_목록과_다음_페이지_여부를_반환한다() {
-        final var paging = new OffsetLimit(3, 2);
-        final var item = new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문", true, 42L);
+        final OffsetLimit paging = new OffsetLimit(3, 2);
+        final ReviewItemResult item =
+            new ReviewItemResult(8L, new ReviewTarget(ReviewTargetType.PRODUCT, 10L), new BigDecimal("4.5"), "본문", true, 42L);
         when(repository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging))
             .thenReturn(new Page<>(List.of(item), true));
 
-        final var result = useCase.execute(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging);
+        final Page<ReviewItemResult> result = useCase.execute(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging);
 
         assertThat(result.content()).containsExactly(item);
         assertThat(result.hasNext()).isTrue();
@@ -35,11 +36,11 @@ class GetReviewsUseCaseTest {
 
     @Test
     void 리뷰가_없으면_빈_목록을_반환한다() {
-        final var paging = new OffsetLimit(0, 20);
+        final OffsetLimit paging = new OffsetLimit(0, 20);
         when(repository.findActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging))
             .thenReturn(new Page<>(List.of(), false));
 
-        final var result = useCase.execute(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging);
+        final Page<ReviewItemResult> result = useCase.execute(new ReviewTarget(ReviewTargetType.PRODUCT, 10L), paging);
 
         assertThat(result.content()).isEmpty();
         assertThat(result.hasNext()).isFalse();

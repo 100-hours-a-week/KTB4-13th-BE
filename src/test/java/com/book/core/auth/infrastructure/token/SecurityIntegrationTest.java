@@ -140,7 +140,7 @@ class SecurityIntegrationTest {
     @Test
     void 만료된_Access_Token은_401을_응답한다() throws Exception {
         final Instant expiredIssuedAt = Instant.now().minus(Duration.ofHours(2));
-        final var expiredIssuer = new JwtTokenIssuer(jwtEncoder, properties, Clock.fixed(expiredIssuedAt, ZoneOffset.UTC));
+        final JwtTokenIssuer expiredIssuer = new JwtTokenIssuer(jwtEncoder, properties, Clock.fixed(expiredIssuedAt, ZoneOffset.UTC));
 
         assertUnauthorized(expiredIssuer.issue(USER_ID).accessToken());
     }
@@ -151,7 +151,7 @@ class SecurityIntegrationTest {
         Arrays.fill(otherSecretBytes, (byte) 1);
         final SecretKey otherSecretKey = new SecretKeySpec(otherSecretBytes, "HmacSHA512");
         final JwtEncoder otherEncoder = NimbusJwtEncoder.withSecretKey(otherSecretKey).algorithm(MacAlgorithm.HS512).build();
-        final var otherIssuer = new JwtTokenIssuer(otherEncoder, properties, Clock.systemUTC());
+        final JwtTokenIssuer otherIssuer = new JwtTokenIssuer(otherEncoder, properties, Clock.systemUTC());
 
         assertUnauthorized(otherIssuer.issue(USER_ID).accessToken());
     }

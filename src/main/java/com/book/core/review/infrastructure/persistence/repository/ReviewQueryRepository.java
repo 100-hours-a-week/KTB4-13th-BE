@@ -6,6 +6,7 @@ import com.book.common.paging.OffsetLimit;
 import com.book.core.review.domain.Review;
 import com.querydsl.jpa.impl.JPAQuery;
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import com.book.common.paging.Page;
 import com.book.core.review.application.result.ReviewItemResult;
@@ -28,7 +29,7 @@ class ReviewQueryRepository {
     }
 
     Page<ReviewItemResult> findActiveReviews(final ReviewTarget target, final OffsetLimit offsetLimit) {
-        final var found = queryFactory
+        final List<ReviewItemResult> found = queryFactory
             .select(Projections.constructor(ReviewItemResult.class, review.id,
                 Projections.constructor(ReviewTarget.class, review.targetType, review.targetId), review.rate, review.content,
                 review.isSpoiler, review.userId))

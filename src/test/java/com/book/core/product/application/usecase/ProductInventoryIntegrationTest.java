@@ -46,8 +46,6 @@ class ProductInventoryIntegrationTest {
     @Autowired
     private RestoreProductInventoryUseCase restore;
     @Autowired
-    private InitializeProductInventoriesUseCase initialize;
-    @Autowired
     private JdbcTemplate jdbc;
 
     @Test
@@ -108,17 +106,16 @@ class ProductInventoryIntegrationTest {
     }
 
     @Test
-    void 재고가_없는_상품에_기본_재고를_만든다() {
+    void 재고_행이_없는_상품은_기본_재고로_예약한다() {
         final long productId = NEXT_ID.incrementAndGet();
         insertBookAndProduct(productId);
 
-        assertThat(initialize.execute()).isGreaterThanOrEqualTo(1);
+        reserve.execute(quantities(productId, 2));
 
         assertThat(jdbc.queryForMap(
             "SELECT on_hand_quantity, reserved_quantity, reorder_point, target_stock FROM product_inventory " + "WHERE product_id = ?",
-            productId)).containsEntry("on_hand_quantity", 20).containsEntry("reserved_quantity", 0).containsEntry("reorder_point", 3)
+            productId)).containsEntry("on_hand_quantity", 20).containsEntry("reserved_quantity", 2).containsEntry("reorder_point", 3)
             .containsEntry("target_stock", 20);
-        assertThat(initialize.execute()).isZero();
     }
 
     private long insertProduct(final int onHandQuantity) {

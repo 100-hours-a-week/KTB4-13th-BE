@@ -9,7 +9,6 @@ import com.book.core.product.application.result.GetProductDetailResult;
 import com.book.core.product.application.result.GetProductsResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.application.usecase.GetProductsUseCase;
-import com.book.core.product.application.usecase.InitializeProductInventoriesUseCase;
 import com.book.core.product.application.usecase.RefreshProductPopularitySnapshotUseCase;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,6 @@ public class ProductService {
     private final RefreshProductPopularitySnapshotUseCase refreshProductPopularitySnapshotUseCase;
     private final GetCouponTargetsUseCase couponTargetReader;
     private final GetCouponsUseCase couponReader;
-    private final InitializeProductInventoriesUseCase initializeProductInventoriesUseCase;
 
     public GetProductDetailResult getProductDetail(final GetProductDetailCommand command) {
         final var product = getProductDetailUseCase.execute(command);
@@ -38,9 +36,5 @@ public class ProductService {
 
     public void refreshProductPopularitySnapshot() {
         refreshProductPopularitySnapshotUseCase.execute();
-    }
-
-    public int initializeInventories() {
-        return initializeProductInventoriesUseCase.execute();
     }
 }

@@ -23,10 +23,10 @@ public class LoadSettlementTargetsUseCase {
 
     /** 결제 적재 후 취소를 적재한다. 적재에 실패한 페이지는 기록하고 다음 페이지를 처리한다. */
     public void execute(final LocalDate targetDate, final LocalDateTime from, final LocalDateTime to) {
-        log.info("정산 대상 적재 시작 targetDate: {}", targetDate);
+        log.info("[SETTLEMENT] 정산 대상 적재 시작 targetDate: {}", targetDate);
         processPayments(targetDate, from, to);
         processCancels(targetDate, from, to);
-        log.info("정산 대상 적재 종료 targetDate: {}", targetDate);
+        log.info("[SETTLEMENT] 정산 대상 적재 종료 targetDate: {}", targetDate);
     }
 
     /** 결제를 천 건씩 조회하고 페이지별로 정산 대상을 저장한다. */
@@ -37,9 +37,10 @@ public class LoadSettlementTargetsUseCase {
             final SliceResult<Payment> payments = getPaymentsForSettlementUseCase.execute(from, to, page, PAGE_SIZE);
             try {
                 createSettlementTargetsUseCase.processPayments(targetDate, payments.content());
-                log.info("결제 정산 대상 페이지 처리 완료 targetDate: {}, page: {}, count: {}", targetDate, page, payments.content().size());
+                log.info("[SETTLEMENT] 결제 정산 대상 페이지 처리 완료 targetDate: {}, page: {}, count: {}", targetDate, page,
+                    payments.content().size());
             } catch (final Exception exception) {
-                log.error("결제 정산 대상 생성 실패 page: {}, size: {}", page, PAGE_SIZE, exception);
+                log.error("[SETTLEMENT] 결제 정산 대상 생성 실패 page: {}, size: {}", page, PAGE_SIZE, exception);
             }
             hasNext = payments.hasNext();
             page++;
@@ -54,9 +55,9 @@ public class LoadSettlementTargetsUseCase {
             final SliceResult<Cancel> cancels = getCancelsForSettlementUseCase.execute(from, to, page, PAGE_SIZE);
             try {
                 createSettlementTargetsUseCase.processCancels(targetDate, cancels.content());
-                log.info("취소 정산 대상 페이지 처리 완료 targetDate: {}, page: {}, count: {}", targetDate, page, cancels.content().size());
+                log.info("[SETTLEMENT] 취소 정산 대상 페이지 처리 완료 targetDate: {}, page: {}, count: {}", targetDate, page, cancels.content().size());
             } catch (final Exception exception) {
-                log.error("취소 정산 대상 생성 실패 page: {}, size: {}", page, PAGE_SIZE, exception);
+                log.error("[SETTLEMENT] 취소 정산 대상 생성 실패 page: {}, size: {}", page, PAGE_SIZE, exception);
             }
             hasNext = cancels.hasNext();
             page++;

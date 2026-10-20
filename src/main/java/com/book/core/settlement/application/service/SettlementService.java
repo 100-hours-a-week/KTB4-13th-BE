@@ -38,22 +38,22 @@ public class SettlementService {
 
     /** 정산일의 가맹점별 대상 금액과 최근 매출을 조회해 정산을 생성한다. */
     public int generate(final LocalDate targetDate) {
-        log.info("정산 생성 시작 targetDate: {}", targetDate);
+        log.info("[SETTLEMENT] 정산 생성 시작 targetDate: {}", targetDate);
         final List<SettlementTargetSummary> summaries = getSettlementTargetsUseCase.execute(targetDate);
         final Map<Long, BigDecimal> recentSalesAmountMap =
             getSettlementsUseCase.recentSalesAmounts(targetDate, summaries.stream().map(SettlementTargetSummary::merchantId).toList());
         final int count = generateSettlementsUseCase.execute(summaries, recentSalesAmountMap);
-        log.info("정산 생성 완료 targetDate: {}, count: {}", targetDate, count);
+        log.info("[SETTLEMENT] 정산 생성 완료 targetDate: {}, count: {}", targetDate, count);
         return count;
     }
 
     /** 지급 대기 정산과 가맹점을 조회해 지급 상태 처리를 요청한다. */
     public void transfer(final LocalDate targetDate) {
-        log.info("정산 지급 상태 처리 시작 targetDate: {}", targetDate);
+        log.info("[SETTLEMENT] 정산 지급 상태 처리 시작 targetDate: {}", targetDate);
         final List<Settlement> readySettlements = getSettlementsUseCase.byState(SettlementState.READY);
         final List<Merchant> merchants = getMerchantsUseCase.execute(readySettlements.stream().map(Settlement::merchantId).toList());
         transferSettlementsUseCase.transfer(targetDate, merchants, readySettlements);
-        log.info("정산 지급 상태 처리 종료 targetDate: {}, readyCount: {}", targetDate, readySettlements.size());
+        log.info("[SETTLEMENT] 정산 지급 상태 처리 종료 targetDate: {}, readyCount: {}", targetDate, readySettlements.size());
     }
 
 }

@@ -46,7 +46,7 @@ public class CreateSettlementTargetsUseCase {
                 TransactionType.PAYMENT, transactionIdMap.get(item.order().id()), item.quantity(), item.totalPrice(), item.totalPrice()))
             .toList();
         settlementTargetRepository.saveAll(targets);
-        log.debug("정산 대상 저장 요청 settleDate: {}, count: {}", settleDate, targets.size());
+        log.debug("[SETTLEMENT] 정산 대상 저장 요청 settleDate: {}, count: {}", settleDate, targets.size());
     }
 
     /** 전체 취소와 부분 취소의 금액을 음수 정산 대상으로 저장한다. */
@@ -58,7 +58,7 @@ public class CreateSettlementTargetsUseCase {
         final List<SettlementTarget> targets = new ArrayList<>(cancelTargets);
         targets.addAll(processPartialCancels(settleDate, partialCancels));
         settlementTargetRepository.saveAll(targets);
-        log.debug("정산 대상 저장 요청 settleDate: {}, count: {}", settleDate, targets.size());
+        log.debug("[SETTLEMENT] 정산 대상 저장 요청 settleDate: {}, count: {}", settleDate, targets.size());
     }
 
     private List<SettlementTarget> processAllCancels(final LocalDate settleDate, final List<Cancel> cancels) {

@@ -21,6 +21,7 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
+import org.springframework.web.client.RestClientException;
 
 class GlobalExceptionHandlerLoggingTest {
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
@@ -62,9 +63,9 @@ class GlobalExceptionHandlerLoggingTest {
         assertThat(appender.list).hasSize(1);
         final var event = appender.list.getFirst();
         assertThat(event.getLevel().levelStr).isEqualTo(errorCode.logLevel().name());
-        assertThat(event.getFormattedMessage())
-            .contains("errorCode=" + errorCode.name(), "code=" + errorCode.code(), "requestId=test-request-id")
-            .doesNotContain("private-data");
+        assertThat(event.getFormattedMessage()).contains("[GLOBAL_EXCEPTION]", "errorCode=" + errorCode.name(), "code=" + errorCode.code())
+            .doesNotContain("private-data", "requestId=");
+        assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "test-request-id");
         assertThat(event.getThrowableProxy()).isNull();
         assertThat(response.getStatusCode()).isEqualTo(errorCode.status());
         assertThat(response.getBody().data()).isEqualTo("private-data");
@@ -81,7 +82,9 @@ class GlobalExceptionHandlerLoggingTest {
         assertThat(appender.list).hasSize(1);
         final var event = appender.list.getFirst();
         assertThat(event.getLevel()).isEqualTo(Level.ERROR);
-        assertThat(event.getFormattedMessage()).contains("errorCode=DEFAULT_ERROR", "code=E500", "requestId=test-request-id");
+        assertThat(event.getFormattedMessage()).contains("[GLOBAL_EXCEPTION]", "errorCode=DEFAULT_ERROR", "code=E500")
+            .doesNotContain("requestId=");
+        assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "test-request-id");
         assertThat(event.getThrowableProxy().getClassName()).isEqualTo(exception.getClass().getName());
         assertThat(event.getThrowableProxy().getCause().getClassName()).isEqualTo(cause.getClass().getName());
         assertThat(response.getBody().message()).isEqualTo(ErrorCode.DEFAULT_ERROR.message());
@@ -97,8 +100,9 @@ class GlobalExceptionHandlerLoggingTest {
         assertThat(appender.list).hasSize(1);
         final var event = appender.list.getFirst();
         assertThat(event.getLevel()).isEqualTo(Level.INFO);
-        assertThat(event.getFormattedMessage()).contains("errorCode=INVALID_REQUEST", "requestId=test-request-id")
-            .doesNotContain("private-request-body");
+        assertThat(event.getFormattedMessage()).contains("[GLOBAL_EXCEPTION]", "errorCode=INVALID_REQUEST")
+            .doesNotContain("private-request-body", "requestId=");
+        assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "test-request-id");
         assertThat(event.getThrowableProxy()).isNull();
         assertThat(response.getStatusCode()).isEqualTo(ErrorCode.INVALID_REQUEST.status());
     }
@@ -113,11 +117,29 @@ class GlobalExceptionHandlerLoggingTest {
         assertThat(appender.list).hasSize(1);
         final var event = appender.list.getFirst();
         assertThat(event.getLevel()).isEqualTo(Level.ERROR);
-        assertThat(event.getFormattedMessage()).contains("errorCode=DEFAULT_ERROR", "code=E500", "requestId=test-request-id");
+        assertThat(event.getFormattedMessage()).contains("[GLOBAL_EXCEPTION]", "errorCode=DEFAULT_ERROR", "code=E500")
+            .doesNotContain("requestId=");
+        assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "test-request-id");
         assertThat(event.getThrowableProxy().getClassName()).isEqualTo(exception.getClass().getName());
         assertThat(event.getThrowableProxy().getCause().getClassName()).isEqualTo(cause.getClass().getName());
         assertThat(response.getStatusCode()).isEqualTo(ErrorCode.DEFAULT_ERROR.status());
         assertThat(response.getBody().data()).isNull();
+    }
+
+    @Test
+    void 외부_응답_예외는_응답_원문과_스택_트레이스를_로그에_남기지_않는다() {
+        final var exception = new IllegalStateException("외부 요청 실패", new RestClientException("private-external-response-body"));
+
+        handler.handleUnexpected(exception);
+
+        assertThat(appender.list).singleElement().satisfies((final var event) -> {
+            assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+            assertThat(event.getFormattedMessage())
+                .contains("[GLOBAL_EXCEPTION]", "errorCode=DEFAULT_ERROR", "errorType=IllegalStateException")
+                .doesNotContain("private-external-response-body", "requestId=");
+            assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "test-request-id");
+            assertThat(event.getThrowableProxy()).isNull();
+        });
     }
 
     @Test
@@ -130,7 +152,9 @@ class GlobalExceptionHandlerLoggingTest {
 
         assertThat(appender.list).hasSize(1);
         assertThat(appender.list.getFirst().getLevel()).isEqualTo(Level.INFO);
-        assertThat(appender.list.getFirst().getFormattedMessage()).contains("errorCode=CONCURRENT_CHANGE", "requestId=test-request-id");
+        assertThat(appender.list.getFirst().getFormattedMessage()).contains("[GLOBAL_EXCEPTION]", "errorCode=CONCURRENT_CHANGE")
+            .doesNotContain("requestId=");
+        assertThat(appender.list.getFirst().getMDCPropertyMap()).containsEntry("requestId", "test-request-id");
         assertThat(response.getStatusCode()).isEqualTo(ErrorCode.CONCURRENT_CHANGE.status());
         assertThat(response.getBody().code()).isEqualTo(ErrorCode.CONCURRENT_CHANGE.code());
     }

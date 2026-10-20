@@ -1,5 +1,6 @@
 package com.book.core.onboarding.application.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
@@ -11,6 +12,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.library.application.command.AddLibraryBooksCommand;
@@ -29,8 +34,11 @@ import com.book.core.onboarding.application.usecase.SaveOnboardingAnswersUseCase
 import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
 import com.book.core.onboarding.application.usecase.UpdateOnboardingPreferencesUseCase;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.client.RestClientException;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -168,6 +176,42 @@ class OnboardingServiceTest {
         doThrow(new CoreException(ErrorCode.AI_RECOMMENDATION_FAILURE)).when(personalizationProfileUseCase).execute(USER_ID);
 
         assertThatCode(() -> onboardingService.saveBooks(COMMAND)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void AI_응답_원문이_예외에_포함되어도_로그에는_기록하지_않는다() {
+        final Logger logger = (Logger) LoggerFactory.getLogger(OnboardingService.class);
+        final Level previousLevel = logger.getLevel();
+        final boolean previousAdditive = logger.isAdditive();
+        final Map<String, String> previousMdc = org.slf4j.MDC.getCopyOfContextMap();
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.setContext(logger.getLoggerContext());
+        appender.start();
+        logger.setLevel(Level.WARN);
+        logger.setAdditive(false);
+        logger.addAppender(appender);
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE, new RestClientException("private-external-response-body")))
+            .when(personalizationProfileUseCase).execute(USER_ID);
+
+        try {
+            onboardingService.saveBooks(COMMAND);
+
+            assertThat(appender.list).singleElement().satisfies((final ILoggingEvent event) -> {
+                assertThat(event.getLevel()).isEqualTo(Level.WARN);
+                assertThat(event.getFormattedMessage()).contains("[ONBOARDING]", "errorCode=AI_SERVICE_FAILURE")
+                    .doesNotContain("private-external-response-body");
+                assertThat(event.getThrowableProxy()).isNull();
+            });
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            logger.setAdditive(previousAdditive);
+            appender.stop();
+            org.slf4j.MDC.clear();
+            if (previousMdc != null) {
+                org.slf4j.MDC.setContextMap(previousMdc);
+            }
+        }
     }
 
     @Test

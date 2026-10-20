@@ -8,6 +8,9 @@ import org.springframework.http.HttpStatus;
 @Getter
 @Accessors(fluent = true)
 public enum ErrorCode {
+    PG_REQUEST_CONFLICT(HttpStatus.CONFLICT, "PG_REQUEST_CONFLICT", "같은 요청 키에 다른 결제 입력을 사용할 수 없습니다.", LogLevel.INFO),
+    PG_PENDING(HttpStatus.CONFLICT, "PG_PENDING", "이 주문의 결제 요청 결과를 먼저 확인해 주세요.", LogLevel.INFO),
+    PG_REVIEW_REQUIRED(HttpStatus.CONFLICT, "PG_REVIEW_REQUIRED", "결제 요청의 처리 기한이 지나 운영 확인이 필요합니다.", LogLevel.ERROR),
     PG_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "PG_UNAVAILABLE", "결제 서비스 응답을 확인할 수 없습니다. 같은 요청 키로 다시 확인해 주세요.", LogLevel.INFO),
     PG_REJECTED(HttpStatus.BAD_REQUEST, "PG_REJECTED", "결제 서비스가 요청을 거절했습니다.", LogLevel.INFO),
     PG_RESPONSE_MISMATCH(HttpStatus.BAD_GATEWAY, "PG_RESPONSE_MISMATCH", "결제 서비스 응답이 요청과 일치하지 않습니다.", LogLevel.ERROR),

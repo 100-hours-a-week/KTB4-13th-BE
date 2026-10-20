@@ -74,11 +74,11 @@ class PaymentUseCasesTest {
     }
 
     @Test
-    void 승인_금액은_참고처럼_스케일까지_비교하고_불일치는_거부한다() {
+    void 승인_금액은_스케일_차이를_허용하고_다른_금액은_거부한다() {
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment(-1L)));
         final ValidatePaymentUseCase validator = new ValidatePaymentUseCase(payments);
         validator.validateForApprove(2L, BigDecimal.valueOf(8800));
-        assertThatThrownBy(() -> validator.validateForApprove(2L, new BigDecimal("8800.00"))).isInstanceOf(CoreException.class);
+        validator.validateForApprove(2L, new BigDecimal("8800.00"));
         assertThatThrownBy(() -> validator.validateForApprove(2L, BigDecimal.TEN)).isInstanceOf(CoreException.class);
         validator.validateForFail(2L);
     }

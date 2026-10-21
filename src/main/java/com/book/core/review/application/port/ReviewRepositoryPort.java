@@ -11,6 +11,8 @@ import java.util.List;
 public interface ReviewRepositoryPort {
     Page<ReviewItemResult> findActiveReviews(final ReviewTarget target, final OffsetLimit offsetLimit);
 
+    long countActiveReviews(final ReviewTarget target);
+
     List<String> findUsedReviewKeys(final Long userId, final List<String> reviewKeys);
 
     Review save(final Review review);

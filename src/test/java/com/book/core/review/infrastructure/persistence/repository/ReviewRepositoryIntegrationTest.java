@@ -126,6 +126,26 @@ class ReviewRepositoryIntegrationTest {
     }
 
     @Test
+    void 대상별_활성_리뷰_수는_대상을_구분하고_소프트_삭제된_리뷰를_제외한다() {
+        insertBook(9901L);
+        insertBook(9902L);
+        insertBook(9903L);
+        insertProduct(9911L, 9901L);
+        insertProduct(9912L, 9902L);
+        insertProduct(9913L, 9903L);
+        saveReview(9911L, "카운트 활성 1");
+        saveReview(9911L, "카운트 활성 2");
+        final Review deleted = saveReview(9911L, "카운트 삭제");
+        deleted.delete();
+        reviewRepository.save(deleted);
+        saveReview(9912L, "카운트 다른 대상");
+
+        assertThat(reviewRepository.countActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 9911L))).isEqualTo(2L);
+        assertThat(reviewRepository.countActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 9912L))).isEqualTo(1L);
+        assertThat(reviewRepository.countActiveReviews(new ReviewTarget(ReviewTargetType.PRODUCT, 9913L))).isZero();
+    }
+
+    @Test
     void 결제_후_7일_이내에_구매한_상품을_리뷰_대상으로_조회한다() {
         insertBook(19701L);
         insertBook(19702L);

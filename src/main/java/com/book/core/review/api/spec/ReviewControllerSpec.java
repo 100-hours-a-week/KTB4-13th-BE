@@ -34,6 +34,12 @@ public interface ReviewControllerSpec {
         @Min(0) @RequestParam(value = "offset", defaultValue = "0") final int offset,
         @Positive @Max(OffsetLimit.MAX_LIMIT) @RequestParam(value = "limit", defaultValue = "20") final int limit);
 
+    @Operation(summary = "리뷰 수 조회", description = "targetType과 targetId에 해당하는 활성 리뷰 수를 조회합니다. 소프트 삭제된 리뷰는 제외합니다.")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "리뷰 수 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "대상 입력 오류")})
+    ResponseEntity<ApiResponse<Long>> countReviews(@RequestParam("targetType") final ReviewTargetType targetType,
+        @Positive @RequestParam("targetId") final Long targetId);
+
 
     @Operation(summary = "리뷰 작성", description = "결제 완료한 주문상품에 리뷰를 작성합니다. 별점은 0.5~5.0 사이의 0.5 단위이며 본문은 최대 255자입니다.")
     @SecurityRequirement(name = "bearerAuth")

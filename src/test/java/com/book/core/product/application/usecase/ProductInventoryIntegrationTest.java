@@ -15,6 +15,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -77,8 +78,9 @@ class ProductInventoryIntegrationTest {
     }
 
     @Test
-    void 동시에_예약해도_판매_가능_수량을_넘지_않는다() throws Exception {
+    void 동시에_예약해도_판매_가능_수량을_넘지_않고_품절_임박_진입은_한_번만_판정한다() throws Exception {
         final long productId = insertProduct(5);
+        final AtomicInteger lowStockEntries = new AtomicInteger();
         final CountDownLatch start = new CountDownLatch(1);
         final List<Future<Boolean>> results = new ArrayList<>();
         try (ExecutorService executor = Executors.newFixedThreadPool(10)) {
@@ -86,7 +88,9 @@ class ProductInventoryIntegrationTest {
                 results.add(executor.submit((Callable<Boolean>) () -> {
                     start.await();
                     try {
-                        reserve.execute(quantities(productId, 1));
+                        if (!reserve.execute(quantities(productId, 1)).isEmpty()) {
+                            lowStockEntries.incrementAndGet();
+                        }
                         return true;
                     } catch (final CoreException exception) {
                         return false;
@@ -103,6 +107,20 @@ class ProductInventoryIntegrationTest {
             assertThat(reserved).isEqualTo(5);
         }
         assertThat(inventory(productId)).containsExactly(5, 5);
+        assertThat(lowStockEntries).hasValue(1);
+    }
+
+    @Test
+    void 예약_후_판매_가능_재고가_3개_이하로_처음_내려갈_때만_남은_수량을_반환한다() {
+        final long productId = insertProduct(5);
+
+        assertThat(reserve.execute(quantities(productId, 2))).containsExactly(Map.entry(productId, 3));
+        assertThat(reserve.execute(quantities(productId, 1))).isEmpty();
+        assertThat(reserve.execute(quantities(productId, 1))).isEmpty();
+        release.execute(quantities(productId, 3));
+        assertThat(reserve.execute(quantities(productId, 2))).containsExactly(Map.entry(productId, 2));
+
+        assertThat(inventory(productId)).containsExactly(5, 3);
     }
 
     @Test

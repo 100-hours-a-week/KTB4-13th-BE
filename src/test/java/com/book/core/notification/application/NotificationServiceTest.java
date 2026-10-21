@@ -1,6 +1,7 @@
 package com.book.core.notification.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +37,17 @@ class NotificationServiceTest {
         when(createUseCase.execute(command)).thenReturn(10L);
         assertThat(service.create(command)).isEqualTo(10L);
         verify(createUseCase).execute(command);
+    }
+
+    @Test
+    void 일괄_알림_저장은_한_건이_실패해도_다음_알림을_저장한다() {
+        final var first = new CreateNotificationCommand(42L, "제목", "본문");
+        final var second = new CreateNotificationCommand(43L, "제목", "본문");
+        when(createUseCase.execute(first)).thenThrow(new IllegalStateException("저장 실패"));
+
+        assertThatCode(() -> service.createAllAsync(List.of(first, second))).doesNotThrowAnyException();
+
+        verify(createUseCase).execute(second);
     }
 
     @Test

@@ -24,6 +24,11 @@ class ProductInventoryRepositoryAdapter implements ProductInventoryRepositoryPor
     }
 
     @Override
+    public int availableQuantity(final Long productId) {
+        return jpaRepository.findAvailableQuantity(productId);
+    }
+
+    @Override
     public boolean release(final Long productId, final int quantity) {
         return jpaRepository.release(productId, quantity) == 1;
     }

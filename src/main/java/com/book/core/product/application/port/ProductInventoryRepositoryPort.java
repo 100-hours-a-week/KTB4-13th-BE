@@ -1,9 +1,7 @@
 package com.book.core.product.application.port;
 
-import com.book.core.product.application.result.ProductInventoryReservationResult;
-
 public interface ProductInventoryRepositoryPort {
-    ProductInventoryReservationResult reserve(final Long productId, final int quantity);
+    boolean reserve(final Long productId, final int quantity);
 
     boolean release(final Long productId, final int quantity);
 

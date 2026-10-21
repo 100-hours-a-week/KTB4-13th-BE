@@ -44,15 +44,4 @@ class CreateNotificationUseCaseTest {
         assertThatThrownBy(() -> useCase.execute(new CreateNotificationCommand(42L, "제목", "본문")))
             .isInstanceOf(DataAccessResourceFailureException.class);
     }
-
-    @Test
-    void 이벤트_키가_있으면_중복_방지_저장을_사용한다() {
-        final var saved = new Notification(42L, "제목", "본문", "cart-low-stock:1:1:42");
-        ReflectionTestUtils.setField(saved, "id", 100L);
-        when(repository.saveIfAbsent(any())).thenReturn(saved);
-
-        assertThat(useCase.execute(new CreateNotificationCommand(42L, "제목", "본문", "cart-low-stock:1:1:42"))).isEqualTo(100L);
-
-        verify(repository).saveIfAbsent(any());
-    }
 }

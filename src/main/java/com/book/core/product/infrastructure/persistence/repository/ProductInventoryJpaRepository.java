@@ -17,14 +17,6 @@ interface ProductInventoryJpaRepository extends JpaRepository<ProductInventory, 
     Optional<ProductInventory> findForUpdate(@Param("productId") Long productId);
 
     @Query("""
-            select inventory.onHandQuantity - inventory.reservedQuantity as availableQuantity,
-                inventory.lowStockCycle as lowStockCycle
-            from ProductInventory inventory
-            where inventory.productId = :productId
-            """)
-    LowStockReservationProjection findLowStockReservation(@Param("productId") Long productId);
-
-    @Query("""
             select inventory.productId
             from ProductInventory inventory
             where inventory.onHandQuantity <= inventory.reorderPoint
@@ -35,18 +27,6 @@ interface ProductInventoryJpaRepository extends JpaRepository<ProductInventory, 
             order by inventory.productId
             """)
     List<Long> findRestockCandidateProductIds(@Param("pending") ProductRestockStatus pending);
-
-    @Modifying(flushAutomatically = true)
-    @Query("""
-            update ProductInventory inventory
-            set inventory.reservedQuantity = inventory.reservedQuantity + :quantity,
-                inventory.lowStockCycle = inventory.lowStockCycle + 1
-            where inventory.productId = :productId
-              and inventory.onHandQuantity - inventory.reservedQuantity >= :quantity
-              and inventory.onHandQuantity - inventory.reservedQuantity >= 3
-              and inventory.onHandQuantity - inventory.reservedQuantity - :quantity between 1 and 2
-            """)
-    int reserveAndStartLowStockCycle(@Param("productId") Long productId, @Param("quantity") int quantity);
 
     @Modifying(flushAutomatically = true)
     @Query("""
@@ -87,17 +67,9 @@ interface ProductInventoryJpaRepository extends JpaRepository<ProductInventory, 
 
     @Modifying
     @Query(value = """
-            INSERT IGNORE INTO product_inventory
-                (product_id, on_hand_quantity, reserved_quantity, reorder_point, target_stock, low_stock_cycle)
-            VALUES (:productId, :onHandQuantity, 0, :reorderPoint, :targetStock, 0)
+            INSERT IGNORE INTO product_inventory (product_id, on_hand_quantity, reserved_quantity, reorder_point, target_stock)
+            VALUES (:productId, :onHandQuantity, 0, :reorderPoint, :targetStock)
             """, nativeQuery = true)
     int insertIfMissing(@Param("productId") Long productId, @Param("onHandQuantity") int onHandQuantity,
         @Param("reorderPoint") int reorderPoint, @Param("targetStock") int targetStock);
-}
-
-
-interface LowStockReservationProjection {
-    int getAvailableQuantity();
-
-    long getLowStockCycle();
 }

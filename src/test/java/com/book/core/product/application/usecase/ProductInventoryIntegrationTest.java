@@ -103,34 +103,6 @@ class ProductInventoryIntegrationTest {
             assertThat(reserved).isEqualTo(5);
         }
         assertThat(inventory(productId)).containsExactly(5, 5);
-        assertThat(lowStockCycle(productId)).isEqualTo(1);
-    }
-
-    @Test
-    void 판매_가능_재고가_3개_이상에서_1개나_2개가_될_때만_새_부족_주기를_시작한다() {
-        final long productId = insertProduct(5);
-
-        assertThat(reserve.execute(quantities(productId, 3))).singleElement().satisfies(result -> {
-            assertThat(result.availableQuantity()).isEqualTo(2);
-            assertThat(result.lowStockCycle()).isEqualTo(1);
-        });
-        assertThat(reserve.execute(quantities(productId, 1))).isEmpty();
-        release.execute(quantities(productId, 4));
-        assertThat(reserve.execute(quantities(productId, 3))).singleElement()
-            .satisfies(result -> assertThat(result.lowStockCycle()).isEqualTo(2));
-
-        assertThat(inventory(productId)).containsExactly(5, 3);
-        assertThat(lowStockCycle(productId)).isEqualTo(2);
-    }
-
-    @Test
-    void 판매_가능_재고가_0개가_되면_부족_주기를_시작하지_않는다() {
-        final long productId = insertProduct(5);
-
-        assertThat(reserve.execute(quantities(productId, 5))).isEmpty();
-
-        assertThat(inventory(productId)).containsExactly(5, 5);
-        assertThat(lowStockCycle(productId)).isZero();
     }
 
     @Test
@@ -167,10 +139,6 @@ class ProductInventoryIntegrationTest {
     private List<Integer> inventory(final long productId) {
         return jdbc.queryForObject("SELECT on_hand_quantity, reserved_quantity FROM product_inventory WHERE product_id = ?",
             (final ResultSet resultSet, final int row) -> List.of(resultSet.getInt(1), resultSet.getInt(2)), productId);
-    }
-
-    private long lowStockCycle(final long productId) {
-        return jdbc.queryForObject("SELECT low_stock_cycle FROM product_inventory WHERE product_id = ?", Long.class, productId);
     }
 
     private static ProductQuantitiesCommand quantities(final long productId, final int quantity) {

@@ -184,10 +184,5 @@ class GetCartUseCaseTest {
             requestedCartId = cartId;
             return items;
         }
-
-        @Override
-        public List<Long> findActiveUserIdsByProductId(final Long productId) {
-            return List.of();
-        }
     }
 }

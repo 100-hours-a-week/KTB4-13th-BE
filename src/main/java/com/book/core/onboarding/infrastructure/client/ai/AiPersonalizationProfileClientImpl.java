@@ -22,7 +22,7 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
     private final RestClient restClient;
     private final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator;
 
-    public AiPersonalizationProfileClientImpl(@Qualifier("aiRestClient") final RestClient restClient,
+    public AiPersonalizationProfileClientImpl(@Qualifier("recommendationAiRestClient") final RestClient restClient,
         final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator) {
         this.restClient = restClient;
         this.idempotencyKeyGenerator = idempotencyKeyGenerator;

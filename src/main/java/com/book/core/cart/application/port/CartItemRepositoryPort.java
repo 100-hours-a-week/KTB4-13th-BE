@@ -19,4 +19,6 @@ public interface CartItemRepositoryPort {
     int countActiveByCartId(final Long cartId);
 
     List<CartItem> findActiveByCartId(final Long cartId);
+
+    List<Long> findActiveUserIdsByProductId(final Long productId);
 }

@@ -18,6 +18,12 @@ class NotificationRepositoryAdapter implements NotificationRepositoryPort {
     }
 
     @Override
+    public Notification saveIfAbsent(final Notification notification) {
+        jpaRepository.insertIfAbsent(notification.userId(), notification.title(), notification.body(), notification.eventKey());
+        return jpaRepository.findByEventKeyAndDeletedAtIsNull(notification.eventKey()).orElseThrow();
+    }
+
+    @Override
     public List<Notification> findRecentByUserId(final Long userId) {
         return jpaRepository.findTop20ByUserIdAndDeletedAtIsNullOrderByIdDesc(userId);
     }

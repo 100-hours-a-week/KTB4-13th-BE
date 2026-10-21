@@ -160,4 +160,5 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity INTEGER NOT NULL DE
 ALTER TABLE IF EXISTS product_inventory ALTER COLUMN reserved_quantity SET DEFAULT 0;
 ALTER TABLE IF EXISTS product_inventory ALTER COLUMN reorder_point SET DEFAULT 3;
 ALTER TABLE IF EXISTS product_inventory ALTER COLUMN target_stock SET DEFAULT 20;
+ALTER TABLE IF EXISTS product_inventory ALTER COLUMN low_stock_cycle SET DEFAULT 0;
 ALTER TABLE books ALTER COLUMN version SET DEFAULT 0;

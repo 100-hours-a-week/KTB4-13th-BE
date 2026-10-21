@@ -4,8 +4,11 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.containsStringIgnoringCase;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,6 +37,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -103,6 +108,16 @@ class CancelControllerTest {
             .andExpect(status().isUnauthorized());
         mvc.perform(post("/api/v1/partial-cancel").contentType(MediaType.APPLICATION_JSON)
             .content("{\"orderKey\":\"order\",\"orderItemId\":10,\"quantity\":1}")).andExpect(status().isUnauthorized());
+        verifyNoInteractions(cancelService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/cancel", "/api/v1/partial-cancel"})
+    void 전체와_부분취소의_CORS_preflight는_Idempotency_Key를_허용한다(final String path) throws Exception {
+        mvc.perform(options(path).header(HttpHeaders.ORIGIN, "http://localhost:5173")
+            .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, HttpMethod.POST.name())
+            .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization, Content-Type, Idempotency-Key")).andExpect(status().isOk())
+            .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, containsStringIgnoringCase("Idempotency-Key")));
         verifyNoInteractions(cancelService);
     }
 

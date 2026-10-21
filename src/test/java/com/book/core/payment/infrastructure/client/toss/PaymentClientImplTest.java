@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.payment.domain.enums.PaymentMethod;
+import com.book.core.payment.application.result.PgPaymentResult;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -36,9 +37,19 @@ class PaymentClientImplTest {
     }
 
     @Test
-    void 카드가_없는_간편결제는_지원수단으로_변환하지_않는다() {
+    void 카드가_없는_간편결제도_결제수단을_변환한다() {
         when(httpClient.find("test-key")).thenReturn(response("간편결제", null));
-        assertThat(client.find("test-key").method()).isNull();
+        final PgPaymentResult result = client.find("test-key");
+        assertThat(result.method()).isEqualTo(PaymentMethod.EASY_PAY);
+        assertThat(result.approveCode()).isNull();
+    }
+
+    @Test
+    void 카드_기반_간편결제는_카드_승인번호를_보존한다() {
+        when(httpClient.find("test-key")).thenReturn(response("간편결제", new TossPaymentResponse.Card("12345678")));
+        final PgPaymentResult result = client.find("test-key");
+        assertThat(result.method()).isEqualTo(PaymentMethod.EASY_PAY);
+        assertThat(result.approveCode()).isEqualTo("12345678");
     }
 
     @Test

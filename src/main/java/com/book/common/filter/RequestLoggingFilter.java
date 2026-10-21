@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * API 요청의 수명주기(응답 시간, 상태 코드)를 로깅하는 필터입니다. RequestMdcFilter 이후에 실행되어 MDC 컨텍스트(requestId)를 활용합니다.
+ * API 요청 처리 결과를 기록하며, 요청 정보는 구조화된 로그에 MDC 필드로 전달합니다.
  */
 @Component
 public class RequestLoggingFilter extends OncePerRequestFilter {
@@ -24,14 +24,16 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
-            final long duration = (System.nanoTime() - startTime) / 1_000_000;
-            MDC.put("requestDuration", Long.toString(duration));
+            final long requestDurationMs = (System.nanoTime() - startTime) / 1_000_000;
+            MDC.put("requestDurationMs", Long.toString(requestDurationMs));
             MDC.put("responseStatus", String.valueOf(response.getStatus()));
-            LOGGER.info("HTTP request completed method={} uri={} status={} durationMs={}", request.getMethod(), request.getRequestURI(),
-                response.getStatus(), duration);
-
-            MDC.remove("requestDuration");
-            MDC.remove("responseStatus");
+            try {
+                LOGGER.info("[HTTP_REQUEST] 요청 처리가 완료되었습니다. method={} uri={} status={} requestDurationMs={}", request.getMethod(),
+                    request.getRequestURI(), response.getStatus(), requestDurationMs);
+            } finally {
+                MDC.remove("requestDurationMs");
+                MDC.remove("responseStatus");
+            }
         }
     }
 

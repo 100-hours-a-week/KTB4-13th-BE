@@ -12,6 +12,7 @@ import com.book.core.payment.application.result.ApprovedPaymentResult;
 import com.book.core.payment.application.result.PgPaymentResult;
 import com.book.core.payment.application.result.PaymentCompletionResult;
 import com.book.core.payment.domain.PgOperation;
+import com.book.core.payment.domain.enums.PaymentMethod;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,15 +46,12 @@ public class ApprovePgPaymentUseCase {
                 throw new CoreException(ErrorCode.PG_PENDING);
             }
             if (status == TossPaymentStatus.IN_PROGRESS) {
-                if (result.method() == null) {
-                    throw new CoreException(ErrorCode.PG_REJECTED);
-                }
                 result = client.approve(command.externalPaymentKey(), command.orderKey(), command.amount(), operation.pgIdempotencyKey());
                 verify(command, result);
                 status = TossPaymentStatus.from(result.status());
             }
             if (status != TossPaymentStatus.DONE || result.balanceAmount().compareTo(command.amount()) != 0 || result.method() == null
-                || result.approveCode() == null || result.approveCode().isBlank()) {
+                || (result.method() == PaymentMethod.CARD && (result.approveCode() == null || result.approveCode().isBlank()))) {
                 throw new CoreException(ErrorCode.PG_RESPONSE_MISMATCH);
             }
             approval = new ApprovedPaymentResult(result.paymentKey(), result.method(), result.approveCode());

@@ -89,10 +89,17 @@ public class OnboardingService {
                 return;
             } catch (final TransientDataAccessException | DuplicateKeyException exception) {
                 if (attempt == LIBRARY_ADD_MAX_ATTEMPTS) {
-                    log.error("온보딩 도서의 나의 도서관 추가에 실패했습니다. userId={}, attempts={}", userId, attempt, exception);
+                    log.atError().addKeyValue("userId", userId).log("[ONBOARDING] 온보딩 도서의 나의 도서관 추가에 실패했습니다. userId={}, attempts={}",
+                        userId, attempt, exception);
                 }
-            } catch (final CoreException | DataAccessException | TransactionException exception) {
-                log.error("온보딩 도서의 나의 도서관 추가에 실패했습니다. userId={}, attempts={}", userId, attempt, exception);
+            } catch (final CoreException exception) {
+                log.atError().addKeyValue("userId", userId).log(
+                    "[ONBOARDING] 온보딩 도서의 나의 도서관 추가에 실패했습니다. userId={}, attempts={}, errorCode={}", userId, attempt,
+                    exception.errorCode().name());
+                return;
+            } catch (final DataAccessException | TransactionException exception) {
+                log.atError().addKeyValue("userId", userId).log("[ONBOARDING] 온보딩 도서의 나의 도서관 추가에 실패했습니다. userId={}, attempts={}", userId,
+                    attempt, exception);
                 return;
             }
         }
@@ -101,16 +108,22 @@ public class OnboardingService {
     private void createPersonalizationProfile(final Long userId) {
         try {
             personalizationProfileUseCase.execute(userId);
-        } catch (final CoreException | DataAccessException | TransactionException exception) {
-            log.warn("AI 취향 프로필 생성에 실패했습니다. userId={}", userId, exception);
+        } catch (final CoreException exception) {
+            log.atWarn().addKeyValue("userId", userId).log("[ONBOARDING] AI 취향 프로필 생성에 실패했습니다. userId={}, errorCode={}", userId,
+                exception.errorCode().name());
+        } catch (final DataAccessException | TransactionException exception) {
+            log.atWarn().addKeyValue("userId", userId).log("[ONBOARDING] AI 취향 프로필 생성에 실패했습니다. userId={}", userId, exception);
         }
     }
 
     private void updatePersonalizationProfile(final Long userId) {
         try {
             personalizationProfileUseCase.executeUpdate(userId);
-        } catch (final CoreException | DataAccessException | TransactionException exception) {
-            log.warn("AI 취향 프로필 갱신에 실패했습니다. userId={}", userId, exception);
+        } catch (final CoreException exception) {
+            log.atWarn().addKeyValue("userId", userId).log("[ONBOARDING] AI 취향 프로필 갱신에 실패했습니다. userId={}, errorCode={}", userId,
+                exception.errorCode().name());
+        } catch (final DataAccessException | TransactionException exception) {
+            log.atWarn().addKeyValue("userId", userId).log("[ONBOARDING] AI 취향 프로필 갱신에 실패했습니다. userId={}", userId, exception);
         }
     }
 }

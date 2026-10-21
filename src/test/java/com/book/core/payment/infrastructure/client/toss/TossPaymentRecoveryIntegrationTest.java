@@ -49,6 +49,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -112,6 +114,49 @@ class TossPaymentRecoveryIntegrationTest {
     private CancelPaymentUseCase completeCancel;
     @MockitoSpyBean
     private PostProcessPaymentUseCase postProcessPayment;
+
+    @Test
+    void 승인전_카드정보가_없어도_승인후_주문과_결제를_완료한다() {
+        final Fixture fixture = fixture(false, 1);
+        final var command = new ApprovePaymentCommand(fixture.order().key(), fixture.key(), fixture.pg().total);
+
+        final Long paymentId = payments.success(command);
+
+        final Payment payment = paymentRepository.findById(paymentId).orElseThrow();
+        assertThat(payment.state()).isEqualTo(PaymentState.SUCCESS);
+        assertThat(payment.method()).isEqualTo(PaymentMethod.CARD);
+        assertThat(payment.approveCode()).isEqualTo("12345678");
+        assertThat(orders.findActiveOrderByKey(fixture.order().key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
+        assertThat(payments.success(command)).isEqualTo(paymentId);
+        assertThat(fixture.pg().approvals).isEqualTo(1);
+        assertThat(pending(fixture)).isZero();
+        assertThat(points.findByUserId(fixture.order().userId()).orElseThrow().balance()).isEqualByComparingTo("22000");
+        assertThat(jdbc.queryForObject("select count(*) from transaction_history where order_id = ? and type = 'PAYMENT'", Long.class,
+            fixture.order().id())).isEqualTo(1L);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 카드정보_없는_간편결제는_승인과_기승인_복구후_중복_반영하지_않는다(final boolean alreadyApproved) {
+        final Fixture fixture = fixture(false, 1);
+        fixture.pg().cardlessEasyPay = true;
+        fixture.pg().paid = alreadyApproved;
+        final ApprovePaymentCommand command = new ApprovePaymentCommand(fixture.order().key(), fixture.key(), fixture.pg().total);
+
+        final Long paymentId = payments.success(command);
+
+        final Payment payment = paymentRepository.findById(paymentId).orElseThrow();
+        assertThat(payment.state()).isEqualTo(PaymentState.SUCCESS);
+        assertThat(payment.method()).isEqualTo(PaymentMethod.EASY_PAY);
+        assertThat(payment.approveCode()).isNull();
+        assertThat(orders.findActiveOrderByKey(fixture.order().key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
+        assertThat(payments.success(command)).isEqualTo(paymentId);
+        assertThat(fixture.pg().approvals).isEqualTo(alreadyApproved ? 0 : 1);
+        assertThat(pending(fixture)).isZero();
+        assertThat(points.findByUserId(fixture.order().userId()).orElseThrow().balance()).isEqualByComparingTo("22000");
+        assertThat(jdbc.queryForObject("select count(*) from transaction_history where order_id = ? and type = 'PAYMENT'", Long.class,
+            fixture.order().id())).isEqualTo(1L);
+    }
 
     @Test
     void 승인_성공후_DB실패는_요청을_보존하고_조회로_내부_반영을_복구한다() {
@@ -379,6 +424,7 @@ class TossPaymentRecoveryIntegrationTest {
         private final BigDecimal total;
         private BigDecimal balance;
         private boolean paid;
+        private boolean cardlessEasyPay;
         private String terminalState;
         private int approvals;
         private int refunds;
@@ -408,8 +454,10 @@ class TossPaymentRecoveryIntegrationTest {
             if (terminalState != null) {
                 state = terminalState;
             }
+            final String method = cardlessEasyPay ? "간편결제" : "카드";
+            final String card = paid && !cardlessEasyPay ? "{\"approveNo\":\"12345678\"}" : "null";
             return "{\"paymentKey\":\"" + key + "\",\"orderId\":\"" + orderKey + "\",\"totalAmount\":" + total + ",\"balanceAmount\":"
-                + balance + ",\"status\":\"" + state + "\",\"method\":\"카드\",\"card\":{\"approveNo\":\"12345678\"},\"cancels\":["
+                + balance + ",\"status\":\"" + state + "\",\"method\":\"" + method + "\",\"card\":" + card + ",\"cancels\":["
                 + String.join(",", cancellations) + "]}";
         }
     }

@@ -19,9 +19,9 @@ final class TossPaymentExternalMapper {
         if (response.card() != null && "카드".equals(response.method())) {
             method = PaymentMethod.CARD;
             approveCode = response.card().approveNo();
-        } else if (response.card() != null && "간편결제".equals(response.method())) {
+        } else if ("간편결제".equals(response.method())) {
             method = PaymentMethod.EASY_PAY;
-            approveCode = response.card().approveNo();
+            approveCode = response.card() == null ? null : response.card().approveNo();
         }
         List<PgPaymentResult.Cancellation> cancellations = List.of();
         if (response.cancels() != null) {

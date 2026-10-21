@@ -12,8 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * API 요청에 대한 MDC(Mapped Diagnostic Context)를 설정하는 필터입니다. 이 필터는 요청 ID, HTTP 메서드, 요청 URI, 클라이언트 IP
- * 주소를 MDC에 추가하여 로깅에 활용할 수 있도록 합니다.
+ * API 요청에 대한 MDC(Mapped Diagnostic Context)를 설정하는 필터입니다. 요청 ID, HTTP 메서드, 요청 URI를 로깅에 활용합니다.
  */
 @Component
 public class RequestMdcFilter extends OncePerRequestFilter {
@@ -21,7 +20,6 @@ public class RequestMdcFilter extends OncePerRequestFilter {
     public static final String REQUEST_ID_MDC_KEY = "requestId";
     public static final String REQUEST_METHOD_MDC_KEY = "requestMethod";
     public static final String REQUEST_URI_MDC_KEY = "requestUri";
-    public static final String CLIENT_IP_MDC_KEY = "clientIp";
 
     @Override
     protected void doFilterInternal(final HttpServletRequest request, final HttpServletResponse response, final FilterChain filterChain)
@@ -31,13 +29,11 @@ public class RequestMdcFilter extends OncePerRequestFilter {
         MDC.put(REQUEST_ID_MDC_KEY, requestId);
         MDC.put(REQUEST_METHOD_MDC_KEY, request.getMethod());
         MDC.put(REQUEST_URI_MDC_KEY, request.getRequestURI());
-        MDC.put(CLIENT_IP_MDC_KEY, request.getRemoteAddr());
 
         try {
             response.setHeader(REQUEST_ID_HEADER, requestId);
             filterChain.doFilter(request, response);
         } finally {
-            MDC.remove(CLIENT_IP_MDC_KEY);
             MDC.remove(REQUEST_URI_MDC_KEY);
             MDC.remove(REQUEST_METHOD_MDC_KEY);
             MDC.remove(REQUEST_ID_MDC_KEY);

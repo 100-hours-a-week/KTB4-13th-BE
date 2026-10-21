@@ -20,6 +20,6 @@ public class CompleteSettlementTransferUseCase {
         final List<Settlement> entities = settlementRepository.findAllById(settlements.stream().map(Settlement::id).toList());
         entities.forEach(Settlement::sent);
         settlementRepository.saveAll(entities);
-        log.debug("정산 지급 상태 변경 요청 count: {}", entities.size());
+        log.debug("[SETTLEMENT] 정산 지급 상태 변경 요청 count: {}", entities.size());
     }
 }

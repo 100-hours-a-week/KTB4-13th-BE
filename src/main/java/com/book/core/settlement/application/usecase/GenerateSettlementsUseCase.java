@@ -32,7 +32,7 @@ public class GenerateSettlementsUseCase {
                 calculated.feeRate(), calculated.settlementAmount(), SettlementState.READY);
         }).toList();
         settlementRepository.saveAll(settlements);
-        log.debug("정산 저장 요청 count: {}", settlements.size());
+        log.debug("[SETTLEMENT] 정산 저장 요청 count: {}", settlements.size());
         return settlements.size();
     }
 }

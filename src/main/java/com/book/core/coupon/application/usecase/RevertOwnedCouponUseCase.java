@@ -3,12 +3,10 @@ package com.book.core.coupon.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.common.filter.RequestMdcFilter;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.OwnedCoupon;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
@@ -25,16 +23,17 @@ public class RevertOwnedCouponUseCase {
      */
     @Transactional
     public void execute(final Long ownedCouponId) {
-        log.debug("쿠폰 복원 처리를 시작합니다. ownedCouponId={}, requestId={}", ownedCouponId, MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
+        log.atDebug().addKeyValue("ownedCouponId", ownedCouponId).log("[OWNED_COUPON] 쿠폰 복원 처리를 시작합니다. ownedCouponId={}", ownedCouponId);
         final OwnedCoupon ownedCoupon =
             ownedCouponRepository.findById(ownedCouponId).orElseThrow(() -> new CoreException(ErrorCode.OWNED_COUPON_INVALID));
 
         if (ownedCoupon.isUnused()) {
-            log.error("[OWNED_COUPON] 비정상적인 쿠폰 복원- 미사용 쿠폰 복원 시도 ownedCouponId={}", ownedCouponId);
+            log.atError().addKeyValue("ownedCouponId", ownedCouponId).log("[OWNED_COUPON] 비정상적인 쿠폰 복원 - 미사용 쿠폰 복원 시도 ownedCouponId={}",
+                ownedCouponId);
             throw new CoreException(ErrorCode.OWNED_COUPON_INVALID_USAGE);
         }
 
         ownedCoupon.revert();
-        log.info("쿠폰 복원 처리를 마쳤습니다. ownedCouponId={}, requestId={}", ownedCouponId, MDC.get(RequestMdcFilter.REQUEST_ID_MDC_KEY));
+        log.atInfo().addKeyValue("ownedCouponId", ownedCouponId).log("[OWNED_COUPON] 쿠폰 복원 처리를 마쳤습니다. ownedCouponId={}", ownedCouponId);
     }
 }

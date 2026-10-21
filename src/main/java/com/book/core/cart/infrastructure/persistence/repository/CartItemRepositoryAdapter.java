@@ -47,9 +47,4 @@ public class CartItemRepositoryAdapter implements CartItemRepositoryPort {
     public List<CartItem> findActiveByCartId(final Long cartId) {
         return jpaRepository.findByCartIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(cartId);
     }
-
-    @Override
-    public List<Long> findActiveUserIdsByProductId(final Long productId) {
-        return jpaRepository.findActiveUserIdsByProductId(productId);
-    }
 }

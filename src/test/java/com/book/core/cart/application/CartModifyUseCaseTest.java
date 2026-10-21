@@ -214,10 +214,5 @@ class CartModifyUseCaseTest {
         public List<CartItem> findActiveByCartId(final Long cartId) {
             return List.of();
         }
-
-        @Override
-        public List<Long> findActiveUserIdsByProductId(final Long productId) {
-            return List.of();
-        }
     }
 }

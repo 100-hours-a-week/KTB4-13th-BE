@@ -1,7 +1,6 @@
 package com.book.core.order.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -17,7 +16,6 @@ import com.book.core.address.application.usecase.GetAddressUseCase;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
-import com.book.core.notification.application.service.NotificationService;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
@@ -37,7 +35,6 @@ import com.book.core.order.domain.Order;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.command.ProductQuantitiesCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
-import com.book.core.product.application.result.LowStockReservationResult;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.application.usecase.ReleaseProductInventoryUseCase;
 import com.book.core.product.application.usecase.ReserveProductInventoryUseCase;
@@ -50,9 +47,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.core.task.TaskRejectedException;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 class OrderServiceTest {
     private final GetAddressUseCase getAddressUseCase = mock(GetAddressUseCase.class);
@@ -66,10 +60,9 @@ class OrderServiceTest {
     private final ReleaseProductInventoryUseCase releaseProductInventoryUseCase = mock(ReleaseProductInventoryUseCase.class);
     private final GetReservedOrderQuantitiesUseCase getReservedOrderQuantitiesUseCase = mock(GetReservedOrderQuantitiesUseCase.class);
     private final ExpireOrderUseCase expireOrderUseCase = mock(ExpireOrderUseCase.class);
-    private final NotificationService notificationService = mock(NotificationService.class);
     private final OrderService service = new OrderService(getAddressUseCase, getCartUseCase, getProductDetailUseCase, createOrderUseCase,
         cancelOrderUseCase, getOrdersUseCase, getOrderDetailUseCase, reserveProductInventoryUseCase, releaseProductInventoryUseCase,
-        getReservedOrderQuantitiesUseCase, mock(GetExpiredOrderKeysUseCase.class), expireOrderUseCase, notificationService);
+        getReservedOrderQuantitiesUseCase, mock(GetExpiredOrderKeysUseCase.class), expireOrderUseCase);
 
     @BeforeEach
     void setUp() {
@@ -123,22 +116,6 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.createOrder(command(new CreateOrderItemCommand(701L, 2)))).isInstanceOf(CoreException.class);
         verifyNoInteractions(createOrderUseCase);
-    }
-
-    @Test
-    void 커밋_후_알림_작업_등록에_실패해도_주문_응답에_영향을_주지_않는다() {
-        when(reserveProductInventoryUseCase.execute(any())).thenReturn(List.of(new LowStockReservationResult(701L, 2, 1L, List.of(7L))));
-        doThrow(new TaskRejectedException("거절")).when(notificationService).createAllAsync(any());
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            service.createOrder(command(new CreateOrderItemCommand(701L, 2)));
-
-            assertThatCode(() -> TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit))
-                .doesNotThrowAnyException();
-            verify(notificationService).createAllAsync(any());
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
     }
 
     @Test

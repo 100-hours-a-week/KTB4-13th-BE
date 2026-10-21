@@ -61,18 +61,6 @@ class NotificationRepositoryIntegrationTest {
     }
 
     @Test
-    void 같은_이벤트_키는_한_번만_저장한다() {
-        final var command = new CreateNotificationCommand(42L, "제목", "본문", "cart-low-stock:1:1:42");
-
-        final Long firstId = createUseCase.execute(command);
-        final Long secondId = createUseCase.execute(command);
-
-        assertThat(secondId).isEqualTo(firstId);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE event_key = ?", Integer.class, command.eventKey()))
-            .isEqualTo(1);
-    }
-
-    @Test
     void 최근_20개를_ID_역순으로_조회하고_전체_미읽음을_집계한다() {
         final Long userId = 10001L;
         for (int i = 0; i < 25; i++) {

@@ -3,6 +3,7 @@ package com.book.core.review.api.converter;
 import com.book.core.review.api.request.AddReviewRequest;
 import com.book.core.review.api.request.UpdateReviewRequest;
 import com.book.core.review.application.command.AddReviewCommand;
+import com.book.core.review.application.command.GetReviewCountCommand;
 import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.core.review.application.command.RemoveReviewCommand;
 import com.book.core.review.application.command.UpdateReviewCommand;
@@ -17,6 +18,10 @@ public class ReviewCommandConverter {
     public GetReviewsCommand toGetReviewsCommand(final ReviewTargetType targetType, final Long targetId, final int offset,
         final int limit) {
         return new GetReviewsCommand(new ReviewTarget(targetType, targetId), new OffsetLimit(offset, limit));
+    }
+
+    public GetReviewCountCommand toGetReviewCountCommand(final ReviewTargetType targetType, final Long targetId) {
+        return new GetReviewCountCommand(new ReviewTarget(targetType, targetId));
     }
 
     public AddReviewCommand toAddReviewCommand(final Long userId, final AddReviewRequest request) {

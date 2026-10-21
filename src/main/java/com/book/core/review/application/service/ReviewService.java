@@ -5,6 +5,7 @@ import com.book.core.point.application.usecase.DeductPointUseCase;
 import com.book.core.point.application.usecase.EarnPointUseCase;
 import com.book.core.point.domain.enums.PointType;
 import com.book.core.review.application.command.AddReviewCommand;
+import com.book.core.review.application.command.GetReviewCountCommand;
 import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.core.review.application.command.RemoveReviewCommand;
 import com.book.core.review.application.command.UpdateReviewCommand;
@@ -14,6 +15,7 @@ import com.book.core.review.application.result.ReviewProcessResult;
 import com.book.core.review.application.usecase.AddReviewUseCase;
 import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.GetReviewsUseCase;
+import com.book.core.review.application.usecase.GetReviewCountUseCase;
 import com.book.core.review.application.usecase.UpdateReviewUseCase;
 import com.book.core.review.application.usecase.ValidateReviewPolicyUseCase;
 import com.book.core.review.domain.ReviewFormat;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ReviewService {
     private final GetReviewsUseCase getReviewsUseCase;
+    private final GetReviewCountUseCase getReviewCountUseCase;
     private final AddReviewUseCase addReviewUseCase;
     private final UpdateReviewUseCase updateReviewUseCase;
     private final DeleteReviewUseCase deleteReviewUseCase;
@@ -37,6 +40,10 @@ public class ReviewService {
 
     public Page<ReviewItemResult> findReviews(final GetReviewsCommand command) {
         return getReviewsUseCase.execute(command.target(), command.offsetLimit());
+    }
+
+    public long countReviews(final GetReviewCountCommand command) {
+        return getReviewCountUseCase.execute(command.target());
     }
 
     @Transactional

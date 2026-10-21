@@ -24,6 +24,7 @@ import com.book.core.review.application.result.ReviewItemResult;
 import com.book.core.review.domain.enums.ReviewTargetType;
 import java.util.List;
 import com.book.core.review.application.command.AddReviewCommand;
+import com.book.core.review.application.command.GetReviewCountCommand;
 import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.core.review.application.command.RemoveReviewCommand;
 import com.book.core.review.application.command.UpdateReviewCommand;
@@ -191,6 +192,27 @@ class ReviewControllerTest {
 
         mvc.perform(get("/api/v1/reviews").param("targetType", "PRODUCT").param("targetId", "10")).andExpect(status().isOk())
             .andExpect(jsonPath("$.data.content").isEmpty()).andExpect(jsonPath("$.data.hasNext").value(false));
+    }
+
+    @Test
+    void 대상별_활성_리뷰_수를_공통_응답으로_반환한다() throws Exception {
+        final ReviewTarget target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
+        final GetReviewCountCommand command = new GetReviewCountCommand(target);
+        when(reviewService.countReviews(command)).thenReturn(2L);
+
+        mvc.perform(get("/api/v1/reviews/count").param("targetType", "PRODUCT").param("targetId", "10")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").value(2));
+
+        verify(reviewService).countReviews(command);
+    }
+
+    @Test
+    void 리뷰_수_조회에서_잘못된_대상_입력은_Service를_호출하지_않는다() throws Exception {
+        mvc.perform(get("/api/v1/reviews/count").param("targetType", "UNKNOWN").param("targetId", "10")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/reviews/count").param("targetType", "PRODUCT").param("targetId", "0")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/reviews/count").param("targetType", "PRODUCT")).andExpect(status().isBadRequest());
+
+        verifyNoInteractions(reviewService);
     }
 
     @Test

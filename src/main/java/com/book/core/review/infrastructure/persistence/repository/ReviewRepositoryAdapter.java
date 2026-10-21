@@ -23,6 +23,11 @@ public class ReviewRepositoryAdapter implements ReviewRepositoryPort {
     }
 
     @Override
+    public long countActiveReviews(final ReviewTarget target) {
+        return jpaRepository.countByTargetTypeAndTargetIdAndDeletedAtIsNull(target.type(), target.id());
+    }
+
+    @Override
     public List<String> findUsedReviewKeys(final Long userId, final List<String> reviewKeys) {
         return jpaRepository.findByUserIdAndReviewKeyIn(userId, reviewKeys).stream().map(Review::reviewKey).toList();
     }

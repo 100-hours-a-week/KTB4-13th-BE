@@ -10,6 +10,7 @@ import com.book.core.review.api.response.ReviewResponse;
 import com.book.core.review.api.spec.ReviewControllerSpec;
 import com.book.common.paging.Page;
 import com.book.core.review.application.command.AddReviewCommand;
+import com.book.core.review.application.command.GetReviewCountCommand;
 import com.book.core.review.application.command.RemoveReviewCommand;
 import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.core.review.application.command.UpdateReviewCommand;
@@ -49,6 +50,15 @@ class ReviewController implements ReviewControllerSpec {
         final Page<ReviewItemResult> result = reviewService.findReviews(command);
         final PageResponse<ReviewResponse> response = resultConverter.toResponse(result, userId);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Override
+    @GetMapping("/count")
+    public ResponseEntity<ApiResponse<Long>> countReviews(@RequestParam("targetType") final ReviewTargetType targetType,
+        @RequestParam("targetId") final Long targetId) {
+        final GetReviewCountCommand command = commandConverter.toGetReviewCountCommand(targetType, targetId);
+        final Long result = reviewService.countReviews(command);
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     @Override

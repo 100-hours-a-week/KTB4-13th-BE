@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +17,7 @@ import com.book.core.point.application.usecase.DeductPointUseCase;
 import com.book.core.point.application.usecase.EarnPointUseCase;
 import com.book.core.point.domain.enums.PointType;
 import com.book.core.review.application.command.AddReviewCommand;
+import com.book.core.review.application.command.GetReviewCountCommand;
 import com.book.core.review.application.command.GetReviewsCommand;
 import com.book.core.review.application.command.RemoveReviewCommand;
 import com.book.core.review.application.command.UpdateReviewCommand;
@@ -24,6 +26,7 @@ import com.book.core.review.application.result.ReviewItemResult;
 import com.book.core.review.application.usecase.AddReviewUseCase;
 import com.book.core.review.application.usecase.DeleteReviewUseCase;
 import com.book.core.review.application.usecase.GetReviewsUseCase;
+import com.book.core.review.application.usecase.GetReviewCountUseCase;
 import com.book.core.review.application.usecase.UpdateReviewUseCase;
 import com.book.core.review.application.usecase.ValidateReviewPolicyUseCase;
 import com.book.core.review.domain.ReviewContent;
@@ -37,6 +40,7 @@ import org.junit.jupiter.api.Test;
 
 class ReviewServiceTest {
     private final GetReviewsUseCase getReviews = mock(GetReviewsUseCase.class);
+    private final GetReviewCountUseCase getReviewCount = mock(GetReviewCountUseCase.class);
     private final AddReviewUseCase addReview = mock(AddReviewUseCase.class);
     private final UpdateReviewUseCase updateReview = mock(UpdateReviewUseCase.class);
     private final DeleteReviewUseCase deleteReview = mock(DeleteReviewUseCase.class);
@@ -44,8 +48,8 @@ class ReviewServiceTest {
     private final ReviewHistoryRecorder historyRecorder = mock(ReviewHistoryRecorder.class);
     private final EarnPointUseCase earnPoint = mock(EarnPointUseCase.class);
     private final DeductPointUseCase deductPoint = mock(DeductPointUseCase.class);
-    private final ReviewService service =
-        new ReviewService(getReviews, addReview, updateReview, deleteReview, validateReviewPolicy, historyRecorder, earnPoint, deductPoint);
+    private final ReviewService service = new ReviewService(getReviews, getReviewCount, addReview, updateReview, deleteReview,
+        validateReviewPolicy, historyRecorder, earnPoint, deductPoint);
     private final ReviewTarget target = new ReviewTarget(ReviewTargetType.PRODUCT, 10L);
     private final ReviewContent content = new ReviewContent(new BigDecimal("4.5"), "본문", false);
     private final AddReviewCommand addCommand = new AddReviewCommand(42L, target, content);
@@ -58,7 +62,17 @@ class ReviewServiceTest {
         final Page<ReviewItemResult> result = new Page<>(List.of(), false);
         when(getReviews.execute(target, paging)).thenReturn(result);
         assertThat(service.findReviews(new GetReviewsCommand(target, paging))).isSameAs(result);
-        verifyNoInteractions(addReview, updateReview, deleteReview, validateReviewPolicy, historyRecorder, earnPoint, deductPoint);
+        verifyNoInteractions(getReviewCount, addReview, updateReview, deleteReview, validateReviewPolicy, historyRecorder, earnPoint,
+            deductPoint);
+    }
+
+    @Test
+    void 리뷰_수_조회_Command에서_대상을_꺼내_UseCase에_전달한다() {
+        when(getReviewCount.execute(target)).thenReturn(2L);
+
+        assertThat(service.countReviews(new GetReviewCountCommand(target))).isEqualTo(2L);
+
+        verify(getReviewCount).execute(target);
     }
 
     @Test

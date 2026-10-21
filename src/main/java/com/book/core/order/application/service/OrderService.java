@@ -6,6 +6,9 @@ import com.book.core.address.application.result.GetAddressItemResult;
 import com.book.core.address.application.usecase.GetAddressUseCase;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
+import com.book.core.cart.application.usecase.GetCartUserIdsByProductIdUseCase;
+import com.book.core.notification.application.command.CreateNotificationCommand;
+import com.book.core.notification.application.service.NotificationService;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
@@ -31,22 +34,28 @@ import com.book.core.product.application.usecase.ReleaseProductInventoryUseCase;
 import com.book.core.product.application.usecase.ReserveProductInventoryUseCase;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
     private static final Duration RESERVATION_DURATION = Duration.ofMinutes(10);
 
     private final GetAddressUseCase getAddressUseCase;
     private final GetCartUseCase getCartUseCase;
+    private final GetCartUserIdsByProductIdUseCase getCartUserIdsByProductIdUseCase;
     private final GetProductDetailUseCase getProductDetailUseCase;
     private final CreateOrderUseCase createOrderUseCase;
     private final CancelOrderUseCase cancelOrderUseCase;
@@ -57,6 +66,7 @@ public class OrderService {
     private final GetReservedOrderQuantitiesUseCase getReservedOrderQuantitiesUseCase;
     private final GetExpiredOrderKeysUseCase getExpiredOrderKeysUseCase;
     private final ExpireOrderUseCase expireOrderUseCase;
+    private final NotificationService notificationService;
 
     public GetOrdersResult getOrders(final GetOrdersCommand command) {
         return getOrdersUseCase.execute(command);
@@ -115,8 +125,41 @@ public class OrderService {
             order.addItem(item.productId(), product.itemName(), product.thumbnailUrl(), product.author(), product.salePrice(),
                 product.discountedPrice(), item.quantity());
         }
-        reserveProductInventoryUseCase.execute(new ProductQuantitiesCommand(order.reservedQuantities()));
-        return createOrderUseCase.execute(order);
+        final Map<Long, Integer> lowStockQuantitiesByProductId =
+            reserveProductInventoryUseCase.execute(new ProductQuantitiesCommand(order.reservedQuantities()));
+        final CreateOrderResult result = createOrderUseCase.execute(order);
+        notifyLowStockAfterCommit(command.userId(), lowStockQuantitiesByProductId, productsByProductId);
+        return result;
+    }
+
+    private void notifyLowStockAfterCommit(final Long orderUserId, final Map<Long, Integer> lowStockQuantitiesByProductId,
+        final Map<Long, GetProductDetailResult> productsByProductId) {
+        final List<CreateNotificationCommand> commands = new ArrayList<>();
+        lowStockQuantitiesByProductId.forEach((final Long productId, final Integer availableQuantity) -> {
+            final String itemName = productsByProductId.get(productId).itemName();
+            final String title = availableQuantity == 0 ? "장바구니 상품 품절" : "장바구니 상품 품절 임박";
+            final String body = availableQuantity == 0 ? "장바구니에 담아둔 '" + itemName + "'의 재고가 모두 소진됐어요."
+                : "장바구니에 담아둔 '" + itemName + "'의 재고가 " + availableQuantity + "권 남았어요.";
+            for (final Long userId : getCartUserIdsByProductIdUseCase.execute(productId)) {
+                if (!userId.equals(orderUserId)) {
+                    commands.add(new CreateNotificationCommand(userId, title, body));
+                }
+            }
+        });
+        if (commands.isEmpty()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    notificationService.createAllAsync(commands);
+                } catch (final RuntimeException exception) {
+                    log.atError().addKeyValue("notificationCount", commands.size())
+                        .log("[ORDER] 품절 임박 알림 작업 등록에 실패했습니다. notificationCount={}", commands.size(), exception);
+                }
+            }
+        });
     }
 
     private void release(final Map<Long, Integer> quantities) {

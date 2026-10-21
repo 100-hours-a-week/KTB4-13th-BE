@@ -24,6 +24,7 @@ public class ProductInventory {
     public static final int INITIAL_ON_HAND_QUANTITY = 20;
     public static final int DEFAULT_REORDER_POINT = 3;
     public static final int DEFAULT_TARGET_STOCK = 20;
+    public static final int LOW_STOCK_QUANTITY = 3;
 
     @Id
     @Column(name = "product_id")
@@ -66,5 +67,9 @@ public class ProductInventory {
 
     public int restockQuantity() {
         return targetStock - onHandQuantity;
+    }
+
+    public static boolean entersLowStock(final int availableBefore, final int availableAfter) {
+        return availableBefore > LOW_STOCK_QUANTITY && availableAfter <= LOW_STOCK_QUANTITY;
     }
 }

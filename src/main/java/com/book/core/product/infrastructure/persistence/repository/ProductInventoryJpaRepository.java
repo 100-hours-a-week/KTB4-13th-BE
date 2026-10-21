@@ -37,6 +37,13 @@ interface ProductInventoryJpaRepository extends JpaRepository<ProductInventory, 
             """)
     int reserve(@Param("productId") Long productId, @Param("quantity") int quantity);
 
+    @Query("""
+            select inventory.onHandQuantity - inventory.reservedQuantity
+            from ProductInventory inventory
+            where inventory.productId = :productId
+            """)
+    int findAvailableQuantity(@Param("productId") Long productId);
+
     @Modifying(flushAutomatically = true)
     @Query("""
             update ProductInventory inventory

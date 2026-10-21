@@ -1,6 +1,7 @@
 package com.book.core.order.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -16,6 +17,9 @@ import com.book.core.address.application.usecase.GetAddressUseCase;
 import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
+import com.book.core.cart.application.usecase.GetCartUserIdsByProductIdUseCase;
+import com.book.core.notification.application.command.CreateNotificationCommand;
+import com.book.core.notification.application.service.NotificationService;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
@@ -47,10 +51,14 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.core.task.TaskRejectedException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 class OrderServiceTest {
     private final GetAddressUseCase getAddressUseCase = mock(GetAddressUseCase.class);
     private final GetCartUseCase getCartUseCase = mock(GetCartUseCase.class);
+    private final GetCartUserIdsByProductIdUseCase getCartUserIdsByProductIdUseCase = mock(GetCartUserIdsByProductIdUseCase.class);
     private final GetProductDetailUseCase getProductDetailUseCase = mock(GetProductDetailUseCase.class);
     private final CreateOrderUseCase createOrderUseCase = mock(CreateOrderUseCase.class);
     private final CancelOrderUseCase cancelOrderUseCase = mock(CancelOrderUseCase.class);
@@ -60,9 +68,11 @@ class OrderServiceTest {
     private final ReleaseProductInventoryUseCase releaseProductInventoryUseCase = mock(ReleaseProductInventoryUseCase.class);
     private final GetReservedOrderQuantitiesUseCase getReservedOrderQuantitiesUseCase = mock(GetReservedOrderQuantitiesUseCase.class);
     private final ExpireOrderUseCase expireOrderUseCase = mock(ExpireOrderUseCase.class);
-    private final OrderService service = new OrderService(getAddressUseCase, getCartUseCase, getProductDetailUseCase, createOrderUseCase,
-        cancelOrderUseCase, getOrdersUseCase, getOrderDetailUseCase, reserveProductInventoryUseCase, releaseProductInventoryUseCase,
-        getReservedOrderQuantitiesUseCase, mock(GetExpiredOrderKeysUseCase.class), expireOrderUseCase);
+    private final NotificationService notificationService = mock(NotificationService.class);
+    private final OrderService service =
+        new OrderService(getAddressUseCase, getCartUseCase, getCartUserIdsByProductIdUseCase, getProductDetailUseCase, createOrderUseCase,
+            cancelOrderUseCase, getOrdersUseCase, getOrderDetailUseCase, reserveProductInventoryUseCase, releaseProductInventoryUseCase,
+            getReservedOrderQuantitiesUseCase, mock(GetExpiredOrderKeysUseCase.class), expireOrderUseCase, notificationService);
 
     @BeforeEach
     void setUp() {
@@ -116,6 +126,44 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.createOrder(command(new CreateOrderItemCommand(701L, 2)))).isInstanceOf(CoreException.class);
         verifyNoInteractions(createOrderUseCase);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void 품절_임박에_진입하면_커밋_후_주문자를_뺀_장바구니_사용자에게_알림을_등록한다() {
+        when(reserveProductInventoryUseCase.execute(any())).thenReturn(Map.of(701L, 0));
+        when(getCartUserIdsByProductIdUseCase.execute(701L)).thenReturn(List.of(7L, 42L));
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.createOrder(command(new CreateOrderItemCommand(701L, 2)));
+            verifyNoInteractions(notificationService);
+
+            TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+
+            final ArgumentCaptor<List<CreateNotificationCommand>> captor = ArgumentCaptor.forClass(List.class);
+            verify(notificationService).createAllAsync(captor.capture());
+            assertThat(captor.getValue())
+                .containsExactly(new CreateNotificationCommand(7L, "장바구니 상품 품절", "장바구니에 담아둔 '상품 701'의 재고가 모두 소진됐어요."));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void 커밋_후_알림_작업_등록에_실패해도_주문_응답에_영향을_주지_않는다() {
+        when(reserveProductInventoryUseCase.execute(any())).thenReturn(Map.of(701L, 2));
+        when(getCartUserIdsByProductIdUseCase.execute(701L)).thenReturn(List.of(7L));
+        doThrow(new TaskRejectedException("거절")).when(notificationService).createAllAsync(any());
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.createOrder(command(new CreateOrderItemCommand(701L, 2)));
+
+            assertThatCode(() -> TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit))
+                .doesNotThrowAnyException();
+            verify(notificationService).createAllAsync(any());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test

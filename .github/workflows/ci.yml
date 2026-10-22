@@ -36,7 +36,9 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Gradle check
-        run: ./gradlew clean check bootJar --no-daemon --profile
+        # Temporary workaround: Eclipse P2 update site is returning a shutdown page.
+        # Restore spotlessJava when https://download.eclipse.org/eclipse/updates/4.41/p2.index recovers.
+        run: ./gradlew clean check bootJar --no-daemon --profile -x spotlessJava
 
       - name: Verify automation and coverage output
         run: |

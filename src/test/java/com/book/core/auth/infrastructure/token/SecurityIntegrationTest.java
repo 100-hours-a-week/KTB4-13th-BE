@@ -161,13 +161,15 @@ class SecurityIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행", "/api/v1/reviews"})
+    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행", "/api/v1/reviews",
+        "/api/v1/reviews/count"})
     void 공개_조회_API는_Token_없이_Controller까지_도달한다(final String path) throws Exception {
         mvc.perform(get(path)).andExpect(status().isOk()).andExpect(jsonPath("$.result").value("PUBLIC"));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행", "/api/v1/reviews"})
+    @ValueSource(strings = {"/api/v1/items", "/api/v1/categories", "/api/v1/products/1", "/api/v1/search?query=여행", "/api/v1/reviews",
+        "/api/v1/reviews/count"})
     void 공개_조회_API는_유효한_Access_Token으로도_요청할_수_있다(final String path) throws Exception {
         final String accessToken = tokenIssuer.issue(USER_ID).accessToken();
 
@@ -249,7 +251,8 @@ class SecurityIntegrationTest {
             return Map.of("result", "SUCCESS");
         }
 
-        @GetMapping({"/api/v1/items", "/api/v1/categories", "/api/v1/products/{productId}", "/api/v1/search", "/api/v1/reviews"})
+        @GetMapping({"/api/v1/items", "/api/v1/categories", "/api/v1/products/{productId}", "/api/v1/search", "/api/v1/reviews",
+            "/api/v1/reviews/count"})
         Map<String, String> publicReadEndpoint() {
             return Map.of("result", "PUBLIC");
         }

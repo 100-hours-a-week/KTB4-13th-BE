@@ -265,18 +265,19 @@ class OnboardingRepositoryIntegrationTest {
         assertThat(seedCandidateCount()).isZero();
 
         jdbc.update("""
-            INSERT INTO books (id, title, author, publisher, category, published_at)
-            SELECT book_id, title, '저자', '출판사', '카테고리', '2026-01-01'
+            INSERT INTO books (id, isbn13, title, author, publisher, category, published_at)
+            SELECT book_id, book_isbn13, title, '저자', '출판사', '카테고리', '2026-01-01'
             FROM onboarding_candidate_seed
             """);
         final Long firstBookId = jdbc.queryForObject("SELECT MIN(book_id) FROM onboarding_candidate_seed", Long.class);
         jdbc.update("UPDATE books SET title = '다른 도서' WHERE id = ?", firstBookId);
+        jdbc.update("UPDATE books SET isbn13 = NULL WHERE id = ?", firstBookId);
         importCandidateSeed();
         assertThat(seedCandidateCount()).isZero();
 
         jdbc.update("""
             UPDATE books
-            SET title = (SELECT seed.title FROM onboarding_candidate_seed seed WHERE seed.book_id = books.id)
+            SET isbn13 = (SELECT seed.book_isbn13 FROM onboarding_candidate_seed seed WHERE seed.book_id = books.id)
             WHERE id IN (SELECT book_id FROM onboarding_candidate_seed)
             """);
         importCandidateSeed();

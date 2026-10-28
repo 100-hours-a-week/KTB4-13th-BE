@@ -17,10 +17,4 @@ public final class PointAmount {
         }
     }
 
-    public static void requireNonNegativeWhole(final BigDecimal amount) {
-        requireWhole(amount);
-        if (amount.signum() < 0) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-    }
 }

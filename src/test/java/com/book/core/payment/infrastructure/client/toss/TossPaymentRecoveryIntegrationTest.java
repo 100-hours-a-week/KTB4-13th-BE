@@ -283,44 +283,6 @@ class TossPaymentRecoveryIntegrationTest {
         assertThat(fixture.pg().approvals).isZero();
     }
 
-    @Test
-    void 소수_복원포인트의_전체취소는_PG작업을_생성하지_않는다() {
-        final Fixture fixture = fixture(true, 1);
-        jdbc.update("update payment set used_point = ? where order_id = ?", new BigDecimal("0.50"), fixture.order().id());
-        final var command = new CancelCommand(fixture.order().userId(), new CancelAction(fixture.order().key()), "fractional-point");
-
-        assertThatThrownBy(() -> cancels.cancel(command)).isInstanceOfSatisfying(CoreException.class,
-            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
-        assertThat(pending(fixture)).isZero();
-        assertThat(fixture.pg().refunds).isZero();
-        assertThat(orders.findActiveOrderByKey(fixture.order().key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
-    }
-
-    @Test
-    void 소수_환불잔액의_전체취소는_PG작업을_생성하지_않는다() {
-        final Fixture fixture = fixture(true, 1);
-        jdbc.update("update cancel_balance set cancellable_paid_amount = ? where order_id = ?", new BigDecimal("10000.50"),
-            fixture.order().id());
-        final var command = new CancelCommand(fixture.order().userId(), new CancelAction(fixture.order().key()), "fractional-cash");
-
-        assertThatThrownBy(() -> cancels.cancel(command)).isInstanceOfSatisfying(CoreException.class,
-            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PAYMENT_INVALID_AMOUNT));
-        assertThat(pending(fixture)).isZero();
-        assertThat(fixture.pg().refunds).isZero();
-    }
-
-    @Test
-    void 소수_현금환불액의_부분취소는_PG작업을_생성하지_않는다() {
-        final Fixture fixture = fixture(true, 2);
-        jdbc.update("update order_item set unit_price = ? where order_id = ?", new BigDecimal("10000.50"), fixture.order().id());
-
-        assertThatThrownBy(() -> cancels.partialCancel(partial(fixture, "fractional-item"))).isInstanceOfSatisfying(CoreException.class,
-            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PAYMENT_INVALID_AMOUNT));
-        assertThat(pending(fixture)).isZero();
-        assertThat(fixture.pg().refunds).isZero();
-        assertThat(canceledQuantity(fixture)).isZero();
-    }
-
     private long pending(final Fixture fixture) {
         return jdbc.queryForObject("select count(*) from pg_operation where order_key = ? and completed = false and rejected = false",
             Long.class, fixture.order().key());

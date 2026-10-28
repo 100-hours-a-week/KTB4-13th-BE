@@ -12,7 +12,6 @@ import com.book.core.payment.application.usecase.GetPgOperationUseCase;
 import com.book.core.payment.application.usecase.RequestPgCancelUseCase;
 import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.PgOperation;
-import com.book.core.point.domain.PointAmount;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +33,6 @@ public class CancelPgPaymentUseCase {
         }
         validate.validate(command.userId(), command.action());
         final Payment payment = getPayment.execute(command.action().orderKey());
-        PointAmount.requireNonNegativeWhole(payment.usedPoint());
         final CancelBalance balance =
             balances.findByOrderId(payment.orderId()).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
         final CanceledPaymentResult result = requestCancel.execute(command.action().orderKey(), payment, balance.cancellablePaidAmount(),

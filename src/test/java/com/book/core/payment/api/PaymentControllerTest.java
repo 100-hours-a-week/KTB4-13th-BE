@@ -1,6 +1,7 @@
 package com.book.core.payment.api;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -79,6 +80,28 @@ class PaymentControllerTest {
     }
 
     @Test
+    void 소수_사용_포인트_검증_오류는_400과_E400으로_응답한다() throws Exception {
+        authenticate();
+        final CreatePaymentCommand command = new CreatePaymentCommand(42L, "order", -1L, new BigDecimal("1.5"));
+        doThrow(new CoreException(ErrorCode.INVALID_REQUEST)).when(paymentService).create(command);
+        mvc.perform(post("/api/v1/payments").header("Authorization", "Bearer test-token").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"orderKey\":\"order\",\"usePoint\":1.5}")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E400"));
+        verify(paymentService).create(command);
+    }
+
+    @Test
+    void 소수_최종_결제_금액_검증_오류는_400과_E400으로_응답한다() throws Exception {
+        authenticate();
+        final CreatePaymentCommand command = new CreatePaymentCommand(42L, "order", 10L, BigDecimal.ZERO);
+        doThrow(new CoreException(ErrorCode.INVALID_REQUEST)).when(paymentService).create(command);
+        mvc.perform(post("/api/v1/payments").header("Authorization", "Bearer test-token").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"orderKey\":\"order\",\"useOwnedCouponId\":10,\"usePoint\":0}")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E400"));
+        verify(paymentService).create(command);
+    }
+
+    @Test
     void 성공_콜백은_주문키와_PG키_금액을_변환하고_데이터_없이_응답한다() throws Exception {
         authenticate();
         mvc.perform(post("/api/v1/payments/callback/success").header("Authorization", "Bearer test-token").param("orderKey", "order")
@@ -129,6 +152,8 @@ class PaymentControllerTest {
     void OpenAPI에_일반_결제_성공_실패_계약을_노출한다() throws Exception {
         mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andExpect(jsonPath("$.paths['/api/v1/payments'].post").exists())
             .andExpect(jsonPath("$.paths['/api/v1/payments'].post.parameters").doesNotExist())
+            .andExpect(jsonPath("$.paths['/api/v1/payments'].post.description", containsString("원 단위 정수")))
+            .andExpect(jsonPath("$.paths['/api/v1/payments'].post.description", containsString("400(E400)")))
 
             .andExpect(jsonPath("$.paths['/api/v1/payments/callback/success'].post").exists())
             .andExpect(jsonPath("$.paths['/api/v1/payments/callback/fail'].post").exists())

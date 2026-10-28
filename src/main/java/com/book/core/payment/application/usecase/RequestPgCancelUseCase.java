@@ -19,7 +19,9 @@ public class RequestPgCancelUseCase {
 
     public CanceledPaymentResult execute(final String orderKey, final Payment payment, final BigDecimal amount,
         final BigDecimal refundableAmount, final String idempotencyKey) {
-        if (amount.signum() < 0 || amount.stripTrailingZeros().scale() > 0 || refundableAmount.compareTo(amount) < 0) {
+        if (amount == null || refundableAmount == null || amount.signum() < 0 || amount.stripTrailingZeros().scale() > 0
+            || refundableAmount.signum() < 0 || refundableAmount.stripTrailingZeros().scale() > 0
+            || refundableAmount.compareTo(amount) < 0) {
             throw new CoreException(ErrorCode.PAYMENT_INVALID_AMOUNT);
         }
         if (amount.signum() == 0) {

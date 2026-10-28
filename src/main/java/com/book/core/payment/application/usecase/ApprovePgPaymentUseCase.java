@@ -14,6 +14,7 @@ import com.book.core.payment.application.result.PaymentCompletionResult;
 import com.book.core.payment.domain.PgOperation;
 import com.book.core.payment.domain.enums.PaymentMethod;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class ApprovePgPaymentUseCase {
     private final GetPgOperationUseCase getOperation;
     private final GetPaymentOrderUseCase getOrder;
     private final ValidatePaymentUseCase validate;
+    private final ValidatePaymentAttemptUseCase validateAttempt;
     private final PaymentClient client;
     private final CompletePaymentUseCase complete;
 
@@ -32,6 +34,13 @@ public class ApprovePgPaymentUseCase {
         if (operation.completed()) {
             return new PaymentCompletionResult(operation.resultId(), false);
         }
+        if (operation.reviewRequired()) {
+            throw new CoreException(ErrorCode.PG_REVIEW_REQUIRED);
+        }
+        if (operation.compensationRequested()) {
+            throw new CoreException(ErrorCode.PG_PENDING);
+        }
+        validateAttempt.execute(command.orderKey(), command.attemptId());
         final Order order = getOrder.execute(command.orderKey(), OrderStatus.CREATED);
         validate.validateForApprove(order.id(), command.amount());
         ApprovedPaymentResult approval = new ApprovedPaymentResult("", null, null);
@@ -46,7 +55,10 @@ public class ApprovePgPaymentUseCase {
                 throw new CoreException(ErrorCode.PG_PENDING);
             }
             if (status == TossPaymentStatus.IN_PROGRESS) {
-                result = client.approve(command.externalPaymentKey(), command.orderKey(), command.amount(), operation.pgIdempotencyKey());
+                if (order.expiresAt() != null && !order.expiresAt().isAfter(LocalDateTime.now())) {
+                    throw new CoreException(ErrorCode.PG_REVIEW_REQUIRED);
+                }
+                result = client.approve(command.externalPaymentKey(), command.pgOrderId(), command.amount(), operation.pgIdempotencyKey());
                 verify(command, result);
                 status = TossPaymentStatus.from(result.status());
             }
@@ -56,13 +68,13 @@ public class ApprovePgPaymentUseCase {
             }
             approval = new ApprovedPaymentResult(result.paymentKey(), result.method(), result.approveCode());
         }
-        final Long paymentId = complete.execute(command.orderKey(), approval);
+        final Long paymentId = complete.execute(command.orderKey(), command.attemptId(), approval);
         operation.complete(paymentId);
         return new PaymentCompletionResult(paymentId, true);
     }
 
     private void verify(final ApprovePaymentCommand command, final PgPaymentResult result) {
-        if (result == null || !command.orderKey().equals(result.orderKey()) || !command.externalPaymentKey().equals(result.paymentKey())
+        if (result == null || !command.pgOrderId().equals(result.orderKey()) || !command.externalPaymentKey().equals(result.paymentKey())
             || result.totalAmount() == null || result.totalAmount().compareTo(command.amount()) != 0 || result.balanceAmount() == null) {
             throw new CoreException(ErrorCode.PG_RESPONSE_MISMATCH);
         }

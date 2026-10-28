@@ -18,13 +18,15 @@ import org.junit.jupiter.api.Test;
 
 class RequestPgCancelUseCaseTest {
     private final PaymentClient client = mock(PaymentClient.class);
-    private final RequestPgCancelUseCase useCase = new RequestPgCancelUseCase(client);
+    private final GetSuccessfulPaymentPgOrderIdUseCase getPgOrderId = mock(GetSuccessfulPaymentPgOrderIdUseCase.class);
+    private final RequestPgCancelUseCase useCase = new RequestPgCancelUseCase(client, getPgOrderId);
     private final Payment payment =
         new Payment(1L, 2L, BigDecimal.TEN, -1L, BigDecimal.ZERO, BigDecimal.ZERO, 1L, BigDecimal.TEN, PaymentState.SUCCESS);
 
     @Test
     void 해당_금액과_잔액의_취소_거래만_선택한다() {
         payment.success("key", PaymentMethod.CARD, "1234");
+        when(getPgOrderId.execute(payment.id(), "order")).thenReturn("order");
         final var cancellation =
             new PgPaymentResult.Cancellation("cancel-key", BigDecimal.TEN, BigDecimal.ZERO, "DONE", OffsetDateTime.now());
         when(client.cancel("key", BigDecimal.TEN, "request")).thenReturn(new PgPaymentResult("key", "order", BigDecimal.TEN,
@@ -35,10 +37,23 @@ class RequestPgCancelUseCaseTest {
     @Test
     void 다른_취소_응답은_내부_환불에_사용하지_않는다() {
         payment.success("key", PaymentMethod.CARD, "1234");
+        when(getPgOrderId.execute(payment.id(), "order")).thenReturn("order");
         when(client.cancel("key", BigDecimal.TEN, "request")).thenReturn(
             new PgPaymentResult("key", "other", BigDecimal.TEN, BigDecimal.ZERO, "CANCELED", PaymentMethod.CARD, "1234", List.of()));
         assertThatThrownBy(() -> useCase.execute("order", payment, BigDecimal.TEN, BigDecimal.TEN, "request"))
             .isInstanceOf(CoreException.class);
+    }
+
+    @Test
+    void 결제_시도에_할당된_PG_주문번호로_취소_응답을_확인한다() {
+        payment.success("key", PaymentMethod.CARD, "1234");
+        final var cancellation =
+            new PgPaymentResult.Cancellation("cancel-key", BigDecimal.TEN, BigDecimal.ZERO, "DONE", OffsetDateTime.now());
+        when(getPgOrderId.execute(payment.id(), "order")).thenReturn("attempt-1");
+        when(client.cancel("key", BigDecimal.TEN, "request")).thenReturn(new PgPaymentResult("key", "attempt-1", BigDecimal.TEN,
+            BigDecimal.ZERO, "CANCELED", PaymentMethod.CARD, "1234", List.of(cancellation)));
+
+        assertThat(useCase.execute("order", payment, BigDecimal.TEN, BigDecimal.TEN, "request").transactionKey()).isEqualTo("cancel-key");
     }
 
     @Test

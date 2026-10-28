@@ -9,6 +9,8 @@ import com.book.core.coupon.domain.enums.CouponType;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class PaymentDiscountTest {
     @Test
@@ -16,6 +18,19 @@ class PaymentDiscountTest {
         final PaymentDiscount discount = new PaymentDiscount(List.of(), BigDecimal.ZERO, -1L, BigDecimal.valueOf(-1));
         assertThat(discount.usePoint()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(discount.paidAmount(BigDecimal.valueOf(10000))).isEqualByComparingTo("10001");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0.5", "-0.5", "1.25"})
+    void 소수_포인트는_결제를_생성하기_전에_거절한다(final String amount) {
+        assertThatThrownBy(() -> new PaymentDiscount(List.of(), BigDecimal.TEN, -1L, new BigDecimal(amount))).isInstanceOfSatisfying(
+            CoreException.class, (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+    }
+
+    @Test
+    void 소수_표현이어도_정수값인_포인트는_허용한다() {
+        final PaymentDiscount discount = new PaymentDiscount(List.of(), BigDecimal.TEN, -1L, new BigDecimal("1.00"));
+        assertThat(discount.usePoint()).isEqualByComparingTo("1");
     }
 
     @Test
@@ -38,6 +53,22 @@ class PaymentDiscountTest {
         final PaymentDiscount discount = new PaymentDiscount(List.of(coupon), BigDecimal.ZERO, 10L, BigDecimal.ZERO);
         assertThat(discount.couponDiscount()).isEqualByComparingTo("0.10");
         assertThat(discount.paidAmount(BigDecimal.valueOf(10000))).isEqualByComparingTo("9000");
+    }
+
+    @Test
+    void 할인_계산으로_최종_결제금액이_소수이면_결제를_생성하기_전에_거절한다() {
+        final PaymentCoupon coupon = new PaymentCoupon(10L, CouponType.PERCENT_RATE, new BigDecimal("0.10"), BigDecimal.ZERO);
+        final PaymentDiscount discount = new PaymentDiscount(List.of(coupon), BigDecimal.ZERO, 10L, BigDecimal.ZERO);
+
+        assertThatThrownBy(() -> discount.paidAmount(new BigDecimal("101"))).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+        assertThat(discount.paidAmount(new BigDecimal("100"))).isEqualByComparingTo("90");
+    }
+
+    @Test
+    void 할인_없이_최종_결제금액이_소수이면_거절한다() {
+        assertThatThrownBy(() -> PaymentDiscount.EMPTY.paidAmount(new BigDecimal("100.50"))).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
     }
 
     @Test

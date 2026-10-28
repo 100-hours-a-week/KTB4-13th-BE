@@ -166,7 +166,7 @@ class OrderInventoryIntegrationTest {
     }
 
     @Test
-    void PG_승인이_진행_중인_주문만_예약을_유지하고_승인_전이거나_거절된_주문은_만료한다() {
+    void PG_결과가_확인되지_않은_READY_결제와_진행중인_주문은_예약을_유지한다() {
         final long userId = insertUser();
         final long productId = insertProduct(10, userId);
         final String notStarted = order(userId, productId, 1);
@@ -180,10 +180,35 @@ class OrderInventoryIntegrationTest {
         assertThat(orderService.getExpiredOrderKeys()).contains(notStarted, rejected).doesNotContain(pending);
         List.of(notStarted, pending, rejected, notStarted).forEach(orderService::expireOrder);
 
-        assertThat(status(notStarted)).isEqualTo("EXPIRED");
+        assertThat(status(notStarted)).isEqualTo("CREATED");
         assertThat(status(pending)).isEqualTo("CREATED");
         assertThat(status(rejected)).isEqualTo("EXPIRED");
-        assertThat(inventory(productId)).containsExactly(10, 2);
+        assertThat(inventory(productId)).containsExactly(10, 3);
+        assertThat(
+            jdbc.queryForObject("SELECT COUNT(*) FROM pg_operation WHERE order_key = ? AND review_required = 1", Integer.class, notStarted))
+            .isEqualTo(1);
+    }
+
+    @Test
+    void 이전_시도의_격리된_PG확인은_현재_주문의_취소와_만료를_막지_않는다() {
+        final long userId = insertUser();
+        final long productId = insertProduct(5, userId);
+        final String canceled = order(userId, productId, 1);
+        final String expired = order(userId, productId, 1);
+        insertPgOperation(canceled, false);
+        insertPgOperation(expired, false);
+        jdbc.update("UPDATE pg_operation SET blocks_order = 0, review_required = 1 WHERE order_key IN (?, ?)", canceled, expired);
+        expireNow(expired);
+
+        assertThat(orderService.getExpiredOrderKeys()).contains(expired);
+        orderService.cancelOrder(new CancelOrderCommand(userId, canceled));
+        orderService.expireOrder(expired);
+
+        assertThat(status(canceled)).isEqualTo("CANCELED");
+        assertThat(status(expired)).isEqualTo("EXPIRED");
+        assertThat(inventory(productId)).containsExactly(5, 0);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pg_operation WHERE order_key IN (?, ?) AND review_required = 1", Integer.class,
+            canceled, expired)).isEqualTo(2);
     }
 
     @Test

@@ -21,6 +21,7 @@ import com.book.core.payment.domain.PgOperation;
 import com.book.core.payment.domain.PgOperationType;
 import com.book.core.payment.domain.enums.PaymentMethod;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,16 +31,18 @@ class ApprovePgPaymentUseCaseTest {
     private final GetPgOperationUseCase operations = mock(GetPgOperationUseCase.class);
     private final GetPaymentOrderUseCase orders = mock(GetPaymentOrderUseCase.class);
     private final ValidatePaymentUseCase validate = mock(ValidatePaymentUseCase.class);
+    private final ValidatePaymentAttemptUseCase validateAttempt = mock(ValidatePaymentAttemptUseCase.class);
     private final PaymentClient client = mock(PaymentClient.class);
     private final CompletePaymentUseCase complete = mock(CompletePaymentUseCase.class);
-    private final ApprovePgPaymentUseCase useCase = new ApprovePgPaymentUseCase(operations, orders, validate, client, complete);
+    private final ApprovePgPaymentUseCase useCase =
+        new ApprovePgPaymentUseCase(operations, orders, validate, validateAttempt, client, complete);
     private final ApprovePaymentCommand command = new ApprovePaymentCommand("order", "key", BigDecimal.TEN);
     private final PgOperation operation = new PgOperation("order", "request", "input", PgOperationType.APPROVE);
 
     private void prepare(final ApprovePaymentCommand input) {
         when(operations.execute(input.operation())).thenReturn(operation);
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(Order.create(1L, "order", null));
-        when(complete.execute(eq("order"), any())).thenReturn(3L);
+        when(complete.execute(eq("order"), eq(null), any())).thenReturn(3L);
     }
 
     @Test
@@ -49,7 +52,7 @@ class ApprovePgPaymentUseCaseTest {
         when(client.approve("key", "order", BigDecimal.TEN, operation.pgIdempotencyKey())).thenReturn(result("DONE", "order"));
         assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
         assertThat(operation.completed()).isTrue();
-        verify(complete).execute("order",
+        verify(complete).execute("order", null,
             new com.book.core.payment.application.result.ApprovedPaymentResult("key", PaymentMethod.CARD, "1234"));
     }
 
@@ -62,7 +65,7 @@ class ApprovePgPaymentUseCaseTest {
 
         assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
         verify(client).approve("key", "order", BigDecimal.TEN, operation.pgIdempotencyKey());
-        verify(complete).execute("order",
+        verify(complete).execute("order", null,
             new com.book.core.payment.application.result.ApprovedPaymentResult("key", PaymentMethod.CARD, "1234"));
         assertThat(operation.completed()).isTrue();
     }
@@ -80,7 +83,7 @@ class ApprovePgPaymentUseCaseTest {
         }
 
         assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
-        verify(complete).execute("order",
+        verify(complete).execute("order", null,
             new com.book.core.payment.application.result.ApprovedPaymentResult("key", PaymentMethod.EASY_PAY, null));
         if ("DONE".equals(status)) {
             verify(client, never()).approve(any(), any(), any(), any());
@@ -134,6 +137,53 @@ class ApprovePgPaymentUseCaseTest {
         when(client.find("key")).thenReturn(result("DONE", "order"));
         assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
         verify(client, never()).approve(any(), any(), any(), any());
+    }
+
+    @Test
+    void 주문기한_후에는_새로운_PG승인을_요청하지_않는다() {
+        prepare(command);
+        final Order expired = Order.create(1L, "order", null);
+        expired.reserveUntil(LocalDateTime.now().minusSeconds(1));
+        when(orders.execute("order", OrderStatus.CREATED)).thenReturn(expired);
+        when(client.find("key")).thenReturn(result("IN_PROGRESS", "order"));
+
+        assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_REVIEW_REQUIRED));
+        verify(client, never()).approve(any(), any(), any(), any());
+        verifyNoInteractions(complete);
+    }
+
+    @Test
+    void 주문기한_후에도_이미_승인된_결제의_내부완료는_진행한다() {
+        prepare(command);
+        final Order expired = Order.create(1L, "order", null);
+        expired.reserveUntil(LocalDateTime.now().minusSeconds(1));
+        when(orders.execute("order", OrderStatus.CREATED)).thenReturn(expired);
+        when(client.find("key")).thenReturn(result("DONE", "order"));
+
+        assertThat(useCase.execute(command).paymentId()).isEqualTo(3L);
+        verify(client, never()).approve(any(), any(), any(), any());
+    }
+
+    @Test
+    void 보상취소가_시작되면_승인이나_내부완료를_재시도하지_않는다() {
+        prepare(command);
+        operation.recordApprovalDetails("key", BigDecimal.TEN, "order", 3L);
+        operation.requestCompensation();
+
+        assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
+        verifyNoInteractions(client, complete);
+    }
+
+    @Test
+    void 운영확인으로_전환된_작업은_자동승인을_시도하지_않는다() {
+        prepare(command);
+        operation.requireReview();
+
+        assertThatThrownBy(() -> useCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_REVIEW_REQUIRED));
+        verifyNoInteractions(client, complete);
     }
 
     @ParameterizedTest

@@ -188,8 +188,9 @@ class CancelIntegrationTest {
             BigDecimal usedPoint = BigDecimal.valueOf(15000);
             if (hasCoupon) {
                 jdbc.update(
-                    "INSERT INTO coupon (id, name, type, discount, max_use_count, min_order_amount, expired_at, created_at, updated_at) "
-                        + "VALUES (?, '취소 테스트', 'FIXED_AMOUNT', 10000, 1, 35000, TIMESTAMPADD(DAY, 7, CURRENT_TIMESTAMP), NOW(), NOW())",
+                    "INSERT INTO coupon (id, name, type, discount, max_use_count, min_order_amount, expired_at, created_at, updated_at, "
+                        + "total_quantity, issued_quantity, starts_at) " + "VALUES (?, '취소 테스트', 'FIXED_AMOUNT', 10000, 1, 35000, "
+                        + "TIMESTAMPADD(DAY, 7, CURRENT_TIMESTAMP), NOW(), NOW(), 100, 1, NOW())",
                     userId);
                 OwnedCouponStatus couponStatus = OwnedCouponStatus.ISSUED;
                 long usedCount = 0L;

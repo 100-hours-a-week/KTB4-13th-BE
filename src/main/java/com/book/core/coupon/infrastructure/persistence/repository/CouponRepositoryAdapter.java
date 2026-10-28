@@ -2,7 +2,8 @@ package com.book.core.coupon.infrastructure.persistence.repository;
 
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.domain.Coupon;
-import java.time.LocalDateTime;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class CouponRepositoryAdapter implements CouponRepositoryPort {
     private final CouponJpaRepository couponRepository;
+    private final EntityManager entityManager;
 
     @Override
     public List<Coupon> findActiveByIds(final Collection<Long> couponIds) {
@@ -20,8 +22,15 @@ public class CouponRepositoryAdapter implements CouponRepositoryPort {
     }
 
     @Override
-    public Optional<Coupon> findIssuableById(final Long couponId, final LocalDateTime expiredAtAfter) {
-        return couponRepository.findByIdAndDeletedAtIsNullAndExpiredAtAfter(couponId, expiredAtAfter);
+    public Optional<Coupon> findActiveByIdForUpdate(final Long couponId) {
+        final Coupon coupon = entityManager.find(Coupon.class, couponId);
+        if (coupon == null) {
+            return couponRepository.findByIdAndDeletedAtIsNullForUpdate(couponId);
+        }
+        if (entityManager.getLockMode(coupon) != LockModeType.PESSIMISTIC_WRITE) {
+            entityManager.refresh(coupon, LockModeType.PESSIMISTIC_WRITE);
+        }
+        return coupon.isDeleted() ? Optional.empty() : Optional.of(coupon);
     }
 
     @Override

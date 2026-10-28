@@ -89,7 +89,7 @@ class OwnedCouponRepositoryIntegrationTest {
     }
 
     private Coupon saveCoupon(final LocalDateTime expiredAt) {
-        return couponJpaRepository
-            .saveAndFlush(new Coupon(null, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, new BigDecimal("1000000"), expiredAt));
+        return couponJpaRepository.saveAndFlush(new Coupon(null, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L,
+            new BigDecimal("1000000"), expiredAt, 100, 0, expiredAt.minusDays(10)));
     }
 }

@@ -10,7 +10,6 @@ import com.book.core.coupon.domain.OwnedCoupon;
 import com.book.core.coupon.domain.enums.OwnedCouponStatus;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,15 +25,17 @@ public class IssueCouponUseCase {
     @Transactional
     public void execute(final Long userId, final Long couponId) {
         log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 처리를 시작합니다. couponId={}", couponId);
-        final Coupon coupon = couponRepository.findIssuableById(couponId, LocalDateTime.now())
-            .orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
-        final Optional<OwnedCoupon> existing = ownedCouponRepository.findByUserIdAndCouponId(userId, coupon.id());
-        if (existing.isPresent()) {
+        final Coupon coupon =
+            couponRepository.findActiveByIdForUpdate(couponId).orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
+        final LocalDateTime now = LocalDateTime.now();
+        if (!coupon.isIssuableAt(now)) {
+            throw new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
+        }
+        final OwnedCoupon ownedCoupon = new OwnedCoupon(userId, coupon.id(), OwnedCouponStatus.ISSUED, coupon.maxUseCount(), 0L);
+        if (!ownedCouponRepository.issueIfAbsent(ownedCoupon)) {
             throw new CoreException(ErrorCode.COUPON_ALREADY_DOWNLOADED);
         }
-
-        final OwnedCoupon ownedCoupon = new OwnedCoupon(userId, coupon.id(), OwnedCouponStatus.ISSUED, coupon.maxUseCount(), 0L);
-        ownedCouponRepository.save(ownedCoupon);
+        coupon.issue(now);
         log.atInfo().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 처리를 마쳤습니다. couponId={}", couponId);
     }
 }

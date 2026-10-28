@@ -45,7 +45,8 @@ class FindOwnedCouponsForCheckoutUseCaseTest {
     }
 
     private Coupon coupon(final Long id) {
-        return new Coupon(id, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, new BigDecimal("1000"), now.plusDays(7));
+        return new Coupon(id, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, new BigDecimal("1000"), now.plusDays(7), 100, 0,
+            now.minusDays(1));
     }
 
     private OwnedCoupon ownedCoupon(final long usedCount) {

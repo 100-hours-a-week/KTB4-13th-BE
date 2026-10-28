@@ -59,9 +59,6 @@ public class Coupon extends BaseEntity {
         this.discount = discount;
         this.maxUseCount = maxUseCount;
         this.minOrderAmount = minOrderAmount;
-        if (totalQuantity < 0 || issuedQuantity < 0 || issuedQuantity > totalQuantity || startsAt == null || expiredAt == null) {
-            throw new IllegalArgumentException("쿠폰 발급 수량과 발급 기간이 유효하지 않습니다.");
-        }
         this.expiredAt = expiredAt;
         this.totalQuantity = totalQuantity;
         this.issuedQuantity = issuedQuantity;

@@ -7,5 +7,7 @@ import java.util.Optional;
 public interface PointBalanceRepositoryPort {
     Optional<PointBalance> findByUserId(final Long userId);
 
+    Optional<PointBalance> findByUserIdForUpdate(final Long userId);
+
     void save(final PointBalance balance);
 }

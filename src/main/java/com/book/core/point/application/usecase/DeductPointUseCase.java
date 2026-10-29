@@ -45,7 +45,7 @@ public class DeductPointUseCase {
                 }
                 return;
             }
-            final BigDecimal collected = amount.min(balance.balance().max(BigDecimal.ZERO));
+            final BigDecimal collected = amount.min(pointBalanceRepository.availableBalance(balance).max(BigDecimal.ZERO));
             balance.apply(collected.negate());
             recoveries.save(new PointRecovery(userId, type, referenceId, amount, amount.subtract(collected)));
             if (collected.signum() > 0) {
@@ -53,6 +53,10 @@ public class DeductPointUseCase {
                     .amount(collected.negate()).balanceAfter(balance.balance()).build());
             }
         } else {
+            final BigDecimal available = pointBalanceRepository.availableBalance(balance);
+            if (amount.signum() > 0 && available.compareTo(balance.balance()) < 0 && amount.compareTo(available) > 0) {
+                throw new CoreException(ErrorCode.POINT_EXCEEDS_BALANCE);
+            }
             final BigDecimal deductedAmount = amount.negate();
             balance.apply(deductedAmount);
             pointHistoryRepository.save(PointHistory.builder().userId(userId).type(type).referenceId(referenceId).amount(deductedAmount)

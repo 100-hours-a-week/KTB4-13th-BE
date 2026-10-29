@@ -34,6 +34,7 @@ class DeductPointUseCaseTest {
     void 잔액과_이력에_기존_금액_부호를_반영한다(final BigDecimal amount, final BigDecimal expectedBalance, final BigDecimal expectedHistoryAmount) {
         final PointBalance balance = new PointBalance(1L, 42L, new BigDecimal("1000"));
         when(balances.findByUserIdForUpdate(42L)).thenReturn(Optional.of(balance));
+        when(balances.availableBalance(balance)).thenReturn(balance.balance());
 
         useCase.execute(42L, PointType.REVIEW, 10L, amount);
 
@@ -64,6 +65,19 @@ class DeductPointUseCaseTest {
         assertThatThrownBy(() -> useCase.execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN)).isInstanceOfSatisfying(CoreException.class,
             (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
         verifyNoInteractions(histories);
+    }
+
+    @Test
+    void 예약으로_잠긴_잔액은_리뷰_보너스_회수에_사용하지_않는다() {
+        final PointBalance balance = new PointBalance(1L, 42L, new BigDecimal("1000"));
+        when(balances.findByUserIdForUpdate(42L)).thenReturn(Optional.of(balance));
+        when(balances.availableBalance(balance)).thenReturn(new BigDecimal("300"));
+
+        useCase.execute(42L, PointType.REVIEW, 10L, new BigDecimal("500"));
+
+        assertThat(balance.balance()).isEqualByComparingTo("700");
+        verify(recoveries)
+            .save(org.mockito.ArgumentMatchers.argThat(recovery -> recovery.remainingAmount().compareTo(new BigDecimal("200")) == 0));
     }
 
 }

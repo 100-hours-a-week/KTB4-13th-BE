@@ -22,7 +22,8 @@ public class CouponRepositoryAdapter implements CouponRepositoryPort {
     }
 
     @Override
-    public Optional<Coupon> findActiveByIdForUpdate(final Long couponId) {
+    public Optional<Coupon> findByIdWithLock(final Long couponId) {
+
         final Coupon coupon = entityManager.find(Coupon.class, couponId);
         if (coupon == null) {
             return couponRepository.findByIdAndDeletedAtIsNullForUpdate(couponId);

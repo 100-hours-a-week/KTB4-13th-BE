@@ -83,7 +83,7 @@ class OwnedCouponRepositoryIntegrationTest {
         restored.delete();
         ownedCouponRepository.save(restored);
         assertThatThrownBy(() -> issueCoupon.execute(42L, coupon.id())).isInstanceOf(CoreException.class).extracting("errorCode")
-            .isEqualTo(ErrorCode.COUPON_ALREADY_DOWNLOADED);
+            .isEqualTo(ErrorCode.COUPON_ALREADY_ISSUED);
         assertThatThrownBy(() -> ownedCouponJpaRepository.saveAndFlush(new OwnedCoupon(42L, coupon.id(), OwnedCouponStatus.ISSUED, 2L, 0L)))
             .isInstanceOf(DataIntegrityViolationException.class);
     }

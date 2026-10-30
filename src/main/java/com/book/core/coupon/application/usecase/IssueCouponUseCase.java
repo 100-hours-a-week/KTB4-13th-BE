@@ -7,13 +7,13 @@ import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.Coupon;
 import com.book.core.coupon.domain.OwnedCoupon;
-import com.book.core.coupon.domain.enums.OwnedCouponStatus;
-
-import java.time.LocalDateTime;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.transaction.annotation.Transactional;
+
+import static java.time.LocalDateTime.now;
 
 @UseCase
 @RequiredArgsConstructor
@@ -26,16 +26,29 @@ public class IssueCouponUseCase {
     public void execute(final Long userId, final Long couponId) {
         log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 처리를 시작합니다. couponId={}", couponId);
         final Coupon coupon =
-            couponRepository.findActiveByIdForUpdate(couponId).orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
-        final LocalDateTime now = LocalDateTime.now();
-        if (!coupon.isIssuableAt(now)) {
+            couponRepository.findByIdWithLock(couponId).orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
+
+        if (!coupon.isIssuableAt(now())) {
             throw new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
         }
-        final OwnedCoupon ownedCoupon = new OwnedCoupon(userId, coupon.id(), OwnedCouponStatus.ISSUED, coupon.maxUseCount(), 0L);
-        if (!ownedCouponRepository.issueIfAbsent(ownedCoupon)) {
-            throw new CoreException(ErrorCode.COUPON_ALREADY_DOWNLOADED);
+        if (coupon.isSoldOut()) {
+            throw new CoreException(ErrorCode.COUPON_SOLD_OUT);
         }
-        coupon.issue(now);
+        if (ownedCouponRepository.existsByUserIdAndCouponId(userId, coupon.id())) {
+            throw new CoreException(ErrorCode.COUPON_ALREADY_ISSUED);
+        }
+        coupon.issue();
+
+        final OwnedCoupon ownedCoupon = OwnedCoupon.of(userId, coupon.id(), coupon.maxUseCount());
+        try {
+            ownedCouponRepository.save(ownedCoupon);
+        } catch (final Exception exception) {
+            switch (exception) {
+                case ConstraintViolationException e -> throw new CoreException(ErrorCode.COUPON_ALREADY_ISSUED, e);
+                default -> throw exception;
+            }
+        }
+
         log.atInfo().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 처리를 마쳤습니다. couponId={}", couponId);
     }
 }

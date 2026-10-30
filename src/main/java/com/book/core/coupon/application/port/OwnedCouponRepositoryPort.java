@@ -9,7 +9,7 @@ import java.util.Optional;
 public interface OwnedCouponRepositoryPort {
     Optional<OwnedCoupon> findByUserIdAndCouponId(final Long userId, final Long couponId);
 
-    boolean issueIfAbsent(final OwnedCoupon ownedCoupon);
+    boolean existsByUserIdAndCouponId(final Long userId, final Long couponId);
 
     List<OwnedCoupon> findActiveByUserId(final Long userId);
 

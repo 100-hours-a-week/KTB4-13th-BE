@@ -1,8 +1,6 @@
 package com.book.core.coupon.domain;
 
 import com.book.common.domain.BaseEntity;
-import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.domain.enums.CouponType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -69,13 +67,11 @@ public class Coupon extends BaseEntity {
         return !now.isBefore(startsAt) && now.isBefore(expiredAt);
     }
 
-    public void issue(final LocalDateTime now) {
-        if (!isIssuableAt(now)) {
-            throw new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
-        }
-        if (issuedQuantity >= totalQuantity) {
-            throw new CoreException(ErrorCode.COUPON_ISSUE_LIMIT_EXCEEDED);
-        }
+    public void issue() {
         issuedQuantity++;
+    }
+
+    public boolean isSoldOut() {
+        return issuedQuantity >= totalQuantity;
     }
 }

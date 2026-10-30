@@ -8,7 +8,7 @@ import java.util.Optional;
 public interface CouponRepositoryPort {
     List<Coupon> findActiveByIds(final Collection<Long> couponIds);
 
-    Optional<Coupon> findActiveByIdForUpdate(final Long couponId);
+    Optional<Coupon> findByIdWithLock(final Long couponId);
 
     Optional<Coupon> findById(final Long couponId);
 

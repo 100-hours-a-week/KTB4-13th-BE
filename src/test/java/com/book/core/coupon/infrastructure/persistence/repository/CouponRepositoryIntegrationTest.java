@@ -36,9 +36,9 @@ class CouponRepositoryIntegrationTest {
             new Coupon(null, "삭제", CouponType.NONE, BigDecimal.ZERO, 2L, BigDecimal.ZERO, now.plusDays(1), 10, 0, now.minusDays(1)));
         deleted.delete();
         couponJpaRepository.saveAndFlush(deleted);
-        assertThat(couponRepository.findActiveByIdForUpdate(valid.id())).isPresent();
-        assertThat(couponRepository.findActiveByIdForUpdate(expired.id())).isPresent();
-        assertThat(couponRepository.findActiveByIdForUpdate(deleted.id())).isEmpty();
+        assertThat(couponRepository.findByIdWithLock(valid.id())).isPresent();
+        assertThat(couponRepository.findByIdWithLock(expired.id())).isPresent();
+        assertThat(couponRepository.findByIdWithLock(deleted.id())).isEmpty();
         assertThat(couponRepository.findActiveByIds(List.of(valid.id(), expired.id(), deleted.id()))).extracting(Coupon::id)
             .containsExactlyInAnyOrder(valid.id(), expired.id());
         assertThat(couponRepository.findById(valid.id()).orElseThrow().discount()).isEqualByComparingTo("0.10");

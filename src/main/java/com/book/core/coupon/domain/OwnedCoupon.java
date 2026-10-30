@@ -51,6 +51,10 @@ public class OwnedCoupon extends BaseEntity {
         this.maxUseCount = maxUseCount;
     }
 
+    public static OwnedCoupon of(final Long userId, final Long couponId, final long maxUseCount) {
+        return new OwnedCoupon(userId, couponId, OwnedCouponStatus.ISSUED, maxUseCount, 0L);
+    }
+
     public void use() {
         usedCount += 1L;
         if (isFullyUsed()) {

@@ -63,7 +63,7 @@ class IssueCouponConcurrencyIntegrationTest {
         final List<ErrorCode> results = issueConcurrently(couponId, userIds);
 
         assertThat(results).filteredOn((final ErrorCode result) -> result == null).hasSize(4);
-        assertThat(results).filteredOn((final ErrorCode result) -> result == ErrorCode.COUPON_ISSUE_LIMIT_EXCEEDED).hasSize(8);
+        assertThat(results).filteredOn((final ErrorCode result) -> result == ErrorCode.COUPON_SOLD_OUT).hasSize(8);
         assertCounts(couponId, 4);
     }
 
@@ -74,7 +74,7 @@ class IssueCouponConcurrencyIntegrationTest {
         final List<ErrorCode> results = issueConcurrently(couponId, List.of(42L, 42L, 42L, 42L, 42L));
 
         assertThat(results).filteredOn((final ErrorCode result) -> result == null).hasSize(1);
-        assertThat(results).filteredOn((final ErrorCode result) -> result == ErrorCode.COUPON_ALREADY_DOWNLOADED).hasSize(4);
+        assertThat(results).filteredOn((final ErrorCode result) -> result == ErrorCode.COUPON_ALREADY_ISSUED).hasSize(4);
         assertCounts(couponId, 1);
     }
 
@@ -116,7 +116,7 @@ class IssueCouponConcurrencyIntegrationTest {
             } finally {
                 issuanceCommitted.countDown();
             }
-            assertThat(result.get(30, TimeUnit.SECONDS)).isEqualTo(ErrorCode.COUPON_ALREADY_DOWNLOADED);
+            assertThat(result.get(30, TimeUnit.SECONDS)).isEqualTo(ErrorCode.COUPON_ALREADY_ISSUED);
         }
         assertCounts(couponId, 1);
     }
@@ -146,7 +146,7 @@ class IssueCouponConcurrencyIntegrationTest {
             } finally {
                 issuanceCommitted.countDown();
             }
-            assertThat(result.get(30, TimeUnit.SECONDS)).isEqualTo(ErrorCode.COUPON_ISSUE_LIMIT_EXCEEDED);
+            assertThat(result.get(30, TimeUnit.SECONDS)).isEqualTo(ErrorCode.COUPON_SOLD_OUT);
         }
         assertCounts(couponId, 1);
     }
@@ -164,7 +164,7 @@ class IssueCouponConcurrencyIntegrationTest {
     }
 
     @Test
-    void 보유_쿠폰_저장이_실패하면_발급량도_롤백된다() {
+    void 회원_ID가_없으면_발급량을_증가시키지_않는다() {
         final long couponId = insertCoupon(2);
 
         assertThatThrownBy(() -> issueCoupon.execute(null, couponId)).isInstanceOf(RuntimeException.class);

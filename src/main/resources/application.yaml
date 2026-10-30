@@ -5,8 +5,20 @@ spring:
     default: local
   config:
     import: classpath:persistence.yml,classpath:ai.yml
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 1s
+      connect-timeout: 1s
+      repositories:
+        enabled: false
 
 management:
+  health:
+    redis:
+      enabled: false
   endpoints:
     web:
       exposure:

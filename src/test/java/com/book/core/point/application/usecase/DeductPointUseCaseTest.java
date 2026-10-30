@@ -11,6 +11,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.application.port.PointHistoryRepositoryPort;
+import com.book.core.point.application.port.PointRecoveryRepositoryPort;
 import com.book.core.point.domain.PointBalance;
 import com.book.core.point.domain.PointHistory;
 import com.book.core.point.domain.enums.PointType;
@@ -25,13 +26,15 @@ import org.mockito.ArgumentCaptor;
 class DeductPointUseCaseTest {
     private final PointBalanceRepositoryPort balances = mock(PointBalanceRepositoryPort.class);
     private final PointHistoryRepositoryPort histories = mock(PointHistoryRepositoryPort.class);
-    private final DeductPointUseCase useCase = new DeductPointUseCase(balances, histories);
+    private final PointRecoveryRepositoryPort recoveries = mock(PointRecoveryRepositoryPort.class);
+    private final DeductPointUseCase useCase = new DeductPointUseCase(balances, histories, recoveries);
 
     @ParameterizedTest
     @CsvSource({"250, 750, -250", "-250, 1250, 250"})
     void 잔액과_이력에_기존_금액_부호를_반영한다(final BigDecimal amount, final BigDecimal expectedBalance, final BigDecimal expectedHistoryAmount) {
         final PointBalance balance = new PointBalance(1L, 42L, new BigDecimal("1000"));
-        when(balances.findByUserId(42L)).thenReturn(Optional.of(balance));
+        when(balances.findByUserIdForUpdate(42L)).thenReturn(Optional.of(balance));
+        when(balances.availableBalance(balance)).thenReturn(balance.balance());
 
         useCase.execute(42L, PointType.REVIEW, 10L, amount);
 
@@ -57,11 +60,24 @@ class DeductPointUseCaseTest {
 
     @Test
     void 잔액이_없으면_오류를_반환하고_이력을_저장하지_않는다() {
-        when(balances.findByUserId(42L)).thenReturn(Optional.empty());
+        when(balances.findByUserIdForUpdate(42L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN)).isInstanceOfSatisfying(CoreException.class,
             (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
         verifyNoInteractions(histories);
+    }
+
+    @Test
+    void 예약으로_잠긴_잔액은_리뷰_보너스_회수에_사용하지_않는다() {
+        final PointBalance balance = new PointBalance(1L, 42L, new BigDecimal("1000"));
+        when(balances.findByUserIdForUpdate(42L)).thenReturn(Optional.of(balance));
+        when(balances.availableBalance(balance)).thenReturn(new BigDecimal("300"));
+
+        useCase.execute(42L, PointType.REVIEW, 10L, new BigDecimal("500"));
+
+        assertThat(balance.balance()).isEqualByComparingTo("700");
+        verify(recoveries)
+            .save(org.mockito.ArgumentMatchers.argThat(recovery -> recovery.remainingAmount().compareTo(new BigDecimal("200")) == 0));
     }
 
 }

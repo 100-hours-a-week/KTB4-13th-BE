@@ -6,18 +6,24 @@ import com.book.core.payment.domain.PgOperation;
 import com.book.core.payment.domain.PgOperationType;
 import java.math.BigDecimal;
 
-public record ApprovePaymentCommand(String orderKey, String externalPaymentKey, BigDecimal amount) {
+public record ApprovePaymentCommand(String orderKey, String pgOrderId, String externalPaymentKey, BigDecimal amount, Long attemptId) {
+    public ApprovePaymentCommand(final String orderKey, final String externalPaymentKey, final BigDecimal amount) {
+        this(orderKey, orderKey, externalPaymentKey, amount, null);
+    }
+
     public ApprovePaymentCommand {
-        if (orderKey == null || orderKey.isBlank() || amount == null || amount.signum() < 0 || amount.stripTrailingZeros().scale() > 0
+        if (orderKey == null || orderKey.isBlank() || pgOrderId == null || pgOrderId.isBlank() || amount == null || amount.signum() < 0
+            || amount.stripTrailingZeros().scale() > 0
             || (amount.signum() > 0 && (externalPaymentKey == null || externalPaymentKey.isBlank()))) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 
     public PreparePgOperationCommand operation() {
-        final String input = orderKey + ":" + externalPaymentKey + ":" + amount.stripTrailingZeros().toPlainString();
+        final String input = pgOrderId + ":" + externalPaymentKey + ":" + amount.stripTrailingZeros().toPlainString();
         return new PreparePgOperationCommand(orderKey, null, PgOperationType.APPROVE,
-            "approve_" + PgOperation.hash(orderKey + ":" + externalPaymentKey), input, amount, null, 0);
+            "approve_" + PgOperation.hash(pgOrderId + ":" + externalPaymentKey), input, amount, null, 0, externalPaymentKey, pgOrderId,
+            attemptId);
     }
 
     @Override

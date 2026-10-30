@@ -1,5 +1,7 @@
 package com.book.core.point.domain;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import java.math.BigDecimal;
 
 public final class PointAmount {
@@ -8,4 +10,17 @@ public final class PointAmount {
     public static final BigDecimal PAYMENT = BigDecimal.valueOf(2000);
 
     private PointAmount() {}
+
+    public static void requireWhole(final BigDecimal amount) {
+        if (amount == null || amount.stripTrailingZeros().scale() > 0) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    public static void requireNonNegativeWhole(final BigDecimal amount) {
+        requireWhole(amount);
+        if (amount.signum() < 0) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+    }
 }

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
+import com.book.core.point.application.port.PointEarnEventRepositoryPort;
 import com.book.core.point.application.port.PointHistoryRepositoryPort;
 import com.book.core.point.domain.PointBalance;
 import com.book.core.point.domain.PointHistory;
@@ -25,13 +26,15 @@ import org.mockito.ArgumentCaptor;
 class EarnPointUseCaseTest {
     private final PointBalanceRepositoryPort balances = mock(PointBalanceRepositoryPort.class);
     private final PointHistoryRepositoryPort histories = mock(PointHistoryRepositoryPort.class);
-    private final EarnPointUseCase useCase = new EarnPointUseCase(balances, histories);
+    private final SettlePointRecoveriesUseCase settle = mock(SettlePointRecoveriesUseCase.class);
+    private final PointEarnEventRepositoryPort events = mock(PointEarnEventRepositoryPort.class);
+    private final EarnPointUseCase useCase = new EarnPointUseCase(balances, histories, settle, events);
 
     @ParameterizedTest
     @CsvSource({"250, 1250, 250", "-250, 750, -250"})
     void 잔액과_이력에_기존_금액_부호를_반영한다(final BigDecimal amount, final BigDecimal expectedBalance, final BigDecimal expectedHistoryAmount) {
         final PointBalance balance = new PointBalance(1L, 42L, new BigDecimal("1000"));
-        when(balances.findByUserId(42L)).thenReturn(Optional.of(balance));
+        when(balances.findByUserIdForUpdate(42L)).thenReturn(Optional.of(balance));
 
         useCase.execute(42L, PointType.REVIEW, 10L, amount);
 
@@ -57,7 +60,7 @@ class EarnPointUseCaseTest {
 
     @Test
     void 잔액이_없으면_오류를_반환하고_이력을_저장하지_않는다() {
-        when(balances.findByUserId(42L)).thenReturn(Optional.empty());
+        when(balances.findByUserIdForUpdate(42L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN)).isInstanceOfSatisfying(CoreException.class,
             (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));

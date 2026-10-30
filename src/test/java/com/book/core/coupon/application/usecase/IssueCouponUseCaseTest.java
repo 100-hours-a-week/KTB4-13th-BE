@@ -66,8 +66,7 @@ class IssueCouponUseCaseTest {
 
     @Test
     void 저장_중_보유_쿠폰_유일_제약에_걸리면_중복_발급_오류로_변환한다() {
-        final var cause = new ConstraintViolationException("duplicate", new SQLException(), "owned_coupon.udx_owned_coupon");
-        final var exception = new DataIntegrityViolationException("duplicate", cause);
+        final var exception = new ConstraintViolationException("duplicate", new SQLException(), "owned_coupon.udx_owned_coupon");
         when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon(10L)));
         when(ownedCouponRepository.save(any(OwnedCoupon.class))).thenThrow(exception);
 

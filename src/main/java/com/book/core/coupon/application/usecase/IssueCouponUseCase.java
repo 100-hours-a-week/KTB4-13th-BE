@@ -26,7 +26,7 @@ public class IssueCouponUseCase {
     public void execute(final Long userId, final Long couponId) {
         log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 처리를 시작합니다. couponId={}", couponId);
         final Coupon coupon =
-            couponRepository.findByIdWithLock(couponId).orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
+            couponRepository.findById(couponId).orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
 
         if (!coupon.isIssuableAt(now())) {
             throw new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);

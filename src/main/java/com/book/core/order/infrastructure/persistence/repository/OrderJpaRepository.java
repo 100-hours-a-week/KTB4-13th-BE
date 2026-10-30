@@ -26,6 +26,7 @@ interface OrderJpaRepository extends JpaRepository<Order, Long> {
               AND NOT EXISTS (
                 SELECT 1 FROM PgOperation operation
                 WHERE operation.orderKey = orders.key AND operation.completed = false AND operation.rejected = false
+                  AND operation.blocksOrder = true
               )
             ORDER BY orders.expiresAt ASC, orders.id ASC
             """)
@@ -36,6 +37,7 @@ interface OrderJpaRepository extends JpaRepository<Order, Long> {
             SELECT COUNT(operation) > 0
             FROM PgOperation operation
             WHERE operation.orderKey = :orderKey AND operation.completed = false AND operation.rejected = false
+              AND operation.blocksOrder = true
             """)
     boolean hasPendingPgOperation(@Param("orderKey") final String orderKey);
 

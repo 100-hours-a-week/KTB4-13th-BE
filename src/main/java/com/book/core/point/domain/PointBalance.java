@@ -1,6 +1,9 @@
 package com.book.core.point.domain;
 
 import com.book.common.domain.BaseEntity;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -19,6 +22,9 @@ public class PointBalance extends BaseEntity {
     private Long userId;
     private BigDecimal balance = BigDecimal.ZERO;
 
+    @Column(name = "reserved_amount", nullable = false)
+    private BigDecimal reserved = BigDecimal.ZERO;
+
     @Version
     private long version = 0L;
 
@@ -32,7 +38,39 @@ public class PointBalance extends BaseEntity {
         this.balance = balance;
     }
 
+    public BigDecimal available() {
+        return balance.subtract(reserved).max(BigDecimal.ZERO);
+    }
+
+    public void reserve(final BigDecimal amount) {
+        requireWhole(amount);
+        if (amount.signum() < 0 || available().compareTo(amount) < 0) {
+            throw new CoreException(ErrorCode.POINT_EXCEEDS_BALANCE);
+        }
+        reserved = reserved.add(amount);
+    }
+
+    public void release(final BigDecimal amount) {
+        requireWhole(amount);
+        if (amount.signum() < 0 || reserved.compareTo(amount) < 0) {
+            throw new IllegalStateException("포인트 예약 금액이 일치하지 않습니다.");
+        }
+        reserved = reserved.subtract(amount);
+    }
+
+    public void confirm(final BigDecimal amount) {
+        requireWhole(amount);
+        release(amount);
+        balance = balance.subtract(amount);
+    }
+
     public void apply(final BigDecimal amount) {
         balance = balance.add(amount);
+    }
+
+    private static void requireWhole(final BigDecimal amount) {
+        if (amount == null || amount.stripTrailingZeros().scale() > 0) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
     }
 }

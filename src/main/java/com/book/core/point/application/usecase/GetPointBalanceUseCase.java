@@ -15,6 +15,6 @@ public class GetPointBalanceUseCase {
 
     @Transactional(readOnly = true)
     public BigDecimal execute(final Long userId) {
-        return pointBalanceRepository.findByUserId(userId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA)).balance();
+        return pointBalanceRepository.findByUserId(userId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA)).available();
     }
 }

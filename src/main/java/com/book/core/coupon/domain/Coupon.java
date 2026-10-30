@@ -39,8 +39,18 @@ public class Coupon extends BaseEntity {
     @Column(name = "expired_at", nullable = false)
     private LocalDateTime expiredAt;
 
+    @Column(name = "total_quantity", nullable = false)
+    private int totalQuantity;
+
+    @Column(name = "issued_quantity", nullable = false)
+    private int issuedQuantity;
+
+    @Column(name = "starts_at", nullable = false)
+    private LocalDateTime startsAt;
+
     public Coupon(final Long id, final String name, final CouponType type, final BigDecimal discount, final long maxUseCount,
-        final BigDecimal minOrderAmount, final LocalDateTime expiredAt) {
+        final BigDecimal minOrderAmount, final LocalDateTime expiredAt, final int totalQuantity, final int issuedQuantity,
+        final LocalDateTime startsAt) {
         super(id);
         this.name = name;
         this.type = type;
@@ -48,5 +58,20 @@ public class Coupon extends BaseEntity {
         this.maxUseCount = maxUseCount;
         this.minOrderAmount = minOrderAmount;
         this.expiredAt = expiredAt;
+        this.totalQuantity = totalQuantity;
+        this.issuedQuantity = issuedQuantity;
+        this.startsAt = startsAt;
+    }
+
+    public boolean isIssuableAt(final LocalDateTime now) {
+        return !now.isBefore(startsAt) && now.isBefore(expiredAt);
+    }
+
+    public void issue() {
+        issuedQuantity++;
+    }
+
+    public boolean isSoldOut() {
+        return issuedQuantity >= totalQuantity;
     }
 }

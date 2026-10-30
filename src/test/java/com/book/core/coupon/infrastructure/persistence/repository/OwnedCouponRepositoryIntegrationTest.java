@@ -83,13 +83,13 @@ class OwnedCouponRepositoryIntegrationTest {
         restored.delete();
         ownedCouponRepository.save(restored);
         assertThatThrownBy(() -> issueCoupon.execute(42L, coupon.id())).isInstanceOf(CoreException.class).extracting("errorCode")
-            .isEqualTo(ErrorCode.COUPON_ALREADY_DOWNLOADED);
+            .isEqualTo(ErrorCode.COUPON_ALREADY_ISSUED);
         assertThatThrownBy(() -> ownedCouponJpaRepository.saveAndFlush(new OwnedCoupon(42L, coupon.id(), OwnedCouponStatus.ISSUED, 2L, 0L)))
             .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private Coupon saveCoupon(final LocalDateTime expiredAt) {
-        return couponJpaRepository
-            .saveAndFlush(new Coupon(null, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, new BigDecimal("1000000"), expiredAt));
+        return couponJpaRepository.saveAndFlush(new Coupon(null, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L,
+            new BigDecimal("1000000"), expiredAt, 100, 0, expiredAt.minusDays(10)));
     }
 }

@@ -2,7 +2,6 @@ package com.book.core.coupon.infrastructure.persistence.repository;
 
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.domain.Coupon;
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -20,13 +19,8 @@ public class CouponRepositoryAdapter implements CouponRepositoryPort {
     }
 
     @Override
-    public Optional<Coupon> findIssuableById(final Long couponId, final LocalDateTime expiredAtAfter) {
-        return couponRepository.findByIdAndDeletedAtIsNullAndExpiredAtAfter(couponId, expiredAtAfter);
-    }
-
-    @Override
     public Optional<Coupon> findById(final Long couponId) {
-        return couponRepository.findById(couponId);
+        return couponRepository.findByIdAndDeletedAtIsNull(couponId);
     }
 
     @Override

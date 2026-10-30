@@ -120,6 +120,8 @@ class CouponControllerTest {
             .andExpect(jsonPath("$.paths['/api/v1/coupons'].get.parameters[0].required").value(true))
             .andExpect(jsonPath("$.paths['/api/v1/coupons'].get.security").doesNotExist())
             .andExpect(jsonPath("$.paths['/api/v1/coupons/{couponId}/issue'].post.security[0].bearerAuth").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/coupons/{couponId}/issue'].post.responses['400'].description")
+                .value(org.hamcrest.Matchers.containsString("발급 한도 초과(E4003)")))
             .andExpect(jsonPath("$.paths['/api/v1/owned-coupons'].get.security[0].bearerAuth").exists())
             .andExpect(jsonPath("$.components.schemas.CouponResponse.properties.id.type").value("integer"))
             .andExpect(jsonPath("$.components.schemas.CouponResponse.properties.usedCount").doesNotExist());
@@ -170,12 +172,20 @@ class CouponControllerTest {
     @Test
     void 중복_발급과_만료는_참고_오류_코드를_반환한다() throws Exception {
         authenticate();
-        doThrow(new CoreException(ErrorCode.COUPON_ALREADY_DOWNLOADED)).when(ownedCouponService).issue(new IssueCouponCommand(42L, 10L));
+        doThrow(new CoreException(ErrorCode.COUPON_ALREADY_ISSUED)).when(ownedCouponService).issue(new IssueCouponCommand(42L, 10L));
         mvc.perform(post("/api/v1/coupons/10/issue").header("Authorization", "Bearer test-token")).andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("E4001"));
         doThrow(new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED)).when(ownedCouponService).issue(new IssueCouponCommand(42L, 11L));
         mvc.perform(post("/api/v1/coupons/11/issue").header("Authorization", "Bearer test-token")).andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("E4000"));
+    }
+
+    @Test
+    void 발급_한도_초과는_오류_코드를_반환한다() throws Exception {
+        authenticate();
+        doThrow(new CoreException(ErrorCode.COUPON_SOLD_OUT)).when(ownedCouponService).issue(new IssueCouponCommand(42L, 12L));
+        mvc.perform(post("/api/v1/coupons/12/issue").header("Authorization", "Bearer test-token")).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E4003"));
     }
 
     @Test

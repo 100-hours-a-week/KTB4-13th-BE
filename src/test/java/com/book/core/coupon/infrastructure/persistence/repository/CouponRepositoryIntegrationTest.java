@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -24,19 +25,20 @@ class CouponRepositoryIntegrationTest {
     CouponJpaRepository couponJpaRepository;
 
     @Test
+    @Transactional
     void 마이그레이션과_매핑은_소수_할인율과_만료_경계를_보존한다() {
         final var now = LocalDateTime.of(2026, 10, 13, 9, 0);
-        final var valid = couponJpaRepository.saveAndFlush(
-            new Coupon(null, "10퍼센트", CouponType.PERCENT_RATE, new BigDecimal("0.10"), 2L, new BigDecimal("1000"), now.plusDays(1)));
-        final var expired =
-            couponJpaRepository.saveAndFlush(new Coupon(null, "만료", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, BigDecimal.ZERO, now));
-        final var deleted = couponJpaRepository
-            .saveAndFlush(new Coupon(null, "삭제", CouponType.NONE, BigDecimal.ZERO, 2L, BigDecimal.ZERO, now.plusDays(1)));
+        final var valid = couponJpaRepository.saveAndFlush(new Coupon(null, "10퍼센트", CouponType.PERCENT_RATE, new BigDecimal("0.10"), 2L,
+            new BigDecimal("1000"), now.plusDays(1), 10, 0, now.minusDays(1)));
+        final var expired = couponJpaRepository.saveAndFlush(
+            new Coupon(null, "만료", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, BigDecimal.ZERO, now, 10, 0, now.minusDays(1)));
+        final var deleted = couponJpaRepository.saveAndFlush(
+            new Coupon(null, "삭제", CouponType.NONE, BigDecimal.ZERO, 2L, BigDecimal.ZERO, now.plusDays(1), 10, 0, now.minusDays(1)));
         deleted.delete();
         couponJpaRepository.saveAndFlush(deleted);
-        assertThat(couponRepository.findIssuableById(valid.id(), now)).isPresent();
-        assertThat(couponRepository.findIssuableById(expired.id(), now)).isEmpty();
-        assertThat(couponRepository.findIssuableById(deleted.id(), now)).isEmpty();
+        assertThat(couponRepository.findById(valid.id())).isPresent();
+        assertThat(couponRepository.findById(expired.id())).isPresent();
+        assertThat(couponRepository.findById(deleted.id())).isEmpty();
         assertThat(couponRepository.findActiveByIds(List.of(valid.id(), expired.id(), deleted.id()))).extracting(Coupon::id)
             .containsExactlyInAnyOrder(valid.id(), expired.id());
         assertThat(couponRepository.findById(valid.id()).orElseThrow().discount()).isEqualByComparingTo("0.10");

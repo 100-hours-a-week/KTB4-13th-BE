@@ -25,9 +25,9 @@ public interface CouponControllerSpec {
         @NotEmpty final List<@NotNull @Positive Long> couponIds);
 
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "쿠폰 발급", description = "활성 상태이며 만료되지 않은 쿠폰을 인증된 회원에게 발급합니다.")
+    @Operation(summary = "쿠폰 발급", description = "활성 상태이고 발급 기간과 잔여 수량이 유효한 쿠폰을 인증된 회원에게 발급합니다.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "쿠폰 발급 성공"),
-        @ApiResponse(responseCode = "400", description = "잘못된 쿠폰 ID, 만료 쿠폰 또는 이미 발급한 쿠폰"),
+        @ApiResponse(responseCode = "400", description = "잘못된 쿠폰 ID, 발급 기간이 아닌 쿠폰(E4000), 이미 발급한 쿠폰(E4001) 또는 발급 한도 초과(E4003)"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
     ResponseEntity<com.book.common.response.ApiResponse<Void>> issue(@Parameter(hidden = true) final Long userId,
         @Parameter(description = "쿠폰 ID", required = true) @Positive final Long couponId);

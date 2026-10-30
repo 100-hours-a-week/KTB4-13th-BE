@@ -72,6 +72,32 @@ class CancelPgPaymentUseCaseTest {
     }
 
     @Test
+    void 기존_소수포인트_전체취소_재시도는_PG_결과를_내부_반영한다() {
+        fixture();
+        final var command = new CancelCommand(1L, new CancelAction("order"), "request");
+        final var operation = new PgOperation("order", "request", "input", PgOperationType.CANCEL);
+        when(operations.execute(command.operation())).thenReturn(operation);
+        when(payments.execute("order")).thenReturn(
+            new Payment(1L, 2L, BigDecimal.TEN, -1L, BigDecimal.ZERO, new BigDecimal("0.5"), 1L, BigDecimal.TEN, PaymentState.SUCCESS));
+        when(full.execute(command.action(), result)).thenReturn(42L);
+        assertThat(fullUseCase.execute(command)).isEqualTo(42L);
+        assertThat(operation.completed()).isTrue();
+    }
+
+    @Test
+    void 기존_소수포인트_부분취소_재시도는_PG_결과를_내부_반영한다() {
+        fixture();
+        final var command = new PartialCancelCommand(1L, new PartialCancelAction("order", 4L, 1L), "request");
+        final var operation = new PgOperation("order", "request", "input", PgOperationType.PARTIAL_CANCEL);
+        final var calculated = new CancelCalculated(BigDecimal.ONE, BigDecimal.ZERO, new BigDecimal("0.5"), false);
+        when(operations.execute(command.operation())).thenReturn(operation);
+        when(calculate.execute(command.action())).thenReturn(calculated);
+        when(partial.execute(command.action(), calculated, result)).thenReturn(42L);
+        assertThat(partialUseCase.execute(command)).isEqualTo(42L);
+        assertThat(operation.completed()).isTrue();
+    }
+
+    @Test
     void 완료된_전체와_부분_취소는_검증과_환불을_반복하지_않는다() {
         final var command = new CancelCommand(1L, new CancelAction("order"), "full");
         final var partialCommand = new PartialCancelCommand(1L, new PartialCancelAction("order", 4L, 1L), "partial");

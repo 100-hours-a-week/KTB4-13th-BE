@@ -1,22 +1,29 @@
 package com.book.core.coupon.api.spec;
 
-import com.book.core.coupon.api.response.OwnedCouponResponse;
+import com.book.core.coupon.api.request.CreateCouponRequest;
 import com.book.core.coupon.api.response.CouponResponse;
+import com.book.core.coupon.api.response.OwnedCouponResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import org.springframework.web.bind.annotation.RequestParam;
+import jakarta.validation.constraints.Positive;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Coupon", description = "쿠폰 API")
 public interface CouponControllerSpec {
+    @Operation(summary = "쿠폰 생성", description = "발급에 필요한 정보로 쿠폰을 생성합니다. 생성된 쿠폰 정보를 반환합니다.")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "쿠폰 생성 성공"),
+        @ApiResponse(responseCode = "400", description = "쿠폰 요청 값이 올바르지 않음")})
+    ResponseEntity<com.book.common.response.ApiResponse<CouponResponse>> create(@Valid final CreateCouponRequest request);
+
     @Operation(summary = "쿠폰 조회", description = "쿠폰 ID 목록으로 활성 쿠폰을 조회합니다. 만료 쿠폰도 포함하며, 존재하지 않거나 비활성인 ID는 결과에서 제외합니다.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "쿠폰 조회 성공"),
         @ApiResponse(responseCode = "400", description = "쿠폰 ID 목록이 누락되거나 올바르지 않음")})

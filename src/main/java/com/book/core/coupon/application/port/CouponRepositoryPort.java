@@ -13,4 +13,6 @@ public interface CouponRepositoryPort {
     Optional<Coupon> findByIdForUpdate(final Long couponId);
 
     List<Coupon> findAllById(final Collection<Long> couponIds);
+
+    Coupon save(final Coupon coupon);
 }

@@ -58,7 +58,7 @@ public class CouponController implements CouponControllerSpec {
     @PostMapping("/api/v1/coupons/{couponId}/issue")
     public ResponseEntity<ApiResponse<Void>> issue(@UserId final Long userId, @PathVariable final Long couponId) {
         final IssueCouponCommand command = commandConverter.toIssueCouponCommand(userId, couponId);
-        ownedCouponService.issue(command);
+        couponService.issue(command);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 

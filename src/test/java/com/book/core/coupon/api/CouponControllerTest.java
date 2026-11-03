@@ -132,7 +132,7 @@ class CouponControllerTest {
         authenticate();
         mvc.perform(post("/api/v1/coupons/10/issue").header("Authorization", "Bearer test-token").param("userId", "99"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
-        verify(ownedCouponService).issue(new IssueCouponCommand(42L, 10L));
+        verify(couponService).issue(new IssueCouponCommand(42L, 10L));
     }
 
     @Test
@@ -166,16 +166,16 @@ class CouponControllerTest {
             .andExpect(jsonPath("$.code").value("E400"));
         mvc.perform(post("/api/v1/coupons/not-a-number/issue").header("Authorization", "Bearer test-token"))
             .andExpect(status().isBadRequest());
-        verifyNoInteractions(ownedCouponService);
+        verifyNoInteractions(couponService);
     }
 
     @Test
     void 중복_발급과_만료는_참고_오류_코드를_반환한다() throws Exception {
         authenticate();
-        doThrow(new CoreException(ErrorCode.COUPON_ALREADY_ISSUED)).when(ownedCouponService).issue(new IssueCouponCommand(42L, 10L));
+        doThrow(new CoreException(ErrorCode.COUPON_ALREADY_ISSUED)).when(couponService).issue(new IssueCouponCommand(42L, 10L));
         mvc.perform(post("/api/v1/coupons/10/issue").header("Authorization", "Bearer test-token")).andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("E4001"));
-        doThrow(new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED)).when(ownedCouponService).issue(new IssueCouponCommand(42L, 11L));
+        doThrow(new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED)).when(couponService).issue(new IssueCouponCommand(42L, 11L));
         mvc.perform(post("/api/v1/coupons/11/issue").header("Authorization", "Bearer test-token")).andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("E4000"));
     }
@@ -183,7 +183,7 @@ class CouponControllerTest {
     @Test
     void 발급_한도_초과는_오류_코드를_반환한다() throws Exception {
         authenticate();
-        doThrow(new CoreException(ErrorCode.COUPON_SOLD_OUT)).when(ownedCouponService).issue(new IssueCouponCommand(42L, 12L));
+        doThrow(new CoreException(ErrorCode.COUPON_SOLD_OUT)).when(couponService).issue(new IssueCouponCommand(42L, 12L));
         mvc.perform(post("/api/v1/coupons/12/issue").header("Authorization", "Bearer test-token")).andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("E4003"));
     }
@@ -192,7 +192,7 @@ class CouponControllerTest {
     void 인증이_없으면_발급과_보유_조회가_거부된다() throws Exception {
         mvc.perform(get("/api/v1/owned-coupons")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/v1/coupons/10/issue")).andExpect(status().isUnauthorized());
-        verifyNoInteractions(ownedCouponService);
+        verifyNoInteractions(ownedCouponService, couponService);
     }
 
     private void authenticate() {

@@ -3,22 +3,27 @@ package com.book.core.coupon.infrastructure.persistence.repository;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.OwnedCoupon;
 import com.book.core.coupon.domain.enums.OwnedCouponStatus;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
-
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
 public class OwnedCouponRepositoryAdapter implements OwnedCouponRepositoryPort {
     private final OwnedCouponJpaRepository ownedCouponRepository;
+    private final OwnedCouponQueryRepository queryRepository;
 
     @Override
     public Optional<OwnedCoupon> findByUserIdAndCouponId(final Long userId, final Long couponId) {
         return ownedCouponRepository.findByUserIdAndCouponId(userId, couponId);
+    }
+
+    @Override
+    public boolean existsByUserIdAndCouponId(final Long userId, final Long couponId) {
+        return queryRepository.existsByUserIdAndCouponId(userId, couponId);
     }
 
     @Override

@@ -102,8 +102,9 @@ public enum ErrorCode {
     AI_SEARCH_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "AI 검색 결과 조회에 실패했습니다.", LogLevel.INFO),
     NOT_FOUND_DATA(HttpStatus.NOT_FOUND, "E404", "데이터를 찾을 수 없습니다.", LogLevel.ERROR),
     REVIEW_UPDATE_EXPIRED(HttpStatus.BAD_REQUEST, "E7002", "리뷰 수정 가능 기간이 지났습니다.", LogLevel.INFO),
-    COUPON_NOT_FOUND_OR_EXPIRED(HttpStatus.BAD_REQUEST, "E4000", "쿠폰을 찾을 수 없거나 만료되었습니다.", LogLevel.INFO),
-    COUPON_ALREADY_DOWNLOADED(HttpStatus.BAD_REQUEST, "E4001", "이미 다운로드한 쿠폰입니다.", LogLevel.INFO),
+    COUPON_NOT_FOUND_OR_EXPIRED(HttpStatus.BAD_REQUEST, "E4000", "쿠폰을 찾을 수 없거나 발급 기간이 아닙니다.", LogLevel.INFO),
+    COUPON_ISSUE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "E4002", "쿠폰 발급 수량이 모두 소진되었습니다.", LogLevel.INFO),
+    COUPON_ALREADY_ISSUED(HttpStatus.BAD_REQUEST, "E4001", "이미 발급된 쿠폰입니다.", LogLevel.INFO),
     OWNED_COUPON_INVALID(HttpStatus.BAD_REQUEST, "E5000", "사용할 수 없는 쿠폰입니다.", LogLevel.INFO),
     OWNED_COUPON_INVALID_USAGE(HttpStatus.BAD_REQUEST, "E5001", "비정상적인 쿠폰 사용입니다.", LogLevel.INFO),
     ORDER_ALREADY_PAID(HttpStatus.BAD_REQUEST, "E1000", "이미 결제가 완료된 주문입니다.", LogLevel.INFO),
@@ -111,7 +112,8 @@ public enum ErrorCode {
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "E2001", "결제 금액이 일치하지 않습니다.", LogLevel.INFO),
     PAYMENT_INVALID_AMOUNT(HttpStatus.BAD_REQUEST, "E2002", "결제 금액이 0보다 작을 수 없습니다.", LogLevel.INFO),
     OWNED_COUPON_MIN_AMOUNT_NOT_REACHED(HttpStatus.BAD_REQUEST, "E5002", "쿠폰 사용 가능 최소 금액이 부족합니다.", LogLevel.INFO),
-    POINT_EXCEEDS_BALANCE(HttpStatus.BAD_REQUEST, "E6000", "보유 포인트를 초과하여 사용할 수 없습니다.", LogLevel.INFO);
+    POINT_EXCEEDS_BALANCE(HttpStatus.BAD_REQUEST, "E6000", "보유 포인트를 초과하여 사용할 수 없습니다.", LogLevel.INFO),
+    COUPON_SOLD_OUT(HttpStatus.BAD_REQUEST, "E4003", "쿠폰이 매진되었습니다.", LogLevel.INFO);
 
     private final HttpStatus status;
     private final String code;

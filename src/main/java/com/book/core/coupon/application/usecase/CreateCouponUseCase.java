@@ -15,8 +15,9 @@ public class CreateCouponUseCase {
 
     @Transactional
     public CouponResult execute(final CreateCouponCommand command) {
-        final Coupon coupon = new Coupon(command.name(), command.type(), command.discount(), command.maxUseCount(), command.minOrderAmount(),
-            command.expiredAt(), command.totalQuantity(), command.startsAt());
+        final Coupon coupon = new Coupon(
+            command.name(), command.type(), command.discount(), command.maxUseCount(), command.minOrderAmount(), command.expiredAt(),
+            command.totalQuantity(), command.startsAt());
         return CouponResult.from(couponRepository.save(coupon));
     }
 }

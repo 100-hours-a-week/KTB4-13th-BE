@@ -32,4 +32,9 @@ public class CouponRepositoryAdapter implements CouponRepositoryPort {
     public List<Coupon> findAllById(final Collection<Long> couponIds) {
         return couponRepository.findAllById(couponIds);
     }
+
+    @Override
+    public Coupon save(final Coupon coupon) {
+        return couponRepository.save(coupon);
+    }
 }

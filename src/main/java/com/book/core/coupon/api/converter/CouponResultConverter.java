@@ -14,7 +14,8 @@ public class CouponResultConverter {
     }
 
     public CouponResponse toCouponResponse(final CouponResult coupon) {
-        return new CouponResponse(coupon.id(), coupon.name(), coupon.type(), coupon.discount(), coupon.minOrderAmount(), coupon.expiredAt());
+        return new CouponResponse(
+            coupon.id(), coupon.name(), coupon.type(), coupon.discount(), coupon.minOrderAmount(), coupon.expiredAt());
     }
 
     public List<OwnedCouponResponse> toOwnedCouponResponses(final List<OwnedCouponResult> ownedCoupons) {

@@ -33,7 +33,7 @@ class IssueCouponUseCaseTest {
     @Test
     void 활성_미만료_쿠폰을_사용횟수_0으로_발급한다() {
         final Coupon coupon = coupon(10L);
-        when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon));
+        when(couponRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(coupon));
         when(ownedCouponRepository.existsByUserIdAndCouponId(42L, 10L)).thenReturn(false);
         new IssueCouponUseCase(couponRepository, ownedCouponRepository).execute(42L, 10L);
         final var captured = ArgumentCaptor.forClass(OwnedCoupon.class);
@@ -50,7 +50,7 @@ class IssueCouponUseCaseTest {
 
     @Test
     void 만료_또는_비활성_쿠폰은_발급하지_않는다() {
-        when(couponRepository.findById(10L)).thenReturn(Optional.empty());
+        when(couponRepository.findByIdForUpdate(10L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> new IssueCouponUseCase(couponRepository, ownedCouponRepository).execute(42L, 10L))
             .isInstanceOf(CoreException.class).extracting("errorCode").isEqualTo(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
         verifyNoInteractions(ownedCouponRepository);
@@ -58,7 +58,7 @@ class IssueCouponUseCaseTest {
 
     @Test
     void 이미_발급한_쿠폰은_다시_발급하지_않는다() {
-        when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon(10L)));
+        when(couponRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(coupon(10L)));
         when(ownedCouponRepository.existsByUserIdAndCouponId(42L, 10L)).thenReturn(true);
         assertThatThrownBy(() -> new IssueCouponUseCase(couponRepository, ownedCouponRepository).execute(42L, 10L))
             .isInstanceOf(CoreException.class).extracting("errorCode").isEqualTo(ErrorCode.COUPON_ALREADY_ISSUED);
@@ -67,7 +67,7 @@ class IssueCouponUseCaseTest {
     @Test
     void 저장_중_보유_쿠폰_유일_제약에_걸리면_중복_발급_오류로_변환한다() {
         final var exception = new ConstraintViolationException("duplicate", new SQLException(), "owned_coupon.udx_owned_coupon");
-        when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon(10L)));
+        when(couponRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(coupon(10L)));
         when(ownedCouponRepository.save(any(OwnedCoupon.class))).thenThrow(exception);
 
         assertThatThrownBy(() -> new IssueCouponUseCase(couponRepository, ownedCouponRepository).execute(42L, 10L))
@@ -81,7 +81,7 @@ class IssueCouponUseCaseTest {
     void 저장_중_다른_무결성_오류는_그대로_전파한다() {
         final var cause = new ConstraintViolationException("invalid", new SQLException(), "another_constraint");
         final var exception = new DataIntegrityViolationException("invalid", cause);
-        when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon(10L)));
+        when(couponRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(coupon(10L)));
         when(ownedCouponRepository.save(any(OwnedCoupon.class))).thenThrow(exception);
 
         assertThatThrownBy(() -> new IssueCouponUseCase(couponRepository, ownedCouponRepository).execute(42L, 10L)).isSameAs(exception);
@@ -91,7 +91,7 @@ class IssueCouponUseCaseTest {
     void 발급_수량이_소진되면_발급하지_않는다() {
         final var coupon =
             new Coupon(10L, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, BigDecimal.ZERO, now.plusDays(1), 1, 1, now.minusDays(1));
-        when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon));
+        when(couponRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(coupon));
         assertThatThrownBy(() -> new IssueCouponUseCase(couponRepository, ownedCouponRepository).execute(42L, 10L))
             .isInstanceOf(CoreException.class).extracting("errorCode").isEqualTo(ErrorCode.COUPON_SOLD_OUT);
         verifyNoInteractions(ownedCouponRepository);
@@ -103,7 +103,7 @@ class IssueCouponUseCaseTest {
             new Coupon(10L, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, BigDecimal.ZERO, now.plusDays(2), 1, 0, now.plusDays(1));
         final var expired =
             new Coupon(10L, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, BigDecimal.ZERO, now.minusDays(1), 1, 0, now.minusDays(2));
-        when(couponRepository.findById(10L)).thenReturn(Optional.of(future), Optional.of(expired));
+        when(couponRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(future), Optional.of(expired));
         final var useCase = new IssueCouponUseCase(couponRepository, ownedCouponRepository);
         assertThatThrownBy(() -> useCase.execute(42L, 10L)).isInstanceOf(CoreException.class).extracting("errorCode")
             .isEqualTo(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);

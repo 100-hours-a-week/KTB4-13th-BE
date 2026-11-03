@@ -19,8 +19,8 @@ class GetCouponsUseCaseTest {
 
     @Test
     void 상품용_쿠폰은_활성_여부만_필터한다() {
-        final var expiredCoupon =
-            new Coupon(10L, "만료", CouponType.PERCENT_RATE, new BigDecimal("0.10"), 2L, new BigDecimal("1000"), now.minusDays(1));
+        final var expiredCoupon = new Coupon(10L, "만료", CouponType.PERCENT_RATE, new BigDecimal("0.10"), 2L, new BigDecimal("1000"),
+            now.minusDays(1), 100, 0, now.minusDays(2));
         when(couponRepository.findActiveByIds(Set.of(10L))).thenReturn(List.of(expiredCoupon));
         final var useCase = new GetCouponsUseCase(couponRepository);
         assertThat(useCase.execute(List.of())).isEmpty();

@@ -28,7 +28,8 @@ class GetOwnedCouponsUseCasesTest {
 
     @Test
     void 보유_목록은_사용_완료와_만료_쿠폰도_포함한다() {
-        final var expiredCoupon = new Coupon(10L, "만료", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, BigDecimal.ZERO, now.minusDays(1));
+        final var expiredCoupon =
+            new Coupon(10L, "만료", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, BigDecimal.ZERO, now.minusDays(1), 100, 0, now.minusDays(2));
         when(ownedCouponRepository.findActiveByUserId(42L)).thenReturn(List.of(new OwnedCoupon(42L, 10L, OwnedCouponStatus.USED, 2L, 2L)));
         when(couponRepository.findAllById(Set.of(10L))).thenReturn(List.of(expiredCoupon));
         assertThat(new GetOwnedCouponsUseCase(ownedCouponRepository, couponRepository).execute(42L)).singleElement()
@@ -76,7 +77,8 @@ class GetOwnedCouponsUseCasesTest {
     }
 
     private Coupon coupon(final Long id) {
-        return new Coupon(id, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, new BigDecimal("1000"), now.plusDays(7));
+        return new Coupon(id, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, new BigDecimal("1000"), now.plusDays(7), 100, 0,
+            now.minusDays(1));
     }
 
     private OwnedCoupon ownedCoupon(final long usedCount) {

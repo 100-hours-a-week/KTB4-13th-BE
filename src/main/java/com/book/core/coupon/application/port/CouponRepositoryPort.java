@@ -15,4 +15,6 @@ public interface CouponRepositoryPort {
     List<Coupon> findAllById(final Collection<Long> couponIds);
 
     Coupon save(final Coupon coupon);
+
+    int incrementIssuedQuantity(final Long couponId);
 }

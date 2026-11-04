@@ -37,4 +37,9 @@ public class CouponRepositoryAdapter implements CouponRepositoryPort {
     public Coupon save(final Coupon coupon) {
         return couponRepository.save(coupon);
     }
+
+    @Override
+    public int incrementIssuedQuantity(final Long couponId) {
+        return couponRepository.incrementIssuedQuantity(couponId);
+    }
 }

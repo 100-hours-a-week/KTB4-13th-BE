@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.book.core.coupon.application.result.OwnedCouponResult;
-import com.book.core.coupon.application.usecase.IssueCouponUseCase;
 import com.book.core.coupon.application.usecase.FindOwnedCouponsForCheckoutUseCase;
 import com.book.core.coupon.application.usecase.GetCouponTargetsUseCase;
 import com.book.core.coupon.application.usecase.GetOwnedCouponsUseCase;
@@ -20,11 +19,9 @@ import org.junit.jupiter.api.Test;
 
 class CouponServiceTest {
     private final GetOwnedCouponsUseCase ownedCouponReader = mock(GetOwnedCouponsUseCase.class);
-    private final IssueCouponUseCase issueCouponUseCase = mock(IssueCouponUseCase.class);
     private final GetCouponTargetsUseCase couponTargetReader = mock(GetCouponTargetsUseCase.class);
     private final FindOwnedCouponsForCheckoutUseCase checkoutReader = mock(FindOwnedCouponsForCheckoutUseCase.class);
-    private final OwnedCouponService service =
-        new OwnedCouponService(ownedCouponReader, issueCouponUseCase, couponTargetReader, checkoutReader);
+    private final OwnedCouponService service = new OwnedCouponService(ownedCouponReader, couponTargetReader, checkoutReader);
 
     @Test
     void 체크아웃은_대상_조회_후_인증_회원과_기준_시간으로_보유_쿠폰을_조회한다() {

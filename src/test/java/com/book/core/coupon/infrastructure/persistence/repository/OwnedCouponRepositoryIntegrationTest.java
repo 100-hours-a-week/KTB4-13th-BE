@@ -2,9 +2,11 @@ package com.book.core.coupon.infrastructure.persistence.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.application.usecase.IssueCouponUseCase;
 import com.book.core.coupon.application.usecase.RevertOwnedCouponUseCase;
@@ -16,12 +18,14 @@ import com.book.core.coupon.domain.enums.OwnedCouponStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -39,6 +43,14 @@ class OwnedCouponRepositoryIntegrationTest {
     UseOwnedCouponUseCase useOwnedCoupon;
     @Autowired
     RevertOwnedCouponUseCase revertOwnedCoupon;
+
+    @MockitoBean
+    CouponStockPort couponStockPort;
+
+    @BeforeEach
+    void setRedisStockAvailable() {
+        when(couponStockPort.tryIssue(org.mockito.ArgumentMatchers.anyLong())).thenReturn(CouponStockPort.IssueResult.ISSUED);
+    }
 
     @Test
     void 체크아웃은_회원과_상태와_만료만_필터하고_금액이나_횟수는_필터하지_않는다() {

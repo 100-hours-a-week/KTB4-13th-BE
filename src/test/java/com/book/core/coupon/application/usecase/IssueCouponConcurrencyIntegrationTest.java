@@ -2,14 +2,19 @@ package com.book.core.coupon.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.domain.Coupon;
 import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,11 +23,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -51,6 +58,25 @@ class IssueCouponConcurrencyIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @MockitoBean
+    private CouponStockPort couponStockPort;
+
+    private final ConcurrentMap<String, AtomicLong> redisStocks = new ConcurrentHashMap<>();
+
+    @BeforeEach
+    void configureRedisStockScript() {
+        redisStocks.clear();
+        when(couponStockPort.tryIssue(anyLong())).thenAnswer(invocation -> {
+            final Long couponId = invocation.getArgument(0);
+            final AtomicLong stock = redisStocks.get("coupon:" + couponId + ":stock");
+            if (stock == null) {
+                return CouponStockPort.IssueResult.SOLD_OUT;
+            }
+            return stock.getAndUpdate((final long quantity) -> Math.max(quantity - 1, 0)) > 0 ? CouponStockPort.IssueResult.ISSUED
+                : CouponStockPort.IssueResult.SOLD_OUT;
+        });
+    }
 
     @Test
     void 서로_다른_회원이_동시에_요청해도_발급_한도를_넘지_않는다() throws Exception {
@@ -217,6 +243,7 @@ class IssueCouponConcurrencyIntegrationTest {
             VALUES (?, '발급 한도 쿠폰', 'FIXED_AMOUNT', 1000, 1, 0, CURRENT_TIMESTAMP(6) - INTERVAL 1 DAY,
                     CURRENT_TIMESTAMP(6) + INTERVAL 1 DAY, ?, 0)
             """, couponId, totalQuantity);
+        redisStocks.put("coupon:" + couponId + ":stock", new AtomicLong(totalQuantity));
         return couponId;
     }
 

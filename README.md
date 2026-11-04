@@ -62,6 +62,14 @@ java -Duser.timezone=Asia/Seoul -jar build/libs/book.jar
 기본 프로필은 `local`입니다. `src/main/resources/persistence.yml`에서 DB 설정을 관리하며
 Flyway가 테이블을 생성하고 Hibernate가 매핑을 검증합니다.
 
+Redis 연결은 `REDIS_HOST`(기본값 `localhost`), `REDIS_PORT`(기본값 `6379`),
+`REDIS_PASSWORD`(기본값 없음) 환경변수로 설정합니다. 문자열 키와 값을 다룰 때는
+Spring Boot가 자동 구성하는 `StringRedisTemplate`을 주입받아 사용합니다. 아직 Redis를 사용하는
+기능이나 캐시 만료 정책은 구현하지 않았습니다.
+실제 Redis를 사용하기 전에는 Redis 상태가 서비스 health에 영향을 주지 않도록 Redis health 검사를
+비활성화합니다. Redis 운영을 시작할 때는 환경변수 `MANAGEMENT_HEALTH_REDIS_ENABLED=true`로
+검사를 활성화하고 장애 시 서비스 health 정책을 함께 검토합니다.
+
 ```bash
 curl -i 'http://localhost:8080/api/v1/user-addresses?userId=42' \
   -H 'Content-Type: application/json' \

@@ -1,6 +1,8 @@
 package com.book.core.coupon.domain;
 
 import com.book.common.domain.BaseEntity;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.domain.enums.CouponType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -60,6 +62,24 @@ public class Coupon extends BaseEntity {
         this.expiredAt = expiredAt;
         this.totalQuantity = totalQuantity;
         this.issuedQuantity = issuedQuantity;
+        this.startsAt = startsAt;
+    }
+
+    public Coupon(final String name, final CouponType type, final BigDecimal discount, final long maxUseCount,
+        final BigDecimal minOrderAmount, final LocalDateTime expiredAt, final int totalQuantity, final LocalDateTime startsAt) {
+        if (name == null || name.isBlank() || name.length() > 255 || type == null || discount == null || discount.signum() < 0
+            || maxUseCount <= 0 || minOrderAmount == null || minOrderAmount.signum() < 0 || expiredAt == null || totalQuantity <= 0
+            || startsAt == null || !startsAt.isBefore(expiredAt)) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        this.name = name;
+        this.type = type;
+        this.discount = discount;
+        this.maxUseCount = maxUseCount;
+        this.minOrderAmount = minOrderAmount;
+        this.expiredAt = expiredAt;
+        this.totalQuantity = totalQuantity;
+        this.issuedQuantity = 0;
         this.startsAt = startsAt;
     }
 

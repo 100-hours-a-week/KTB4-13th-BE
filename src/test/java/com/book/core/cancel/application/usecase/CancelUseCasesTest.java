@@ -31,10 +31,9 @@ import com.book.core.payment.domain.PaymentHistory;
 import com.book.core.payment.domain.enums.PaymentMethod;
 import com.book.core.payment.domain.enums.PaymentState;
 import com.book.core.payment.domain.enums.TransactionType;
-import com.book.core.point.application.usecase.DeductPointUseCase;
-import com.book.core.point.application.usecase.EarnPointUseCase;
+import com.book.core.point.application.usecase.ReclaimPaymentBonusUseCase;
+import com.book.core.point.application.usecase.RestorePaymentPointsUseCase;
 import com.book.core.point.domain.PointAmount;
-import com.book.core.point.domain.enums.PointType;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -54,8 +53,8 @@ class CancelUseCasesTest {
     private final CancelBalanceRepositoryPort balances = mock(CancelBalanceRepositoryPort.class);
     private final CancelRepositoryPort cancels = mock(CancelRepositoryPort.class);
     private final RevertOwnedCouponUseCase coupons = mock(RevertOwnedCouponUseCase.class);
-    private final EarnPointUseCase earn = mock(EarnPointUseCase.class);
-    private final DeductPointUseCase deduct = mock(DeductPointUseCase.class);
+    private final RestorePaymentPointsUseCase earn = mock(RestorePaymentPointsUseCase.class);
+    private final ReclaimPaymentBonusUseCase deduct = mock(ReclaimPaymentBonusUseCase.class);
     private final RecordPaymentHistoryUseCase histories = mock(RecordPaymentHistoryUseCase.class);
     private final Clock clock = Clock.fixed(Instant.EPOCH, ZoneId.of("Asia/Seoul"));
 
@@ -69,8 +68,8 @@ class CancelUseCasesTest {
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
         assertThat(balance.cancellablePaidAmount()).isEqualByComparingTo("0");
         verify(coupons).execute(10L);
-        verify(earn).execute(1L, PointType.PAYMENT, 3L, BigDecimal.valueOf(1200));
-        verify(deduct).execute(1L, PointType.PAYMENT, 3L, PointAmount.PAYMENT);
+        verify(earn).execute(1L, 3L, BigDecimal.valueOf(1200));
+        verify(deduct).execute(1L, 3L, PointAmount.PAYMENT);
         final ArgumentCaptor<Cancel> capture = ArgumentCaptor.forClass(Cancel.class);
         verify(cancels).save(capture.capture());
         assertThat(capture.getValue().type()).isEqualTo(CancelType.ALL);
@@ -106,7 +105,7 @@ class CancelUseCasesTest {
             new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", pgCanceledAt));
         assertThat(order.status()).isEqualTo(OrderStatus.PARTIAL_CANCELED);
         assertThat(order.items().getFirst().canceledQuantity()).isEqualTo(1);
-        verify(deduct).execute(1L, PointType.PAYMENT, 3L, PointAmount.PAYMENT);
+        verify(deduct).execute(1L, 3L, PointAmount.PAYMENT);
         verifyNoInteractions(coupons, earn);
         final ArgumentCaptor<Cancel> capture = ArgumentCaptor.forClass(Cancel.class);
         verify(cancels).save(capture.capture());
@@ -126,7 +125,7 @@ class CancelUseCasesTest {
             new com.book.core.payment.application.result.CanceledPaymentResult("cancel-key", java.time.OffsetDateTime.now()));
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
         verify(coupons).execute(10L);
-        verify(earn).execute(1L, PointType.PAYMENT, 3L, BigDecimal.valueOf(100));
+        verify(earn).execute(1L, 3L, BigDecimal.valueOf(100));
         verifyNoInteractions(deduct);
     }
 

@@ -3,6 +3,7 @@ package com.book.core.payment.domain;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.domain.enums.CouponType;
+import com.book.core.point.domain.PointAmount;
 import java.math.BigDecimal;
 import java.util.List;
 import lombok.Getter;
@@ -21,6 +22,7 @@ public class PaymentDiscount {
 
     public PaymentDiscount(final List<PaymentCoupon> ownedCoupons, final BigDecimal pointBalance, final Long useOwnedCouponId,
         final BigDecimal usePointAmount) {
+        PointAmount.requireWhole(usePointAmount);
         this.useOwnedCouponId = useOwnedCouponId;
         this.usePointAmount = usePointAmount;
         if (useOwnedCouponId > 0) {
@@ -57,6 +59,9 @@ public class PaymentDiscount {
         final BigDecimal amount = orderPrice.subtract(couponDiscountAmount.add(usePointAmount));
         if (amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new CoreException(ErrorCode.PAYMENT_INVALID_AMOUNT);
+        }
+        if (amount.stripTrailingZeros().scale() > 0) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return amount;
     }

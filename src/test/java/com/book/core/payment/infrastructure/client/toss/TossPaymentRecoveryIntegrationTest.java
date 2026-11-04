@@ -22,14 +22,19 @@ import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
+import com.book.core.payment.application.command.CreatePaymentCommand;
+import com.book.core.payment.application.command.FailPaymentCommand;
+import com.book.core.payment.application.port.PaymentAttemptRepositoryPort;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.application.service.PaymentService;
 import com.book.core.payment.application.usecase.CompletePaymentUseCase;
 import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
 import com.book.core.payment.domain.Payment;
+import com.book.core.payment.domain.PaymentAttempt;
 import com.book.core.payment.domain.enums.PaymentMethod;
 import com.book.core.payment.domain.enums.PaymentState;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
+import com.book.core.point.application.usecase.ReservePaymentPointsUseCase;
 import com.book.core.point.domain.PointBalance;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -38,6 +43,7 @@ import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -99,6 +105,10 @@ class TossPaymentRecoveryIntegrationTest {
     @Autowired
     private PaymentRepositoryPort paymentRepository;
     @Autowired
+    private PaymentAttemptRepositoryPort paymentAttempts;
+    @Autowired
+    private ReservePaymentPointsUseCase reservePoints;
+    @Autowired
     private OrderRepositoryPort orders;
     @Autowired
     private CancelBalanceRepositoryPort balances;
@@ -118,7 +128,7 @@ class TossPaymentRecoveryIntegrationTest {
     @Test
     void 승인전_카드정보가_없어도_승인후_주문과_결제를_완료한다() {
         final Fixture fixture = fixture(false, 1);
-        final var command = new ApprovePaymentCommand(fixture.order().key(), fixture.key(), fixture.pg().total);
+        final var command = new ApprovePaymentCommand(fixture.pgOrderId(), fixture.key(), fixture.pg().total);
 
         final Long paymentId = payments.success(command);
 
@@ -141,7 +151,7 @@ class TossPaymentRecoveryIntegrationTest {
         final Fixture fixture = fixture(false, 1);
         fixture.pg().cardlessEasyPay = true;
         fixture.pg().paid = alreadyApproved;
-        final ApprovePaymentCommand command = new ApprovePaymentCommand(fixture.order().key(), fixture.key(), fixture.pg().total);
+        final ApprovePaymentCommand command = new ApprovePaymentCommand(fixture.pgOrderId(), fixture.key(), fixture.pg().total);
 
         final Long paymentId = payments.success(command);
 
@@ -161,9 +171,9 @@ class TossPaymentRecoveryIntegrationTest {
     @Test
     void 승인_성공후_DB실패는_요청을_보존하고_조회로_내부_반영을_복구한다() {
         final Fixture fixture = fixture(false, 1);
-        final var command = new ApprovePaymentCommand(fixture.order().key(), fixture.key(), fixture.pg().total);
+        final var command = new ApprovePaymentCommand(fixture.pgOrderId(), fixture.key(), fixture.pg().total);
         doThrow(new CoreException(ErrorCode.STORAGE_FAILURE)).doCallRealMethod().when(completePayment).execute(eq(fixture.order().key()),
-            any());
+            any(), any());
         assertThatThrownBy(() -> payments.success(command)).isInstanceOf(CoreException.class);
         assertThat(fixture.pg().approvals).isEqualTo(1);
         assertThat(pending(fixture)).isEqualTo(1L);
@@ -179,6 +189,46 @@ class TossPaymentRecoveryIntegrationTest {
             fixture.order().id())).isEqualTo(1L);
         assertThat(points.findByUserId(fixture.order().userId()).orElseThrow().balance()).isEqualByComparingTo("22000");
         verify(postProcessPayment, times(1)).execute(result, fixture.order().key());
+    }
+
+    @Test
+    void 실패_콜백_후_같은_시도의_승인_콜백은_운영확인을_유지하면서_같은_작업에_결제키를_연결한다() {
+        final Fixture fixture = fixture(false, 1, new BigDecimal("1200"));
+        final long userId = fixture.order().userId();
+        final FailPaymentCommand failure = new FailPaymentCommand(fixture.pgOrderId(), "FAIL", "test failure");
+
+        assertThatThrownBy(() -> payments.fail(userId, failure)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
+        final Long operationId = jdbc.queryForObject("select id from pg_operation where order_key = ?", Long.class, fixture.order().key());
+        assertThat(jdbc.queryForObject("select external_payment_key from pg_operation where id = ?", String.class, operationId)).isNull();
+        assertThat(jdbc.queryForObject("select case when review_required then 1 else 0 end from pg_operation where id = ?", Long.class,
+            operationId)).isEqualTo(1L);
+
+        // An inconsistent callback must not overwrite the unidentified operation.
+        final ApprovePaymentCommand mismatch =
+            new ApprovePaymentCommand(fixture.pgOrderId(), fixture.key(), fixture.pg().total.add(BigDecimal.ONE));
+        assertThatThrownBy(() -> payments.successForUser(userId, mismatch)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_REVIEW_REQUIRED));
+        assertThat(jdbc.queryForObject("select external_payment_key from pg_operation where id = ?", String.class, operationId)).isNull();
+
+        final ApprovePaymentCommand callback = new ApprovePaymentCommand(fixture.pgOrderId(), fixture.key(), fixture.pg().total);
+        for (int index = 0; index < 2; index++) {
+            assertThatThrownBy(() -> payments.successForUser(userId, callback)).isInstanceOfSatisfying(CoreException.class,
+                (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PG_REVIEW_REQUIRED));
+        }
+
+        assertThat(jdbc.queryForObject("select external_payment_key from pg_operation where id = ?", String.class, operationId))
+            .isEqualTo(fixture.key());
+        assertThat(jdbc.queryForObject("select case when review_required then 1 else 0 end from pg_operation where id = ?", Long.class,
+            operationId)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("select count(*) from pg_operation where order_key = ? and blocks_order = true", Long.class,
+            fixture.order().key())).isEqualTo(1L);
+        assertThat(points.findByUserId(userId).orElseThrow().reserved()).isEqualByComparingTo("1200");
+        assertThat(jdbc.queryForObject("select count(*) from point_reservation where user_id = ? and reservation_state = 'RESERVED'",
+            Long.class, userId)).isEqualTo(1L);
+        assertThat(orders.findActiveOrderByKey(fixture.order().key()).orElseThrow().status()).isEqualTo(OrderStatus.CREATED);
+        assertThat(fixture.pg().approvals).isZero();
+        assertThat(fixture.pg().refunds).isZero();
     }
 
     @Test
@@ -271,14 +321,16 @@ class TossPaymentRecoveryIntegrationTest {
     void 만료된_PG승인은_거절로_기록하고_새_결제키의_승인을_허용한다() {
         final Fixture fixture = fixture(false, 1);
         fixture.pg().terminalState = "EXPIRED";
-        final var failed = new ApprovePaymentCommand(fixture.order().key(), fixture.key(), fixture.pg().total);
+        final var failed = new ApprovePaymentCommand(fixture.pgOrderId(), fixture.key(), fixture.pg().total);
         assertThatThrownBy(() -> payments.success(failed)).isInstanceOfSatisfying(CoreException.class,
             error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REJECTED));
         assertThat(pending(fixture)).isZero();
+        final var retry = payments.create(new CreatePaymentCommand(fixture.order().userId(), fixture.order().key(), -1L, BigDecimal.ZERO,
+            "payment-retry-" + UUID.randomUUID()));
         final String newKey = "pg-" + UUID.randomUUID();
-        final GatewayPayment replacement = new GatewayPayment(fixture.order().key(), newKey, fixture.pg().total, false);
+        final GatewayPayment replacement = new GatewayPayment(retry.pgOrderId(), newKey, fixture.pg().total, false);
         gateway.put(newKey, replacement);
-        payments.success(new ApprovePaymentCommand(fixture.order().key(), newKey, fixture.pg().total));
+        payments.success(new ApprovePaymentCommand(retry.pgOrderId(), newKey, fixture.pg().total));
         assertThat(replacement.approvals).isEqualTo(1);
         assertThat(fixture.pg().approvals).isZero();
     }
@@ -309,6 +361,10 @@ class TossPaymentRecoveryIntegrationTest {
     }
 
     private Fixture fixture(final boolean paid, final int quantity) {
+        return fixture(paid, quantity, BigDecimal.ZERO);
+    }
+
+    private Fixture fixture(final boolean paid, final int quantity, final BigDecimal usedPoint) {
         final long userId = users.incrementAndGet();
         final long productId = 2000000 + userId;
         jdbc.update("INSERT INTO books (id, title, author, publisher, category, published_at) "
@@ -317,30 +373,43 @@ class TossPaymentRecoveryIntegrationTest {
             + "VALUES (?, ?, 'PG 상품', 10000, 10000, 0, 10)", productId, productId);
         return new TransactionTemplate(transactions).execute(status -> {
             final Order order = Order.create(userId, "pg-order-" + UUID.randomUUID(), null);
+            order.reserveUntil(LocalDateTime.now().plusMinutes(10));
             order.addItem(productId, "PG 상품", "", "저자", new BigDecimal("10000"), new BigDecimal("10000"), quantity);
             if (paid) {
                 order.paid();
             }
             orders.save(order);
             final String key = "pg-" + UUID.randomUUID();
-            final GatewayPayment pg = new GatewayPayment(order.key(), key, order.totalPrice(), paid);
+            final String pgOrderId;
+            if (paid) {
+                pgOrderId = order.key();
+            } else {
+                pgOrderId = "pg-attempt-" + UUID.randomUUID();
+            }
+            final BigDecimal paidAmount = order.totalPrice().subtract(usedPoint);
+            final GatewayPayment pg = new GatewayPayment(pgOrderId, key, paidAmount, paid);
             gateway.put(key, pg);
-            final Payment payment = new Payment(userId, order.id(), order.totalPrice(), -1L, BigDecimal.ZERO, BigDecimal.ZERO, userId,
-                order.totalPrice(), PaymentState.READY);
+            final Payment payment = new Payment(userId, order.id(), order.totalPrice(), -1L, BigDecimal.ZERO, usedPoint, userId, paidAmount,
+                PaymentState.READY);
             if (paid) {
                 payment.success(key, PaymentMethod.CARD, "12345678");
             }
             paymentRepository.save(payment);
             points.save(new PointBalance(null, userId, new BigDecimal("20000")));
+            if (!paid) {
+                final PaymentAttempt attempt = paymentAttempts.save(
+                    new PaymentAttempt(payment.id(), order.key(), pgOrderId, "request-" + UUID.randomUUID(), "input-" + UUID.randomUUID()));
+                reservePoints.execute(userId, attempt.id(), usedPoint, payment.id());
+            }
             if (paid) {
                 balances.save(new CancelBalance(order.id(), order.totalPrice(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                     BigDecimal.ZERO, BigDecimal.ZERO));
             }
-            return new Fixture(order, key, pg);
+            return new Fixture(order, key, pgOrderId, pg);
         });
     }
 
-    private record Fixture(Order order, String key, GatewayPayment pg) {
+    private record Fixture(Order order, String key, String pgOrderId, GatewayPayment pg) {
     }
 
     private record CancelAttempt(Long resultId, ErrorCode errorCode) {

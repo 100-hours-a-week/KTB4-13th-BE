@@ -19,6 +19,14 @@ import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderItemStatus;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.port.PaymentHistoryRepositoryPort;
+import com.book.core.payment.application.port.PaymentAttemptRepositoryPort;
+import com.book.core.payment.application.port.PgOperationRepositoryPort;
+import com.book.core.order.application.usecase.LockPaymentOrderUseCase;
+import com.book.core.payment.domain.PaymentAttempt;
+import com.book.core.payment.domain.PaymentAttemptState;
+import com.book.core.point.application.usecase.ReservePaymentPointsUseCase;
+import com.book.core.point.application.usecase.ConfirmPaymentPointsUseCase;
+import java.time.LocalDateTime;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
 import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.PaymentDiscount;
@@ -43,6 +51,12 @@ class PaymentUseCasesTest {
     private final GetPaymentOrderUseCase orders = mock(GetPaymentOrderUseCase.class);
     private final UseOwnedCouponUseCase coupons = mock(UseOwnedCouponUseCase.class);
     private final DeductPointUseCase deduct = mock(DeductPointUseCase.class);
+    private final ConfirmPaymentPointsUseCase confirm = mock(ConfirmPaymentPointsUseCase.class);
+    private final ReservePaymentPointsUseCase reserve = mock(ReservePaymentPointsUseCase.class);
+    private final LockPaymentOrderUseCase lockOrder = mock(LockPaymentOrderUseCase.class);
+    private final ValidatePaymentAttemptUseCase validateAttempt = mock(ValidatePaymentAttemptUseCase.class);
+    private final PaymentAttemptRepositoryPort attempts = mock(PaymentAttemptRepositoryPort.class);
+    private final PgOperationRepositoryPort operations = mock(PgOperationRepositoryPort.class);
     private final EarnPointUseCase earn = mock(EarnPointUseCase.class);
     private final CreateCancelBalanceUseCase cancel = mock(CreateCancelBalanceUseCase.class);
 
@@ -55,7 +69,15 @@ class PaymentUseCasesTest {
             ReflectionTestUtils.setField(payment, "id", 3L);
             return payment;
         });
-        assertThat(new CreatePaymentUseCase(payments).execute(order, 99L, PaymentDiscount.EMPTY)).isEqualTo(3L);
+        when(lockOrder.execute("order")).thenReturn(order);
+        when(attempts.save(any())).thenAnswer((final InvocationOnMock invocation) -> {
+            final PaymentAttempt attempt = invocation.getArgument(0);
+            ReflectionTestUtils.setField(attempt, "id", 4L);
+            return attempt;
+        });
+        assertThat(new CreatePaymentUseCase(payments, attempts, lockOrder, reserve, operations)
+            .execute(order, 99L, PaymentDiscount.EMPTY, "request-hash", "hash").paymentId()).isEqualTo(3L);
+        verify(reserve).execute(1L, 4L, BigDecimal.ZERO, 3L);
         final ArgumentCaptor<Payment> captured = ArgumentCaptor.forClass(Payment.class);
         verify(payments).save(captured.capture());
         assertThat(captured.getValue().userId()).isEqualTo(1L);
@@ -69,8 +91,89 @@ class PaymentUseCasesTest {
         final Payment payment = payment(-1L);
         payment.success("test", PaymentMethod.CARD, "test");
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
-        assertThatThrownBy(() -> new CreatePaymentUseCase(payments).execute(order(), 1L, PaymentDiscount.EMPTY)).isInstanceOfSatisfying(
-            CoreException.class, (final CoreException e) -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ORDER_ALREADY_PAID));
+        when(lockOrder.execute("order")).thenReturn(order());
+        assertThatThrownBy(() -> new CreatePaymentUseCase(payments, attempts, lockOrder, reserve, operations).execute(order(), 1L,
+            PaymentDiscount.EMPTY, "request-hash", "hash")).isInstanceOfSatisfying(CoreException.class,
+                (final CoreException e) -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ORDER_ALREADY_PAID));
+    }
+
+    @Test
+    void 동일한_시도_요청은_포인트를_중복_예약하지_않는다() {
+        final Order order = order();
+        final Payment payment = payment(-1L);
+        final PaymentAttempt attempt = new PaymentAttempt(3L, "order", "payment_old", "request-hash", "hash");
+        ReflectionTestUtils.setField(attempt, "id", 4L);
+        when(lockOrder.execute("order")).thenReturn(order);
+        when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
+        when(attempts.findLatestByPaymentId(3L)).thenReturn(Optional.of(attempt));
+        when(attempts.findByRequestHash("request-hash")).thenReturn(Optional.of(attempt));
+
+        final var result = new CreatePaymentUseCase(payments, attempts, lockOrder, reserve, operations).execute(order, 1L,
+            PaymentDiscount.EMPTY, "request-hash", "hash");
+        assertThat(result.paymentId()).isEqualTo(3L);
+        assertThat(result.pgOrderId()).isEqualTo("payment_old");
+        verifyNoInteractions(reserve);
+    }
+
+    @Test
+    void 다른_입력의_중복_생성과_기한_지난_주문은_거부한다() {
+        final Order order = order();
+        final Payment payment = payment(-1L);
+        final PaymentAttempt attempt = new PaymentAttempt(3L, "order", "payment_old", "request-hash", "hash");
+        ReflectionTestUtils.setField(attempt, "id", 4L);
+        when(lockOrder.execute("order")).thenReturn(order);
+        when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
+        when(attempts.findLatestByPaymentId(3L)).thenReturn(Optional.of(attempt));
+        when(attempts.findByRequestHash("request-hash")).thenReturn(Optional.of(attempt));
+        final CreatePaymentUseCase useCase = new CreatePaymentUseCase(payments, attempts, lockOrder, reserve, operations);
+
+        assertThatThrownBy(() -> useCase.execute(order, 1L, PaymentDiscount.EMPTY, "request-hash", "other")).isInstanceOfSatisfying(
+            CoreException.class, (final CoreException error) -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_REQUEST_CONFLICT));
+        ReflectionTestUtils.setField(order, "expiresAt", LocalDateTime.now().minusSeconds(1));
+        assertThatThrownBy(() -> useCase.findExisting("order", 1L, "request-hash", "hash")).isInstanceOf(CoreException.class);
+        verifyNoInteractions(reserve);
+    }
+
+    @Test
+    void 이전_실패_시도의_늦은_콜백은_최신_시도로_검증되지_않는다() {
+        final Order order = order();
+        final Payment payment = payment(-1L);
+        final PaymentAttempt latest = new PaymentAttempt(3L, "order", "payment_new", "request-hash", "hash");
+        ReflectionTestUtils.setField(latest, "id", 5L);
+        when(lockOrder.execute("order")).thenReturn(order);
+        when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
+        when(attempts.findLatestByPaymentId(3L)).thenReturn(Optional.of(latest));
+        final ValidatePaymentAttemptUseCase useCase = new ValidatePaymentAttemptUseCase(lockOrder, payments, attempts);
+
+        assertThatThrownBy(() -> useCase.execute("order", 4L)).isInstanceOf(CoreException.class);
+        useCase.execute("order", 5L);
+        assertThat(latest.state()).isEqualTo(PaymentAttemptState.READY);
+    }
+
+    @Test
+    void 최종_실패_후_이전_키_재전송은_새_예약을_만들지_않고_새_키만_재시도한다() {
+        final Order order = order();
+        final Payment payment = payment(-1L);
+        final PaymentAttempt old = new PaymentAttempt(3L, "order", "payment_old", "old-key", "hash");
+        ReflectionTestUtils.setField(old, "id", 4L);
+        old.fail();
+        when(lockOrder.execute("order")).thenReturn(order);
+        when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
+        when(attempts.findByRequestHash("old-key")).thenReturn(Optional.of(old));
+        when(attempts.findLatestByPaymentId(3L)).thenReturn(Optional.of(old));
+        when(attempts.save(any())).thenAnswer((final InvocationOnMock invocation) -> {
+            final PaymentAttempt attempt = invocation.getArgument(0);
+            ReflectionTestUtils.setField(attempt, "id", 5L);
+            return attempt;
+        });
+        final CreatePaymentUseCase useCase = new CreatePaymentUseCase(payments, attempts, lockOrder, reserve, operations);
+
+        assertThatThrownBy(() -> useCase.execute(order, 1L, PaymentDiscount.EMPTY, "old-key", "hash")).isInstanceOfSatisfying(
+            CoreException.class, (final CoreException error) -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PAYMENT_INVALID_STATE));
+        verifyNoInteractions(reserve);
+        final var retry = useCase.execute(order, 1L, PaymentDiscount.EMPTY, "new-key", "hash");
+        assertThat(retry.pgOrderId()).isNotEqualTo("payment_old");
+        verify(reserve).execute(1L, 5L, BigDecimal.ZERO, 3L);
     }
 
     @Test
@@ -100,13 +203,13 @@ class PaymentUseCasesTest {
         final Payment payment = payment(10L);
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order);
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment));
-        assertThat(complete().execute("order", new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
+        assertThat(complete().execute("order", 4L, new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
             com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678"))).isEqualTo(3L);
         assertThat(order.status()).isEqualTo(OrderStatus.PAID);
         assertThat(order.items()).allSatisfy((final OrderItem item) -> assertThat(item.status()).isEqualTo(OrderItemStatus.PAID));
         assertThat(payment.state()).isEqualTo(PaymentState.SUCCESS);
         verify(coupons).execute(10L);
-        verify(deduct).execute(1L, PointType.PAYMENT, 3L, BigDecimal.valueOf(1200));
+        verify(confirm).execute(1L, 4L);
         verify(earn).execute(1L, PointType.PAYMENT, 3L, PointAmount.PAYMENT);
         verify(cancel).execute(2L, BigDecimal.valueOf(8800), BigDecimal.valueOf(1200), BigDecimal.ZERO);
         final ArgumentCaptor<PaymentHistory> captured = ArgumentCaptor.forClass(PaymentHistory.class);
@@ -120,7 +223,7 @@ class PaymentUseCasesTest {
     void 쿠폰_없는_성공은_쿠폰_사용을_생략한다() {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment(-1L)));
-        complete().execute("order", new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
+        complete().execute("order", 4L, new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
             com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678"));
         verifyNoInteractions(coupons);
     }
@@ -131,10 +234,10 @@ class PaymentUseCasesTest {
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment(10L)));
         doThrow(new CoreException(ErrorCode.OWNED_COUPON_INVALID_USAGE)).when(coupons).execute(10L);
         assertThatThrownBy(
-            () -> complete().execute("order", new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
+            () -> complete().execute("order", 4L, new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
                 com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678")))
             .isInstanceOf(CoreException.class);
-        verifyNoInteractions(deduct, earn, cancel, histories);
+        verifyNoInteractions(confirm, earn, cancel, histories);
     }
 
     @Test
@@ -155,12 +258,16 @@ class PaymentUseCasesTest {
     }
 
     private CompletePaymentUseCase complete() {
-        return new CompletePaymentUseCase(payments, orders, coupons, deduct, earn, cancel, histories);
+        final PaymentAttempt attempt = new PaymentAttempt(3L, "order", "payment_attempt", "request-hash", "hash");
+        ReflectionTestUtils.setField(attempt, "id", 4L);
+        when(attempts.findById(4L)).thenReturn(Optional.of(attempt));
+        return new CompletePaymentUseCase(payments, orders, coupons, confirm, validateAttempt, attempts, earn, cancel, histories);
     }
 
     private static Order order() {
         final Order order = Order.create(1L, "order", null);
         ReflectionTestUtils.setField(order, "id", 2L);
+        order.reserveUntil(LocalDateTime.now().plusMinutes(10));
         order.addItem(10L, "책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), 1);
         return order;
     }

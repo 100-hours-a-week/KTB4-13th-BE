@@ -15,6 +15,7 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
+import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.Coupon;
 import com.book.core.coupon.domain.OwnedCoupon;
 import com.book.core.coupon.domain.enums.CouponType;
@@ -33,6 +34,7 @@ class IssueCouponUseCaseTest {
     private final CouponRepositoryPort couponRepository = mock(CouponRepositoryPort.class);
     private final CouponStockPort couponStockPort = mock(CouponStockPort.class);
     private final OwnedCouponRepositoryPort ownedCouponRepository = mock(OwnedCouponRepositoryPort.class);
+    private final CacheMetrics cacheMetrics = mock(CacheMetrics.class);
     private final LocalDateTime now = LocalDateTime.now();
 
     @BeforeEach
@@ -161,7 +163,7 @@ class IssueCouponUseCaseTest {
     }
 
     private IssueCouponUseCase issueCouponUseCase() {
-        return new IssueCouponUseCase(couponRepository, ownedCouponRepository, couponStockPort);
+        return new IssueCouponUseCase(couponRepository, ownedCouponRepository, couponStockPort, cacheMetrics);
     }
 
 }

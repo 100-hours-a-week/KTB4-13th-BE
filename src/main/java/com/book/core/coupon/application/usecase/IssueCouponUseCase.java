@@ -6,6 +6,7 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
+import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.Coupon;
 import com.book.core.coupon.domain.OwnedCoupon;
 
@@ -23,10 +24,12 @@ public class IssueCouponUseCase {
     private final CouponRepositoryPort couponRepository;
     private final OwnedCouponRepositoryPort ownedCouponRepository;
     private final CouponStockPort couponStockPort;
+    private final CacheMetrics cacheMetrics;
 
     @Transactional
     public void execute(final Long userId, final Long couponId) {
         log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 처리를 시작합니다. couponId={}", couponId);
+        cacheMetrics.incrementCouponDbRead();
         final Coupon coupon =
             couponRepository.findById(couponId).orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
 

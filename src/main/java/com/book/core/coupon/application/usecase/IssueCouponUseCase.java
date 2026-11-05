@@ -5,8 +5,9 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.CouponStockPort;
+import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
-import com.book.core.coupon.domain.Coupon;
+import com.book.core.coupon.domain.CouponIssuePolicy;
 import com.book.core.coupon.domain.OwnedCoupon;
 
 import lombok.RequiredArgsConstructor;
@@ -25,25 +26,28 @@ public class IssueCouponUseCase {
     private final CouponStockPort couponStockPort;
 
     @Transactional
-    public void execute(final Long userId, final Long couponId) {
+    public void execute(final Long userId, final Long couponId, final CouponIssuePolicy policy) {
         log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 처리를 시작합니다. couponId={}", couponId);
-        final Coupon coupon =
-            couponRepository.findById(couponId).orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
 
-        if (!coupon.isIssuableAt(now())) {
+        if (!policy.isIssuableAt(now())) {
             throw new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
         }
-        if (coupon.isSoldOut()) {
+        if (policy.soldOut()) {
             throw new CoreException(ErrorCode.COUPON_SOLD_OUT);
         }
-        if (ownedCouponRepository.existsByUserIdAndCouponId(userId, coupon.id())) {
+        if (ownedCouponRepository.existsByUserIdAndCouponId(userId, couponId)) {
             throw new CoreException(ErrorCode.COUPON_ALREADY_ISSUED);
         }
 
         tryIssue(couponId);
-        couponRepository.incrementIssuedQuantity(couponId);
+        if (couponRepository.incrementIssuedQuantity(couponId) == 0) {
+            if (couponRepository.findById(couponId).isEmpty()) {
+                throw new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
+            }
+            throw new CoreException(ErrorCode.COUPON_SOLD_OUT);
+        }
 
-        final OwnedCoupon ownedCoupon = OwnedCoupon.of(userId, coupon.id(), coupon.maxUseCount());
+        final OwnedCoupon ownedCoupon = OwnedCoupon.of(userId, couponId, policy.maxUseCount());
         try {
             ownedCouponRepository.save(ownedCoupon);
         } catch (final Exception exception) {
@@ -57,7 +61,8 @@ public class IssueCouponUseCase {
     }
 
     private void tryIssue(final Long couponId) {
-        switch (couponStockPort.tryIssue(couponId)) {
+        final IssueResult issueResult = couponStockPort.tryIssue(couponId);
+        switch (issueResult) {
             case ISSUED -> log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 성공. couponId={}", couponId);
             case SOLD_OUT -> {
                 log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 실패(재고 없음). couponId={}", couponId);

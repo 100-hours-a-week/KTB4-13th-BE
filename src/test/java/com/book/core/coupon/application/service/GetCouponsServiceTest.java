@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.book.core.coupon.application.command.GetCouponsCommand;
 import com.book.core.coupon.application.result.CouponResult;
 import com.book.core.coupon.application.usecase.CreateCouponUseCase;
+import com.book.core.coupon.application.usecase.GetCouponIssuePolicyUseCase;
 import com.book.core.coupon.application.usecase.GetCouponTargetsUseCase;
 import com.book.core.coupon.application.usecase.GetCouponsUseCase;
 import com.book.core.coupon.application.usecase.IssueCouponUseCase;
@@ -20,7 +21,8 @@ class GetCouponsServiceTest {
     void 일반_쿠폰_조회는_상품_대상을_다시_조회하지_않고_ID_목록을_전달한다() {
         final var targets = mock(GetCouponTargetsUseCase.class);
         final var coupons = mock(GetCouponsUseCase.class);
-        final var service = new CouponService(targets, coupons, mock(CreateCouponUseCase.class), mock(IssueCouponUseCase.class));
+        final var service = new CouponService(targets, coupons, mock(CreateCouponUseCase.class), mock(IssueCouponUseCase.class),
+            mock(GetCouponIssuePolicyUseCase.class));
         final var command = new GetCouponsCommand(List.of(10L, 20L));
         final List<CouponResult> result = List.of();
         when(coupons.execute(command.couponIds())).thenReturn(result);

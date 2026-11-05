@@ -6,9 +6,12 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.coupon.application.command.IssueCouponCommand;
+import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
 import com.book.core.coupon.application.port.CouponStockPort;
+import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
-import com.book.core.coupon.application.usecase.IssueCouponUseCase;
+import com.book.core.coupon.application.service.CouponService;
 import com.book.core.coupon.application.usecase.RevertOwnedCouponUseCase;
 import com.book.core.coupon.application.usecase.UseOwnedCouponUseCase;
 import com.book.core.coupon.domain.Coupon;
@@ -38,18 +41,21 @@ class OwnedCouponRepositoryIntegrationTest {
     @Autowired
     OwnedCouponJpaRepository ownedCouponJpaRepository;
     @Autowired
-    IssueCouponUseCase issueCoupon;
+    CouponService couponService;
     @Autowired
     UseOwnedCouponUseCase useOwnedCoupon;
     @Autowired
     RevertOwnedCouponUseCase revertOwnedCoupon;
 
     @MockitoBean
+    private CouponCacheRepositoryPort couponIssuePolicyCache;
+
+    @MockitoBean
     CouponStockPort couponStockPort;
 
     @BeforeEach
     void setRedisStockAvailable() {
-        when(couponStockPort.tryIssue(org.mockito.ArgumentMatchers.anyLong())).thenReturn(CouponStockPort.IssueResult.ISSUED);
+        when(couponStockPort.tryIssue(org.mockito.ArgumentMatchers.anyLong())).thenReturn(IssueResult.ISSUED);
     }
 
     @Test
@@ -81,7 +87,7 @@ class OwnedCouponRepositoryIntegrationTest {
     @Test
     void 발급_사용_복원과_삭제_후에도_유지되는_중복_제약을_검증한다() {
         final var coupon = saveCoupon(LocalDateTime.now().plusDays(7));
-        issueCoupon.execute(42L, coupon.id());
+        couponService.issue(new IssueCouponCommand(42L, coupon.id()));
         final var owned = ownedCouponRepository.findByUserIdAndCouponId(42L, coupon.id()).orElseThrow();
         useOwnedCoupon.execute(owned.id());
         useOwnedCoupon.execute(owned.id());
@@ -94,8 +100,8 @@ class OwnedCouponRepositoryIntegrationTest {
         assertThat(restored.status()).isEqualTo(OwnedCouponStatus.ISSUED);
         restored.delete();
         ownedCouponRepository.save(restored);
-        assertThatThrownBy(() -> issueCoupon.execute(42L, coupon.id())).isInstanceOf(CoreException.class).extracting("errorCode")
-            .isEqualTo(ErrorCode.COUPON_ALREADY_ISSUED);
+        assertThatThrownBy(() -> couponService.issue(new IssueCouponCommand(42L, coupon.id()))).isInstanceOf(CoreException.class)
+            .extracting("errorCode").isEqualTo(ErrorCode.COUPON_ALREADY_ISSUED);
         assertThatThrownBy(() -> ownedCouponJpaRepository.saveAndFlush(new OwnedCoupon(42L, coupon.id(), OwnedCouponStatus.ISSUED, 2L, 0L)))
             .isInstanceOf(DataIntegrityViolationException.class);
     }

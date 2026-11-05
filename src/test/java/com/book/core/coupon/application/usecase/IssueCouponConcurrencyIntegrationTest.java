@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.CouponStockPort;
+import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.domain.Coupon;
 import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
@@ -71,10 +72,9 @@ class IssueCouponConcurrencyIntegrationTest {
             final Long couponId = invocation.getArgument(0);
             final AtomicLong stock = redisStocks.get("coupon:" + couponId + ":stock");
             if (stock == null) {
-                return CouponStockPort.IssueResult.SOLD_OUT;
+                return IssueResult.SOLD_OUT;
             }
-            return stock.getAndUpdate((final long quantity) -> Math.max(quantity - 1, 0)) > 0 ? CouponStockPort.IssueResult.ISSUED
-                : CouponStockPort.IssueResult.SOLD_OUT;
+            return stock.getAndUpdate((final long quantity) -> Math.max(quantity - 1, 0)) > 0 ? IssueResult.ISSUED : IssueResult.SOLD_OUT;
         });
     }
 

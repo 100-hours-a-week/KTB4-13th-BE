@@ -14,6 +14,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.CouponStockPort;
+import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.Coupon;
@@ -39,7 +40,7 @@ class IssueCouponUseCaseTest {
 
     @BeforeEach
     void setCouponStockAvailable() {
-        when(couponStockPort.tryIssue(anyLong())).thenReturn(CouponStockPort.IssueResult.ISSUED);
+        when(couponStockPort.tryIssue(anyLong())).thenReturn(IssueResult.ISSUED);
     }
 
     @Test
@@ -47,7 +48,7 @@ class IssueCouponUseCaseTest {
         final Coupon coupon = coupon(10L);
         when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon));
         when(ownedCouponRepository.existsByUserIdAndCouponId(42L, 10L)).thenReturn(false);
-        when(couponStockPort.tryIssue(10L)).thenReturn(CouponStockPort.IssueResult.ISSUED);
+        when(couponStockPort.tryIssue(10L)).thenReturn(IssueResult.ISSUED);
         issueCouponUseCase().execute(42L, 10L);
         final var captured = ArgumentCaptor.forClass(OwnedCoupon.class);
         verify(ownedCouponRepository).save(captured.capture());
@@ -113,7 +114,7 @@ class IssueCouponUseCaseTest {
     @Test
     void Redis_재고가_소진되면_DB_발급량과_보유_쿠폰을_변경하지_않는다() {
         when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon(10L)));
-        when(couponStockPort.tryIssue(10L)).thenReturn(CouponStockPort.IssueResult.SOLD_OUT);
+        when(couponStockPort.tryIssue(10L)).thenReturn(IssueResult.SOLD_OUT);
 
         assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L)).isInstanceOf(CoreException.class).extracting("errorCode")
             .isEqualTo(ErrorCode.COUPON_SOLD_OUT);
@@ -125,7 +126,7 @@ class IssueCouponUseCaseTest {
     @Test
     void Redis_발급_결과를_알_수_없으면_발급_실패로_처리한다() {
         when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon(10L)));
-        when(couponStockPort.tryIssue(10L)).thenReturn(CouponStockPort.IssueResult.FAILED);
+        when(couponStockPort.tryIssue(10L)).thenReturn(IssueResult.FAILED);
 
         assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L)).isInstanceOf(CoreException.class).extracting("errorCode")
             .isEqualTo(ErrorCode.COUPON_ISSUE_FAILED);

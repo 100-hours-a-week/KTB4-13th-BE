@@ -1,6 +1,7 @@
 package com.book.core.coupon.infrastructure.redis;
 
 import com.book.core.coupon.application.port.CouponStockPort;
+import com.book.core.coupon.application.port.IssueResult;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;

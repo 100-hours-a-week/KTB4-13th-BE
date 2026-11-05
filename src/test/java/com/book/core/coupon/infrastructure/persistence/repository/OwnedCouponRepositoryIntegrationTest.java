@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.CouponStockPort;
+import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.application.usecase.IssueCouponUseCase;
 import com.book.core.coupon.application.usecase.RevertOwnedCouponUseCase;
@@ -49,7 +50,7 @@ class OwnedCouponRepositoryIntegrationTest {
 
     @BeforeEach
     void setRedisStockAvailable() {
-        when(couponStockPort.tryIssue(org.mockito.ArgumentMatchers.anyLong())).thenReturn(CouponStockPort.IssueResult.ISSUED);
+        when(couponStockPort.tryIssue(org.mockito.ArgumentMatchers.anyLong())).thenReturn(IssueResult.ISSUED);
     }
 
     @Test

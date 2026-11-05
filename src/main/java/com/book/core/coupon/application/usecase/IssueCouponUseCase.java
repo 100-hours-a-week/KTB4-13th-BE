@@ -3,8 +3,10 @@ package com.book.core.coupon.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.coupon.application.port.CouponLoadSimulationPort;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.CouponStockPort;
+import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.Coupon;
@@ -25,11 +27,13 @@ public class IssueCouponUseCase {
     private final OwnedCouponRepositoryPort ownedCouponRepository;
     private final CouponStockPort couponStockPort;
     private final CacheMetrics cacheMetrics;
+    private final CouponLoadSimulationPort couponLoadSimulationPort;
 
     @Transactional
     public void execute(final Long userId, final Long couponId) {
         log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 처리를 시작합니다. couponId={}", couponId);
         cacheMetrics.incrementCouponDbRead();
+        couponLoadSimulationPort.simulateCouponReadLatency();
         final Coupon coupon =
             couponRepository.findById(couponId).orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
 
@@ -60,7 +64,8 @@ public class IssueCouponUseCase {
     }
 
     private void tryIssue(final Long couponId) {
-        switch (couponStockPort.tryIssue(couponId)) {
+        final IssueResult issueResult = couponStockPort.tryIssue(couponId);
+        switch (issueResult) {
             case ISSUED -> log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 성공. couponId={}", couponId);
             case SOLD_OUT -> {
                 log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 실패(재고 없음). couponId={}", couponId);

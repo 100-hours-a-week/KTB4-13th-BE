@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.coupon.application.port.CouponLoadSimulationPort;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.port.IssueResult;
@@ -36,6 +38,7 @@ class IssueCouponUseCaseTest {
     private final CouponStockPort couponStockPort = mock(CouponStockPort.class);
     private final OwnedCouponRepositoryPort ownedCouponRepository = mock(OwnedCouponRepositoryPort.class);
     private final CacheMetrics cacheMetrics = mock(CacheMetrics.class);
+    private final CouponLoadSimulationPort couponLoadSimulationPort = mock(CouponLoadSimulationPort.class);
     private final LocalDateTime now = LocalDateTime.now();
 
     @BeforeEach
@@ -50,6 +53,9 @@ class IssueCouponUseCaseTest {
         when(ownedCouponRepository.existsByUserIdAndCouponId(42L, 10L)).thenReturn(false);
         when(couponStockPort.tryIssue(10L)).thenReturn(IssueResult.ISSUED);
         issueCouponUseCase().execute(42L, 10L);
+        final var lookupOrder = inOrder(couponLoadSimulationPort, couponRepository);
+        lookupOrder.verify(couponLoadSimulationPort).simulateCouponReadLatency();
+        lookupOrder.verify(couponRepository).findById(10L);
         final var captured = ArgumentCaptor.forClass(OwnedCoupon.class);
         verify(ownedCouponRepository).save(captured.capture());
         verify(couponRepository).incrementIssuedQuantity(10L);
@@ -164,7 +170,7 @@ class IssueCouponUseCaseTest {
     }
 
     private IssueCouponUseCase issueCouponUseCase() {
-        return new IssueCouponUseCase(couponRepository, ownedCouponRepository, couponStockPort, cacheMetrics);
+        return new IssueCouponUseCase(couponRepository, ownedCouponRepository, couponStockPort, cacheMetrics, couponLoadSimulationPort);
     }
 
 }

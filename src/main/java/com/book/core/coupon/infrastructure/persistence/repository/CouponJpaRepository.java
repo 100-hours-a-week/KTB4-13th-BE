@@ -21,6 +21,9 @@ public interface CouponJpaRepository extends JpaRepository<Coupon, Long> {
     Optional<Coupon> findByIdForUpdate(@Param("couponId") final Long couponId);
 
     @Modifying
-    @Query("UPDATE Coupon c SET c.issuedQuantity = c.issuedQuantity + 1 WHERE c.id = :couponId")
+    @Query("""
+        UPDATE Coupon c SET c.issuedQuantity = c.issuedQuantity + 1
+        WHERE c.id = :couponId AND c.deletedAt IS NULL AND c.issuedQuantity < c.totalQuantity
+        """)
     int incrementIssuedQuantity(@Param("couponId") Long couponId);
 }

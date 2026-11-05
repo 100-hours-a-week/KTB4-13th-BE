@@ -7,8 +7,11 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.coupon.application.command.IssueCouponCommand;
+import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.port.IssueResult;
+import com.book.core.coupon.application.service.CouponService;
 import com.book.core.coupon.domain.Coupon;
 import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
@@ -49,7 +52,7 @@ class IssueCouponConcurrencyIntegrationTest {
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
 
     @Autowired
-    private IssueCouponUseCase issueCoupon;
+    private CouponService couponService;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -59,6 +62,9 @@ class IssueCouponConcurrencyIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @MockitoBean
+    private CouponCacheRepositoryPort couponIssuePolicyCache;
 
     @MockitoBean
     private CouponStockPort couponStockPort;
@@ -129,7 +135,7 @@ class IssueCouponConcurrencyIntegrationTest {
                         jdbc.queryForObject("SELECT COUNT(*) FROM owned_coupon WHERE user_id = ?", Integer.class, 123L);
                         snapshotEstablished.countDown();
                         await(issuanceCommitted);
-                        issueCoupon.execute(123L, couponId);
+                        couponService.issue(new IssueCouponCommand(123L, couponId));
                     });
                     return null;
                 } catch (final CoreException exception) {
@@ -138,7 +144,7 @@ class IssueCouponConcurrencyIntegrationTest {
             });
             try {
                 assertThat(snapshotEstablished.await(10, TimeUnit.SECONDS)).isTrue();
-                issueCoupon.execute(123L, couponId);
+                couponService.issue(new IssueCouponCommand(123L, couponId));
             } finally {
                 issuanceCommitted.countDown();
             }
@@ -159,7 +165,7 @@ class IssueCouponConcurrencyIntegrationTest {
                         assertThat(entityManager.find(Coupon.class, couponId)).isNotNull();
                         couponLoaded.countDown();
                         await(issuanceCommitted);
-                        issueCoupon.execute(124L, couponId);
+                        couponService.issue(new IssueCouponCommand(124L, couponId));
                     });
                     return null;
                 } catch (final CoreException exception) {
@@ -168,7 +174,7 @@ class IssueCouponConcurrencyIntegrationTest {
             });
             try {
                 assertThat(couponLoaded.await(10, TimeUnit.SECONDS)).isTrue();
-                issueCoupon.execute(123L, couponId);
+                couponService.issue(new IssueCouponCommand(123L, couponId));
             } finally {
                 issuanceCommitted.countDown();
             }
@@ -182,8 +188,8 @@ class IssueCouponConcurrencyIntegrationTest {
         final long couponId = insertCoupon(2);
 
         transactionTemplate.executeWithoutResult((final var status) -> {
-            issueCoupon.execute(125L, couponId);
-            issueCoupon.execute(126L, couponId);
+            couponService.issue(new IssueCouponCommand(125L, couponId));
+            couponService.issue(new IssueCouponCommand(126L, couponId));
         });
 
         assertCounts(couponId, 2);
@@ -193,10 +199,10 @@ class IssueCouponConcurrencyIntegrationTest {
     void 회원_ID가_없으면_발급량을_증가시키지_않는다() {
         final long couponId = insertCoupon(2);
 
-        assertThatThrownBy(() -> issueCoupon.execute(null, couponId)).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> couponService.issue(new IssueCouponCommand(null, couponId))).isInstanceOf(RuntimeException.class);
 
         assertCounts(couponId, 0);
-        issueCoupon.execute(1L, couponId);
+        couponService.issue(new IssueCouponCommand(1L, couponId));
         assertCounts(couponId, 1);
     }
 
@@ -216,7 +222,7 @@ class IssueCouponConcurrencyIntegrationTest {
                         throw new IllegalStateException("동시 발급 시작을 기다리는 시간이 초과됐습니다.");
                     }
                     try {
-                        issueCoupon.execute(request.getValue(), request.getKey());
+                        couponService.issue(new IssueCouponCommand(request.getValue(), request.getKey()));
                         return null;
                     } catch (final CoreException exception) {
                         return exception.errorCode();

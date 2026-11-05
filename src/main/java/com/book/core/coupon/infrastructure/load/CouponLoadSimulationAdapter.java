@@ -12,8 +12,7 @@ public class CouponLoadSimulationAdapter implements CouponLoadSimulationPort {
 
     @Override
     public void simulateCouponReadLatency() {
-        // final long latencyMs = cacheProperties.simulatedLoadLatencyMs();
-        final long latencyMs = 0;
+        final long latencyMs = cacheProperties.simulatedLoadLatencyMs();
         if (latencyMs == 0) {
             return;
         }

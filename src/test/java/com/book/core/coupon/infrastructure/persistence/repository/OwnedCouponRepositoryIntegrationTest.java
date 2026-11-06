@@ -2,6 +2,8 @@ package com.book.core.coupon.infrastructure.persistence.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
@@ -15,12 +17,14 @@ import com.book.core.coupon.application.service.CouponService;
 import com.book.core.coupon.application.usecase.RevertOwnedCouponUseCase;
 import com.book.core.coupon.application.usecase.UseOwnedCouponUseCase;
 import com.book.core.coupon.domain.Coupon;
+import com.book.core.coupon.domain.CouponIssuePolicy;
 import com.book.core.coupon.domain.OwnedCoupon;
 import com.book.core.coupon.domain.enums.CouponType;
 import com.book.core.coupon.domain.enums.OwnedCouponStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -55,7 +59,9 @@ class OwnedCouponRepositoryIntegrationTest {
 
     @BeforeEach
     void setRedisStockAvailable() {
-        when(couponStockPort.tryIssue(org.mockito.ArgumentMatchers.anyLong())).thenReturn(IssueResult.ISSUED);
+        when(couponIssuePolicyCache.getOrLoad(anyLong(), any()))
+            .thenAnswer((final var invocation) -> invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get());
+        when(couponStockPort.tryIssue(anyLong())).thenReturn(IssueResult.ISSUED);
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.book.core.coupon.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +14,7 @@ import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.service.CouponService;
 import com.book.core.coupon.domain.Coupon;
+import com.book.core.coupon.domain.CouponIssuePolicy;
 import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,6 +77,8 @@ class IssueCouponConcurrencyIntegrationTest {
     @BeforeEach
     void configureRedisStockScript() {
         redisStocks.clear();
+        when(couponIssuePolicyCache.getOrLoad(anyLong(), any()))
+            .thenAnswer((final var invocation) -> invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get());
         when(couponStockPort.tryIssue(anyLong())).thenAnswer(invocation -> {
             final Long couponId = invocation.getArgument(0);
             final AtomicLong stock = redisStocks.get("coupon:" + couponId + ":stock");

@@ -9,8 +9,9 @@ import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import lombok.RequiredArgsConstructor;
-
-import java.util.Optional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @UseCase
 @RequiredArgsConstructor
@@ -19,19 +20,18 @@ public class GetCouponIssuePolicyUseCase {
     private final CacheMetrics cacheMetrics;
     private final CouponLoadSimulationPort couponLoadSimulationPort;
     private final CouponCacheRepositoryPort couponCacheRepository;
+    private final PlatformTransactionManager transactionManager;
 
     public CouponIssuePolicy execute(final Long couponId) {
-        final Optional<CouponIssuePolicy> cachedCouponIssuePolicy = couponCacheRepository.find(couponId);
-        if (cachedCouponIssuePolicy.isPresent()) {
-            cacheMetrics.incrementCouponCacheHit();
-            return cachedCouponIssuePolicy.get();
-        }
+        return couponCacheRepository.getOrLoad(couponId, () -> loadPolicy(couponId));
+    }
 
+    private CouponIssuePolicy loadPolicy(final Long couponId) {
         couponLoadSimulationPort.simulateCouponReadLatency();
         cacheMetrics.incrementCouponDbRead();
-        final CouponIssuePolicy policy = couponRepository.findById(couponId).map(CouponIssuePolicy::from)
-            .orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
-        couponCacheRepository.save(couponId, policy);
-        return policy;
+        final TransactionTemplate policyReadTransaction = new TransactionTemplate(transactionManager);
+        policyReadTransaction.setReadOnly(true);
+        return policyReadTransaction.execute((final TransactionStatus status) -> couponRepository.findById(couponId)
+            .map(CouponIssuePolicy::from).orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED)));
     }
 }

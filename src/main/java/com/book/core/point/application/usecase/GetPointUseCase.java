@@ -27,6 +27,6 @@ public class GetPointUseCase {
         final var histories =
             pointHistoryRepository.findByUserId(command.userId()).stream().map((final var history) -> new PointHistoryResult(history.id(),
                 history.userId(), history.type(), history.referenceId(), history.amount(), history.createdAt())).toList();
-        return new GetPointResult(balance.userId(), balance.balance(), histories);
+        return new GetPointResult(balance.userId(), balance.available(), histories);
     }
 }

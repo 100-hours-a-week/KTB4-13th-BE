@@ -3,6 +3,8 @@ package com.book.core.payment.infrastructure.persistence.repository;
 import com.book.core.payment.application.port.PgOperationRepositoryPort;
 import com.book.core.payment.domain.PgOperation;
 import java.util.Optional;
+import java.util.List;
+import com.book.core.payment.domain.PgOperationType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -18,11 +20,16 @@ class PgOperationRepositoryAdapter implements PgOperationRepositoryPort {
 
     @Override
     public boolean existsPending(final String orderKey) {
-        return repository.existsByOrderKeyAndCompletedFalseAndRejectedFalse(orderKey);
+        return repository.existsByOrderKeyAndCompletedFalseAndRejectedFalseAndBlocksOrderTrue(orderKey);
     }
 
     @Override
     public PgOperation save(final PgOperation operation) {
         return repository.save(operation);
+    }
+
+    @Override
+    public List<PgOperation> findPendingApprovals() {
+        return repository.findByTypeAndCompletedFalseAndRejectedFalseAndReviewRequiredFalseOrderByRequestedAtAsc(PgOperationType.APPROVE);
     }
 }

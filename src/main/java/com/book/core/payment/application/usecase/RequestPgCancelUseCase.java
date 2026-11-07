@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class RequestPgCancelUseCase {
     private final PaymentClient client;
+    private final GetSuccessfulPaymentPgOrderIdUseCase getPgOrderId;
 
     public CanceledPaymentResult execute(final String orderKey, final Payment payment, final BigDecimal amount,
         final BigDecimal refundableAmount, final String idempotencyKey) {
@@ -25,9 +26,10 @@ public class RequestPgCancelUseCase {
         if (amount.signum() == 0) {
             return new CanceledPaymentResult("", OffsetDateTime.now());
         }
+        final String pgOrderId = getPgOrderId.execute(payment.id(), orderKey);
         final PgPaymentResult result = client.cancel(payment.externalPaymentKey(), amount, idempotencyKey);
         final BigDecimal expectedBalance = refundableAmount.subtract(amount);
-        if (result == null || !orderKey.equals(result.orderKey()) || !payment.externalPaymentKey().equals(result.paymentKey())
+        if (result == null || !pgOrderId.equals(result.orderKey()) || !payment.externalPaymentKey().equals(result.paymentKey())
             || result.totalAmount() == null || result.totalAmount().compareTo(payment.paidAmount()) != 0 || result.balanceAmount() == null
             || result.balanceAmount().compareTo(expectedBalance) != 0
             || (!"CANCELED".equals(result.status()) && !"PARTIAL_CANCELED".equals(result.status()))) {

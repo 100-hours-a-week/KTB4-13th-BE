@@ -19,6 +19,24 @@ class PaymentDiscountTest {
     }
 
     @Test
+    void 포인트_소수값은_거절하지만_정수인_소수표현은_허용한다() {
+        assertThatThrownBy(() -> new PaymentDiscount(List.of(), BigDecimal.TEN, -1L, new BigDecimal("1.5"))).isInstanceOfSatisfying(
+            CoreException.class, (final CoreException e) -> assertThat(e.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+        final PaymentDiscount discount = new PaymentDiscount(List.of(), BigDecimal.TEN, -1L, new BigDecimal("1.00"));
+        assertThat(discount.paidAmount(BigDecimal.TEN)).isEqualByComparingTo("9");
+    }
+
+    @Test
+    void 상품가격이나_비율할인으로_최종금액이_소수이면_거절한다() {
+        assertThatThrownBy(() -> PaymentDiscount.EMPTY.paidAmount(new BigDecimal("10.50"))).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException e) -> assertThat(e.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+        final PaymentCoupon coupon = new PaymentCoupon(10L, CouponType.PERCENT_RATE, new BigDecimal("0.15"), BigDecimal.ZERO);
+        final PaymentDiscount discount = new PaymentDiscount(List.of(coupon), BigDecimal.ZERO, 10L, BigDecimal.ZERO);
+        assertThatThrownBy(() -> discount.paidAmount(BigDecimal.valueOf(11))).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException e) -> assertThat(e.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+    }
+
+    @Test
     void 할인없는_EMPTY는_원래_주문_금액을_유지한다() {
         assertThat(PaymentDiscount.EMPTY.paidAmount(BigDecimal.valueOf(10000))).isEqualByComparingTo("10000");
     }

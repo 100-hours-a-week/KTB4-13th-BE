@@ -1,6 +1,5 @@
 package com.book.core.coupon.infrastructure.cache;
 
-import com.book.core.coupon.application.service.CacheMetrics;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.Duration;
@@ -15,12 +14,8 @@ public class CacheConfig {
     private static final long MAX_TRACKED_COUPONS = 1_000L;
 
     @Bean
-    LoadingCache<String, Boolean> couponSoldOutCache(final StringRedisTemplate redisTemplate, final SoldOutProperties soldOutProperties,
-        final CacheMetrics cacheMetrics) {
+    LoadingCache<String, Boolean> couponSoldOutCache(final StringRedisTemplate redisTemplate, final SoldOutProperties soldOutProperties) {
         return Caffeine.newBuilder().expireAfterWrite(Duration.ofMillis(soldOutProperties.fastPathTtlMs())).maximumSize(MAX_TRACKED_COUPONS)
-            .build((final String key) -> {
-                cacheMetrics.incrementSoldOutRedisExists();
-                return Boolean.TRUE.equals(redisTemplate.hasKey(key));
-            });
+            .build((final String key) -> Boolean.TRUE.equals(redisTemplate.hasKey(key)));
     }
 }

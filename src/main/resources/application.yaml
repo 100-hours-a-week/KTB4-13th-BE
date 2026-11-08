@@ -67,7 +67,6 @@ coupon:
   cache:
     ttl-ms: ${COUPON_CACHE_TTL_MS:10000}
     fresh-ms: ${COUPON_CACHE_FRESH_MS:500}
-    simulated-load-latency-ms: ${COUPON_CACHE_SIMULATED_LOAD_LATENCY_MS:0}
   sold-out:
     ttl-seconds: ${COUPON_SOLD_OUT_TTL_SECONDS:86400}
     fast-path-ttl-ms: ${COUPON_SOLD_OUT_FAST_PATH_TTL_MS:1000}

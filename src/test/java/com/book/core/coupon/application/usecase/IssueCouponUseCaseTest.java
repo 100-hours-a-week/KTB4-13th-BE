@@ -18,7 +18,6 @@ import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.result.CouponIssueState.Stock;
-import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.Coupon;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import com.book.core.coupon.domain.OwnedCoupon;
@@ -166,7 +165,7 @@ class IssueCouponUseCaseTest {
     }
 
     private IssueCouponUseCase issueCouponUseCase() {
-        return new IssueCouponUseCase(couponRepository, ownedCouponRepository, couponStockPort, new CacheMetrics());
+        return new IssueCouponUseCase(couponRepository, ownedCouponRepository, couponStockPort);
     }
 
 }

@@ -8,7 +8,6 @@ import static com.book.core.coupon.infrastructure.cache.RedisLuaSupport.runForSt
 import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
 import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.result.CouponIssueState.Stock;
-import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
@@ -37,7 +36,6 @@ public class CouponIssuePolicyCacheAdapter implements CouponCacheRepositoryPort 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final CacheProperties cacheProperties;
-    private final CacheMetrics cacheMetrics;
 
     private final ExecutorService backgroundExecutor = Executors.newFixedThreadPool(4, (final Runnable runnable) -> {
         final Thread thread = new Thread(runnable, "coupon-cache-swr-refresh");
@@ -66,11 +64,9 @@ public class CouponIssuePolicyCacheAdapter implements CouponCacheRepositoryPort 
 
             switch (result.getFirst()) {
                 case "HIT" -> {
-                    cacheMetrics.incrementCouponCacheHit();
                     return cachedIssueState(result);
                 }
                 case "STALE_REFRESH" -> {
-                    cacheMetrics.incrementCouponCacheHit();
                     backgroundExecutor.execute(() -> {
                         try {
                             fillCache(couponId, cacheKey, lockKey, token, loader);

@@ -6,6 +6,7 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
 import com.book.core.coupon.application.port.CouponLoadSimulationPort;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
+import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,7 @@ public class GetCouponIssuePolicyUseCase {
     private final CouponCacheRepositoryPort couponCacheRepository;
     private final PlatformTransactionManager transactionManager;
 
-    public CouponIssuePolicy execute(final Long couponId) {
+    public CouponIssueState execute(final Long couponId) {
         return couponCacheRepository.getOrLoad(couponId, () -> loadPolicy(couponId));
     }
 

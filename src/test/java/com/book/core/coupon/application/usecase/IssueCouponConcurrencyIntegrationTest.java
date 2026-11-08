@@ -10,6 +10,8 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.command.IssueCouponCommand;
 import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
+import com.book.core.coupon.application.result.CouponIssueState;
+import com.book.core.coupon.application.result.CouponIssueState.Stock;
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.service.CouponService;
@@ -77,8 +79,8 @@ class IssueCouponConcurrencyIntegrationTest {
     @BeforeEach
     void configureRedisStockScript() {
         redisStocks.clear();
-        when(couponIssuePolicyCache.getOrLoad(anyLong(), any()))
-            .thenAnswer((final var invocation) -> invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get());
+        when(couponIssuePolicyCache.getOrLoad(anyLong(), any())).thenAnswer(
+            (final var invocation) -> new CouponIssueState(invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get(), Stock.UNKNOWN));
         when(couponStockPort.tryIssue(anyLong())).thenAnswer(invocation -> {
             final Long couponId = invocation.getArgument(0);
             final AtomicLong stock = redisStocks.get("coupon:" + couponId + ":stock");

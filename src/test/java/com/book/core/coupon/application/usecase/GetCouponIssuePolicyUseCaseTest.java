@@ -14,6 +14,8 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
+import com.book.core.coupon.application.result.CouponIssueState;
+import com.book.core.coupon.application.result.CouponIssueState.Stock;
 import com.book.core.coupon.application.port.CouponLoadSimulationPort;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.service.CacheMetrics;
@@ -43,9 +45,9 @@ class GetCouponIssuePolicyUseCaseTest {
     @Test
     void 캐시에_정책이_있으면_쿠폰_조회와_인위_지연을_생략한다() {
         final var policy = CouponIssuePolicy.from(coupon(10L));
-        when(couponIssuePolicyCache.getOrLoad(eq(10L), any())).thenReturn(policy);
+        when(couponIssuePolicyCache.getOrLoad(eq(10L), any())).thenReturn(new CouponIssueState(policy, Stock.UNKNOWN));
 
-        assertThat(useCase.execute(10L)).isSameAs(policy);
+        assertThat(useCase.execute(10L).policy()).isSameAs(policy);
 
         verifyNoInteractions(couponRepository, couponLoadSimulationPort, cacheMetrics, transactionManager);
     }
@@ -56,7 +58,7 @@ class GetCouponIssuePolicyUseCaseTest {
         final var coupon = coupon(10L);
         when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon));
 
-        final var policy = useCase.execute(10L);
+        final var policy = useCase.execute(10L).policy();
 
         assertThat(policy).isEqualTo(CouponIssuePolicy.from(coupon));
         final var lookupOrder = inOrder(couponLoadSimulationPort, transactionManager, couponRepository);
@@ -79,8 +81,8 @@ class GetCouponIssuePolicyUseCaseTest {
 
     private void runPolicyLoader() {
         when(transactionManager.getTransaction(any())).thenReturn(transactionStatus);
-        when(couponIssuePolicyCache.getOrLoad(eq(10L), any()))
-            .thenAnswer((final var invocation) -> invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get());
+        when(couponIssuePolicyCache.getOrLoad(eq(10L), any())).thenAnswer(
+            (final var invocation) -> new CouponIssueState(invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get(), Stock.UNKNOWN));
     }
 
     private Coupon coupon(final Long id) {

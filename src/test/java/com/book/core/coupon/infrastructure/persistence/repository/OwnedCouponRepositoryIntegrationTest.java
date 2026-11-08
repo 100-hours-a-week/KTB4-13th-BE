@@ -10,6 +10,8 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.command.IssueCouponCommand;
 import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
+import com.book.core.coupon.application.result.CouponIssueState;
+import com.book.core.coupon.application.result.CouponIssueState.Stock;
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
@@ -59,8 +61,8 @@ class OwnedCouponRepositoryIntegrationTest {
 
     @BeforeEach
     void setRedisStockAvailable() {
-        when(couponIssuePolicyCache.getOrLoad(anyLong(), any()))
-            .thenAnswer((final var invocation) -> invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get());
+        when(couponIssuePolicyCache.getOrLoad(anyLong(), any())).thenAnswer(
+            (final var invocation) -> new CouponIssueState(invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get(), Stock.UNKNOWN));
         when(couponStockPort.tryIssue(anyLong())).thenReturn(IssueResult.ISSUED);
     }
 

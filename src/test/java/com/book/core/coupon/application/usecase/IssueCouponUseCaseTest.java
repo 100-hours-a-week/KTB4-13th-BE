@@ -16,6 +16,9 @@ import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
+import com.book.core.coupon.application.result.CouponIssueState;
+import com.book.core.coupon.application.result.CouponIssueState.Stock;
+import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.Coupon;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import com.book.core.coupon.domain.OwnedCoupon;
@@ -36,7 +39,7 @@ class IssueCouponUseCaseTest {
     private final CouponStockPort couponStockPort = mock(CouponStockPort.class);
     private final OwnedCouponRepositoryPort ownedCouponRepository = mock(OwnedCouponRepositoryPort.class);
     private final LocalDateTime now = LocalDateTime.now();
-    private final CouponIssuePolicy activePolicy = CouponIssuePolicy.from(coupon(10L));
+    private final CouponIssueState activeIssueState = withoutStock(CouponIssuePolicy.from(coupon(10L)));
 
     @BeforeEach
     void setCouponStockAvailable() {
@@ -48,7 +51,7 @@ class IssueCouponUseCaseTest {
     void 활성_미만료_쿠폰을_사용횟수_0으로_발급한다() {
         when(ownedCouponRepository.existsByUserIdAndCouponId(42L, 10L)).thenReturn(false);
         when(couponStockPort.tryIssue(10L)).thenReturn(IssueResult.ISSUED);
-        issueCouponUseCase().execute(42L, 10L, activePolicy);
+        issueCouponUseCase().execute(42L, 10L, activeIssueState);
         final var captured = ArgumentCaptor.forClass(OwnedCoupon.class);
         verify(ownedCouponRepository).save(captured.capture());
         verify(couponRepository).incrementIssuedQuantity(10L);
@@ -67,7 +70,7 @@ class IssueCouponUseCaseTest {
         when(couponRepository.incrementIssuedQuantity(10L)).thenReturn(0);
         when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon));
 
-        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activePolicy)).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activeIssueState)).isInstanceOf(CoreException.class)
             .extracting("errorCode").isEqualTo(ErrorCode.COUPON_SOLD_OUT);
         verify(ownedCouponRepository, never()).save(any(OwnedCoupon.class));
     }
@@ -75,7 +78,7 @@ class IssueCouponUseCaseTest {
     @Test
     void 이미_발급한_쿠폰은_다시_발급하지_않는다() {
         when(ownedCouponRepository.existsByUserIdAndCouponId(42L, 10L)).thenReturn(true);
-        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activePolicy)).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activeIssueState)).isInstanceOf(CoreException.class)
             .extracting("errorCode").isEqualTo(ErrorCode.COUPON_ALREADY_ISSUED);
     }
 
@@ -84,7 +87,7 @@ class IssueCouponUseCaseTest {
         final var exception = new ConstraintViolationException("duplicate", new SQLException(), "owned_coupon.udx_owned_coupon");
         when(ownedCouponRepository.save(any(OwnedCoupon.class))).thenThrow(exception);
 
-        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activePolicy)).isInstanceOfSatisfying(CoreException.class,
+        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activeIssueState)).isInstanceOfSatisfying(CoreException.class,
             (final CoreException actual) -> {
                 assertThat(actual.errorCode()).isEqualTo(ErrorCode.COUPON_ALREADY_ISSUED);
                 assertThat(actual.getCause()).isSameAs(exception);
@@ -97,15 +100,15 @@ class IssueCouponUseCaseTest {
         final var exception = new DataIntegrityViolationException("invalid", cause);
         when(ownedCouponRepository.save(any(OwnedCoupon.class))).thenThrow(exception);
 
-        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activePolicy)).isSameAs(exception);
+        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activeIssueState)).isSameAs(exception);
     }
 
     @Test
     void 발급_수량이_소진되면_발급하지_않는다() {
         final var coupon =
             new Coupon(10L, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, BigDecimal.ZERO, now.plusDays(1), 1, 1, now.minusDays(1));
-        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, CouponIssuePolicy.from(coupon))).isInstanceOf(CoreException.class)
-            .extracting("errorCode").isEqualTo(ErrorCode.COUPON_SOLD_OUT);
+        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, withoutStock(CouponIssuePolicy.from(coupon))))
+            .isInstanceOf(CoreException.class).extracting("errorCode").isEqualTo(ErrorCode.COUPON_SOLD_OUT);
         verifyNoInteractions(ownedCouponRepository);
     }
 
@@ -113,7 +116,7 @@ class IssueCouponUseCaseTest {
     void Redis_재고가_소진되면_DB_발급량과_보유_쿠폰을_변경하지_않는다() {
         when(couponStockPort.tryIssue(10L)).thenReturn(IssueResult.SOLD_OUT);
 
-        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activePolicy)).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activeIssueState)).isInstanceOf(CoreException.class)
             .extracting("errorCode").isEqualTo(ErrorCode.COUPON_SOLD_OUT);
 
         verify(ownedCouponRepository, never()).save(any(OwnedCoupon.class));
@@ -124,7 +127,7 @@ class IssueCouponUseCaseTest {
     void Redis_발급_결과를_알_수_없으면_발급_실패로_처리한다() {
         when(couponStockPort.tryIssue(10L)).thenReturn(IssueResult.FAILED);
 
-        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activePolicy)).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> issueCouponUseCase().execute(42L, 10L, activeIssueState)).isInstanceOf(CoreException.class)
             .extracting("errorCode").isEqualTo(ErrorCode.COUPON_ISSUE_FAILED);
 
         verify(ownedCouponRepository, never()).save(any(OwnedCoupon.class));
@@ -138,9 +141,9 @@ class IssueCouponUseCaseTest {
         final var expired =
             new Coupon(10L, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, BigDecimal.ZERO, now.minusDays(1), 1, 0, now.minusDays(2));
         final var useCase = issueCouponUseCase();
-        assertThatThrownBy(() -> useCase.execute(42L, 10L, CouponIssuePolicy.from(future))).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> useCase.execute(42L, 10L, withoutStock(CouponIssuePolicy.from(future)))).isInstanceOf(CoreException.class)
             .extracting("errorCode").isEqualTo(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
-        assertThatThrownBy(() -> useCase.execute(42L, 10L, CouponIssuePolicy.from(expired))).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> useCase.execute(42L, 10L, withoutStock(CouponIssuePolicy.from(expired)))).isInstanceOf(CoreException.class)
             .extracting("errorCode").isEqualTo(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
         verifyNoInteractions(ownedCouponRepository);
     }
@@ -153,13 +156,17 @@ class IssueCouponUseCaseTest {
         assertThat(coupon.isIssuableAt(now.plusDays(1))).isFalse();
     }
 
+    private CouponIssueState withoutStock(final CouponIssuePolicy policy) {
+        return new CouponIssueState(policy, Stock.UNKNOWN);
+    }
+
     private Coupon coupon(final Long id) {
         return new Coupon(id, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, new BigDecimal("1000"), now.plusDays(7), 10, 0,
             now.minusDays(1));
     }
 
     private IssueCouponUseCase issueCouponUseCase() {
-        return new IssueCouponUseCase(couponRepository, ownedCouponRepository, couponStockPort);
+        return new IssueCouponUseCase(couponRepository, ownedCouponRepository, couponStockPort, new CacheMetrics());
     }
 
 }

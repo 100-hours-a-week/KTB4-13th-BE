@@ -3,6 +3,7 @@ package com.book.core.coupon.application.service;
 import com.book.core.coupon.application.command.CreateCouponCommand;
 import com.book.core.coupon.application.command.GetCouponsCommand;
 import com.book.core.coupon.application.command.IssueCouponCommand;
+import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.result.CouponResult;
 import com.book.core.coupon.application.usecase.CreateCouponUseCase;
 import com.book.core.coupon.application.usecase.GetCouponIssuePolicyUseCase;
@@ -11,7 +12,6 @@ import com.book.core.coupon.application.usecase.GetCouponsUseCase;
 import com.book.core.coupon.application.usecase.IssueCouponUseCase;
 import java.util.List;
 
-import com.book.core.coupon.domain.CouponIssuePolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -29,9 +29,10 @@ public class CouponService {
     }
 
     public void issue(final IssueCouponCommand command) {
-        final CouponIssuePolicy policy = getCouponIssuePolicyUseCase.execute(command.couponId());
+        issueCouponUseCase.rejectIfSoldOut(command.couponId());
+        final CouponIssueState issueState = getCouponIssuePolicyUseCase.execute(command.couponId());
 
-        issueCouponUseCase.execute(command.userId(), command.couponId(), policy);
+        issueCouponUseCase.execute(command.userId(), command.couponId(), issueState);
     }
 
     public List<CouponResult> getCoupons(final GetCouponsCommand command) {

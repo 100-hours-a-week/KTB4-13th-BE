@@ -10,6 +10,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.command.IssueCouponCommand;
 import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
+import com.book.core.coupon.application.port.CouponIssueRateLimitPort;
 import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.result.CouponIssueState.Stock;
 import com.book.core.coupon.application.port.CouponStockPort;
@@ -29,6 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -69,6 +71,9 @@ class IssueCouponConcurrencyIntegrationTest {
     private EntityManager entityManager;
 
     @MockitoBean
+    private CouponIssueRateLimitPort rateLimit;
+
+    @MockitoBean
     private CouponCacheRepositoryPort couponIssuePolicyCache;
 
     @MockitoBean
@@ -79,8 +84,8 @@ class IssueCouponConcurrencyIntegrationTest {
     @BeforeEach
     void configureRedisStockScript() {
         redisStocks.clear();
-        when(couponIssuePolicyCache.getOrLoad(anyLong(), any())).thenAnswer(
-            (final var invocation) -> new CouponIssueState(invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get(), Stock.UNKNOWN));
+        when(couponIssuePolicyCache.getOrLoad(anyLong(), any())).thenAnswer((final var invocation) -> invocation
+            .<Supplier<Optional<CouponIssuePolicy>>>getArgument(1).get().map(policy -> new CouponIssueState(policy, Stock.UNKNOWN)));
         when(couponStockPort.tryIssue(anyLong())).thenAnswer(invocation -> {
             final Long couponId = invocation.getArgument(0);
             final AtomicLong stock = redisStocks.get("coupon:" + couponId + ":stock");

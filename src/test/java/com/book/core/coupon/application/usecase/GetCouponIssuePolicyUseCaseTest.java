@@ -40,7 +40,7 @@ class GetCouponIssuePolicyUseCaseTest {
     @Test
     void 캐시에_정책이_있으면_DB_조회를_생략한다() {
         final var policy = CouponIssuePolicy.from(coupon(10L));
-        when(couponIssuePolicyCache.getOrLoad(eq(10L), any())).thenReturn(new CouponIssueState(policy, Stock.UNKNOWN));
+        when(couponIssuePolicyCache.getOrLoad(eq(10L), any())).thenReturn(Optional.of(new CouponIssueState(policy, Stock.UNKNOWN)));
 
         assertThat(useCase.execute(10L).policy()).isSameAs(policy);
 
@@ -73,8 +73,8 @@ class GetCouponIssuePolicyUseCaseTest {
 
     private void runPolicyLoader() {
         when(transactionManager.getTransaction(any())).thenReturn(transactionStatus);
-        when(couponIssuePolicyCache.getOrLoad(eq(10L), any())).thenAnswer(
-            (final var invocation) -> new CouponIssueState(invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get(), Stock.UNKNOWN));
+        when(couponIssuePolicyCache.getOrLoad(eq(10L), any())).thenAnswer((final var invocation) -> invocation
+            .<Supplier<Optional<CouponIssuePolicy>>>getArgument(1).get().map(policy -> new CouponIssueState(policy, Stock.UNKNOWN)));
     }
 
     private Coupon coupon(final Long id) {

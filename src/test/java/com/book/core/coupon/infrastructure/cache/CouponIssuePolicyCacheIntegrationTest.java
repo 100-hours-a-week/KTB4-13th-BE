@@ -14,7 +14,6 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.result.CouponIssueState.Stock;
-import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -54,8 +53,6 @@ class CouponIssuePolicyCacheIntegrationTest {
 
     private static LettuceConnectionFactory connectionFactory;
     private static StringRedisTemplate redisTemplate;
-
-    private final CacheMetrics cacheMetrics = new CacheMetrics();
 
     @BeforeAll
     static void connect() {
@@ -105,8 +102,6 @@ class CouponIssuePolicyCacheIntegrationTest {
 
                 assertThat(List.of(owner.get(2, TimeUnit.SECONDS).policy(), waiter.get(2, TimeUnit.SECONDS).policy())).containsOnly(POLICY);
                 assertThat(loads).hasValue(1);
-                assertThat(cacheMetrics.snapshot().couponCacheHits()).isEqualTo(1);
-                assertThat(cacheMetrics.snapshot().couponDbReads()).isZero();
             } finally {
                 finishLoad.countDown();
             }
@@ -135,8 +130,8 @@ class CouponIssuePolicyCacheIntegrationTest {
         final IllegalStateException releaseFailure = new IllegalStateException("락 해제 실패");
         doReturn(List.of("LOAD", "")).when(failingRedis).execute(any(), anyList(), anyString(), anyString(), anyString(), anyString());
         doThrow(releaseFailure).when(failingRedis).execute(any(), anyList(), anyString());
-        final CouponIssuePolicyCacheAdapter cache = new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(),
-            new CacheProperties(10_000, 5_000, 0), cacheMetrics);
+        final CouponIssuePolicyCacheAdapter cache =
+            new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(), new CacheProperties(10_000, 5_000));
 
         assertThatThrownBy(() -> cache.getOrLoad(6L, () -> {
             throw loadFailure;
@@ -150,8 +145,8 @@ class CouponIssuePolicyCacheIntegrationTest {
         doReturn(mock(HashOperations.class)).when(failingRedis).opsForHash();
         doReturn(true).when(failingRedis).expire(anyString(), any(Duration.class));
         doReturn(null).when(failingRedis).execute(any(), anyList(), anyString());
-        final CouponIssuePolicyCacheAdapter cache = new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(),
-            new CacheProperties(10_000, 5_000, 0), cacheMetrics);
+        final CouponIssuePolicyCacheAdapter cache =
+            new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(), new CacheProperties(10_000, 5_000));
 
         assertThatThrownBy(() -> cache.getOrLoad(8L, () -> POLICY)).isInstanceOf(IllegalStateException.class).hasMessage("Lua 결과 null");
     }
@@ -161,8 +156,8 @@ class CouponIssuePolicyCacheIntegrationTest {
         final StringRedisTemplate failingRedis = spy(redisTemplate);
         final IllegalStateException saveFailure = new IllegalStateException("캐시 저장 실패");
         doThrow(saveFailure).when(failingRedis).opsForHash();
-        final CouponIssuePolicyCacheAdapter cache = new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(),
-            new CacheProperties(10_000, 5_000, 0), cacheMetrics);
+        final CouponIssuePolicyCacheAdapter cache =
+            new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(), new CacheProperties(10_000, 5_000));
 
         assertThatThrownBy(() -> cache.getOrLoad(7L, () -> POLICY)).isSameAs(saveFailure);
         assertThat(redisTemplate.opsForValue().get("coupon:7:issue-policy:lock")).isNull();
@@ -214,8 +209,7 @@ class CouponIssuePolicyCacheIntegrationTest {
         final JsonMapper mapper = JsonMapper.builder().build();
         doReturn(List.of("UNKNOWN", ""), List.of("HIT", mapper.writeValueAsString(POLICY), Stock.UNKNOWN.name())).when(redis).execute(any(),
             anyList(), anyString(), anyString(), anyString(), anyString());
-        final CouponIssuePolicyCacheAdapter cache =
-            new CouponIssuePolicyCacheAdapter(redis, mapper, new CacheProperties(10_000, 5_000, 0), cacheMetrics);
+        final CouponIssuePolicyCacheAdapter cache = new CouponIssuePolicyCacheAdapter(redis, mapper, new CacheProperties(10_000, 5_000));
 
         assertThatThrownBy(() -> cache.getOrLoad(10L, () -> {
             throw new AssertionError("알 수 없는 Lua 상태에서는 DB를 읽지 않아야 합니다.");
@@ -280,7 +274,6 @@ class CouponIssuePolicyCacheIntegrationTest {
                 assertThat(request.get().policy()).isEqualTo(POLICY);
             }
             assertThat(loads).hasValue(1);
-            assertThat(cacheMetrics.snapshot().couponCacheHits()).isEqualTo(10);
 
             finish.countDown();
             awaitUnlock(key);
@@ -393,8 +386,7 @@ class CouponIssuePolicyCacheIntegrationTest {
     }
 
     private CouponIssuePolicyCacheAdapter cache(final long ttlMs) {
-        return new CouponIssuePolicyCacheAdapter(redisTemplate, JsonMapper.builder().build(), new CacheProperties(ttlMs, 5_000, 0),
-            cacheMetrics);
+        return new CouponIssuePolicyCacheAdapter(redisTemplate, JsonMapper.builder().build(), new CacheProperties(ttlMs, 5_000));
     }
 
     private static void await(final CountDownLatch latch) {

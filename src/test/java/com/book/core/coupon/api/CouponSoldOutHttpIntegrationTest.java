@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.coupon.application.port.CouponStockPort;
-import com.book.core.coupon.application.service.CacheMetrics;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Tag;
@@ -55,9 +54,6 @@ class CouponSoldOutHttpIntegrationTest {
     private TokenIssuer tokens;
 
     @Autowired
-    private CacheMetrics cacheMetrics;
-
-    @Autowired
     private CouponStockPort couponStockPort;
 
     @Autowired
@@ -78,17 +74,15 @@ class CouponSoldOutHttpIntegrationTest {
         // 기존 미매진 캐시가 유효한 동안은 기존 발급 흐름으로 진행한다.
         expectError(1L, couponId, "E4001");
         couponSoldOutCache.invalidate(soldOutKey(couponId));
-        final var before = cacheMetrics.snapshot();
+        redisTemplate.delete(policyKey(couponId));
 
         expectError(1L, couponId, "E4003");
-        redisTemplate.delete(policyKey(couponId));
+        assertThat(couponSoldOutCache.getIfPresent(soldOutKey(couponId))).isTrue();
+        redisTemplate.delete(soldOutKey(couponId));
         expectError(3L, couponId, "E4003");
         expectError(4L, couponId, "E4003");
-        final var after = cacheMetrics.snapshot();
-        assertThat(after.soldOutRedisExists()).isEqualTo(before.soldOutRedisExists() + 1);
-        assertThat(after.soldOutFastPathHits()).isEqualTo(before.soldOutFastPathHits() + 3);
-        assertThat(after.couponDbReads()).isEqualTo(before.couponDbReads());
-        assertThat(after.couponCacheHits()).isEqualTo(before.couponCacheHits());
+
+        assertThat(redisTemplate.hasKey(policyKey(couponId))).isFalse();
         assertCounts(couponId, 2);
     }
 
@@ -97,14 +91,15 @@ class CouponSoldOutHttpIntegrationTest {
         final long couponId = 8_510_008L;
         insertActiveCoupon(couponId, 1);
         redisTemplate.opsForValue().set(stockKey(couponId), "0");
-        final var before = cacheMetrics.snapshot();
 
         expectError(1L, couponId, "E4003");
-        expectError(2L, couponId, "E4003");
-        expectError(3L, couponId, "E4003");
+        assertThat(couponSoldOutCache.getIfPresent(soldOutKey(couponId))).isFalse();
+        redisTemplate.opsForValue().set(soldOutKey(couponId), "1");
+        redisTemplate.delete(policyKey(couponId));
 
-        assertThat(cacheMetrics.snapshot().soldOutRedisExists()).isEqualTo(before.soldOutRedisExists() + 1);
-        assertThat(cacheMetrics.snapshot().soldOutFastPathHits()).isEqualTo(before.soldOutFastPathHits());
+        expectError(2L, couponId, "E4003");
+
+        assertThat(redisTemplate.hasKey(policyKey(couponId))).isTrue();
         assertCounts(couponId, 0);
     }
 
@@ -144,14 +139,12 @@ class CouponSoldOutHttpIntegrationTest {
         assertThat(redisTemplate.hasKey(soldOutKey(couponId))).isTrue();
         expectError(2L, couponId, "E4003");
         assertCounts(couponId, 1);
-        final long hitsBeforeRecovery = cacheMetrics.snapshot().soldOutFastPathHits();
 
         couponStockPort.initialize(couponId, 1);
         assertThat(redisTemplate.hasKey(soldOutKey(couponId))).isFalse();
         expectError(1L, couponId, "E4001");
         issue(2L, couponId).andExpect(status().isOk());
         assertCounts(couponId, 2);
-        assertThat(cacheMetrics.snapshot().soldOutFastPathHits()).isEqualTo(hitsBeforeRecovery);
         assertThat(redisTemplate.opsForValue().get(stockKey(couponId))).isEqualTo("0");
     }
 

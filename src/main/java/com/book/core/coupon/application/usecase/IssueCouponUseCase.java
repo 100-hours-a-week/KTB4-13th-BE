@@ -9,7 +9,6 @@ import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.result.CouponIssueState.Stock;
-import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import com.book.core.coupon.domain.OwnedCoupon;
 
@@ -27,11 +26,9 @@ public class IssueCouponUseCase {
     private final CouponRepositoryPort couponRepository;
     private final OwnedCouponRepositoryPort ownedCouponRepository;
     private final CouponStockPort couponStockPort;
-    private final CacheMetrics cacheMetrics;
 
     public void rejectIfSoldOut(final Long couponId) {
         if (couponStockPort.hasSoldOutSignal(couponId)) {
-            cacheMetrics.incrementSoldOutFastPathHit();
             throw new CoreException(ErrorCode.COUPON_SOLD_OUT);
         }
     }

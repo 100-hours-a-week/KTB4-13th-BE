@@ -5,6 +5,7 @@ import com.book.core.coupon.application.command.GetCouponsCommand;
 import com.book.core.coupon.application.command.IssueCouponCommand;
 import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.result.CouponResult;
+import com.book.core.coupon.application.usecase.CheckCouponIssueRateLimitUseCase;
 import com.book.core.coupon.application.usecase.CreateCouponUseCase;
 import com.book.core.coupon.application.usecase.GetCouponIssuePolicyUseCase;
 import com.book.core.coupon.application.usecase.GetCouponTargetsUseCase;
@@ -23,6 +24,7 @@ public class CouponService {
     private final CreateCouponUseCase couponCreator;
     private final IssueCouponUseCase issueCouponUseCase;
     private final GetCouponIssuePolicyUseCase getCouponIssuePolicyUseCase;
+    private final CheckCouponIssueRateLimitUseCase checkCouponIssueRateLimitUseCase;
 
     public CouponResult createCoupon(final CreateCouponCommand command) {
         return couponCreator.execute(command);
@@ -30,6 +32,7 @@ public class CouponService {
 
     public void issue(final IssueCouponCommand command) {
         issueCouponUseCase.rejectIfSoldOut(command.couponId());
+        checkCouponIssueRateLimitUseCase.execute(command.userId());
         final CouponIssueState issueState = getCouponIssuePolicyUseCase.execute(command.couponId());
 
         issueCouponUseCase.execute(command.userId(), command.couponId(), issueState);

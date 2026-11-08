@@ -2,6 +2,7 @@ package com.book.core.coupon.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -9,6 +10,8 @@ import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.LocalDateTime;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +61,29 @@ class CouponSoldOutHttpIntegrationTest {
 
     @Autowired
     private LoadingCache<String, Boolean> couponSoldOutCache;
+
+    @BeforeEach
+    void resetSharedUserRateLimits() {
+        redisTemplate.delete(List.of("coupon:issue-rate-limit:user:1", "coupon:issue-rate-limit:user:2"));
+    }
+
+    @Test
+    void 같은_사용자가_없는_쿠폰_ID를_바꾸어도_발급_요청_한도를_공유한다() throws Exception {
+        final long userId = 9_910_001L;
+        final long firstCouponId = 9_910_010L;
+        for (long couponId = firstCouponId; couponId < firstCouponId + 10; couponId++) {
+            expectError(userId, couponId, "E4000");
+        }
+
+        final long blockedCouponId = firstCouponId + 10;
+        issue(userId, blockedCouponId).andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("E429"))
+            .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
+        assertThat(redisTemplate.hasKey(policyKey(blockedCouponId))).isFalse();
+
+        redisTemplate.opsForValue().set(soldOutKey(blockedCouponId), "1");
+        couponSoldOutCache.invalidate(soldOutKey(blockedCouponId));
+        expectError(userId, blockedCouponId, "E4003");
+    }
 
     @Test
     void 매진_신호를_확인하면_중복_검사와_정책_조회를_건너뛴다() throws Exception {

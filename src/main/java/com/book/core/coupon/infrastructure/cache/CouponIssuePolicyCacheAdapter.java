@@ -6,7 +6,8 @@ import static com.book.core.coupon.infrastructure.cache.RedisLuaSupport.runForLo
 import static com.book.core.coupon.infrastructure.cache.RedisLuaSupport.runForStrings;
 
 import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
-import com.book.core.coupon.application.service.CacheMetrics;
+import com.book.core.coupon.application.result.CouponIssueState;
+import com.book.core.coupon.application.result.CouponIssueState.Stock;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
@@ -35,7 +36,6 @@ public class CouponIssuePolicyCacheAdapter implements CouponCacheRepositoryPort 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final CacheProperties cacheProperties;
-    private final CacheMetrics cacheMetrics;
 
     private final ExecutorService backgroundExecutor = Executors.newFixedThreadPool(4, (final Runnable runnable) -> {
         final Thread thread = new Thread(runnable, "coupon-cache-swr-refresh");
@@ -48,26 +48,25 @@ public class CouponIssuePolicyCacheAdapter implements CouponCacheRepositoryPort 
     private final RedisScript<Long> releaseLockScript = longLuaScript("lua/release-lock.lua");
 
     @Override
-    public CouponIssuePolicy getOrLoad(final Long couponId, final Supplier<CouponIssuePolicy> loader) {
+    public CouponIssueState getOrLoad(final Long couponId, final Supplier<CouponIssuePolicy> loader) {
         final String cacheKey = "coupon:" + couponId + ":issue-policy";
         return getOrLoad(couponId, cacheKey, cacheKey + ":lock", loader);
     }
 
-    private CouponIssuePolicy getOrLoad(final Long couponId, final String cacheKey, final String lockKey,
+    private CouponIssueState getOrLoad(final Long couponId, final String cacheKey, final String lockKey,
         final Supplier<CouponIssuePolicy> loader) {
         final String token = UUID.randomUUID().toString();
+        final String stockKey = "coupon:" + couponId + ":stock";
         for (int retry = 0; retry < MAX_RETRIES; retry++) {
             final long now = Instant.now().toEpochMilli();
-            final List<String> result =
-                runForStrings(redisTemplate, lookupScript, List.of(cacheKey, lockKey), now, cacheProperties.freshMs(), token, LOCK_TTL_MS);
+            final List<String> result = runForStrings(redisTemplate, lookupScript, List.of(cacheKey, lockKey, stockKey), now,
+                cacheProperties.freshMs(), token, LOCK_TTL_MS);
 
             switch (result.getFirst()) {
                 case "HIT" -> {
-                    cacheMetrics.incrementCouponCacheHit();
-                    return objectMapper.readValue(result.get(1), CouponIssuePolicy.class);
+                    return cachedIssueState(result);
                 }
                 case "STALE_REFRESH" -> {
-                    cacheMetrics.incrementCouponCacheHit();
                     backgroundExecutor.execute(() -> {
                         try {
                             fillCache(couponId, cacheKey, lockKey, token, loader);
@@ -76,16 +75,20 @@ public class CouponIssuePolicyCacheAdapter implements CouponCacheRepositoryPort 
                                 .log("[COUPON] 발급 정책 캐시의 SWR 백그라운드 갱신에 실패했습니다. couponId={}, cause={}", couponId, exception.getMessage());
                         }
                     });
-                    return objectMapper.readValue(result.get(1), CouponIssuePolicy.class);
+                    return cachedIssueState(result);
                 }
                 case "LOAD" -> {
-                    return fillCache(couponId, cacheKey, lockKey, token, loader);
+                    return new CouponIssueState(fillCache(couponId, cacheKey, lockKey, token, loader), Stock.UNKNOWN);
                 }
                 case "WAIT" -> waitBackoff();
                 default -> throw new IllegalStateException("예상치 못한 Lua 결과: " + result.getFirst());
             }
         }
         throw new IllegalStateException("쿠폰 캐시 채우기 timeout (key=" + cacheKey + ")");
+    }
+
+    private CouponIssueState cachedIssueState(final List<String> result) {
+        return new CouponIssueState(objectMapper.readValue(result.get(1), CouponIssuePolicy.class), Stock.valueOf(result.get(2)));
     }
 
     /**

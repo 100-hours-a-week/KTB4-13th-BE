@@ -7,16 +7,15 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
-import com.book.core.coupon.application.port.CouponLoadSimulationPort;
+import com.book.core.coupon.application.result.CouponIssueState;
+import com.book.core.coupon.application.result.CouponIssueState.Stock;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
-import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.Coupon;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import com.book.core.coupon.domain.enums.CouponType;
@@ -31,40 +30,36 @@ import org.springframework.transaction.support.SimpleTransactionStatus;
 
 class GetCouponIssuePolicyUseCaseTest {
     private final CouponRepositoryPort couponRepository = mock(CouponRepositoryPort.class);
-    private final CacheMetrics cacheMetrics = mock(CacheMetrics.class);
-    private final CouponLoadSimulationPort couponLoadSimulationPort = mock(CouponLoadSimulationPort.class);
     private final CouponCacheRepositoryPort couponIssuePolicyCache = mock(CouponCacheRepositoryPort.class);
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
     private final SimpleTransactionStatus transactionStatus = new SimpleTransactionStatus();
-    private final GetCouponIssuePolicyUseCase useCase = new GetCouponIssuePolicyUseCase(couponRepository, cacheMetrics,
-        couponLoadSimulationPort, couponIssuePolicyCache, transactionManager);
+    private final GetCouponIssuePolicyUseCase useCase =
+        new GetCouponIssuePolicyUseCase(couponRepository, couponIssuePolicyCache, transactionManager);
     private final LocalDateTime now = LocalDateTime.now();
 
     @Test
-    void 캐시에_정책이_있으면_쿠폰_조회와_인위_지연을_생략한다() {
+    void 캐시에_정책이_있으면_DB_조회를_생략한다() {
         final var policy = CouponIssuePolicy.from(coupon(10L));
-        when(couponIssuePolicyCache.getOrLoad(eq(10L), any())).thenReturn(policy);
+        when(couponIssuePolicyCache.getOrLoad(eq(10L), any())).thenReturn(new CouponIssueState(policy, Stock.UNKNOWN));
 
-        assertThat(useCase.execute(10L)).isSameAs(policy);
+        assertThat(useCase.execute(10L).policy()).isSameAs(policy);
 
-        verifyNoInteractions(couponRepository, couponLoadSimulationPort, cacheMetrics, transactionManager);
+        verifyNoInteractions(couponRepository, transactionManager);
     }
 
     @Test
-    void 캐시가_로딩을_요청하면_지연_후_DB에서_정책을_읽는다() {
+    void 캐시가_로딩을_요청하면_DB에서_정책을_읽는다() {
         runPolicyLoader();
         final var coupon = coupon(10L);
         when(couponRepository.findById(10L)).thenReturn(Optional.of(coupon));
 
-        final var policy = useCase.execute(10L);
+        final var policy = useCase.execute(10L).policy();
 
         assertThat(policy).isEqualTo(CouponIssuePolicy.from(coupon));
-        final var lookupOrder = inOrder(couponLoadSimulationPort, transactionManager, couponRepository);
-        lookupOrder.verify(couponLoadSimulationPort).simulateCouponReadLatency();
+        final var lookupOrder = inOrder(transactionManager, couponRepository);
         lookupOrder.verify(transactionManager).getTransaction(argThat(TransactionDefinition::isReadOnly));
         lookupOrder.verify(couponRepository).findById(10L);
         lookupOrder.verify(transactionManager).commit(transactionStatus);
-        verify(cacheMetrics).incrementCouponDbRead();
     }
 
     @Test
@@ -74,13 +69,12 @@ class GetCouponIssuePolicyUseCaseTest {
 
         assertThatThrownBy(() -> useCase.execute(10L)).isInstanceOf(CoreException.class).extracting("errorCode")
             .isEqualTo(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
-        verify(cacheMetrics).incrementCouponDbRead();
     }
 
     private void runPolicyLoader() {
         when(transactionManager.getTransaction(any())).thenReturn(transactionStatus);
-        when(couponIssuePolicyCache.getOrLoad(eq(10L), any()))
-            .thenAnswer((final var invocation) -> invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get());
+        when(couponIssuePolicyCache.getOrLoad(eq(10L), any())).thenAnswer(
+            (final var invocation) -> new CouponIssueState(invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get(), Stock.UNKNOWN));
     }
 
     private Coupon coupon(final Long id) {

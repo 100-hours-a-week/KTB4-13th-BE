@@ -1,6 +1,7 @@
 package com.book.core.onboarding.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.CoreException;
@@ -17,10 +18,12 @@ import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPor
 import com.book.core.onboarding.application.port.UserOnboardingRepositoryPort;
 import com.book.core.onboarding.domain.OnboardingOption;
 import com.book.core.onboarding.domain.OnboardingQuestion;
+import com.book.core.onboarding.application.port.ProfileSyncJobRepositoryPort;
 import com.book.core.onboarding.domain.OnboardingStatus;
 import com.book.core.onboarding.domain.UserOnboarding;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,7 +45,8 @@ class UpdateOnboardingPreferencesUseCaseTest {
     private final FakeUserOnboardingBookRepository bookRepository = new FakeUserOnboardingBookRepository();
     private final FakeBookRepository catalogRepository = new FakeBookRepository();
     private final UpdateOnboardingPreferencesUseCase useCase = new UpdateOnboardingPreferencesUseCase(userOnboardingRepository,
-        questionRepository, optionRepository, answerRepository, bookRepository, new GetBooksUseCase(catalogRepository));
+        questionRepository, optionRepository, answerRepository, bookRepository, new GetBooksUseCase(catalogRepository),
+        mock(CheckPersonalizationAgreementUseCase.class), mock(ProfileSyncJobRepositoryPort.class), Clock.systemUTC());
 
     @BeforeEach
     void setUp() {

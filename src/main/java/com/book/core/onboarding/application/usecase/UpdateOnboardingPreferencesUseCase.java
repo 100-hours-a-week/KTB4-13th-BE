@@ -9,6 +9,7 @@ import com.book.core.onboarding.application.command.PutOnboardingPreferencesComm
 import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.OnboardingQuestionRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
+import com.book.core.onboarding.application.port.ProfileSyncJobRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingRepositoryPort;
 import com.book.core.onboarding.domain.OnboardingOption;
@@ -17,6 +18,7 @@ import com.book.core.onboarding.domain.OnboardingStatus;
 import com.book.core.onboarding.domain.UserOnboarding;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -35,6 +37,9 @@ public class UpdateOnboardingPreferencesUseCase {
     private final UserOnboardingAnswerRepositoryPort answerRepository;
     private final UserOnboardingBookRepositoryPort bookRepository;
     private final GetBooksUseCase getBooksUseCase;
+    private final CheckPersonalizationAgreementUseCase agreement;
+    private final ProfileSyncJobRepositoryPort profileJobs;
+    private final Clock clock;
 
     @Transactional
     public boolean execute(final PutOnboardingPreferencesCommand command) {
@@ -49,12 +54,16 @@ public class UpdateOnboardingPreferencesUseCase {
 
         final List<Long> currentBookIds = bookRepository.findByUserId(command.userId()).stream().map(UserOnboardingBook::bookId).toList();
         final boolean booksChanged = replaceBooks(command.userId(), currentBookIds, command.bookIds());
-        return answersChanged || booksChanged;
+        final boolean changed = answersChanged || booksChanged;
+        if (changed && agreement.execute(command.userId())) {
+            profileJobs.enqueue(command.userId(), clock.instant());
+        }
+        return changed;
     }
 
     private void validateCompleted(final Long userId) {
-        final UserOnboarding userOnboarding =
-            userOnboardingRepository.findActiveByUserId(userId).orElseThrow(() -> new CoreException(ErrorCode.ONBOARDING_NOT_FOUND));
+        final UserOnboarding userOnboarding = userOnboardingRepository.findActiveByUserIdForUpdate(userId)
+            .orElseThrow(() -> new CoreException(ErrorCode.ONBOARDING_NOT_FOUND));
         if (userOnboarding.onboardingStatus() != OnboardingStatus.COMPLETED) {
             throw new CoreException(ErrorCode.ONBOARDING_NOT_COMPLETED);
         }

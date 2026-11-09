@@ -10,6 +10,8 @@ public interface CouponRepositoryPort {
 
     Optional<Coupon> findById(final Long couponId);
 
+    Optional<CouponIssuanceCounts> findIssuanceCounts(final long couponId);
+
     Optional<Coupon> findByIdForUpdate(final Long couponId);
 
     List<Coupon> findAllById(final Collection<Long> couponIds);

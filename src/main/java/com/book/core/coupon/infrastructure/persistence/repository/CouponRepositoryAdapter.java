@@ -1,5 +1,6 @@
 package com.book.core.coupon.infrastructure.persistence.repository;
 
+import com.book.core.coupon.application.port.CouponIssuanceCounts;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.domain.Coupon;
 import java.util.Collection;
@@ -21,6 +22,11 @@ public class CouponRepositoryAdapter implements CouponRepositoryPort {
     @Override
     public Optional<Coupon> findById(final Long couponId) {
         return couponRepository.findByIdAndDeletedAtIsNull(couponId);
+    }
+
+    @Override
+    public Optional<CouponIssuanceCounts> findIssuanceCounts(final long couponId) {
+        return couponRepository.findIssuanceCounts(couponId);
     }
 
     @Override

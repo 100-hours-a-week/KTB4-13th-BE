@@ -6,4 +6,6 @@ public interface CouponStockPort {
     IssueResult tryIssue(final Long couponId);
 
     boolean hasSoldOutSignal(final Long couponId);
+
+    CouponStockSnapshot readSnapshot(final long couponId);
 }

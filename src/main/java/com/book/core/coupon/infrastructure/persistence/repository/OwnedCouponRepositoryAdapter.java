@@ -42,6 +42,11 @@ public class OwnedCouponRepositoryAdapter implements OwnedCouponRepositoryPort {
     }
 
     @Override
+    public List<OwnedCoupon> findAvailable(final Long userId, final LocalDateTime now) {
+        return ownedCouponRepository.findAvailable(userId, now, OwnedCouponStatus.ISSUED);
+    }
+
+    @Override
     public OwnedCoupon save(final OwnedCoupon ownedCoupon) {
         return ownedCouponRepository.save(ownedCoupon);
     }

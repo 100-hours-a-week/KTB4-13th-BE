@@ -28,7 +28,15 @@ public class FindOwnedCouponsForCheckoutUseCase {
         if (couponIds.isEmpty()) {
             return List.of();
         }
-        final List<OwnedCoupon> owned = ownedCouponRepository.findOwnedCouponIds(userId, couponIds, now);
+        return toResults(ownedCouponRepository.findOwnedCouponIds(userId, couponIds, now));
+    }
+
+    @Transactional(readOnly = true)
+    public List<OwnedCouponResult> findAvailable(final Long userId, final LocalDateTime now) {
+        return toResults(ownedCouponRepository.findAvailable(userId, now));
+    }
+
+    private List<OwnedCouponResult> toResults(final List<OwnedCoupon> owned) {
         if (owned.isEmpty()) {
             return List.of();
         }

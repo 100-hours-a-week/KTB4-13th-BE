@@ -22,4 +22,13 @@ class GetPointBalanceUseCaseTest {
         when(repository.findByUserId(42L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> useCase.execute(42L)).isInstanceOf(CoreException.class);
     }
+
+    @Test
+    void 챗봇_조회는_저장된_잔액을_쓰고_잔액_행이_없으면_0을_반환한다() {
+        final PointBalanceRepositoryPort repository = mock(PointBalanceRepositoryPort.class);
+        final GetPointBalanceUseCase useCase = new GetPointBalanceUseCase(repository);
+        when(repository.findByUserId(42L)).thenReturn(Optional.of(new PointBalance(1L, 42L, BigDecimal.TEN)));
+        assertThat(useCase.findOrZero(42L)).isEqualByComparingTo("10");
+        assertThat(useCase.findOrZero(43L)).isEqualByComparingTo("0");
+    }
 }

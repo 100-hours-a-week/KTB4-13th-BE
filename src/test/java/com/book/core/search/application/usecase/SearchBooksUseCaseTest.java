@@ -50,8 +50,8 @@ class SearchBooksUseCaseTest {
 
         final SearchBooksResult result = useCase.execute(command());
 
-        assertThat(result.items()).containsExactly(itemResult(2077L, 501L, "여행의 이유"),
-            new SearchBookItemResult(3310L, 502L, "아무튼, 산", "작가", "출판사", new BigDecimal("13500"), false, "https://example.com/3310.jpg"));
+        assertThat(result.items()).containsExactly(itemResult(2077L, 501L, "여행의 이유"), new SearchBookItemResult(3310L, "9788900000011", 502L,
+            "아무튼, 산", "작가", "출판사", new BigDecimal("13500"), false, "https://example.com/3310.jpg"));
         assertThat(result.nextCursor()).isEqualTo("next-page");
         assertThat(result.fallbackMessage()).isNull();
         assertThat(result.degraded()).isEqualTo("keyword-only");
@@ -86,11 +86,12 @@ class SearchBooksUseCaseTest {
     }
 
     private static BookSearchItem searchItem(final long bookId, final String title) {
-        return new BookSearchItem(bookId, title, "작가", "출판사", new BigDecimal("13500"), "https://example.com/" + bookId + ".jpg");
+        return new BookSearchItem(bookId, "9788900000011", title, "작가", "출판사", new BigDecimal("13500"),
+            "https://example.com/" + bookId + ".jpg");
     }
 
     private static SearchBookItemResult itemResult(final long bookId, final Long productId, final String title) {
-        return new SearchBookItemResult(bookId, productId, title, "작가", "출판사", new BigDecimal("13500"), productId != null,
+        return new SearchBookItemResult(bookId, "9788900000011", productId, title, "작가", "출판사", new BigDecimal("13500"), productId != null,
             "https://example.com/" + bookId + ".jpg");
     }
 

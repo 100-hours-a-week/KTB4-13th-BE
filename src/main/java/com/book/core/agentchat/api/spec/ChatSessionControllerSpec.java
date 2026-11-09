@@ -42,8 +42,11 @@ public interface ChatSessionControllerSpec {
     ResponseEntity<ApiResponse<ChatHistoryResponse>> history(@Parameter(hidden = true) Long userId, @Positive Long sessionId,
         @PositiveOrZero long afterSequence, @Min(1) @Max(100) int limit);
 
-    @Operation(summary = "대화 전송",
-        description = "저장한 최근 20개로 기존 AI 추천을 호출합니다. " + "같은 키의 성공/실패를 재생하고 동시 새 요청은 409입니다. 확정 AI 실패 발화는 저장하지 않습니다. 쇼핑은 비활성입니다.")
+    @Operation(summary = "대화 전송", description = """
+        저장한 최근 20개로 AI 챗봇을 호출합니다.
+        같은 키의 성공·실패를 재생하고 동시 새 요청은 409입니다. 확정 AI 실패 발화는 저장하지 않습니다.
+        쇼핑 연동을 활성화하면 담기 성공 시 ORDER-001 버튼과 검증된 checkout 값을 반환할 수 있습니다.
+        """)
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "완료 또는 저장 성공 재생"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "입력 오류"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),

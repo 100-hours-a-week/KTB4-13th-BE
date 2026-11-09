@@ -35,7 +35,8 @@ public class ChatSessionResultConverter {
             return null;
         }
         if (result.schemaVersion() == 2 && "shop".equals(result.route())) {
-            return new ShoppingChatReplyResponse(result.route(), result.reply(), result.agentButtons(), result.execution());
+            return new ShoppingChatReplyResponse(result.route(), result.reply(), result.agentButtons(), result.execution(),
+                result.checkout());
         }
         final List<ChatCardResponse> cards = result.cards().stream()
             .map((final ChatCardSnapshot card) -> new ChatCardResponse(card.recommendationCardId(), card.bookId(), card.productId(),

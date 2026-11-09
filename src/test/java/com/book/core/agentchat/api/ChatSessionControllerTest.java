@@ -16,12 +16,15 @@ import com.book.core.agentchat.api.converter.ChatSessionResultConverter;
 import com.book.core.agentchat.application.command.GetChatHistoryCommand;
 import com.book.core.agentchat.application.command.GetChatSessionsCommand;
 import com.book.core.agentchat.application.command.SendChatMessageCommand;
+import com.book.core.agentchat.application.result.AgentButton;
+import com.book.core.agentchat.application.result.AgentCheckout;
 import com.book.core.agentchat.application.result.AgentExecutionSummary;
 import com.book.core.agentchat.application.result.ChatHistoryMessage;
 import com.book.core.agentchat.application.result.ChatResponseSnapshot;
 import com.book.core.agentchat.application.result.ChatSessionPageResult;
 import com.book.core.agentchat.application.result.ChatSessionSummary;
 import com.book.core.agentchat.application.service.ChatSessionService;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import org.hamcrest.Matchers;
@@ -69,7 +72,7 @@ class ChatSessionControllerTest {
     void 대화_본문은_명령으로_옮기고_추천_응답을_변환한다() throws Exception {
         authenticate();
         when(service.send(any())).thenReturn(new ChatResponseSnapshot(1, Map.of("intent", "semantic"), "답변", List.of(), "다음 질문",
-            List.of("다른 책"), false, null, List.of(), null));
+            List.of("다른 책"), false, null, List.of(), null, null));
         mvc.perform(post("/api/v1/recommend/chat/sessions/11/messages").contentType(MediaType.APPLICATION_JSON).content("""
             {"idempotencyKey":"key", "message":"질문", "consented":true, "excludeBookIds":[12]}
             """)).andExpect(status().isOk()).andExpect(header().string("Cache-Control", Matchers.containsString("no-store")))
@@ -81,12 +84,24 @@ class ChatSessionControllerTest {
     void 변경_거절도_채팅은_200이며_실제_안내와_객체_버튼_계약을_반환한다() throws Exception {
         authenticate();
         when(service.send(any())).thenReturn(ChatResponseSnapshot.shop(Map.of(), "재고가 부족해 담지 못했습니다", List.of(),
-            new AgentExecutionSummary(null, null, "rejected", "INSUFFICIENT_PRODUCT_STOCK")));
+            new AgentExecutionSummary(null, null, "rejected", "INSUFFICIENT_PRODUCT_STOCK"), null));
         mvc.perform(post("/api/v1/recommend/chat/sessions/11/messages").contentType(MediaType.APPLICATION_JSON).content("""
             {"idempotencyKey":"stock", "message":"5권 담아줘", "consented":true, "excludeBookIds":[]}
             """)).andExpect(status().isOk()).andExpect(jsonPath("$.data.route").value("shop"))
             .andExpect(jsonPath("$.data.reply").value("재고가 부족해 담지 못했습니다")).andExpect(jsonPath("$.data.execution.status").value("rejected"))
             .andExpect(jsonPath("$.data.cards").doesNotExist()).andExpect(jsonPath("$.data.spec").doesNotExist());
+    }
+
+    @Test
+    void 담기_성공_응답의_checkout은_FE_필드명으로_반환한다() throws Exception {
+        authenticate();
+        when(service.send(any())).thenReturn(
+            ChatResponseSnapshot.shop(Map.of(), "담았어요", List.of(new AgentButton("주문 화면", "navigate", AgentButton.CHECKOUT_TARGET, null)),
+                new AgentExecutionSummary(5L, null, "applied", null), new AgentCheckout(7L, new BigDecimal("5000"))));
+        mvc.perform(post("/api/v1/recommend/chat/sessions/11/messages").contentType(MediaType.APPLICATION_JSON).content("""
+            {"idempotencyKey":"checkout", "message":"담아 줘", "consented":true}
+            """)).andExpect(status().isOk()).andExpect(jsonPath("$.data.buttons[0].target").value("ORDER-001"))
+            .andExpect(jsonPath("$.data.checkout.useOwnedCouponId").value(7)).andExpect(jsonPath("$.data.checkout.usePoint").value(5000));
     }
 
     @Test

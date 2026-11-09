@@ -17,5 +17,7 @@ public interface OwnedCouponRepositoryPort {
 
     List<OwnedCoupon> findOwnedCouponIds(final Long userId, final Collection<Long> couponIds, final LocalDateTime expiredAtAfter);
 
+    List<OwnedCoupon> findAvailable(final Long userId, final LocalDateTime now);
+
     OwnedCoupon save(final OwnedCoupon ownedCoupon);
 }

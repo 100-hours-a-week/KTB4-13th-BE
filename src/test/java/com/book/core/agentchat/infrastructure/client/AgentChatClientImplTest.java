@@ -14,6 +14,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
 import com.book.core.agentchat.application.result.AgentChatContext;
+import com.book.core.agentchat.application.result.AgentCheckout;
 import com.book.core.agentchat.application.result.AgentContextCard;
 import com.book.core.agentchat.application.result.AgentObservedProduct;
 import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
@@ -23,7 +24,12 @@ import com.book.core.recommendation.application.command.ChatRecommendationComman
 import com.book.core.recommendation.application.command.RecommendationSpec;
 import com.book.core.recommendation.application.command.RecommendationTurn;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.book.core.coupon.application.result.CouponResult;
+import com.book.core.coupon.application.result.OwnedCouponResult;
+import com.book.core.coupon.domain.enums.CouponType;
+import com.book.core.coupon.domain.enums.OwnedCouponStatus;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,7 +53,7 @@ class AgentChatClientImplTest {
         List.of(new RecommendationTurn("user", "추천"), new RecommendationTurn("assistant", "추천합니다")), List.of());
     private final AgentChatContext context =
         new AgentChatContext(List.of(new AgentObservedProduct(10L, "9788900000011", "책", new BigDecimal("12000.00"), 2, 3, true)),
-            List.of(new AgentContextCard("9788900000011", 1, 90)));
+            List.of(new AgentContextCard("9788900000011", 1, 90)), List.of(), BigDecimal.ZERO);
 
     @BeforeEach
     void prepareCatalogAndHistory() {
@@ -60,6 +66,7 @@ class AgentChatClientImplTest {
         when(identifiers.findUnambiguousIsbns(List.of("9788900000011"))).thenReturn(Set.of());
         server.expect(requestTo("https://ai.invalid/recommendations/chat")).andExpect(jsonPath("$.idempotency_key").doesNotExist())
             .andExpect(jsonPath("$.cart").isEmpty()).andExpect(jsonPath("$.offers").isEmpty())
+            .andExpect(jsonPath("$.owned_coupons").isEmpty()).andExpect(jsonPath("$.point_balance").value(0))
             .andExpect(jsonPath("$.context_cards").isEmpty()).andRespond(withSuccess("""
                 {"data":{"reply":"추천합니다","spec":{},"cards":[],"buttons":[],"degraded":false}}
                 """, MediaType.APPLICATION_JSON));
@@ -80,6 +87,31 @@ class AgentChatClientImplTest {
                 "buttons":[{"label":"장바구니 보기","action":"navigate","target":"CART-001"}]}}
                 """, MediaType.APPLICATION_JSON));
         assertThat(client.chat(command, 8L, 19L, context).actions().getFirst().quantity()).isEqualTo(5);
+        server.verify();
+    }
+
+    @Test
+    void 쿠폰과_포인트를_보내고_관측하지_않은_ISBN_담기와_주문_이동을_받는다() {
+        final CouponResult coupon = new CouponResult(3L, "10% 할인", CouponType.PERCENT_RATE, new BigDecimal("0.10"), new BigDecimal("30000"),
+            LocalDateTime.parse("2026-11-30T23:59:59"));
+        final AgentChatContext withBenefits = new AgentChatContext(context.products(), context.cards(),
+            List.of(new OwnedCouponResult(7L, 7L, OwnedCouponStatus.ISSUED, 1, 0, coupon)), new BigDecimal("5000.00"));
+        server.expect(requestTo("https://ai.invalid/recommendations/chat"))
+            .andExpect(jsonPath("$.owned_coupons[0].owned_coupon_id").value(7)).andExpect(jsonPath("$.owned_coupons[0].coupon_id").value(3))
+            .andExpect(jsonPath("$.owned_coupons[0].type").value("PERCENT_RATE"))
+            .andExpect(jsonPath("$.owned_coupons[0].discount").value(0.1))
+            .andExpect(jsonPath("$.owned_coupons[0].min_order_amount").value(30000))
+            .andExpect(jsonPath("$.owned_coupons[0].expired_at").value("2026-11-30T23:59:59"))
+            .andExpect(jsonPath("$.point_balance").value(5000)).andRespond(withSuccess("""
+                {"data":{"route":"shop","reply":"담았습니다",
+                "actions":[{"op":"set","isbn":"9788900000028","quantity":1}],
+                "buttons":[{"label":"주문 화면","action":"navigate","target":"ORDER-001"}],
+                "checkout":{"owned_coupon_id":7,"use_point":5000}}}
+                """, MediaType.APPLICATION_JSON));
+        final var decision = client.chat(command, 8L, 19L, withBenefits);
+        assertThat(decision.actions().getFirst().isbn()).isEqualTo("9788900000028");
+        assertThat(decision.checkout()).isEqualTo(new AgentCheckout(7L, new BigDecimal("5000")));
+        assertThat(decision.buttons().getFirst().opensCheckout()).isTrue();
         server.verify();
     }
 

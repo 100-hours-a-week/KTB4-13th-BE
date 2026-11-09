@@ -1,6 +1,7 @@
 package com.book.core.onboarding.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.CoreException;
@@ -11,6 +12,8 @@ import com.book.core.book.domain.Book;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingRepositoryPort;
+import com.book.core.onboarding.application.port.ProfileSyncJobRepositoryPort;
+import com.book.core.onboarding.application.usecase.CheckPersonalizationAgreementUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
 import com.book.core.onboarding.domain.OnboardingStatus;
 import com.book.core.onboarding.domain.UserOnboarding;
@@ -33,8 +36,8 @@ class SaveOnboardingBooksUseCaseTest {
     private final FakeUserOnboardingBookRepository onboardingBookRepository = new FakeUserOnboardingBookRepository();
     private final FakeBookRepository bookRepository = new FakeBookRepository();
     private final GetBooksUseCase getBooksUseCase = new GetBooksUseCase(bookRepository);
-    private final SaveOnboardingBooksUseCase useCase =
-        new SaveOnboardingBooksUseCase(userOnboardingRepository, onboardingBookRepository, getBooksUseCase, FIXED_CLOCK);
+    private final SaveOnboardingBooksUseCase useCase = new SaveOnboardingBooksUseCase(userOnboardingRepository, onboardingBookRepository,
+        getBooksUseCase, FIXED_CLOCK, mock(CheckPersonalizationAgreementUseCase.class), mock(ProfileSyncJobRepositoryPort.class));
 
     @Test
     void 존재하는_도서를_선택하면_저장한다() {

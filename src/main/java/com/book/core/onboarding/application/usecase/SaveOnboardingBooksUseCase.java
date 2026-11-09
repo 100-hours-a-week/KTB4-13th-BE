@@ -5,6 +5,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
+import com.book.core.onboarding.application.port.ProfileSyncJobRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
 import com.book.core.onboarding.application.result.SaveOnboardingBooksResult;
 import com.book.core.onboarding.application.port.UserOnboardingRepositoryPort;
@@ -23,6 +24,8 @@ public class SaveOnboardingBooksUseCase {
     private final UserOnboardingBookRepositoryPort onboardingBookRepository;
     private final GetBooksUseCase getBooksUseCase;
     private final Clock clock;
+    private final CheckPersonalizationAgreementUseCase agreement;
+    private final ProfileSyncJobRepositoryPort profileJobs;
 
     @Transactional
     public SaveOnboardingBooksResult execute(final PutOnboardingBooksCommand command) {
@@ -45,6 +48,9 @@ public class SaveOnboardingBooksUseCase {
         final LocalDateTime now = LocalDateTime.now(clock);
         userOnboarding.complete(now);
         userOnboardingRepository.save(userOnboarding);
+        if (agreement.execute(command.userId())) {
+            profileJobs.enqueue(command.userId(), clock.instant());
+        }
         return new SaveOnboardingBooksResult(firstCompleted);
     }
 }

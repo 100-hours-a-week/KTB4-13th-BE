@@ -161,3 +161,10 @@ ALTER TABLE IF EXISTS product_inventory ALTER COLUMN reserved_quantity SET DEFAU
 ALTER TABLE IF EXISTS product_inventory ALTER COLUMN reorder_point SET DEFAULT 3;
 ALTER TABLE IF EXISTS product_inventory ALTER COLUMN target_stock SET DEFAULT 20;
 ALTER TABLE books ALTER COLUMN version SET DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS profile_sync_jobs (
+    user_id BIGINT PRIMARY KEY,
+    revision CHAR(36) NOT NULL,
+    available_at DATETIME(6) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0
+);

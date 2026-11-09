@@ -48,37 +48,10 @@ class AiPersonalizationProfileClientImplTest {
     }
 
     @Test
-    void POST_preferences_profile에_Bearer_토큰과_X_Request_Id를_담아_요청한다() {
-        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "request-abc-123");
-        server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.POST))
-            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "request-abc-123"))
-            .andRespond(withSuccess());
-
-        client.createProfile(profileRequest());
-
-        server.verify();
-    }
-
-    @Test
-    void 요청_본문을_AI_계약의_snake_case로_보낸다() {
-        final AiPersonalizationProfileRequest request = profileRequest();
-        server.expect(requestTo(PROFILE_URL)).andExpect(jsonPath("$.user_id").value(42))
-            .andExpect(jsonPath("$.idempotency_key").value(idempotencyKeyGenerator.generate(request)))
-            .andExpect(jsonPath("$.onboarding.reading_times[0]").value("잠들기 전"))
-            .andExpect(jsonPath("$.onboarding.criteria[0]").value("베스트셀러")).andExpect(jsonPath("$.onboarding.categories[0]").value("소설"))
-            .andExpect(jsonPath("$.onboarding.tags[0]").value("SF")).andExpect(jsonPath("$.onboarding.liked_book_ids[1]").value(300))
-            .andExpect(jsonPath("$.memories").isEmpty()).andRespond(withSuccess());
-
-        client.createProfile(request);
-
-        server.verify();
-    }
-
-    @Test
     void AI가_오류_상태를_응답하면_AI_서비스_호출_실패로_변환한다() {
         server.expect(requestTo(PROFILE_URL)).andRespond(withStatus(HttpStatus.CONFLICT));
 
-        assertThatThrownBy(() -> client.createProfile(profileRequest())).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> client.updateProfile(profileRequest())).isInstanceOf(CoreException.class)
             .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
     }
 
@@ -86,12 +59,12 @@ class AiPersonalizationProfileClientImplTest {
     void 응답_시간_초과나_연결_실패는_AI_서비스_호출_실패로_변환한다() {
         server.expect(requestTo(PROFILE_URL)).andRespond(withException(new SocketTimeoutException("read timed out")));
 
-        assertThatThrownBy(() -> client.createProfile(profileRequest())).isInstanceOf(CoreException.class)
+        assertThatThrownBy(() -> client.updateProfile(profileRequest())).isInstanceOf(CoreException.class)
             .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
     }
 
     @Test
-    void 갱신은_생성과_같은_인증_헤더와_요청_본문으로_PUT_preferences_profile을_요청한다() {
+    void PUT_preferences_profile에_인증_헤더와_요청_본문을_보낸다() {
         MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "request-put-456");
         final AiPersonalizationProfileRequest request = profileRequest();
         server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT))
@@ -99,8 +72,9 @@ class AiPersonalizationProfileClientImplTest {
             .andExpect(jsonPath("$.user_id").value(42))
             .andExpect(jsonPath("$.idempotency_key").value(idempotencyKeyGenerator.generate(request)))
             .andExpect(jsonPath("$.onboarding.reading_times[0]").value("잠들기 전"))
-            .andExpect(jsonPath("$.onboarding.liked_book_ids[1]").value(300)).andExpect(jsonPath("$.memories").isEmpty())
-            .andRespond(withSuccess());
+            .andExpect(jsonPath("$.onboarding.criteria[0]").value("베스트셀러")).andExpect(jsonPath("$.onboarding.categories[0]").value("소설"))
+            .andExpect(jsonPath("$.onboarding.tags[0]").value("SF")).andExpect(jsonPath("$.onboarding.liked_book_ids[1]").value(300))
+            .andExpect(jsonPath("$.memories").isEmpty()).andRespond(withSuccess());
 
         client.updateProfile(request);
 

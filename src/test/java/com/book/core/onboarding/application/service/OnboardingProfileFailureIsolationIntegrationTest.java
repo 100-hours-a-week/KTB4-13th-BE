@@ -6,11 +6,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.book.core.library.application.usecase.AddLibraryBooksUseCase;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
-import com.book.core.onboarding.application.port.TermRepositoryPort;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
@@ -21,11 +19,9 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 @SpringBootTest
@@ -35,26 +31,11 @@ class OnboardingProfileFailureIsolationIntegrationTest {
     @Autowired
     OnboardingService onboardingService;
 
-    @MockitoBean
-    TermRepositoryPort termRepository;
-
     @MockitoSpyBean
     AddLibraryBooksUseCase addLibraryBooksUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
-
-    @Test
-    void 온보딩_완료가_커밋된_뒤_AI_취향_프로필_생성이_실패해도_완료_요청은_성공한다() {
-        final Long userId = insertUser("프로필실패격리회원");
-        jdbc.update("INSERT INTO user_onboardings (user_id, onboarding_status) VALUES (?, 'IN_PROGRESS')", userId);
-        when(termRepository.findActiveByTermType(any())).thenThrow(new DataAccessResourceFailureException("db down"));
-
-        assertThatCode(() -> onboardingService.saveBooks(new PutOnboardingBooksCommand(userId, List.of()))).doesNotThrowAnyException();
-
-        assertThat(jdbc.queryForObject("SELECT onboarding_status FROM user_onboardings WHERE user_id = ? AND deleted_at IS NULL",
-            String.class, userId)).isEqualTo("COMPLETED");
-    }
 
     @Test
     void 최초_완료한_도서만_도서관에_추가하고_완료_후_재요청은_도서관을_변경하지_않는다() {

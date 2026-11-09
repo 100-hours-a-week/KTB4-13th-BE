@@ -37,10 +37,6 @@ public class PersonalizationProfileUseCase {
     private final ProfileMemoryRepositoryPort memoryRepository;
     private final ProfileHistoryRepositoryPort historyRepository;
 
-    public void execute(final Long userId) {
-        profileRequestOf(userId).ifPresent(profileClient::createProfile);
-    }
-
     public void executeUpdate(final Long userId) {
         profileRequestOf(userId).ifPresent(profileClient::updateProfile);
     }

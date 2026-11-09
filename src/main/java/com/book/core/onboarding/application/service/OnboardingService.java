@@ -14,7 +14,6 @@ import com.book.core.onboarding.application.result.OnboardingBookCandidateResult
 import com.book.core.onboarding.application.result.OnboardingProgressResult;
 import com.book.core.onboarding.application.result.OnboardingQuestionResult;
 import com.book.core.onboarding.application.result.SaveOnboardingBooksResult;
-import com.book.core.onboarding.application.usecase.PersonalizationProfileUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingBookCandidatesUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingProgressUseCase;
 import com.book.core.onboarding.application.usecase.GetOnboardingQuestionUseCase;
@@ -43,7 +42,6 @@ public class OnboardingService {
     private final SaveOnboardingBooksUseCase saveOnboardingBooksUseCase;
     private final GetOnboardingBookCandidatesUseCase getOnboardingBookCandidatesUseCase;
     private final RecordPersonalizationAgreementUseCase recordPersonalizationAgreementUseCase;
-    private final PersonalizationProfileUseCase personalizationProfileUseCase;
     private final UpdateOnboardingPreferencesUseCase updateOnboardingPreferencesUseCase;
     private final AddLibraryBooksUseCase addLibraryBooksUseCase;
 
@@ -64,13 +62,10 @@ public class OnboardingService {
         if (result.firstCompleted()) {
             addLibraryBooks(command.userId(), command.bookIds());
         }
-        createPersonalizationProfile(command.userId());
     }
 
     public void updatePreferences(final PutOnboardingPreferencesCommand command) {
-        if (updateOnboardingPreferencesUseCase.execute(command)) {
-            updatePersonalizationProfile(command.userId());
-        }
+        updateOnboardingPreferencesUseCase.execute(command);
     }
 
     public List<OnboardingBookCandidateResult> getBookCandidates(final GetOnboardingBookCandidatesCommand command) {
@@ -105,25 +100,4 @@ public class OnboardingService {
         }
     }
 
-    private void createPersonalizationProfile(final Long userId) {
-        try {
-            personalizationProfileUseCase.execute(userId);
-        } catch (final CoreException exception) {
-            log.atWarn().addKeyValue("userId", userId).log("[ONBOARDING] AI 취향 프로필 생성에 실패했습니다. userId={}, errorCode={}", userId,
-                exception.errorCode().name());
-        } catch (final DataAccessException | TransactionException exception) {
-            log.atWarn().addKeyValue("userId", userId).log("[ONBOARDING] AI 취향 프로필 생성에 실패했습니다. userId={}", userId, exception);
-        }
-    }
-
-    private void updatePersonalizationProfile(final Long userId) {
-        try {
-            personalizationProfileUseCase.executeUpdate(userId);
-        } catch (final CoreException exception) {
-            log.atWarn().addKeyValue("userId", userId).log("[ONBOARDING] AI 취향 프로필 갱신에 실패했습니다. userId={}, errorCode={}", userId,
-                exception.errorCode().name());
-        } catch (final DataAccessException | TransactionException exception) {
-            log.atWarn().addKeyValue("userId", userId).log("[ONBOARDING] AI 취향 프로필 갱신에 실패했습니다. userId={}", userId, exception);
-        }
-    }
 }

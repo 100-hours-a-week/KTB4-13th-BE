@@ -9,10 +9,11 @@
 -- LOAD와 WAIT는 반환할 캐시가 없으므로 빈 문자열을 담는다.
 
 -- Redis에서 키가 실제 TTL로 만료되었거나 value 필드가 없으면 캐시 미스로 처리한다.
-local data = redis.call('HMGET', KEYS[1], 'value', 'fetchedAtMs')
+local data = redis.call('HMGET', KEYS[1], 'value', 'fetchedAtMs', 'missing')
 local value, fetchedAtStr = data[1], data[2]
 
 if not value then
+    if data[3] == '1' then return {'NOT_FOUND', ''} end
     local acquired = redis.call('SET', KEYS[2], ARGV[3], 'NX', 'PX', ARGV[4])
     -- LOAD: 캐시가 없고 이 요청이 락을 획득했다. 호출자가 동기 로딩과 캐시 저장을 맡는다.
     if acquired then return {'LOAD', ''} end

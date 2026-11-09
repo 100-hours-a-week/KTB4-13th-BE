@@ -8,7 +8,6 @@ public record CouponStockReconciliationResult(long couponId, Instant observedAt,
         return (long) totalQuantity - issuedQuantity;
     }
 
-    /** Positive means missing stock, negative means excess, and null means the stock key is missing. */
     public Long stockDifference() {
         return redisStock == null ? null : expectedStock() - redisStock;
     }

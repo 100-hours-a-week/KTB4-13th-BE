@@ -15,9 +15,6 @@ public class ReconcileCouponStockUseCase {
     private final CouponStockPort couponStockPort;
     private final Clock clock;
 
-    /**
-     * Compares separate DB and Redis snapshots, returning empty for missing or deleted coupons.
-     */
     public Optional<CouponStockReconciliationResult> execute(final long couponId) {
         return couponRepository.findIssuanceCounts(couponId).map((final var counts) -> {
             final var stock = couponStockPort.readSnapshot(couponId);

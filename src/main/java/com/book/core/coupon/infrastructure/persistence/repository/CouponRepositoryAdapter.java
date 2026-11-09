@@ -8,11 +8,13 @@ import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
 public class CouponRepositoryAdapter implements CouponRepositoryPort {
     private final CouponJpaRepository couponRepository;
+    private final CouponQueryRepository queryRepository;
 
     @Override
     public List<Coupon> findActiveByIds(final Collection<Long> couponIds) {
@@ -25,8 +27,9 @@ public class CouponRepositoryAdapter implements CouponRepositoryPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<CouponIssuanceCounts> findIssuanceCounts(final long couponId) {
-        return couponRepository.findIssuanceCounts(couponId);
+        return queryRepository.findIssuanceCounts(couponId);
     }
 
     @Override

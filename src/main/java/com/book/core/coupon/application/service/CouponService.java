@@ -3,10 +3,12 @@ package com.book.core.coupon.application.service;
 import com.book.core.coupon.application.command.CreateCouponCommand;
 import com.book.core.coupon.application.command.GetCouponsCommand;
 import com.book.core.coupon.application.command.IssueCouponCommand;
+import com.book.core.coupon.application.result.CouponIssueOutcome;
 import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.result.CouponResult;
 import com.book.core.coupon.application.usecase.CheckCouponIssueRateLimitUseCase;
 import com.book.core.coupon.application.usecase.CreateCouponUseCase;
+import com.book.core.coupon.application.usecase.EnqueueCouponIssueUseCase;
 import com.book.core.coupon.application.usecase.GetCouponIssuePolicyUseCase;
 import com.book.core.coupon.application.usecase.GetCouponTargetsUseCase;
 import com.book.core.coupon.application.usecase.GetCouponsUseCase;
@@ -14,6 +16,7 @@ import com.book.core.coupon.application.usecase.IssueCouponUseCase;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -26,16 +29,24 @@ public class CouponService {
     private final GetCouponIssuePolicyUseCase getCouponIssuePolicyUseCase;
     private final CheckCouponIssueRateLimitUseCase checkCouponIssueRateLimitUseCase;
 
+    private final ObjectProvider<EnqueueCouponIssueUseCase> enqueueCouponIssueUseCase;
+
     public CouponResult createCoupon(final CreateCouponCommand command) {
         return couponCreator.execute(command);
     }
 
-    public void issue(final IssueCouponCommand command) {
+    public CouponIssueOutcome issue(final IssueCouponCommand command) {
         issueCouponUseCase.rejectIfSoldOut(command.couponId());
         checkCouponIssueRateLimitUseCase.execute(command.userId());
         final CouponIssueState issueState = getCouponIssuePolicyUseCase.execute(command.couponId());
 
+        final EnqueueCouponIssueUseCase enqueue = enqueueCouponIssueUseCase.getIfAvailable();
+        if (enqueue != null) {
+            enqueue.execute(command, issueState);
+            return CouponIssueOutcome.ACCEPTED;
+        }
         issueCouponUseCase.execute(command.userId(), command.couponId(), issueState);
+        return CouponIssueOutcome.COMPLETED;
     }
 
     public List<CouponResult> getCoupons(final GetCouponsCommand command) {

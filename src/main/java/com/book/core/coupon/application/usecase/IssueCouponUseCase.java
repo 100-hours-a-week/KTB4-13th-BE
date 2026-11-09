@@ -37,14 +37,7 @@ public class IssueCouponUseCase {
     public void execute(final Long userId, final Long couponId, final CouponIssueState issueState) {
         log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 처리를 시작합니다. couponId={}", couponId);
 
-        final CouponIssuePolicy policy = resolveIssuablePolicy(couponId, issueState);
-        if (policy.soldOut()) {
-            throw new CoreException(ErrorCode.COUPON_SOLD_OUT);
-        }
-        if (ownedCouponRepository.existsByUserIdAndCouponId(userId, couponId)) {
-            throw new CoreException(ErrorCode.COUPON_ALREADY_ISSUED);
-        }
-
+        final CouponIssuePolicy policy = validateIssuable(userId, couponId, issueState);
         tryIssue(couponId);
         if (couponRepository.incrementIssuedQuantity(couponId) == 0) {
             if (couponRepository.findById(couponId).isEmpty()) {
@@ -64,6 +57,18 @@ public class IssueCouponUseCase {
         }
 
         log.atInfo().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 처리를 마쳤습니다. couponId={}", couponId);
+    }
+
+    CouponIssuePolicy validateIssuable(final Long userId, final Long couponId, final CouponIssueState issueState) {
+        final CouponIssuePolicy policy = resolveIssuablePolicy(couponId, issueState);
+        if (policy.soldOut()) {
+            throw new CoreException(ErrorCode.COUPON_SOLD_OUT);
+        }
+        if (ownedCouponRepository.existsByUserIdAndCouponId(userId, couponId)) {
+            throw new CoreException(ErrorCode.COUPON_ALREADY_ISSUED);
+        }
+
+        return policy;
     }
 
     private CouponIssuePolicy resolveIssuablePolicy(final Long couponId, final CouponIssueState issueState) {

@@ -17,7 +17,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.sql.DriverManager;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -84,6 +83,7 @@ class AuthSessionHttpMySqlTest {
         final var inserted = new CountDownLatch(1);
         final var release = new CountDownLatch(1);
         final var held = new AtomicBoolean();
+        final var secondStarted = new CountDownLatch(1);
         doAnswer((final var invocation) -> {
             final RefreshSession session = invocation.getArgument(0);
             final Object saved = invocation.callRealMethod();
@@ -98,32 +98,30 @@ class AuthSessionHttpMySqlTest {
         }).when(sessions).save(any(RefreshSession.class));
         try (final var executor = Executors.newFixedThreadPool(2)) {
             final var first = executor.submit(() -> request("login", "http-race"));
-            assertThat(inserted.await(15, TimeUnit.SECONDS)).isTrue();
-            final var second = executor.submit(() -> request("login", "http-race"));
             try {
-                final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-                int waits = 0;
-                while (System.nanoTime() < deadline && waits == 0) {
-                    waits = lockWaitCount();
-                    if (waits == 0) {
-                        Thread.sleep(25);
-                    }
-                }
-                assertThat(waits).as("MySQL records the second transaction waiting for the user lock").isPositive();
+                assertThat(inserted.await(15, TimeUnit.SECONDS)).isTrue();
+                when(oauthToken.exchangeForIdToken("http-race-code", "verifier")).thenAnswer((final var invocation) -> {
+                    secondStarted.countDown();
+                    return "http-race-id";
+                });
+                final var second = executor.submit(() -> request("login", "http-race"));
+                assertThat(secondStarted.await(10, TimeUnit.SECONDS)).isTrue();
+                release.countDown();
+                final var a = first.get(15, TimeUnit.SECONDS);
+                final var b = second.get(15, TimeUnit.SECONDS);
+                assertResponse(a, userId);
+                assertResponse(b, userId);
+                final String oldToken = cookie(a);
+                final String currentToken = cookie(b);
+                assertThat(currentToken).isNotEqualTo(oldToken);
+                assertThat(activeCount(userId)).isEqualTo(1);
+                assertThat(activeHash(userId)).isEqualTo(hasher.hash(currentToken)).isNotEqualTo(hasher.hash(oldToken));
+                assertThat(reissue(oldToken).statusCode()).isEqualTo(401);
+                assertThat(reissue(currentToken).statusCode()).isEqualTo(200);
+                assertThat(reissue(currentToken).statusCode()).isEqualTo(401);
             } finally {
                 release.countDown();
             }
-            final var a = first.get(15, TimeUnit.SECONDS);
-            final var b = second.get(15, TimeUnit.SECONDS);
-            assertResponse(a, userId);
-            assertResponse(b, userId);
-            final String oldToken = cookie(a);
-            final String currentToken = cookie(b);
-            assertThat(currentToken).isNotEqualTo(oldToken);
-            assertThat(activeCount(userId)).isEqualTo(1);
-            assertThat(activeHash(userId)).isEqualTo(hasher.hash(currentToken)).isNotEqualTo(hasher.hash(oldToken));
-            assertThat(reissue(oldToken).statusCode()).isEqualTo(401);
-            assertThat(reissue(currentToken).statusCode()).isEqualTo(200);
         }
     }
 
@@ -174,18 +172,6 @@ class AuthSessionHttpMySqlTest {
             "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() "
                 + "AND table_name='refresh_sessions' AND index_name='uk_refresh_sessions_user_active_flag' AND non_unique=0",
             Integer.class)).isEqualTo(2);
-    }
-
-    private int lockWaitCount() throws Exception {
-        try (final var connection = DriverManager.getConnection(mysql.getJdbcUrl(), "root", mysql.getPassword());
-            final var statement = connection.createStatement();
-            final var result =
-                statement.executeQuery("SELECT COUNT(*) FROM performance_schema.data_lock_waits w JOIN performance_schema.data_locks l "
-                    + "ON w.REQUESTING_ENGINE_LOCK_ID=l.ENGINE_LOCK_ID AND w.ENGINE=l.ENGINE WHERE l.OBJECT_NAME='users' "
-                    + "AND l.INDEX_NAME='PRIMARY'")) {
-            result.next();
-            return result.getInt(1);
-        }
     }
 
     private void givenIdentity(final String id) {

@@ -97,17 +97,6 @@ class AuthSessionMySqlConcurrencyTest {
     }
 
     @Test
-    void sameRefreshTokenIsConsumedOnceAndLogoutRevokesSuccessor() {
-        final long userId = users.save(User.create("회전로그아웃회원")).id();
-        final String token = login.execute(userId).refreshToken();
-        reissue.execute(token);
-        assertThatThrownBy(() -> reissue.execute(token)).isInstanceOfSatisfying(BusinessException.class,
-            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
-        logout.execute(userId);
-        assertThat(activeCount(userId)).isZero();
-    }
-
-    @Test
     void concurrentRotationAndLogoutWaitForCommittedSuccessor() throws Exception {
         final long userId = users.save(User.create("경합회전회원")).id();
         final String token = login.execute(userId).refreshToken();

@@ -99,8 +99,8 @@ class CreateLoginSessionUseCaseTest {
     }
 
     private CreateLoginSessionUseCase useCase() {
-        org.mockito.Mockito.lenient().when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
-        org.mockito.Mockito.lenient().when(user.isActive()).thenReturn(true);
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
+        when(user.isActive()).thenReturn(true);
         return new CreateLoginSessionUseCase(tokenIssuer, refreshSessionRepository, refreshTokenHasher, Clock.fixed(NOW, ZoneOffset.UTC),
             userRepository);
     }

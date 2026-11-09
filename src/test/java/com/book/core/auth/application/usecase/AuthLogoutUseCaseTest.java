@@ -55,7 +55,7 @@ class AuthLogoutUseCaseTest {
     }
 
     private AuthLogoutUseCase useCase() {
-        org.mockito.Mockito.lenient().when(userRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(user));
+        when(userRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(user));
         return new AuthLogoutUseCase(refreshSessionRepository, CLOCK, userRepository);
     }
 }

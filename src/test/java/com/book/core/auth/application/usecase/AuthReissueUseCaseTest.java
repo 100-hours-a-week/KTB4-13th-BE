@@ -21,7 +21,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -51,14 +50,9 @@ class AuthReissueUseCaseTest {
     @Mock
     TokenIssuer tokenIssuer;
 
-    @BeforeEach
-    void setUp() {
-        org.mockito.Mockito.lenient().when(userRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(user));
-        org.mockito.Mockito.lenient().when(user.isActive()).thenReturn(true);
-    }
-
     @Test
     void reissuesValidRefreshTokenAndRevokesPreviousSession() {
+        givenActiveUser();
         final RefreshSession currentSession =
             RefreshSession.restore(1L, 42L, "old-token-hash", Instant.parse("2030-01-05T00:00:00Z"), null);
         final Instant newRefreshExpiresAt = Instant.parse("2030-01-08T00:00:00Z");
@@ -88,6 +82,7 @@ class AuthReissueUseCaseTest {
 
     @Test
     void rejectsMissingActiveSession() {
+        givenActiveUser();
         when(refreshTokenVerifier.verify("refresh-token")).thenReturn(42L);
         when(refreshTokenHasher.hash("refresh-token")).thenReturn("token-hash");
         when(refreshSessionRepository.findActiveByTokenHashForUpdate("token-hash")).thenReturn(Optional.empty());
@@ -99,6 +94,7 @@ class AuthReissueUseCaseTest {
 
     @Test
     void rejectsSessionOwnedByAnotherUser() {
+        givenActiveUser();
         final RefreshSession session = RefreshSession.restore(1L, 99L, "token-hash", Instant.parse("2030-01-05T00:00:00Z"), null);
 
         when(refreshTokenVerifier.verify("refresh-token")).thenReturn(42L);
@@ -123,6 +119,7 @@ class AuthReissueUseCaseTest {
 
     @Test
     void rejectsInactiveUserWithoutChangingSessions() {
+        when(userRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(user));
         when(refreshTokenVerifier.verify("refresh-token")).thenReturn(42L);
         when(user.isActive()).thenReturn(false);
 
@@ -131,6 +128,7 @@ class AuthReissueUseCaseTest {
 
     @Test
     void rejectsWithdrawalRequestedUserWithoutChangingSessions() {
+        givenActiveUser();
         when(refreshTokenVerifier.verify("refresh-token")).thenReturn(42L);
         when(user.isWithdrawalRequested()).thenReturn(true);
 
@@ -143,6 +141,11 @@ class AuthReissueUseCaseTest {
         when(userRepository.findByIdForUpdate(42L)).thenReturn(Optional.empty());
 
         assertRestrictedUserRejected();
+    }
+
+    private void givenActiveUser() {
+        when(userRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(user));
+        when(user.isActive()).thenReturn(true);
     }
 
     private void assertRestrictedUserRejected() {

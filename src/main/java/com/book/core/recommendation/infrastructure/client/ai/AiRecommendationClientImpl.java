@@ -1,5 +1,6 @@
 package com.book.core.recommendation.infrastructure.client.ai;
 
+import com.book.common.config.ai.AiChatEventStream;
 import com.book.common.config.ai.AiRequestBudget;
 import com.book.common.config.ai.AiRestClientConfig;
 import com.book.common.exception.CoreException;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
@@ -54,54 +56,70 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
 
     @Override
     public AiRecommendationChatResult chat(final AiRecommendationChatRequest request) {
+        return chat(request, null);
+    }
+
+    @Override
+    public AiRecommendationChatResult chat(final AiRecommendationChatRequest request, final Consumer<String> onDelta) {
         final RecommendationHistory recommendationHistory = history.execute(request.userId());
         final List<RecommendationExclusion> exclusions =
             RecommendationExclusion.newestFirst(identifiers.findIsbns(request.excludeBookIds().reversed()), recommendationHistory.books());
         final List<AiChatTurn> turns = request.recentTurns().stream().map(this::toAiChatTurn).toList();
-        AiChatResponse response = attempt(chatBody(request, recommendationHistory.consented(), request.spec(), turns, exclusions), false);
+        AiChatResponse response =
+            attempt(chatBody(request, recommendationHistory.consented(), request.spec(), turns, exclusions), false, onDelta);
         if (response == null) {
-            response = attempt(chatBody(request, recommendationHistory.consented(), INITIAL_SPEC, turns, exclusions), true);
+            response = attempt(chatBody(request, recommendationHistory.consented(), INITIAL_SPEC, turns, exclusions), true, onDelta);
         }
         return toResult(response);
     }
 
 
-    private AiChatResponse attempt(final byte[] aiRequest, final boolean isRetry) {
+    private AiChatResponse attempt(final byte[] aiRequest, final boolean isRetry, final Consumer<String> onDelta) {
         try {
-            return restClient.post().uri(CHAT_PATH).header(REQUEST_ID_HEADER, currentRequestId()).contentType(MediaType.APPLICATION_JSON)
-                .body(aiRequest).exchange((httpRequest, response) -> {
-                    final HttpStatusCode status = response.getStatusCode();
-                    if (status.is2xxSuccessful()) {
-                        final AiChatEnvelope envelope = response.bodyTo(AiChatEnvelope.class);
-                        if (envelope == null || envelope.data() == null) {
-                            throw new CoreException(ErrorCode.AI_RECOMMENDATION_FAILURE);
-                        }
-                        return envelope.data();
+            final RestClient.RequestBodySpec request =
+                restClient.post().uri(CHAT_PATH).header(REQUEST_ID_HEADER, currentRequestId()).contentType(MediaType.APPLICATION_JSON);
+            if (onDelta != null) {
+                request.accept(MediaType.TEXT_EVENT_STREAM);
+            }
+            return request.body(aiRequest).exchange((final var httpRequest, final var response) -> {
+                final HttpStatusCode status = response.getStatusCode();
+                if (status.is2xxSuccessful()) {
+                    final AiChatEnvelope envelope;
+                    if (onDelta != null && MediaType.TEXT_EVENT_STREAM.includes(response.getHeaders().getContentType())) {
+                        envelope =
+                            AiChatEventStream.read(response, json, AiChatEnvelope.class, onDelta, ErrorCode.AI_RECOMMENDATION_FAILURE);
+                    } else {
+                        envelope = response.bodyTo(AiChatEnvelope.class);
                     }
-                    if (status.value() == 401) {
-                        throw new CoreException(ErrorCode.AI_SERVICE_UNAUTHORIZED);
-                    }
-                    if (status.value() == 422) {
-                        final AiChatEnvelope envelope = response.bodyTo(AiChatEnvelope.class);
-                        if (envelope != null && "spec_schema_violation".equals(envelope.message())) {
-                            if (!isRetry) {
-                                return null;
-                            }
-                            throw new CoreException(ErrorCode.AI_RECOMMENDATION_SPEC_VIOLATION);
-                        }
+                    if (envelope == null || envelope.data() == null) {
                         throw new CoreException(ErrorCode.AI_RECOMMENDATION_FAILURE);
                     }
-                    if (status.value() == 429) {
-                        throw new RetryAfterException(ErrorCode.AI_RECOMMENDATION_RATE_LIMITED, retryAfterSeconds(response.getHeaders()));
-                    }
-                    if (status.value() == 503) {
-                        throw new RetryAfterException(ErrorCode.AI_RECOMMENDATION_UNAVAILABLE, retryAfterSeconds(response.getHeaders()));
-                    }
-                    if (status.value() == 504) {
-                        throw new CoreException(ErrorCode.AI_RECOMMENDATION_TIMEOUT);
+                    return envelope.data();
+                }
+                if (status.value() == 401) {
+                    throw new CoreException(ErrorCode.AI_SERVICE_UNAUTHORIZED);
+                }
+                if (status.value() == 422) {
+                    final AiChatEnvelope envelope = response.bodyTo(AiChatEnvelope.class);
+                    if (envelope != null && "spec_schema_violation".equals(envelope.message())) {
+                        if (!isRetry) {
+                            return null;
+                        }
+                        throw new CoreException(ErrorCode.AI_RECOMMENDATION_SPEC_VIOLATION);
                     }
                     throw new CoreException(ErrorCode.AI_RECOMMENDATION_FAILURE);
-                });
+                }
+                if (status.value() == 429) {
+                    throw new RetryAfterException(ErrorCode.AI_RECOMMENDATION_RATE_LIMITED, retryAfterSeconds(response.getHeaders()));
+                }
+                if (status.value() == 503) {
+                    throw new RetryAfterException(ErrorCode.AI_RECOMMENDATION_UNAVAILABLE, retryAfterSeconds(response.getHeaders()));
+                }
+                if (status.value() == 504) {
+                    throw new CoreException(ErrorCode.AI_RECOMMENDATION_TIMEOUT);
+                }
+                throw new CoreException(ErrorCode.AI_RECOMMENDATION_FAILURE);
+            });
         } catch (final ResourceAccessException exception) {
             throw new CoreException(ErrorCode.AI_RECOMMENDATION_TIMEOUT, exception);
         } catch (final RestClientException exception) {

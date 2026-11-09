@@ -1,6 +1,7 @@
 package com.book.core.agentchat.api;
 
 import com.book.common.config.security.UserId;
+import com.book.common.exception.GlobalExceptionHandler;
 import com.book.common.response.ApiResponse;
 import com.book.core.agentchat.api.converter.ChatSessionCommandConverter;
 import com.book.core.agentchat.api.converter.ChatSessionResultConverter;
@@ -10,6 +11,7 @@ import com.book.core.agentchat.api.response.ChatReplyResponse;
 import com.book.core.agentchat.api.response.ChatSessionCreatedResponse;
 import com.book.core.agentchat.api.response.ChatSessionListResponse;
 import com.book.core.agentchat.api.spec.ChatSessionControllerSpec;
+import com.book.core.agentchat.application.command.SendChatMessageCommand;
 import com.book.core.agentchat.application.result.ChatHistoryMessage;
 import com.book.core.agentchat.application.result.ChatResponseSnapshot;
 import com.book.core.agentchat.application.result.ChatSessionPageResult;
@@ -19,12 +21,20 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,17 +42,23 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @Validated
 @RequiredArgsConstructor
+@Slf4j
 @RequestMapping("/api/v1/recommend/chat/sessions")
 class ChatSessionController implements ChatSessionControllerSpec {
     private static final CacheControl PRIVATE_NO_STORE = CacheControl.noStore().cachePrivate();
+    private static final CacheControl PRIVATE_STREAM = CacheControl.noStore().cachePrivate().noTransform();
 
     private final ChatSessionService service;
     private final ChatSessionCommandConverter commandConverter;
     private final ChatSessionResultConverter resultConverter;
+    private final AsyncTaskExecutor applicationTaskExecutor;
+    private final GlobalExceptionHandler errors;
 
     @Override
     @PostMapping
@@ -71,10 +87,62 @@ class ChatSessionController implements ChatSessionControllerSpec {
     }
 
     @Override
-    @PostMapping("/{sessionId}/messages")
+    @PostMapping(value = "/{sessionId}/messages", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ChatReplyResponse>> send(@UserId final Long userId, @Positive @PathVariable final Long sessionId,
         @Valid @RequestBody final SendChatMessageRequest request) {
         final ChatResponseSnapshot result = service.send(commandConverter.toSendCommand(userId, sessionId, request));
         return ResponseEntity.ok().cacheControl(PRIVATE_NO_STORE).body(ApiResponse.ok(resultConverter.toReplyResponse(result)));
+    }
+
+    @Override
+    @PostMapping(value = "/{sessionId}/messages", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public ResponseEntity<SseEmitter> stream(@UserId final Long userId, @Positive @PathVariable final Long sessionId,
+        @Valid @RequestBody final SendChatMessageRequest request) {
+        final SendChatMessageCommand command = commandConverter.toSendCommand(userId, sessionId, request);
+        final SseEmitter emitter = new SseEmitter(60_000L);
+        final AtomicBoolean closed = new AtomicBoolean();
+        emitter.onCompletion(() -> closed.set(true));
+        emitter.onTimeout(() -> {
+            closed.set(true);
+            emitter.complete();
+        });
+        emitter.onError((final var failure) -> closed.set(true));
+        final Map<String, String> context = MDC.getCopyOfContextMap();
+
+        // HTTP 연결 수명과 AI 응답 저장의 수명을 분리합니다.
+        applicationTaskExecutor.execute(() -> {
+            MDC.setContextMap(context);
+            try {
+                final ChatResponseSnapshot result =
+                    service.send(command, (final String text) -> sendEvent(emitter, closed, "delta", Map.of("text", text)));
+                sendEvent(emitter, closed, "done", ApiResponse.ok(resultConverter.toReplyResponse(result)));
+            } catch (final RuntimeException failure) {
+                sendEvent(emitter, closed, "error", errors.handleApplicationError(failure).getBody());
+            } finally {
+                if (!closed.get()) {
+                    emitter.complete();
+                }
+                MDC.clear();
+            }
+        });
+        return ResponseEntity.ok().contentType(MediaType.TEXT_EVENT_STREAM).cacheControl(PRIVATE_STREAM).header("X-Accel-Buffering", "no")
+            .body(emitter);
+    }
+
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    void handleDisconnectedStream() {
+        log.debug("종료된 대화 스트림의 비동기 응답을 닫습니다.");
+    }
+
+    private void sendEvent(final SseEmitter emitter, final AtomicBoolean closed, final String name, final Object data) {
+        if (closed.get()) {
+            return;
+        }
+        try {
+            emitter.send(SseEmitter.event().name(name).data(data, MediaType.APPLICATION_JSON));
+        } catch (final IOException | IllegalStateException failure) {
+            closed.set(true);
+            log.debug("대화 스트림 전송을 중단합니다. errorType={}", failure.getClass().getSimpleName());
+        }
     }
 }

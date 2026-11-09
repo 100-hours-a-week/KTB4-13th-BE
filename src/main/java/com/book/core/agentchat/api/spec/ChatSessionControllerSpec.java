@@ -8,6 +8,8 @@ import com.book.core.agentchat.api.response.ChatSessionCreatedResponse;
 import com.book.core.agentchat.api.response.ChatSessionListResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,7 +18,9 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Tag(name = "대화방", description = "인증 사용자별 추천 대화방과 저장 이력")
 @SecurityRequirement(name = "bearerAuth")
@@ -43,8 +47,13 @@ public interface ChatSessionControllerSpec {
         @PositiveOrZero long afterSequence, @Min(1) @Max(100) int limit);
 
     @Operation(summary = "대화 전송",
-        description = "저장한 최근 20개로 기존 AI 추천을 호출합니다. " + "같은 키의 성공/실패를 재생하고 동시 새 요청은 409입니다. 확정 AI 실패 발화는 저장하지 않습니다. 쇼핑은 비활성입니다.")
-    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "완료 또는 저장 성공 재생"),
+        description = "최근 20개 발화로 AI를 호출하고 같은 키의 성공 또는 실패를 재생합니다. "
+            + "Accept: text/event-stream을 보내면 최대 60초 동안 delta({text})를 받은 뒤 기존 JSON 본문의 done 또는 error로 끝납니다. "
+            + "done은 저장 뒤 전송하며 쇼핑과 저장 응답 재생은 delta 없이 끝날 수 있습니다. " + "동시 전송 충돌 등 대화 처리 오류는 SSE에서 error 이벤트로 전달합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+            description = "완료 또는 저장 성공 재생. SSE는 delta 0회 이상과 done 또는 error 1회", useReturnTypeSchema = true,
+            content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE, schema = @Schema(type = "string"))),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "입력 오류"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없거나 타인 대화방"),
@@ -55,5 +64,9 @@ public interface ChatSessionControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI 일시 불가, Retry-After 제공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "504", description = "AI 시간 초과")})
     ResponseEntity<ApiResponse<ChatReplyResponse>> send(@Parameter(hidden = true) Long userId, @Positive Long sessionId,
+        @Valid SendChatMessageRequest request);
+
+    @Operation(hidden = true)
+    ResponseEntity<SseEmitter> stream(@Parameter(hidden = true) Long userId, @Positive Long sessionId,
         @Valid SendChatMessageRequest request);
 }

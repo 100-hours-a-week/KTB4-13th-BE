@@ -1,5 +1,6 @@
 package com.book.core.agentchat.infrastructure.client;
 
+import com.book.common.config.ai.AiChatEventStream;
 import com.book.common.config.ai.AiRequestBudget;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
@@ -23,11 +24,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
@@ -57,8 +60,15 @@ public class AgentChatClientImpl implements AgentChatClient {
         return properties.enabled();
     }
 
+    @Override
     public AgentDecision chat(final ChatRecommendationCommand command, final Long sessionId, final Long requestId,
         final AgentChatContext context) {
+        return chat(command, sessionId, requestId, context, null);
+    }
+
+    @Override
+    public AgentDecision chat(final ChatRecommendationCommand command, final Long sessionId, final Long requestId,
+        final AgentChatContext context, final Consumer<String> onDelta) {
         if (!enabled()) {
             throw new IllegalStateException("Agent shopping integration is disabled");
         }
@@ -94,7 +104,7 @@ public class AgentChatClientImpl implements AgentChatClient {
         final AgentAiRequest request = new AgentAiRequest(command.userId(), recommendationHistory.consented(), command.spec(),
             command.message(), command.recentTurns(), List.of(), List.of(), List.of(), idempotencyKey, "cv_" + sessionId,
             Map.of("logged_in", true), cards, null, cart, offers);
-        return attempt(request, exclusions, false);
+        return attempt(request, exclusions, false, onDelta);
     }
 
     private static void validateShoppingProducts(final List<AgentObservedProduct> products) {
@@ -119,12 +129,12 @@ public class AgentChatClientImpl implements AgentChatClient {
         }
     }
 
-    private AgentDecision attempt(final AgentAiRequest request, final List<RecommendationExclusion> exclusions, final boolean retried) {
+    private AgentDecision attempt(final AgentAiRequest request, final List<RecommendationExclusion> exclusions, final boolean retried,
+        final Consumer<String> onDelta) {
         try {
             final byte[] body = AiRequestBudget.fit(exclusions, (final List<RecommendationExclusion> selected) -> encode(request, selected),
                 (final byte[] payload) -> payload.length, AiRequestBudget.CHAT_BODY_BYTES, ErrorCode.AI_SERVICE_FAILURE);
-            final AgentAiEnvelope response = client.post().uri("/recommendations/chat").contentType(MediaType.APPLICATION_JSON).body(body)
-                .retrieve().body(AgentAiEnvelope.class);
+            final AgentAiEnvelope response = readEnvelope(body, onDelta);
             if (response == null) {
                 throw new CoreException(ErrorCode.AI_SERVICE_FAILURE);
             }
@@ -143,7 +153,7 @@ public class AgentChatClientImpl implements AgentChatClient {
                     new AgentAiRequest(request.userId(), request.consented(), RecommendationSpec.initial(), request.message(),
                         request.recentTurns(), List.of(), List.of(), List.of(), request.idempotencyKey(), request.conversationId(),
                         request.userContext(), request.contextCards(), request.focusedIsbn(), request.cart(), request.offers());
-                return attempt(reset, exclusions, true);
+                return attempt(reset, exclusions, true, onDelta);
             }
             if (status == 401) {
                 throw new CoreException(ErrorCode.AI_SERVICE_UNAUTHORIZED);
@@ -172,6 +182,22 @@ public class AgentChatClientImpl implements AgentChatClient {
         }
     }
 
+    private AgentAiEnvelope readEnvelope(final byte[] body, final Consumer<String> onDelta) {
+        final RestClient.RequestBodySpec request = client.post().uri("/recommendations/chat").contentType(MediaType.APPLICATION_JSON);
+        if (onDelta == null) {
+            return request.body(body).retrieve().body(AgentAiEnvelope.class);
+        }
+        return request.accept(MediaType.TEXT_EVENT_STREAM).body(body).exchange((final var httpRequest, final var response) -> {
+            if (response.getStatusCode().isError()) {
+                new DefaultResponseErrorHandler().handleError(httpRequest.getURI(), httpRequest.getMethod(), response);
+            }
+            if (MediaType.TEXT_EVENT_STREAM.includes(response.getHeaders().getContentType())) {
+                return AiChatEventStream.read(response, json, AgentAiEnvelope.class, onDelta, ErrorCode.AI_SERVICE_FAILURE);
+            }
+            return response.bodyTo(AgentAiEnvelope.class);
+        });
+    }
+
     private static void validateActionIsbns(final AgentAiRequest request, final AgentDecision decision) {
         final Set<String> sent =
             Stream.concat(request.cart().stream().map(AgentAiCart::isbn), request.offers().stream().map(AgentAiOffer::isbn))
@@ -185,9 +211,9 @@ public class AgentChatClientImpl implements AgentChatClient {
 
     private boolean specViolation(final HttpStatusCodeException failure) {
         try {
-            final AgentAiEnvelope error = failure.getResponseBodyAs(AgentAiEnvelope.class);
+            final AgentAiEnvelope error = json.readValue(failure.getResponseBodyAsString(), AgentAiEnvelope.class);
             return error != null && "spec_schema_violation".equals(error.message());
-        } catch (final RestClientException exception) {
+        } catch (final JsonProcessingException exception) {
             return false;
         }
     }

@@ -24,6 +24,7 @@ import com.book.core.recommendation.application.port.AiRecommendationChatRequest
 import com.book.core.recommendation.application.port.AiRecommendationChatResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -89,6 +90,41 @@ class AiRecommendationClientImplTest {
 
         client.chat(new AiRecommendationChatRequest(42L, true, Map.of(), "추천해줘", List.of(), List.of()));
 
+        server.verify();
+    }
+
+    @Test
+    void SSE_조각을_전달하고_완료_이벤트를_기존_추천_응답으로_변환한다() {
+        final RestClient.Builder builder = restClientBuilder();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        final AiRecommendationClientImpl client = new AiRecommendationClientImpl(builder.build(), identifiers, history, new ObjectMapper());
+        server.expect(requestTo(BASE_URL + "/recommendations/chat")).andExpect(header(HttpHeaders.ACCEPT, "text/event-stream"))
+            .andRespond(withSuccess(
+                "event: delta\r\ndata: {\"text\":\"먼저\"}\r\n\r\nevent: done\ndata: " + successBody().strip().replace("\n", "") + "\n\n",
+                MediaType.TEXT_EVENT_STREAM));
+        final List<String> deltas = new ArrayList<>();
+
+        final AiRecommendationChatResult result = client.chat(chatRequest(), deltas::add);
+
+        assertThat(deltas).containsExactly("먼저");
+        assertThat(result.cards()).hasSize(1);
+        server.verify();
+    }
+
+    @Test
+    void SSE_오류_메시지를_기존_타임아웃_코드로_변환한다() {
+        final RestClient.Builder builder = restClientBuilder();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        final AiRecommendationClientImpl client = new AiRecommendationClientImpl(builder.build(), identifiers, history, new ObjectMapper());
+        server.expect(requestTo(BASE_URL + "/recommendations/chat")).andRespond(withSuccess("""
+            event: error
+            data: {"message":"generation_timeout","data":null}
+
+            """, MediaType.TEXT_EVENT_STREAM));
+
+        assertThatThrownBy(() -> client.chat(chatRequest(), (final String text) -> {
+        })).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException failure) -> assertThat(failure.errorCode()).isEqualTo(ErrorCode.AI_RECOMMENDATION_TIMEOUT));
         server.verify();
     }
 

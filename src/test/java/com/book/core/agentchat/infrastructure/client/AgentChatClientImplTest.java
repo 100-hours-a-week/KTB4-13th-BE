@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.ExpectedCount.twice;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -80,6 +82,21 @@ class AgentChatClientImplTest {
                 "buttons":[{"label":"장바구니 보기","action":"navigate","target":"CART-001"}]}}
                 """, MediaType.APPLICATION_JSON));
         assertThat(client.chat(command, 8L, 19L, context).actions().getFirst().quantity()).isEqualTo(5);
+        server.verify();
+    }
+
+    @Test
+    void 쇼핑_SSE는_delta_없이_done으로_끝나도_기존_쇼핑_응답을_만든다() {
+        server.expect(requestTo("https://ai.invalid/recommendations/chat")).andExpect(header(HttpHeaders.ACCEPT, "text/event-stream"))
+            .andRespond(withSuccess("""
+                event: done
+                data: {"message":"agent_success","data":{"route":"shop","reply":"담았습니다","actions":[],"buttons":[]}}
+
+                """, MediaType.TEXT_EVENT_STREAM));
+
+        assertThat(client.chat(command, 8L, 19L, context, (final String text) -> {
+            throw new AssertionError("쇼핑 완료 전에 delta가 전송되었습니다");
+        }).route()).isEqualTo("shop");
         server.verify();
     }
 

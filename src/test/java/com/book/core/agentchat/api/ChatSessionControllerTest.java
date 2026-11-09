@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -112,6 +113,9 @@ class ChatSessionControllerTest {
             .content("{\"idempotencyKey\":\"key\",\"message\":\"질문\",\"consented\":true}")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/recommend/chat/sessions").param("limit", "101")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/recommend/chat/sessions/11/messages").param("afterSequence", "-1")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/recommend/chat/sessions/11/messages").contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.TEXT_EVENT_STREAM).content("{}")).andExpect(status().isBadRequest())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON)).andExpect(jsonPath("$.success").value(false));
         verifyNoInteractions(service);
     }
 }

@@ -2,13 +2,10 @@ package com.book.core.auth.infrastructure.token;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.auth.application.port.IssuedTokens;
-import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -31,7 +28,6 @@ class JwtRefreshTokenVerifierTest {
     private static final byte[] SECRET_BYTES = new byte[64];
     private static final String SECRET = Base64.getEncoder().encodeToString(SECRET_BYTES);
 
-    private final CheckUserRestrictionUseCase checkUserRestrictionUseCase = mock(CheckUserRestrictionUseCase.class);
     private SecretKey secretKey;
     private JwtTokenIssuer tokenIssuer;
 
@@ -71,6 +67,23 @@ class JwtRefreshTokenVerifierTest {
     }
 
     @Test
+    void refreshTokenExpiresExactlyAtExp() {
+        final String token = tokenIssuer.issue(USER_ID).refreshToken();
+        final Instant expiry = NOW.plus(REFRESH_TOKEN_EXPIRATION);
+        assertThat(verifierAt(expiry.minusNanos(1)).verify(token)).isEqualTo(USER_ID);
+        assertInvalidRefreshToken(() -> verifierAt(expiry).verify(token));
+        assertInvalidRefreshToken(() -> verifierAt(expiry.plusNanos(1)).verify(token));
+    }
+
+    @Test
+    void accessTokenKeepsItsExistingClockSkew() {
+        final String token = tokenIssuer.issue(USER_ID).accessToken();
+        final Instant afterExpiry = NOW.plus(ACCESS_TOKEN_EXPIRATION).plusSeconds(30);
+        final JwtDecoder decoder = new JwtTokenConfiguration().serviceJwtDecoder(secretKey, Clock.fixed(afterExpiry, ZoneOffset.UTC));
+        assertThat(decoder.decode(token).getSubject()).isEqualTo(USER_ID.toString());
+    }
+
+    @Test
     void 다른_Secret으로_서명된_Refresh_Token을_거부한다() {
         final byte[] otherSecretBytes = new byte[64];
         Arrays.fill(otherSecretBytes, (byte) 1);
@@ -84,17 +97,9 @@ class JwtRefreshTokenVerifierTest {
         assertInvalidRefreshToken(() -> verifier.verify(invalidRefreshToken));
     }
 
-    @Test
-    void 탈퇴_신청_또는_비활성_회원의_Refresh_Token은_거부한다() {
-        final IssuedTokens tokens = tokenIssuer.issue(USER_ID);
-        when(checkUserRestrictionUseCase.execute(USER_ID)).thenReturn(true);
-
-        assertInvalidRefreshToken(() -> verifierAt(NOW).verify(tokens.refreshToken()));
-    }
-
     private JwtRefreshTokenVerifier verifierAt(final Instant now) {
         final JwtDecoder decoder = new JwtTokenConfiguration().refreshJwtDecoder(secretKey, Clock.fixed(now, ZoneOffset.UTC));
-        return new JwtRefreshTokenVerifier(decoder, checkUserRestrictionUseCase);
+        return new JwtRefreshTokenVerifier(decoder);
     }
 
     private void assertInvalidRefreshToken(final Runnable action) {

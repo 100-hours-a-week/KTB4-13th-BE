@@ -1,14 +1,11 @@
 package com.book.core.auth.application.port;
 
-import com.book.core.auth.domain.RefreshSession;
-import java.util.Optional;
+import java.time.Instant;
 
 public interface RefreshSessionRepository {
-    RefreshSession save(final RefreshSession refreshSession);
+    void replace(Long userId, String tokenHash, Instant expiresAt);
 
-    Optional<RefreshSession> findActiveByUserId(final Long userId);
+    boolean rotate(Long userId, String expectedHash, String newHash, Instant expiresAt);
 
-    Optional<RefreshSession> findActiveByTokenHash(final String tokenHash);
-
-    Optional<RefreshSession> findActiveByTokenHashForUpdate(final String tokenHash);
+    void revoke(Long userId);
 }

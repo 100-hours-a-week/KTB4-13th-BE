@@ -15,13 +15,12 @@ import com.book.core.auth.application.port.OAuthTokenClient;
 import com.book.core.auth.application.port.RefreshSessionRepository;
 import com.book.core.auth.application.port.RefreshTokenHasher;
 import com.book.core.auth.application.result.OAuthUserInfo;
-import com.book.core.auth.domain.RefreshSession;
+import com.book.common.exception.BusinessException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.cart.application.port.CartRepositoryPort;
 import com.book.core.cart.domain.Cart;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.domain.PointBalance;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Tag;
@@ -46,12 +45,30 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Tag("integration")
+@Testcontainers
 class AuthLoginIntegrationTest {
+    @Container
+    static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7.4-alpine").withExposedPorts(6379);
+
+    @DynamicPropertySource
+    static void redisProperties(final DynamicPropertyRegistry properties) {
+        properties.add("spring.data.redis.host", REDIS::getHost);
+        properties.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
+    }
+
+    @Autowired
+    StringRedisTemplate redis;
     @Autowired
     MockMvc mvc;
 
@@ -97,13 +114,13 @@ class AuthLoginIntegrationTest {
         assertThat(count("SELECT COUNT(*) FROM user_providers WHERE provider_user_id = ?", "provider-123")).isEqualTo(1);
         assertThat(count("SELECT COUNT(*) FROM carts WHERE user_id = ?", userId)).isEqualTo(1);
         assertThat(count("SELECT COUNT(*) FROM point_balance WHERE user_id = ? AND balance = 0", userId)).isEqualTo(1);
-        assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ?", userId)).isEqualTo(2);
-        assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ? AND revoked_at IS NOT NULL", userId)).isEqualTo(1);
-        assertThat(
-            jdbc.queryForObject("SELECT token_hash FROM refresh_sessions WHERE user_id = ? AND active_flag = 1", String.class, userId))
-            .isEqualTo(secondTokenHash).isNotEqualTo(secondRefreshToken);
-        assertThat(jdbc.queryForObject("SELECT expires_at FROM refresh_sessions WHERE user_id = ? AND active_flag = 1", LocalDateTime.class,
-            userId)).isEqualTo(LocalDateTime.ofInstant(decodedRefreshToken.getExpiresAt(), ZoneOffset.UTC));
+        final String key = "auth:refresh-session:v1:{" + userId + "}";
+        assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ?", userId)).isZero();
+        assertThat(redis.opsForValue().get(key)).isEqualTo(secondTokenHash).isNotEqualTo(secondRefreshToken);
+        assertThat(redis.getExpire(key, java.util.concurrent.TimeUnit.MILLISECONDS)).isPositive()
+            .isLessThanOrEqualTo(java.time.Duration.between(java.time.Instant.now(), decodedRefreshToken.getExpiresAt()).toMillis() + 1000);
+        assertThat(refreshSessionRepository.rotate(userId, refreshTokenHasher.hash(firstRefreshToken), "a".repeat(64),
+            decodedRefreshToken.getExpiresAt())).isFalse();
     }
 
     @ParameterizedTest
@@ -140,9 +157,9 @@ class AuthLoginIntegrationTest {
     @Test
     void Session_등록이_실패하면_가입과_초기화는_남고_재가입은_409_로그인은_성공한다() throws Exception {
         givenKakaoUser("session-failure");
-        doThrow(new DataAccessResourceFailureException("session")).when(refreshSessionRepository).save(any(RefreshSession.class));
+        doThrow(new BusinessException(ErrorCode.AUTH_SESSION_UNAVAILABLE)).when(refreshSessionRepository).replace(any(), any(), any());
 
-        perform("signup", "session-failure").andExpect(status().isInternalServerError())
+        perform("signup", "session-failure").andExpect(status().isServiceUnavailable())
             .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
 
         final Long userId = userIdOf("session-failure");
@@ -153,7 +170,7 @@ class AuthLoginIntegrationTest {
         reset(refreshSessionRepository);
         assertError(perform("signup", "session-failure"), 409, "ALREADY_REGISTERED");
         authenticate("login", "session-failure");
-        assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ? AND active_flag = 1", userId)).isEqualTo(1);
+        assertThat(redis.hasKey("auth:refresh-session:v1:{" + userId + "}")).isTrue();
     }
 
     private void givenKakaoUser(final String providerUserId) {

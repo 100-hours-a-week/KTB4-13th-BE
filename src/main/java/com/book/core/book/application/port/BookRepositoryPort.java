@@ -5,4 +5,8 @@ import java.util.List;
 
 public interface BookRepositoryPort {
     List<Book> findAllByIdIn(final List<Long> ids);
+
+    List<Book> findWithUnambiguousIsbnByIds(final List<Long> ids);
+
+    List<Book> findWithUnambiguousIsbnByIsbns(final List<String> isbns);
 }

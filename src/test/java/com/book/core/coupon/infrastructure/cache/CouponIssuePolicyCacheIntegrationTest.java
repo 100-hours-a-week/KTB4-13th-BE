@@ -16,12 +16,14 @@ import com.book.core.coupon.application.service.CacheMetrics;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -31,6 +33,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -70,6 +73,11 @@ class CouponIssuePolicyCacheIntegrationTest {
     void 같은_쿠폰의_동시_미스는_한_번_로딩하고_다른_쿠폰은_독립적으로_로딩한다() throws Exception {
         final var firstInstance = cache();
         final var secondInstance = cache();
+        final String key = "coupon:1:issue-policy";
+        firstInstance.getOrLoad(1L, () -> POLICY);
+        redisTemplate.expire(key, Duration.ofMillis(30));
+        awaitExpiry(key);
+
         final var loads = new AtomicInteger();
         final var ownerLoading = new CountDownLatch(1);
         final var finishLoad = new CountDownLatch(1);
@@ -96,9 +104,13 @@ class CouponIssuePolicyCacheIntegrationTest {
                 assertThat(List.of(owner.get(2, TimeUnit.SECONDS), waiter.get(2, TimeUnit.SECONDS))).containsOnly(POLICY);
                 assertThat(loads).hasValue(1);
                 assertThat(cacheMetrics.snapshot().couponCacheHits()).isEqualTo(1);
+                assertThat(cacheMetrics.snapshot().couponDbReads()).isZero();
             } finally {
                 finishLoad.countDown();
             }
+        } finally {
+            firstInstance.stopRefreshExecutor();
+            secondInstance.stopRefreshExecutor();
         }
     }
 
@@ -115,39 +127,40 @@ class CouponIssuePolicyCacheIntegrationTest {
     }
 
     @Test
-    void 로더와_락_해제가_모두_실패하면_락_해제_예외를_전파한다() {
+    void 로더와_락_해제가_모두_실패하면_원래_로더_예외를_전파한다() {
         final StringRedisTemplate failingRedis = mock(StringRedisTemplate.class);
+        final CoreException loadFailure = new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
         final IllegalStateException releaseFailure = new IllegalStateException("락 해제 실패");
-        doReturn(List.of("LOAD", "")).when(failingRedis).execute(any(), anyList(), anyString(), anyString());
+        doReturn(List.of("LOAD", "")).when(failingRedis).execute(any(), anyList(), anyString(), anyString(), anyString(), anyString());
         doThrow(releaseFailure).when(failingRedis).execute(any(), anyList(), anyString());
-        final CouponIssuePolicyCacheAdapter cache =
-            new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(), new CacheProperties(10_000, 0), cacheMetrics);
+        final CouponIssuePolicyCacheAdapter cache = new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(),
+            new CacheProperties(10_000, 5_000, 0), cacheMetrics);
 
         assertThatThrownBy(() -> cache.getOrLoad(6L, () -> {
-            throw new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
-        })).isSameAs(releaseFailure);
+            throw loadFailure;
+        })).isSameAs(loadFailure);
     }
 
     @Test
-    void 락_해제_결과가_null이면_예외를_던진다() {
+    void 캐시를_저장한_뒤_락_해제_결과가_null이면_예외를_던진다() {
         final StringRedisTemplate failingRedis = mock(StringRedisTemplate.class);
-        doReturn(List.of("LOAD", "")).when(failingRedis).execute(any(), anyList(), anyString(), anyString());
+        doReturn(List.of("LOAD", "")).when(failingRedis).execute(any(), anyList(), anyString(), anyString(), anyString(), anyString());
+        doReturn(mock(HashOperations.class)).when(failingRedis).opsForHash();
+        doReturn(true).when(failingRedis).expire(anyString(), any(Duration.class));
         doReturn(null).when(failingRedis).execute(any(), anyList(), anyString());
-        final CouponIssuePolicyCacheAdapter cache =
-            new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(), new CacheProperties(10_000, 0), cacheMetrics);
+        final CouponIssuePolicyCacheAdapter cache = new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(),
+            new CacheProperties(10_000, 5_000, 0), cacheMetrics);
 
-        assertThatThrownBy(() -> cache.getOrLoad(8L, () -> {
-            throw new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
-        })).isInstanceOf(IllegalStateException.class).hasMessage("Lua 결과 null");
+        assertThatThrownBy(() -> cache.getOrLoad(8L, () -> POLICY)).isInstanceOf(IllegalStateException.class).hasMessage("Lua 결과 null");
     }
 
     @Test
     void 저장에_실패하면_자기_락을_해제해_다음_요청이_다시_로딩할_수_있다() {
         final StringRedisTemplate failingRedis = spy(redisTemplate);
         final IllegalStateException saveFailure = new IllegalStateException("캐시 저장 실패");
-        doThrow(saveFailure).when(failingRedis).execute(any(), anyList(), anyString(), anyString(), anyString());
-        final CouponIssuePolicyCacheAdapter cache =
-            new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(), new CacheProperties(10_000, 0), cacheMetrics);
+        doThrow(saveFailure).when(failingRedis).opsForHash();
+        final CouponIssuePolicyCacheAdapter cache = new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(),
+            new CacheProperties(10_000, 5_000, 0), cacheMetrics);
 
         assertThatThrownBy(() -> cache.getOrLoad(7L, () -> POLICY)).isSameAs(saveFailure);
         assertThat(redisTemplate.opsForValue().get("coupon:7:issue-policy:lock")).isNull();
@@ -155,7 +168,7 @@ class CouponIssuePolicyCacheIntegrationTest {
     }
 
     @Test
-    void 만료된_소유자는_정책을_저장하거나_새_소유자의_락을_지우지_못한다() {
+    void 만료된_소유자도_정책을_저장하지만_새_소유자의_락은_지우지_못한다() {
         final var cache = cache();
         final String policyKey = "coupon:4:issue-policy";
         final String lockKey = policyKey + ":lock";
@@ -166,7 +179,7 @@ class CouponIssuePolicyCacheIntegrationTest {
             assertThat(redisTemplate.opsForValue().setIfAbsent(lockKey, "next-owner", Duration.ofSeconds(3))).isTrue();
             return POLICY;
         })).isEqualTo(POLICY);
-        assertThat(redisTemplate.opsForValue().get(policyKey)).isNull();
+        assertThat(redisTemplate.opsForHash().get(policyKey, "value")).isEqualTo(JsonMapper.builder().build().writeValueAsString(POLICY));
         assertThat(redisTemplate.opsForValue().get(lockKey)).isEqualTo("next-owner");
     }
 
@@ -178,14 +191,15 @@ class CouponIssuePolicyCacheIntegrationTest {
 
         assertThatThrownBy(() -> cache().getOrLoad(5L, () -> {
             throw new AssertionError("대기 한도를 넘은 요청은 DB를 읽지 않아야 합니다.");
-        })).isInstanceOf(IllegalStateException.class).hasMessageContaining("대기 시간 초과");
+        })).isInstanceOf(IllegalStateException.class).hasMessageContaining("timeout");
         assertThat(redisTemplate.opsForValue().get(lockKey)).isEqualTo("owner");
-        assertThat(redisTemplate.opsForValue().get("coupon:5:issue-policy")).isNull();
+        assertThat(redisTemplate.hasKey("coupon:5:issue-policy")).isFalse();
     }
 
     @Test
     void 빈_캐시_값은_적중으로_분기하고_JSON_변환에_실패한다() {
-        redisTemplate.opsForValue().set("coupon:9:issue-policy", "", Duration.ofSeconds(10));
+        redisTemplate.opsForHash().put("coupon:9:issue-policy", "value", "");
+        redisTemplate.opsForHash().put("coupon:9:issue-policy", "fetchedAtMs", Long.toString(System.currentTimeMillis()));
 
         assertThatThrownBy(() -> cache().getOrLoad(9L, () -> {
             throw new AssertionError("캐시 적중 시 DB를 읽지 않아야 합니다.");
@@ -193,37 +207,149 @@ class CouponIssuePolicyCacheIntegrationTest {
     }
 
     @Test
-    void 예상하지_못한_상태가_오면_다음_결과를_확인한다() {
+    void 예상하지_못한_상태가_오면_재시도하지_않고_즉시_실패한다() {
         final StringRedisTemplate redis = mock(StringRedisTemplate.class);
         final JsonMapper mapper = JsonMapper.builder().build();
         doReturn(List.of("UNKNOWN", ""), List.of("HIT", mapper.writeValueAsString(POLICY))).when(redis).execute(any(), anyList(),
-            anyString(), anyString());
+            anyString(), anyString(), anyString(), anyString());
         final CouponIssuePolicyCacheAdapter cache =
-            new CouponIssuePolicyCacheAdapter(redis, mapper, new CacheProperties(10_000, 0), cacheMetrics);
+            new CouponIssuePolicyCacheAdapter(redis, mapper, new CacheProperties(10_000, 5_000, 0), cacheMetrics);
 
-        assertThat(cache.getOrLoad(10L, () -> {
-            throw new AssertionError("캐시 적중 시 DB를 읽지 않아야 합니다.");
-        })).isEqualTo(POLICY);
+        assertThatThrownBy(() -> cache.getOrLoad(10L, () -> {
+            throw new AssertionError("알 수 없는 Lua 상태에서는 DB를 읽지 않아야 합니다.");
+        })).isInstanceOf(IllegalStateException.class).hasMessage("예상치 못한 Lua 결과: UNKNOWN");
     }
 
     @ParameterizedTest
-    @ValueSource(longs = {-1L, -1_000L})
-    void 참고_구현에서_영구_만료값으로_취급하는_TTL은_만료_없이_저장한다(final long ttlMs) {
-        final long couponId = 11L - ttlMs;
-        assertThat(cache(ttlMs).getOrLoad(couponId, () -> POLICY)).isEqualTo(POLICY);
-        assertThat(redisTemplate.getExpire("coupon:" + couponId + ":issue-policy")).isEqualTo(-1L);
-    }
-
-    @ParameterizedTest
-    @ValueSource(longs = {0L, -2L, -2_000L})
-    void 그_외_양수가_아닌_TTL은_Redis가_거절하고_락을_해제한다(final long ttlMs) {
+    @ValueSource(longs = {0L, -1L, -1_000L, -2L, -2_000L})
+    void TTL이_0_이하면_조회_값은_반환하되_Hash를_즉시_만료하고_락을_해제한다(final long ttlMs) {
         final long couponId = 20L - ttlMs;
         final String cacheKey = "coupon:" + couponId + ":issue-policy";
 
-        assertThatThrownBy(() -> cache(ttlMs).getOrLoad(couponId, () -> POLICY)).isInstanceOf(DataAccessException.class)
-            .hasStackTraceContaining("invalid expire time");
-        assertThat(redisTemplate.opsForValue().get(cacheKey)).isNull();
-        assertThat(redisTemplate.opsForValue().get(cacheKey + ":lock")).isNull();
+        assertThat(cache(ttlMs).getOrLoad(couponId, () -> POLICY)).isEqualTo(POLICY);
+        assertThat(redisTemplate.hasKey(cacheKey)).isFalse();
+        assertThat(redisTemplate.hasKey(cacheKey + ":lock")).isFalse();
+    }
+
+    @Test
+    void 기존_문자열_캐시가_만료되어야_같은_키를_Hash로_저장할_수_있다() {
+        final String key = "coupon:50:issue-policy";
+        final String json = JsonMapper.builder().build().writeValueAsString(POLICY);
+        redisTemplate.opsForValue().set(key, json, Duration.ofSeconds(10));
+
+        assertThatThrownBy(() -> cache().getOrLoad(50L, () -> POLICY)).isInstanceOf(DataAccessException.class)
+            .hasStackTraceContaining("WRONGTYPE");
+
+        assertThat(redisTemplate.expire(key, Duration.ZERO)).isTrue();
+        assertThat(cache().getOrLoad(50L, () -> POLICY)).isEqualTo(POLICY);
+        assertThat(redisTemplate.opsForHash().get(key, "value")).isEqualTo(json);
+    }
+
+    @Test
+    void Hash는_fresh_구간에는_로딩하지_않고_stale_동시_요청에는_한_번만_갱신한다() throws Exception {
+        final var first = cache();
+        final var second = cache();
+        final String key = "coupon:100:issue-policy";
+        final var freshPolicy = new CouponIssuePolicy(POLICY.startsAt(), POLICY.expiredAt(), 2, false);
+        final var loading = new CountDownLatch(1);
+        final var finish = new CountDownLatch(1);
+        final var loads = new AtomicInteger();
+        final Supplier<CouponIssuePolicy> loader = () -> {
+            loads.incrementAndGet();
+            loading.countDown();
+            await(finish);
+            return freshPolicy;
+        };
+
+        try (final var callers = Executors.newFixedThreadPool(4)) {
+            final String json = JsonMapper.builder().build().writeValueAsString(POLICY);
+            assertThat(first.getOrLoad(100L, () -> POLICY)).isEqualTo(POLICY);
+            assertThat(redisTemplate.opsForHash().get(key, "value")).isEqualTo(json);
+            assertThat(Long.parseLong((String) redisTemplate.opsForHash().get(key, "fetchedAtMs"))).isPositive();
+            assertThat(redisTemplate.getExpire(key, TimeUnit.MILLISECONDS)).isBetween(1L, 10_000L);
+            assertThat(first.getOrLoad(100L, loader)).isEqualTo(POLICY);
+            assertThat(loads).hasValue(0);
+            markStale(key);
+
+            assertThat(first.getOrLoad(100L, loader)).isEqualTo(POLICY);
+            await(loading);
+            final var requests = callers.<CouponIssuePolicy>invokeAll(Collections.nCopies(8, () -> second.getOrLoad(100L, loader)));
+            for (final var request : requests) {
+                assertThat(request.get()).isEqualTo(POLICY);
+            }
+            assertThat(loads).hasValue(1);
+            assertThat(cacheMetrics.snapshot().couponCacheHits()).isEqualTo(10);
+
+            finish.countDown();
+            awaitUnlock(key);
+            assertThat(first.getOrLoad(100L, loader)).isEqualTo(freshPolicy);
+            assertThat(redisTemplate.opsForHash().get(key, "value"))
+                .isEqualTo(JsonMapper.builder().build().writeValueAsString(freshPolicy));
+            assertThat(redisTemplate.opsForHash().get(key, "fetchedAtMs")).isNotEqualTo("0");
+        } finally {
+            finish.countDown();
+            first.stopRefreshExecutor();
+            second.stopRefreshExecutor();
+        }
+    }
+
+    @Test
+    void 갱신_실패_후_stale을_유지하고_실제_TTL_만료_후에는_삭제_오류를_전파한다() throws Exception {
+        final var cache = cache();
+        final String key = "coupon:101:issue-policy";
+        final var failures = new AtomicInteger();
+        final CoreException missing = new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
+        final Supplier<CouponIssuePolicy> loader = () -> {
+            failures.incrementAndGet();
+            throw missing;
+        };
+        try {
+            cache.getOrLoad(101L, () -> POLICY);
+            markStale(key);
+            assertThat(cache.getOrLoad(101L, loader)).isEqualTo(POLICY);
+            awaitUnlock(key);
+            assertThat(cache.getOrLoad(101L, loader)).isEqualTo(POLICY);
+            awaitUnlock(key);
+            assertThat(failures).hasValue(2);
+
+            redisTemplate.expire(key, Duration.ofMillis(30));
+            awaitExpiry(key);
+            assertThatThrownBy(() -> cache.getOrLoad(101L, loader)).isSameAs(missing);
+        } finally {
+            cache.stopRefreshExecutor();
+        }
+    }
+
+    @Test
+    void 재고_복구_후에도_갱신이_완료될_때까지_stale_매진_정책을_반환한다() throws Exception {
+        final var cache = cache();
+        final var soldOut = new CouponIssuePolicy(POLICY.startsAt(), POLICY.expiredAt(), 1, true);
+        final String key = "coupon:103:issue-policy";
+        try {
+            cache.getOrLoad(103L, () -> soldOut);
+            markStale(key);
+
+            assertThat(cache.getOrLoad(103L, () -> POLICY).soldOut()).isTrue();
+            awaitUnlock(key);
+            assertThat(cache.getOrLoad(103L, () -> POLICY).soldOut()).isFalse();
+        } finally {
+            cache.stopRefreshExecutor();
+        }
+    }
+
+    private static void markStale(final String key) {
+        redisTemplate.opsForHash().put(key, "fetchedAtMs", "0");
+    }
+
+    private static void awaitUnlock(final String key) throws InterruptedException {
+        awaitExpiry(key + ":lock");
+    }
+
+    private static void awaitExpiry(final String key) throws InterruptedException {
+        for (int attempt = 0; attempt < 100 && Boolean.TRUE.equals(redisTemplate.hasKey(key)); attempt++) {
+            Thread.sleep(10);
+        }
+        assertThat(redisTemplate.hasKey(key)).isFalse();
     }
 
     private CouponIssuePolicyCacheAdapter cache() {
@@ -231,7 +357,8 @@ class CouponIssuePolicyCacheIntegrationTest {
     }
 
     private CouponIssuePolicyCacheAdapter cache(final long ttlMs) {
-        return new CouponIssuePolicyCacheAdapter(redisTemplate, JsonMapper.builder().build(), new CacheProperties(ttlMs, 0), cacheMetrics);
+        return new CouponIssuePolicyCacheAdapter(redisTemplate, JsonMapper.builder().build(), new CacheProperties(ttlMs, 5_000, 0),
+            cacheMetrics);
     }
 
     private static void await(final CountDownLatch latch) {

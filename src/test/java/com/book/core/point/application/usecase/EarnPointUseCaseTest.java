@@ -31,7 +31,8 @@ class EarnPointUseCaseTest {
     @CsvSource({"250, 1250, 250", "-250, 750, -250"})
     void 잔액과_이력에_기존_금액_부호를_반영한다(final BigDecimal amount, final BigDecimal expectedBalance, final BigDecimal expectedHistoryAmount) {
         final PointBalance balance = new PointBalance(1L, 42L, new BigDecimal("1000"));
-        when(balances.findByUserId(42L)).thenReturn(Optional.of(balance));
+        when(balances.findByUserIdForUpdate(42L)).thenReturn(Optional.of(balance));
+        when(balances.availableBalance(balance)).thenReturn(balance.balance());
 
         useCase.execute(42L, PointType.REVIEW, 10L, amount);
 
@@ -57,10 +58,25 @@ class EarnPointUseCaseTest {
 
     @Test
     void 잔액이_없으면_오류를_반환하고_이력을_저장하지_않는다() {
-        when(balances.findByUserId(42L)).thenReturn(Optional.empty());
+        when(balances.findByUserIdForUpdate(42L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.execute(42L, PointType.REVIEW, 10L, BigDecimal.TEN)).isInstanceOfSatisfying(CoreException.class,
             (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND_DATA));
+        verifyNoInteractions(histories);
+    }
+
+    @Test
+    void 음수_조정은_예약된_잔액을_침범할_수_없다() {
+        final PointBalance balance = new PointBalance(1L, 42L, new BigDecimal("1000"));
+        balance.reserve(new BigDecimal("700"));
+        when(balances.findByUserIdForUpdate(42L)).thenReturn(Optional.of(balance));
+        when(balances.availableBalance(balance)).thenReturn(balance.available());
+
+        assertThatThrownBy(() -> useCase.execute(42L, PointType.REVIEW, 10L, new BigDecimal("-301"))).isInstanceOfSatisfying(
+            CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.POINT_EXCEEDS_BALANCE));
+        assertThat(balance.balance()).isEqualByComparingTo("1000");
+        assertThat(balance.reserved()).isEqualByComparingTo("700");
         verifyNoInteractions(histories);
     }
 

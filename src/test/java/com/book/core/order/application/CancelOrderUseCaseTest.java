@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
@@ -16,6 +17,8 @@ import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderItem;
 import com.book.core.order.domain.OrderItemStatus;
 import com.book.core.order.domain.OrderStatus;
+import com.book.core.payment.application.usecase.HasUnconfirmedCheckoutUseCase;
+import com.book.core.payment.application.usecase.ReleaseActivePaymentReservationUseCase;
 import java.math.BigDecimal;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -25,7 +28,9 @@ class CancelOrderUseCaseTest {
     private final OrderRepositoryPort orderRepository = mock(OrderRepositoryPort.class);
     private final com.book.core.payment.application.usecase.AssertNoPendingPgOperationUseCase pgGuard =
         mock(com.book.core.payment.application.usecase.AssertNoPendingPgOperationUseCase.class);
-    private final CancelOrderUseCase useCase = new CancelOrderUseCase(orderRepository, pgGuard);
+    private final ReleaseActivePaymentReservationUseCase reservations = mock(ReleaseActivePaymentReservationUseCase.class);
+    private final HasUnconfirmedCheckoutUseCase checkout = mock(HasUnconfirmedCheckoutUseCase.class);
+    private final CancelOrderUseCase useCase = new CancelOrderUseCase(orderRepository, pgGuard, checkout, reservations);
 
     @Test
     void 회원의_생성_주문과_모든_주문상품을_취소한다() {
@@ -38,6 +43,7 @@ class CancelOrderUseCaseTest {
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
         assertThat(order.canceledAt()).isNotNull();
         assertThat(order.items()).extracting(OrderItem::status).containsExactly(OrderItemStatus.CANCELED);
+        verify(reservations).execute("order_to_cancel");
     }
 
     @Test
@@ -81,6 +87,19 @@ class CancelOrderUseCaseTest {
         assertThatThrownBy(() -> useCase.execute(new CancelOrderCommand(42L, "pending_order"))).isInstanceOfSatisfying(CoreException.class,
             error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
         assertThat(order.status()).isEqualTo(OrderStatus.CREATED);
+        verifyNoInteractions(reservations);
+    }
+
+    @Test
+    void 결제창_결과가_불명확하면_주문과_포인트_예약을_유지한다() {
+        final Order order = Order.create(42L, "checkout_order", null);
+        when(orderRepository.findActiveOrderByKeyForUpdate("checkout_order")).thenReturn(Optional.of(order));
+        when(checkout.execute(order.id())).thenReturn(true);
+
+        assertThatThrownBy(() -> useCase.execute(new CancelOrderCommand(42L, "checkout_order"))).isInstanceOfSatisfying(CoreException.class,
+            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.PG_PENDING));
+        assertThat(order.status()).isEqualTo(OrderStatus.CREATED);
+        verifyNoInteractions(reservations);
     }
 
     @Test

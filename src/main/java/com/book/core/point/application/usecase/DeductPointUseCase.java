@@ -30,7 +30,13 @@ public class DeductPointUseCase {
         log.atDebug().addKeyValue("referenceId", referenceId).log("[POINT] 포인트 차감 처리를 시작합니다. type={}, referenceId={}", type, referenceId);
 
         final PointBalance balance =
-            pointBalanceRepository.findByUserId(userId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
+            pointBalanceRepository.findByUserIdForUpdate(userId).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
+        if (amount.signum() > 0) {
+            final BigDecimal available = pointBalanceRepository.availableBalance(balance);
+            if (available.compareTo(balance.balance()) < 0 && amount.compareTo(available) > 0) {
+                throw new CoreException(ErrorCode.POINT_EXCEEDS_BALANCE);
+            }
+        }
         final BigDecimal deductedAmount = amount.negate();
         balance.apply(deductedAmount);
         pointHistoryRepository.save(PointHistory.builder().userId(userId).type(type).referenceId(referenceId).amount(deductedAmount)

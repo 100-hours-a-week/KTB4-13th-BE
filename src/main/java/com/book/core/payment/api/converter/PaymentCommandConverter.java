@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class PaymentCommandConverter {
 
-    public CreatePaymentCommand toCreateCommand(final Long userId, final CreatePaymentRequest request) {
+    public CreatePaymentCommand toCreateCommand(final Long userId, final CreatePaymentRequest request, final String requestKey) {
         Long useOwnedCouponId = request.useOwnedCouponId();
         if (useOwnedCouponId == null) {
             useOwnedCouponId = -1L;
@@ -19,7 +19,7 @@ public class PaymentCommandConverter {
         if (usePoint == null) {
             usePoint = BigDecimal.valueOf(-1);
         }
-        return new CreatePaymentCommand(userId, request.orderKey(), useOwnedCouponId, usePoint);
+        return new CreatePaymentCommand(userId, request.orderKey(), useOwnedCouponId, usePoint, requestKey);
     }
 
     public ApprovePaymentCommand toApproveCommand(final String orderKey, final String paymentKey, final BigDecimal amount) {

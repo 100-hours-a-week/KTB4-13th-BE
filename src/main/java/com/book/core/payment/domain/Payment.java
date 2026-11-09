@@ -73,6 +73,17 @@ public class Payment extends BaseEntity {
         this.paidAt = LocalDateTime.now();
     }
 
+    public void prepareRetry(final Long payerUserId, final PaymentDiscount discount) {
+        if (state != PaymentState.READY) {
+            throw new IllegalStateException("완료된 결제는 다시 준비할 수 없습니다.");
+        }
+        this.payerUserId = payerUserId;
+        this.ownedCouponId = discount.useOwnedCouponId();
+        this.couponDiscount = discount.couponDiscount();
+        this.usedPoint = discount.usePoint();
+        this.paidAmount = discount.paidAmount(originAmount);
+    }
+
     public boolean hasAppliedCoupon() {
         return ownedCouponId > 0;
     }

@@ -2,9 +2,14 @@ package com.book.core.auth.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
 
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.auth.application.port.RefreshSessionRepository;
 import com.book.core.auth.application.port.RefreshTokenHasher;
 import com.book.core.auth.application.result.AuthLoginResult;
 import com.book.core.user.application.port.UserRepositoryPort;
@@ -12,6 +17,7 @@ import com.book.core.user.application.usecase.RecoverWithdrawalUseCase;
 import com.book.core.user.application.usecase.RequestUserDeletionUseCase;
 import com.book.core.user.domain.User;
 import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -19,13 +25,16 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
@@ -53,8 +62,10 @@ class AuthSessionMySqlConcurrencyTest {
     RecoverWithdrawalUseCase recover;
     @Autowired
     UserRepositoryPort users;
-    @Autowired
+    @MockitoSpyBean
     RefreshTokenHasher hasher;
+    @MockitoSpyBean
+    RefreshSessionRepository sessions;
     @Autowired
     JdbcTemplate jdbc;
     @Autowired
@@ -183,17 +194,29 @@ class AuthSessionMySqlConcurrencyTest {
             .isEqualTo(hasher.hash(original));
     }
 
-    private <T> Callable<T> inTransaction(final AtomicLong connection, final CountDownLatch started, final Callable<T> operation) {
+    @Test
+    void failedMySqlInsertRollsBackRevocation() {
+        final long userId = users.save(User.create("저장실패회원")).id();
+        final String oldToken = login.execute(userId).refreshToken();
+        final String oldHash = hasher.hash(oldToken);
+        doReturn("x".repeat(65)).when(hasher).hash(anyString());
+
+        assertThatThrownBy(() -> login.execute(userId)).isInstanceOf(DataAccessException.class).rootCause()
+            .isInstanceOfSatisfying(SQLException.class, (final var error) -> assertThat(error.getErrorCode()).isEqualTo(1406));
+
+        verify(sessions).save(argThat((final var session) -> session.id() != null && !session.isActive()));
+        assertThat(activeCount(userId)).isEqualTo(1);
+        assertThat(
+            jdbc.queryForObject("SELECT token_hash FROM refresh_sessions WHERE user_id=? AND revoked_at IS NULL", String.class, userId))
+            .isEqualTo(oldHash);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM refresh_sessions WHERE user_id=?", Integer.class, userId)).isEqualTo(1);
+    }
+
+    private <T> Callable<T> inTransaction(final AtomicLong connection, final CountDownLatch started, final Supplier<T> operation) {
         return () -> new TransactionTemplate(manager).execute((final var status) -> {
             connection.set(connectionId());
             started.countDown();
-            try {
-                return operation.call();
-            } catch (final RuntimeException exception) {
-                throw exception;
-            } catch (final Exception exception) {
-                throw new IllegalStateException(exception);
-            }
+            return operation.get();
         });
     }
 

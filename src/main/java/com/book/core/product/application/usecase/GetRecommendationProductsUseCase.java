@@ -20,7 +20,9 @@ public class GetRecommendationProductsUseCase {
         if (bookIds.isEmpty()) {
             return Map.of();
         }
-        return products.findActiveByBookIds(bookIds).stream().collect(Collectors.toMap((final Product product) -> product.book().id(),
-            (final Product product) -> new RecommendationProductResult(product.id(), product.discountedPrice())));
+        return products.findActiveByBookIds(bookIds).stream()
+            .collect(Collectors.toMap((final Product product) -> product.book().id(),
+                (final Product product) -> new RecommendationProductResult(product.id(), product.discountedPrice(),
+                    product.stockQuantity() > 0)));
     }
 }

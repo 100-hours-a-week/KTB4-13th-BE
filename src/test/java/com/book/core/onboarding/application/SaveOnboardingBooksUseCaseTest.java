@@ -165,6 +165,16 @@ class SaveOnboardingBooksUseCaseTest {
     }
 
     private static final class FakeBookRepository implements BookRepositoryPort {
+        @Override
+        public List<Book> findWithUnambiguousIsbnByIds(final List<Long> ids) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public List<Book> findWithUnambiguousIsbnByIsbns(final List<String> isbns) {
+            throw new UnsupportedOperationException();
+        }
+
         private final Map<Long, Book> booksById = new HashMap<>();
 
         @Override

@@ -1,8 +1,10 @@
 package com.book.core.agentchat.infrastructure.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.client.ExpectedCount.twice;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.client.ExpectedCount.twice;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -14,12 +16,18 @@ import com.book.common.exception.RetryAfterException;
 import com.book.core.agentchat.application.result.AgentChatContext;
 import com.book.core.agentchat.application.result.AgentContextCard;
 import com.book.core.agentchat.application.result.AgentObservedProduct;
+import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
+import com.book.core.onboarding.application.result.RecommendationHistory;
+import com.book.core.onboarding.application.usecase.GetRecommendationHistoryUseCase;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
-import com.book.core.recommendation.application.command.RecommendationTurn;
 import com.book.core.recommendation.application.command.RecommendationSpec;
+import com.book.core.recommendation.application.command.RecommendationTurn;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -31,13 +39,34 @@ import org.springframework.web.client.RestClient;
 class AgentChatClientImplTest {
     private final RestClient.Builder builder = RestClient.builder().baseUrl("https://ai.invalid");
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-    private final AgentChatClientImpl client =
-        new AgentChatClientImpl(builder.build(), new AgentChatProperties(true), new AgentChatExternalMapper());
+    private final GetAiBookIdentifiersUseCase identifiers = mock(GetAiBookIdentifiersUseCase.class);
+    private final GetRecommendationHistoryUseCase history = mock(GetRecommendationHistoryUseCase.class);
+    private final AgentChatClientImpl client = new AgentChatClientImpl(builder.build(), new AgentChatProperties(true),
+        new AgentChatExternalMapper(identifiers), identifiers, history, new ObjectMapper());
     private final ChatRecommendationCommand command = new ChatRecommendationCommand(7L, true, Map.of(), "1번 5권 담아줘",
         List.of(new RecommendationTurn("user", "추천"), new RecommendationTurn("assistant", "추천합니다")), List.of());
     private final AgentChatContext context =
         new AgentChatContext(List.of(new AgentObservedProduct(10L, "9788900000011", "책", new BigDecimal("12000.00"), 2, 3, true)),
             List.of(new AgentContextCard("9788900000011", 1, 90)));
+
+    @BeforeEach
+    void prepareCatalogAndHistory() {
+        when(identifiers.findUnambiguousIsbns(List.of("9788900000011"))).thenReturn(Set.of("9788900000011"));
+        when(history.execute(7L)).thenReturn(RecommendationHistory.NOT_CONSENTED);
+    }
+
+    @Test
+    void 식별할_수_없는_장바구니_책은_AI에_보내지_않고_일반_추천으로_진행한다() {
+        when(identifiers.findUnambiguousIsbns(List.of("9788900000011"))).thenReturn(Set.of());
+        server.expect(requestTo("https://ai.invalid/recommendations/chat")).andExpect(jsonPath("$.idempotency_key").doesNotExist())
+            .andExpect(jsonPath("$.cart").isEmpty()).andExpect(jsonPath("$.offers").isEmpty())
+            .andExpect(jsonPath("$.context_cards").isEmpty()).andRespond(withSuccess("""
+                {"data":{"reply":"추천합니다","spec":{},"cards":[],"buttons":[],"degraded":false}}
+                """, MediaType.APPLICATION_JSON));
+
+        assertThat(client.chat(command, 8L, 19L, context).route()).isEqualTo("recommend");
+        server.verify();
+    }
 
     @Test
     void 기존_입구에_최초_장바구니_가격_재고숫자와_서버_식별자를_보낸다() {
@@ -56,8 +85,8 @@ class AgentChatClientImplTest {
 
     @Test
     void 배포_확인_전_기본값은_비활성이고_호출을_허용하지_않는다() {
-        final AgentChatClientImpl disabled =
-            new AgentChatClientImpl(builder.build(), new AgentChatProperties(false), new AgentChatExternalMapper());
+        final AgentChatClientImpl disabled = new AgentChatClientImpl(builder.build(), new AgentChatProperties(false),
+            new AgentChatExternalMapper(identifiers), identifiers, history, new ObjectMapper());
         assertThat(disabled.enabled()).isFalse();
         assertThatThrownBy(() -> disabled.chat(command, 8L, 19L, context)).isInstanceOf(IllegalStateException.class);
         server.verify();

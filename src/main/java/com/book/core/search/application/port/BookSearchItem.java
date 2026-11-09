@@ -9,6 +9,5 @@ public record BookSearchItem(
         String author,
         String publisher,
         BigDecimal price,
-        boolean inStock,
         String coverUrl) {}
 // @formatter:on

@@ -149,6 +149,16 @@ class ChatRecommendationUseCaseTest {
     }
 
     private static class FakeBookRepositoryPort implements BookRepositoryPort {
+        @Override
+        public List<Book> findWithUnambiguousIsbnByIds(final List<Long> ids) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public List<Book> findWithUnambiguousIsbnByIsbns(final List<String> isbns) {
+            throw new UnsupportedOperationException();
+        }
+
         final Map<Long, Book> books = new HashMap<>();
 
         @Override

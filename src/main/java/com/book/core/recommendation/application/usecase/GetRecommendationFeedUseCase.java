@@ -1,7 +1,8 @@
 package com.book.core.recommendation.application.usecase;
 
 import com.book.common.annotation.UseCase;
-import com.book.core.product.application.usecase.FindProductIdsByBookIdsUseCase;
+import com.book.core.product.application.result.RecommendationProductResult;
+import com.book.core.product.application.usecase.GetRecommendationProductsUseCase;
 import com.book.core.recommendation.application.command.GetRecommendationFeedCommand;
 import com.book.core.recommendation.application.port.RecommendationFeedClient;
 import com.book.core.recommendation.application.port.RecommendationFeedItem;
@@ -17,23 +18,28 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class GetRecommendationFeedUseCase {
     private final RecommendationFeedClient recommendationFeedClient;
-    private final FindProductIdsByBookIdsUseCase findProductIdsByBookIdsUseCase;
+    private final GetRecommendationProductsUseCase getRecommendationProductsUseCase;
 
     public GetRecommendationFeedResult execute(final GetRecommendationFeedCommand command) {
         final RecommendationFeedResult feedResult =
             recommendationFeedClient.getFeed(new RecommendationFeedRequest(command.userId(), command.surface(), command.size(),
                 command.cursor(), command.sort(), command.category(), command.pubYearFrom(), command.pubYearTo(), command.matchScoreMin()));
 
-        // The AI feed returns only bookIds; the product detail link needs the active product's own ID.
-        final Map<Long, Long> productIdsByBookId =
-            findProductIdsByBookIdsUseCase.execute(feedResult.items().stream().map(RecommendationFeedItem::bookId).toList());
+        final Map<Long, RecommendationProductResult> products =
+            getRecommendationProductsUseCase.execute(feedResult.items().stream().map(RecommendationFeedItem::bookId).toList());
         final List<RecommendationFeedItemResult> items = feedResult.items().stream()
-            .map((final RecommendationFeedItem item) -> toItemResult(item, productIdsByBookId.get(item.bookId()))).toList();
+            .map((final RecommendationFeedItem item) -> toItemResult(item, products.get(item.bookId()))).toList();
         return new GetRecommendationFeedResult(items, feedResult.nextCursor(), feedResult.coldStart(), feedResult.degraded());
     }
 
-    private static RecommendationFeedItemResult toItemResult(final RecommendationFeedItem item, final Long productId) {
+    private static RecommendationFeedItemResult toItemResult(final RecommendationFeedItem item, final RecommendationProductResult product) {
+        Long productId = null;
+        boolean inStock = false;
+        if (product != null) {
+            productId = product.productId();
+            inStock = product.inStock();
+        }
         return new RecommendationFeedItemResult(item.bookId(), productId, item.title(), item.author(), item.price(), item.coverUrl(),
-            item.inStock(), item.matchScore());
+            inStock, item.matchScore());
     }
 }

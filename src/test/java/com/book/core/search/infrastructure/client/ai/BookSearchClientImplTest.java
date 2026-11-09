@@ -2,6 +2,8 @@ package com.book.core.search.infrastructure.client.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -14,13 +16,16 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
 import com.book.common.filter.RequestMdcFilter;
+import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
 import com.book.core.search.application.command.BookSearchSort;
 import com.book.core.search.application.port.BookSearchItem;
 import com.book.core.search.application.port.BookSearchRequest;
 import com.book.core.search.application.port.BookSearchResult;
 import java.math.BigDecimal;
 import java.net.SocketTimeoutException;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
@@ -38,7 +43,13 @@ class BookSearchClientImplTest {
     private final RestClient.Builder builder =
         RestClient.builder().baseUrl(BASE_URL).defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN);
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-    private final BookSearchClientImpl client = new BookSearchClientImpl(builder.build());
+    private final GetAiBookIdentifiersUseCase identifiers = mock(GetAiBookIdentifiersUseCase.class);
+    private final BookSearchClientImpl client = new BookSearchClientImpl(builder.build(), identifiers);
+
+    @BeforeEach
+    void resolveIsbn() {
+        when(identifiers.findBookIds(org.mockito.ArgumentMatchers.anyList())).thenReturn(Map.of("9788900000073", 2077L));
+    }
 
     @AfterEach
     void clearMdc() {
@@ -77,13 +88,14 @@ class BookSearchClientImplTest {
     @Test
     void 검색_결과와_다음_cursor를_매핑한다() {
         server.expect(requestTo(SEARCH_URL)).andRespond(withSuccess(body("""
-            [{"book_id": 2077, "title": "여행의 이유", "author": "김영하", "publisher": "문학동네", "price": 13500,
-              "in_stock": true, "cover_url": "https://example.com/2077.jpg"}]""", "\"next-page\"", null), MediaType.APPLICATION_JSON));
+            [{"isbn": "9788900000073", "title": "여행의 이유", "author": "김영하", "publisher": "문학동네", "price": 13500,
+              "in_stock": true, "cover_url": "https://example.com/2077.jpg"},
+            {"isbn": null}, {"isbn": "9788900001230"}]""", "\"next-page\"", null), MediaType.APPLICATION_JSON));
 
         final BookSearchResult result = client.search(popularRequest());
 
-        assertThat(result.items()).containsExactly(
-            new BookSearchItem(2077L, "여행의 이유", "김영하", "문학동네", new BigDecimal("13500"), true, "https://example.com/2077.jpg"));
+        assertThat(result.items())
+            .containsExactly(new BookSearchItem(2077L, "여행의 이유", "김영하", "문학동네", new BigDecimal("13500"), "https://example.com/2077.jpg"));
         assertThat(result.nextCursor()).isEqualTo("next-page");
         assertThat(result.fallbackMessage()).isNull();
         assertThat(result.degraded()).isNull();

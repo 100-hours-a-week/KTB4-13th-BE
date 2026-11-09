@@ -2,6 +2,7 @@ package com.book.core.agentchat.infrastructure.client;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
 import com.book.core.agentchat.application.result.AgentAction;
 import com.book.core.agentchat.application.result.AgentButton;
 import com.book.core.agentchat.application.result.AgentChosenBook;
@@ -11,37 +12,45 @@ import com.book.core.recommendation.application.command.RecommendationCardCandid
 import com.book.core.recommendation.application.command.ResolveRecommendationCommand;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 class AgentChatExternalMapper {
-    AgentDecision map(final AgentAiData data) {
+    private final GetAiBookIdentifiersUseCase identifiers;
+
+    AgentDecision map(final AgentAiData data, final boolean recommendationOnly) {
         if (data == null || data.reply() == null || data.reply().isBlank() || data.reply().length() > 4000 || data.buttons() == null
             || data.buttons().size() > 10) {
             throw invalid();
         }
         final List<AgentButton> buttons = data.buttons().stream().map(this::button).toList();
-        if ("recommend".equals(data.route())) {
+        if ("recommend".equals(data.route()) || (recommendationOnly && data.route() == null)) {
             if (data.spec() == null || data.cards() == null || data.degraded() == null
                 || (data.actions() != null && !data.actions().isEmpty()) || data.selection() != null
                 || buttons.stream().anyMatch((final AgentButton button) -> !"navigate".equals(button.action()))) {
                 throw invalid();
             }
-            final List<RecommendationCardCandidate> cards = data.cards().stream().map((final AgentAiCard card) -> {
-                if (card == null || card.bookId() == null || card.bookId() <= 0) {
-                    throw invalid();
-                }
-                return new RecommendationCardCandidate(card.bookId(), card.matchScore(), card.reasonShort(), card.reasonLong());
-            }).toList();
+            if (data.cards().stream().anyMatch(Objects::isNull)) {
+                throw invalid();
+            }
+            final Map<String, Long> bookIds = identifiers.findBookIds(data.cards().stream().map(AgentAiCard::isbn).toList());
+            final List<RecommendationCardCandidate> cards =
+                data.cards().stream().filter((final AgentAiCard card) -> card.isbn() != null && bookIds.containsKey(card.isbn()))
+                    .map((final AgentAiCard card) -> new RecommendationCardCandidate(bookIds.get(card.isbn()), card.matchScore(),
+                        card.reasonShort(), card.reasonLong()))
+                    .toList();
             return new AgentDecision("recommend", data.reply(),
                 new ResolveRecommendationCommand(data.spec(), data.reply(), cards, data.followup(), List.of(), data.degraded()), List.of(),
                 null, buttons);
         }
-        if (!"shop".equals(data.route()) || data.actions() == null || data.actions().size() > 30 || data.spec() != null
-            || data.cards() != null || data.followup() != null || data.degraded() != null) {
+        if (recommendationOnly || !"shop".equals(data.route()) || data.actions() == null || data.actions().size() > 30
+            || data.spec() != null || data.cards() != null || data.followup() != null || data.degraded() != null) {
             throw invalid();
         }
         for (final AgentAiAction action : data.actions()) {

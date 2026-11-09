@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 
 import com.book.core.auth.application.port.RefreshSessionRepository;
 import com.book.core.auth.domain.RefreshSession;
+import com.book.core.user.application.port.UserRepositoryPort;
+import com.book.core.user.domain.User;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -24,6 +26,12 @@ class AuthLogoutUseCaseTest {
 
     @Mock
     RefreshSessionRepository refreshSessionRepository;
+
+    @Mock
+    UserRepositoryPort userRepository;
+
+    @Mock
+    User user;
 
     @Test
     void 활성_Refresh_Session이_있으면_폐기한다() {
@@ -47,6 +55,7 @@ class AuthLogoutUseCaseTest {
     }
 
     private AuthLogoutUseCase useCase() {
-        return new AuthLogoutUseCase(refreshSessionRepository, CLOCK);
+        org.mockito.Mockito.lenient().when(userRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(user));
+        return new AuthLogoutUseCase(refreshSessionRepository, CLOCK, userRepository);
     }
 }

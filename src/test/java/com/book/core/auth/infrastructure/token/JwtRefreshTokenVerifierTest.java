@@ -2,13 +2,10 @@ package com.book.core.auth.infrastructure.token;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.auth.application.port.IssuedTokens;
-import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -31,7 +28,6 @@ class JwtRefreshTokenVerifierTest {
     private static final byte[] SECRET_BYTES = new byte[64];
     private static final String SECRET = Base64.getEncoder().encodeToString(SECRET_BYTES);
 
-    private final CheckUserRestrictionUseCase checkUserRestrictionUseCase = mock(CheckUserRestrictionUseCase.class);
     private SecretKey secretKey;
     private JwtTokenIssuer tokenIssuer;
 
@@ -84,17 +80,9 @@ class JwtRefreshTokenVerifierTest {
         assertInvalidRefreshToken(() -> verifier.verify(invalidRefreshToken));
     }
 
-    @Test
-    void 탈퇴_신청_또는_비활성_회원의_Refresh_Token은_거부한다() {
-        final IssuedTokens tokens = tokenIssuer.issue(USER_ID);
-        when(checkUserRestrictionUseCase.execute(USER_ID)).thenReturn(true);
-
-        assertInvalidRefreshToken(() -> verifierAt(NOW).verify(tokens.refreshToken()));
-    }
-
     private JwtRefreshTokenVerifier verifierAt(final Instant now) {
         final JwtDecoder decoder = new JwtTokenConfiguration().refreshJwtDecoder(secretKey, Clock.fixed(now, ZoneOffset.UTC));
-        return new JwtRefreshTokenVerifier(decoder, checkUserRestrictionUseCase);
+        return new JwtRefreshTokenVerifier(decoder);
     }
 
     private void assertInvalidRefreshToken(final Runnable action) {

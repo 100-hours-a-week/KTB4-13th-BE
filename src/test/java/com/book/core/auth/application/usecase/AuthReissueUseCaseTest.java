@@ -15,10 +15,13 @@ import com.book.core.auth.application.port.RefreshTokenHasher;
 import com.book.core.auth.application.port.RefreshTokenVerifier;
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.domain.RefreshSession;
+import com.book.core.user.application.port.UserRepositoryPort;
+import com.book.core.user.domain.User;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -40,10 +43,22 @@ class AuthReissueUseCaseTest {
     RefreshSessionRepository refreshSessionRepository;
 
     @Mock
+    UserRepositoryPort userRepository;
+
+    @Mock
+    User user;
+
+    @Mock
     TokenIssuer tokenIssuer;
 
+    @BeforeEach
+    void setUp() {
+        org.mockito.Mockito.lenient().when(userRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(user));
+        org.mockito.Mockito.lenient().when(user.isActive()).thenReturn(true);
+    }
+
     @Test
-    void 유효한_Refresh_Token이면_기존_session을_폐기하고_새_token과_session을_발급한다() {
+    void reissuesValidRefreshTokenAndRevokesPreviousSession() {
         final RefreshSession currentSession =
             RefreshSession.restore(1L, 42L, "old-token-hash", Instant.parse("2030-01-05T00:00:00Z"), null);
         final Instant newRefreshExpiresAt = Instant.parse("2030-01-08T00:00:00Z");
@@ -72,7 +87,7 @@ class AuthReissueUseCaseTest {
     }
 
     @Test
-    void 활성_Refresh_Session이_없으면_재발급하지_않는다() {
+    void rejectsMissingActiveSession() {
         when(refreshTokenVerifier.verify("refresh-token")).thenReturn(42L);
         when(refreshTokenHasher.hash("refresh-token")).thenReturn("token-hash");
         when(refreshSessionRepository.findActiveByTokenHashForUpdate("token-hash")).thenReturn(Optional.empty());
@@ -83,7 +98,7 @@ class AuthReissueUseCaseTest {
     }
 
     @Test
-    void JWT의_userId와_session의_userId가_다르면_재발급하지_않는다() {
+    void rejectsSessionOwnedByAnotherUser() {
         final RefreshSession session = RefreshSession.restore(1L, 99L, "token-hash", Instant.parse("2030-01-05T00:00:00Z"), null);
 
         when(refreshTokenVerifier.verify("refresh-token")).thenReturn(42L);
@@ -96,7 +111,7 @@ class AuthReissueUseCaseTest {
     }
 
     @Test
-    void Refresh_Token_검증이_실패하면_session을_조회하지_않는다() {
+    void doesNotReadSessionWhenJwtVerificationFails() {
         final BusinessException exception = new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
 
         when(refreshTokenVerifier.verify("invalid-refresh-token")).thenThrow(exception);
@@ -106,7 +121,38 @@ class AuthReissueUseCaseTest {
         verifyNoInteractions(refreshTokenHasher, refreshSessionRepository, tokenIssuer);
     }
 
+    @Test
+    void rejectsInactiveUserWithoutChangingSessions() {
+        when(refreshTokenVerifier.verify("refresh-token")).thenReturn(42L);
+        when(user.isActive()).thenReturn(false);
+
+        assertRestrictedUserRejected();
+    }
+
+    @Test
+    void rejectsWithdrawalRequestedUserWithoutChangingSessions() {
+        when(refreshTokenVerifier.verify("refresh-token")).thenReturn(42L);
+        when(user.isWithdrawalRequested()).thenReturn(true);
+
+        assertRestrictedUserRejected();
+    }
+
+    @Test
+    void rejectsMissingUserWithoutChangingSessions() {
+        when(refreshTokenVerifier.verify("refresh-token")).thenReturn(42L);
+        when(userRepository.findByIdForUpdate(42L)).thenReturn(Optional.empty());
+
+        assertRestrictedUserRejected();
+    }
+
+    private void assertRestrictedUserRejected() {
+        assertThatThrownBy(() -> useCase().execute("refresh-token")).isInstanceOfSatisfying(BusinessException.class,
+            (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
+        verifyNoInteractions(refreshTokenHasher, refreshSessionRepository, tokenIssuer);
+    }
+
     private AuthReissueUseCase useCase() {
-        return new AuthReissueUseCase(refreshTokenVerifier, refreshTokenHasher, refreshSessionRepository, tokenIssuer, CLOCK);
+        return new AuthReissueUseCase(refreshTokenVerifier, refreshTokenHasher, refreshSessionRepository, tokenIssuer, CLOCK,
+            userRepository);
     }
 }

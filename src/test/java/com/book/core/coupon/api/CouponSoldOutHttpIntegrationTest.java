@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.coupon.application.port.CouponStockPort;
+import com.book.core.coupon.application.usecase.ReconcileCouponStockUseCase;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,6 +59,9 @@ class CouponSoldOutHttpIntegrationTest {
 
     @Autowired
     private CouponStockPort couponStockPort;
+
+    @Autowired
+    private ReconcileCouponStockUseCase reconcileCouponStockUseCase;
 
     @Autowired
     private LoadingCache<String, Boolean> couponSoldOutCache;
@@ -175,12 +179,25 @@ class CouponSoldOutHttpIntegrationTest {
     }
 
     @Test
-    void 마지막_차감_뒤_DB가_롤백되면_재고_복구_후_다시_발급할_수_있다() throws Exception {
+    void 마지막_차감_뒤_DB_롤백으로_인한_재고_부족과_정상_매진을_구분한다() throws Exception {
         final long couponId = 8_510_007L;
         insertActiveCoupon(couponId, 1);
         jdbc.execute("ALTER TABLE owned_coupon ADD CONSTRAINT test_coupon_rollback CHECK (user_id <> 99)");
         try {
             issue(99L, couponId).andExpect(status().isInternalServerError()).andExpect(jsonPath("$.code").value("E500"));
+            assertThat(couponSoldOutCache.getIfPresent(soldOutKey(couponId))).isFalse();
+            final var shortage = reconcileCouponStockUseCase.execute(couponId).orElseThrow();
+            assertThat(shortage.totalQuantity()).isEqualTo(1);
+            assertThat(shortage.issuedQuantity()).isZero();
+            assertThat(shortage.ownedCouponCount()).isZero();
+            assertThat(shortage.expectedStock()).isEqualTo(1);
+            assertThat(shortage.redisStock()).isZero();
+            assertThat(shortage.stockDifference()).isEqualTo(1L);
+            assertThat(shortage.soldOutSignalPresent()).isTrue();
+            assertThat(shortage.hasUnexpectedSoldOutSignal()).isTrue();
+            assertThat(shortage.hasIssuanceCountMismatch()).isFalse();
+            assertThat(shortage.isConsistentlySoldOut()).isFalse();
+            assertThat(couponSoldOutCache.getIfPresent(soldOutKey(couponId))).isFalse();
             assertCounts(couponId, 0);
             assertThat(redisTemplate.opsForValue().get(stockKey(couponId))).isEqualTo("0");
             assertThat(redisTemplate.hasKey(soldOutKey(couponId))).isTrue();
@@ -190,9 +207,39 @@ class CouponSoldOutHttpIntegrationTest {
             assertThat(redisTemplate.hasKey(soldOutKey(couponId))).isFalse();
             issue(2L, couponId).andExpect(status().isOk());
             assertCounts(couponId, 1);
+
+            final var soldOut = reconcileCouponStockUseCase.execute(couponId).orElseThrow();
+            assertThat(soldOut.totalQuantity()).isEqualTo(1);
+            assertThat(soldOut.issuedQuantity()).isEqualTo(1);
+            assertThat(soldOut.ownedCouponCount()).isEqualTo(1);
+            assertThat(soldOut.expectedStock()).isZero();
+            assertThat(soldOut.redisStock()).isZero();
+            assertThat(soldOut.stockDifference()).isZero();
+            assertThat(soldOut.soldOutSignalPresent()).isTrue();
+            assertThat(soldOut.hasUnexpectedSoldOutSignal()).isFalse();
+            assertThat(soldOut.isConsistentlySoldOut()).isTrue();
         } finally {
             jdbc.execute("ALTER TABLE owned_coupon DROP CHECK test_coupon_rollback");
         }
+    }
+
+    @Test
+    void 재고_키가_없으면_재고_0과_구분하고_삭제된_발급_이력도_집계한다() throws Exception {
+        final long couponId = 8_510_009L;
+        insertActiveCoupon(couponId, 1);
+        issue(1L, couponId).andExpect(status().isOk());
+        jdbc.update("UPDATE owned_coupon SET deleted_at = CURRENT_TIMESTAMP(6) WHERE coupon_id = ?", couponId);
+        redisTemplate.delete(stockKey(couponId));
+
+        final var result = reconcileCouponStockUseCase.execute(couponId).orElseThrow();
+
+        assertThat(result.issuedQuantity()).isEqualTo(1);
+        assertThat(result.ownedCouponCount()).isEqualTo(1);
+        assertThat(result.redisStock()).isNull();
+        assertThat(result.stockDifference()).isNull();
+        assertThat(result.soldOutSignalPresent()).isTrue();
+        assertThat(result.isConsistentlySoldOut()).isFalse();
+        assertThat(redisTemplate.hasKey(stockKey(couponId))).isFalse();
     }
 
     private void insertActiveCoupon(final long couponId, final int quantity) {

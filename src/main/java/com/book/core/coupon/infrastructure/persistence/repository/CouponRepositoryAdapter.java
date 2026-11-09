@@ -1,5 +1,6 @@
 package com.book.core.coupon.infrastructure.persistence.repository;
 
+import com.book.core.coupon.application.port.CouponIssuanceCounts;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.domain.Coupon;
 import java.util.Collection;
@@ -7,11 +8,13 @@ import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
 public class CouponRepositoryAdapter implements CouponRepositoryPort {
     private final CouponJpaRepository couponRepository;
+    private final CouponQueryRepository queryRepository;
 
     @Override
     public List<Coupon> findActiveByIds(final Collection<Long> couponIds) {
@@ -21,6 +24,12 @@ public class CouponRepositoryAdapter implements CouponRepositoryPort {
     @Override
     public Optional<Coupon> findById(final Long couponId) {
         return couponRepository.findByIdAndDeletedAtIsNull(couponId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CouponIssuanceCounts> findIssuanceCounts(final long couponId) {
+        return queryRepository.findIssuanceCounts(couponId);
     }
 
     @Override

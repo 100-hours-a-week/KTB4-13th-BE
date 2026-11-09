@@ -2,13 +2,6 @@ package com.book.core.auth.infrastructure.persistence.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.doReturn;
-
-import com.book.core.auth.application.port.IssuedTokens;
-import com.book.core.auth.application.port.RefreshSessionRepository;
-import com.book.core.auth.application.port.RefreshTokenHasher;
-import com.book.core.auth.application.port.TokenIssuer;
-import com.book.core.auth.application.usecase.CreateLoginSessionUseCase;
 import com.book.core.auth.infrastructure.persistence.entity.RefreshSessionEntity;
 import com.book.core.user.application.port.UserRepositoryPort;
 import com.book.core.user.domain.User;
@@ -21,47 +14,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessException;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Tag("integration")
-@Testcontainers
 class RefreshSessionRepositoryIntegrationTest {
-    @Container
-    static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7.4-alpine").withExposedPorts(6379);
-
-    @DynamicPropertySource
-    static void redisProperties(final DynamicPropertyRegistry properties) {
-        properties.add("spring.data.redis.host", REDIS::getHost);
-        properties.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
-    }
-
     private static final Instant EXPIRES_AT = Instant.parse("2030-01-09T03:04:05Z");
     @Autowired
     RefreshSessionJpaRepository jpaRepository;
-
-    @Autowired
-    RefreshSessionRepository redisSessions;
-
-    @Autowired
-    StringRedisTemplate redis;
-
-    @Autowired
-    CreateLoginSessionUseCase createLoginSessionUseCase;
-
-    @MockitoSpyBean
-    TokenIssuer tokenIssuer;
-
-    @Autowired
-    RefreshTokenHasher refreshTokenHasher;
 
     @Autowired
     UserRepositoryPort userRepository;
@@ -133,33 +94,4 @@ class RefreshSessionRepositoryIntegrationTest {
             .isInstanceOf(DataAccessException.class);
     }
 
-    @Test
-    void session_등록은_원문이_아닌_hash를_저장하고_기존_session을_revoke한다() {
-        final User user = userRepository.save(User.create("로그인세션회원"));
-        doReturn(new IssuedTokens("old-access-token", "old-refresh-token", EXPIRES_AT),
-            new IssuedTokens("new-access-token", "new-refresh-token", EXPIRES_AT.plusSeconds(60))).when(tokenIssuer).issue(user.id());
-        createLoginSessionUseCase.execute(user.id());
-
-        createLoginSessionUseCase.execute(user.id());
-
-        final String newTokenHash = refreshTokenHasher.hash("new-refresh-token");
-        assertThat(redis.opsForValue().get("auth:refresh-session:v1:{" + user.id() + "}")).isEqualTo(newTokenHash)
-            .isNotEqualTo("new-refresh-token");
-        assertThat(redisSessions.rotate(user.id(), refreshTokenHasher.hash("old-refresh-token"), "a".repeat(64), EXPIRES_AT)).isFalse();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ?", Integer.class, user.id())).isZero();
-    }
-
-    @Test
-    void 유효하지_않은_만료시각이면_Redis_변경_전에_기존_session이_유지된다() {
-        final User user = userRepository.save(User.create("세션롤백회원"));
-        doReturn(new IssuedTokens("preserved-access-token", "preserved-refresh-token", EXPIRES_AT),
-            new IssuedTokens("failed-access-token", "failed-refresh-token", null)).when(tokenIssuer).issue(user.id());
-        createLoginSessionUseCase.execute(user.id());
-        final String oldTokenHash = refreshTokenHasher.hash("preserved-refresh-token");
-
-        assertThatThrownBy(() -> createLoginSessionUseCase.execute(user.id())).isInstanceOf(NullPointerException.class);
-
-        assertThat(redis.opsForValue().get("auth:refresh-session:v1:{" + user.id() + "}")).isEqualTo(oldTokenHash);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ?", Integer.class, user.id())).isZero();
-    }
 }

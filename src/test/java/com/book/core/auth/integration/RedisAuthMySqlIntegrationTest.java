@@ -83,11 +83,11 @@ class RedisAuthMySqlIntegrationTest {
     @Test
     void withdrawalRevokesAndRecoveryAllowsNewSession() {
         final Long id = users.save(User.create("경합회원")).id();
-        final String old = login.execute(id).refreshToken();
+        final String originalRefreshToken = login.execute(id).refreshToken();
         withdrawal.execute(id);
-        assertInvalid(old);
+        assertInvalid(originalRefreshToken);
         recovery.execute(id);
-        assertInvalid(old);
+        assertInvalid(originalRefreshToken);
         final String fresh = login.execute(id).refreshToken();
         assertThat(reissue.execute(fresh).refreshToken()).isNotEqualTo(fresh);
     }
@@ -95,49 +95,49 @@ class RedisAuthMySqlIntegrationTest {
     @Test
     void withdrawalRollbackKeepsAccountButRevokedSessionStaysInvalid() {
         final Long id = users.save(User.create("롤백회원")).id();
-        final String old = login.execute(id).refreshToken();
+        final String originalRefreshToken = login.execute(id).refreshToken();
         new TransactionTemplate(transactionManager).executeWithoutResult((final var status) -> {
             withdrawal.execute(id);
             status.setRollbackOnly();
         });
         assertThat(users.findById(id).orElseThrow().isWithdrawalRequested()).isFalse();
-        assertInvalid(old);
-        assertThat(login.execute(id).refreshToken()).isNotEqualTo(old);
+        assertInvalid(originalRefreshToken);
+        assertThat(login.execute(id).refreshToken()).isNotEqualTo(originalRefreshToken);
     }
 
     @Test
     void rotationRollbackInvalidatesOldTokenAndRecordsFailure() {
         final Long id = users.save(User.create("회전롤백")).id();
-        final String old = login.execute(id).refreshToken();
+        final String originalRefreshToken = login.execute(id).refreshToken();
         final var counter = meters.counter("auth.refresh_session.transaction_not_committed", "operation", "rotate");
         final var unconfirmed = meters.counter("auth.refresh_session.redis_result_unconfirmed", "operation", "rotate");
         final double before = counter.count();
         final double unconfirmedBefore = unconfirmed.count();
         new TransactionTemplate(transactionManager).executeWithoutResult((final var status) -> {
-            reissue.execute(old);
+            reissue.execute(originalRefreshToken);
             status.setRollbackOnly();
         });
         assertThat(counter.count()).isEqualTo(before + 1);
         assertThat(unconfirmed.count()).isEqualTo(unconfirmedBefore);
-        assertInvalid(old);
-        assertThat(login.execute(id).refreshToken()).isNotEqualTo(old);
+        assertInvalid(originalRefreshToken);
+        assertThat(login.execute(id).refreshToken()).isNotEqualTo(originalRefreshToken);
     }
 
     @Test
     void failedRedisRevocationRollsBackWithdrawal() {
         final Long id = users.save(User.create("폐기실패")).id();
-        final String old = login.execute(id).refreshToken();
+        final String originalRefreshToken = login.execute(id).refreshToken();
         org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.AUTH_SESSION_UNAVAILABLE)).when(sessions).revoke(id);
         assertThatThrownBy(() -> withdrawal.execute(id)).isInstanceOfSatisfying(BusinessException.class,
             (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AUTH_SESSION_UNAVAILABLE));
         assertThat(users.findById(id).orElseThrow().isWithdrawalRequested()).isFalse();
-        assertThat(reissue.execute(old).refreshToken()).isNotEqualTo(old);
+        assertThat(reissue.execute(originalRefreshToken).refreshToken()).isNotEqualTo(originalRefreshToken);
     }
 
     @Test
     void simultaneousLoginAndWithdrawalCannotLeaveUsableSession() throws Exception {
         final Long id = users.save(User.create("동시회원")).id();
-        final String old = login.execute(id).refreshToken();
+        final String originalRefreshToken = login.execute(id).refreshToken();
         final CountDownLatch locked = new CountDownLatch(1);
         final CountDownLatch release = new CountDownLatch(1);
         final CountDownLatch started = new CountDownLatch(1);
@@ -167,7 +167,7 @@ class RedisAuthMySqlIntegrationTest {
             } finally {
                 release.countDown();
             }
-            assertInvalid(old);
+            assertInvalid(originalRefreshToken);
             assertThat(users.findById(id).orElseThrow().isWithdrawalRequested()).isTrue();
             assertThat(redis.hasKey("auth:refresh-session:v1:{" + id + "}")).isFalse();
         }
@@ -205,7 +205,7 @@ class RedisAuthMySqlIntegrationTest {
     @Test
     void reissueRacingWithdrawalCannotSurviveWithdrawal() throws Exception {
         final Long id = users.save(User.create("재발급탈퇴")).id();
-        final String old = login.execute(id).refreshToken();
+        final String originalRefreshToken = login.execute(id).refreshToken();
         final CountDownLatch locked = new CountDownLatch(1);
         final CountDownLatch release = new CountDownLatch(1);
         final CountDownLatch started = new CountDownLatch(1);
@@ -214,7 +214,7 @@ class RedisAuthMySqlIntegrationTest {
         try (final var executor = Executors.newFixedThreadPool(2)) {
             final var rotation = executor.submit(() -> new TransactionTemplate(transactionManager).execute((final var status) -> {
                 holderId.set(jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class));
-                final String token = reissue.execute(old).refreshToken();
+                final String token = reissue.execute(originalRefreshToken).refreshToken();
                 locked.countDown();
                 awaitRelease(release);
                 return token;
@@ -232,7 +232,7 @@ class RedisAuthMySqlIntegrationTest {
                 release.countDown();
                 final String newToken = rotation.get(10, TimeUnit.SECONDS);
                 deletion.get(10, TimeUnit.SECONDS);
-                assertInvalid(old);
+                assertInvalid(originalRefreshToken);
                 assertInvalid(newToken);
                 assertThat(users.findById(id).orElseThrow().isWithdrawalRequested()).isTrue();
                 assertThat(redis.hasKey("auth:refresh-session:v1:{" + id + "}")).isFalse();

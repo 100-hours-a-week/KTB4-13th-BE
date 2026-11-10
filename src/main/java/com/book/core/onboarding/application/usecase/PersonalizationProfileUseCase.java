@@ -19,6 +19,7 @@ import java.time.Clock;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 
 @UseCase
@@ -60,6 +61,10 @@ public class PersonalizationProfileUseCase {
     private boolean agreed(final Long userId) {
         return termRepository.findActiveByTermType(TermType.PERSONALIZED_RECOMMENDATION)
             .map(term -> agreementRepository.existsAgreedByUserIdAndTermId(userId, term.id())).orElse(false);
+    }
+
+    public void executeUpdate(final Long userId, final UUID revision) {
+        profileRequestOf(userId).ifPresent(request -> profileClient.updateProfile(request, revision));
     }
 
     private Optional<AiPersonalizationProfileRequest> profileRequestOf(final Long userId) {

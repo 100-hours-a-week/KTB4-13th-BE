@@ -41,7 +41,7 @@ public class ProcessProfileSyncJobUseCase {
             if (deleting) {
                 profiles.executeDelete(job.userId());
             } else if (updateAllowed(job.userId())) {
-                profiles.executeUpdate(job.userId());
+                profiles.executeUpdate(job.userId(), job.revision());
             }
         } catch (final CoreException exception) {
             if (deleting && exception.errorCode() == ErrorCode.AI_SERVICE_INVALID_REQUEST) {

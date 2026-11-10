@@ -43,7 +43,7 @@ class ProcessProfileSyncJobUseCaseTest {
     void 장기_장애에도_작업을_유지하고_재시도_간격을_15분으로_제한한다() {
         final Job job = givenJob(12);
         givenAgreedAndCompleted();
-        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).when(profiles).executeUpdate(USER_ID);
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).when(profiles).executeUpdate(USER_ID, job.revision());
 
         process.execute();
 
@@ -70,7 +70,7 @@ class ProcessProfileSyncJobUseCaseTest {
         process.execute();
 
         verify(profiles).executeDelete(USER_ID);
-        verify(profiles, never()).executeUpdate(USER_ID);
+        verify(profiles, never()).executeUpdate(USER_ID, job.revision());
         verify(jobs).complete(job);
     }
 
@@ -82,7 +82,7 @@ class ProcessProfileSyncJobUseCaseTest {
         process.execute();
 
         verify(profiles).executeDelete(USER_ID);
-        verify(profiles, never()).executeUpdate(USER_ID);
+        verify(profiles, never()).executeUpdate(USER_ID, job.revision());
         verify(jobs).complete(job);
     }
 
@@ -104,7 +104,7 @@ class ProcessProfileSyncJobUseCaseTest {
         final Job job = givenJob(0);
         givenAgreedAndCompleted();
         doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).doThrow(new CoreException(ErrorCode.AI_SERVICE_UNAUTHORIZED))
-            .when(profiles).executeUpdate(USER_ID);
+            .when(profiles).executeUpdate(USER_ID, job.revision());
 
         process.execute();
         process.execute();

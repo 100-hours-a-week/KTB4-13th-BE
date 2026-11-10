@@ -3,6 +3,7 @@ package com.book.core.onboarding.infrastructure.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -155,7 +156,7 @@ class ProfileSyncKafkaIntegrationTest {
 
         final String readyRevision = revision(userId);
         processJob.execute();
-        verify(ai).updateProfile(argThat(request -> userId.equals(request.userId())));
+        verify(ai).updateProfile(argThat(request -> userId.equals(request.userId())), any());
         jobs.markReady(UUID.fromString(readyRevision));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs", Integer.class)).isZero();
     }

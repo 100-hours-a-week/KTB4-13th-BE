@@ -57,6 +57,7 @@ sentry:
 
 app:
   profile-sync:
+    ai-kafka-enabled: ${PROFILE_SYNC_AI_KAFKA_ENABLED:false}
     kafka-enabled: ${PROFILE_SYNC_KAFKA_ENABLED:false}
     kafka-group-id: ${PROFILE_SYNC_KAFKA_GROUP_ID:book-profile-sync-v1}
   cors:

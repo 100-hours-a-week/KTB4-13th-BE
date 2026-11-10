@@ -33,12 +33,15 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
     @Override
     public void updateProfile(final AiPersonalizationProfileRequest request) {
         try {
-            restClient.put().uri(PROFILE_PATH).header(REQUEST_ID_HEADER, currentRequestId()).contentType(MediaType.APPLICATION_JSON).body(
-                AiProfileRequest.from(request, idempotencyKeyGenerator.generate(request), identifiers.findIsbns(request.likedBookIds())))
-                .retrieve().toBodilessEntity();
+            restClient.put().uri(PROFILE_PATH).header(REQUEST_ID_HEADER, currentRequestId()).contentType(MediaType.APPLICATION_JSON)
+                .body(toProfileRequest(request)).retrieve().toBodilessEntity();
         } catch (final RestClientException exception) {
             throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
         }
+    }
+
+    AiProfileRequest toProfileRequest(final AiPersonalizationProfileRequest request) {
+        return AiProfileRequest.from(request, idempotencyKeyGenerator.generate(request), identifiers.findIsbns(request.likedBookIds()));
     }
 
     private String currentRequestId() {

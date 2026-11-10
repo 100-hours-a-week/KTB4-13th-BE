@@ -39,7 +39,7 @@ class ProcessProfileSyncJobUseCaseTest {
         when(jobs.findNext(NOW)).thenReturn(Optional.of(job));
         when(onboarding.findActiveByUserId(USER_ID)).thenReturn(
             Optional.of(new UserOnboarding(1L, USER_ID, OnboardingStatus.COMPLETED, LocalDateTime.ofInstant(NOW, ZoneOffset.UTC))));
-        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).when(profiles).executeUpdate(USER_ID);
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).when(profiles).executeUpdate(USER_ID, job.revision());
 
         process.execute();
 

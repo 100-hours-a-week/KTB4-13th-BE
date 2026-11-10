@@ -17,6 +17,7 @@ import com.book.core.onboarding.domain.UserOnboardingBook;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 
 @UseCase
@@ -39,6 +40,10 @@ public class PersonalizationProfileUseCase {
 
     public void executeUpdate(final Long userId) {
         profileRequestOf(userId).ifPresent(profileClient::updateProfile);
+    }
+
+    public void executeUpdate(final Long userId, final UUID revision) {
+        profileRequestOf(userId).ifPresent(request -> profileClient.updateProfile(request, revision));
     }
 
     private Optional<AiPersonalizationProfileRequest> profileRequestOf(final Long userId) {

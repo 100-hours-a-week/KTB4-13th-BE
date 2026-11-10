@@ -34,7 +34,7 @@ public class ProcessProfileSyncJobUseCase {
         try {
             if (!userRestriction.execute(job.userId()) && onboarding.findActiveByUserId(job.userId())
                 .filter(state -> state.onboardingStatus() == OnboardingStatus.COMPLETED).isPresent()) {
-                profiles.executeUpdate(job.userId());
+                profiles.executeUpdate(job.userId(), job.revision());
             }
         } catch (final CoreException | DataAccessException | TransactionException exception) {
             final long delay = Math.min(MAX_RETRY_SECONDS, INITIAL_RETRY_SECONDS << Math.min(job.attempts(), 5));

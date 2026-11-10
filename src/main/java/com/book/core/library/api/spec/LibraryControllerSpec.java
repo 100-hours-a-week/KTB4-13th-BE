@@ -2,8 +2,10 @@ package com.book.core.library.api.spec;
 
 import com.book.core.library.api.request.CreateShelfPhotoUploadRequest;
 import com.book.core.library.api.request.DeleteLibraryBooksRequest;
+import com.book.core.library.api.request.ScanShelfPhotoRequest;
 import com.book.core.library.api.response.LibraryBooksResponse;
 import com.book.core.library.api.response.ShelfPhotoUploadResponse;
+import com.book.core.library.api.response.ShelfScanResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -50,4 +52,21 @@ public interface LibraryControllerSpec {
         @Parameter(hidden = true) final Long userId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = CreateShelfPhotoUploadRequest.class)))
         @Valid final CreateShelfPhotoUploadRequest request);
+
+    @Operation(summary = "책 사진 인식",
+        description = "본인이 올린 사진에서 책을 찾습니다. FOUND는 찾은 책, NOT_FOUND는 못 찾은 책이며, 책을 하나도 못 찾으면 items가 빈 목록입니다. "
+            + "book.bookId가 null인 책은 나의 도서관에 담을 수 없습니다. 최대 65초까지 걸릴 수 있습니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "인식 성공"),
+        @ApiResponse(responseCode = "400", description = "사진 키가 비었거나 너무 김"),
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @ApiResponse(responseCode = "403", description = "본인이 올린 사진이 아님"),
+        @ApiResponse(responseCode = "404", description = "올린 사진을 찾을 수 없음"), @ApiResponse(responseCode = "413", description = "사진이 너무 큼"),
+        @ApiResponse(responseCode = "422", description = "사진을 읽을 수 없음"), @ApiResponse(responseCode = "502", description = "AI 사진 인식 실패"),
+        @ApiResponse(responseCode = "503", description = "AI 사진 인식을 일시적으로 사용할 수 없음"),
+        @ApiResponse(responseCode = "504", description = "AI 사진 인식 시간 초과")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<ShelfScanResponse>> scanPhoto(@Parameter(hidden = true) final Long userId,
+        @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ScanShelfPhotoRequest.class)))
+        @Valid final ScanShelfPhotoRequest request);
 }

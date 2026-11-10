@@ -8,8 +8,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
@@ -18,6 +20,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 @RequiredArgsConstructor
 class ShelfPhotoStorageClientImpl implements ShelfPhotoStorageClient {
     private static final Duration UPLOAD_EXPIRY = Duration.ofMinutes(5);
+    private static final Duration READ_EXPIRY = Duration.ofMinutes(2);
 
     private final S3Presigner presigner;
     private final ShelfPhotoProperties properties;
@@ -31,5 +34,11 @@ class ShelfPhotoStorageClientImpl implements ShelfPhotoStorageClient {
             .filter((final Map.Entry<String, List<String>> header) -> !"host".equalsIgnoreCase(header.getKey())).collect(
                 Collectors.toMap(Map.Entry::getKey, (final Map.Entry<String, List<String>> header) -> String.join(",", header.getValue())));
         return new ShelfPhotoUploadResult(photoKey, presigned.url().toString(), headers, presigned.expiration());
+    }
+
+    @Override
+    public String presignRead(final String photoKey) {
+        return presigner.presignGetObject(GetObjectPresignRequest.builder().signatureDuration(READ_EXPIRY)
+            .getObjectRequest(GetObjectRequest.builder().bucket(properties.bucket()).key(photoKey).build()).build()).url().toString();
     }
 }

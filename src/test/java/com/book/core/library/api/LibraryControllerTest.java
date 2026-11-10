@@ -10,11 +10,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.config.security.UserIdMvcConfig;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.library.api.converter.LibraryCommandConverter;
 import com.book.core.library.application.command.CreateShelfPhotoUploadCommand;
 import com.book.core.library.application.command.DeleteLibraryBooksCommand;
+import com.book.core.library.application.command.ScanShelfPhotoCommand;
 import com.book.core.library.application.result.LibraryBookResult;
 import com.book.core.library.application.result.ShelfPhotoUploadResult;
+import com.book.core.library.application.result.ShelfScanResult.Spine;
+import com.book.core.library.application.result.ShelfScanResult;
 import com.book.core.library.application.service.LibraryService;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -111,6 +116,48 @@ class LibraryControllerTest {
         authenticateAs(42L);
 
         mvc.perform(post("/api/v1/library/photos/upload-url").contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(libraryService);
+    }
+
+    @Test
+    void 사진_인식은_JWT_회원_ID와_사진_키로_요청하고_찾은_책과_못_찾은_책을_응답한다() throws Exception {
+        authenticateAs(42L);
+        given(libraryService.scanPhoto(new ScanShelfPhotoCommand(42L, "shelf-photos/42/a.jpg"))).willReturn(new ShelfScanResult("shelf",
+            List.of(
+                new ShelfScanResult.Item("FOUND", "루비", new ShelfScanResult.Book(101L, "9788970507538", "루비", "저자", "출판사", 2012, null),
+                    List.of(new Spine(5, List.of(List.of(0.27, 0.24))))),
+                new ShelfScanResult.Item("NOT_FOUND", "COVERT JAVA", null, List.of()))));
+
+        mvc.perform(post("/api/v1/library/photos/scans").param("userId", "99").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"photoKey\":\"shelf-photos/42/a.jpg\"}")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.photoType").value("shelf")).andExpect(jsonPath("$.data.items[0].state").value("FOUND"))
+            .andExpect(jsonPath("$.data.items[0].book.bookId").value(101))
+            .andExpect(jsonPath("$.data.items[0].book.isbn").value("9788970507538"))
+            .andExpect(jsonPath("$.data.items[0].spines[0].order").value(5))
+            .andExpect(jsonPath("$.data.items[0].spines[0].polygon[0][0]").value(0.27))
+            .andExpect(jsonPath("$.data.items[1].state").value("NOT_FOUND"))
+            .andExpect(jsonPath("$.data.items[1].readText").value("COVERT JAVA"))
+            .andExpect(jsonPath("$.data.items[1].book").value((Object) null));
+    }
+
+    @Test
+    void 다른_회원의_사진을_인식하면_403을_응답한다() throws Exception {
+        authenticateAs(7L);
+        given(libraryService.scanPhoto(new ScanShelfPhotoCommand(7L, "shelf-photos/42/a.jpg")))
+            .willThrow(new CoreException(ErrorCode.SHELF_PHOTO_FORBIDDEN));
+
+        mvc.perform(post("/api/v1/library/photos/scans").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"photoKey\":\"shelf-photos/42/a.jpg\"}")).andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("E403"));
+    }
+
+    @Test
+    void 사진_키가_비었으면_400을_응답한다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(post("/api/v1/library/photos/scans").contentType(MediaType.APPLICATION_JSON).content("{\"photoKey\":\" \"}"))
             .andExpect(status().isBadRequest());
 
         verifyNoInteractions(libraryService);

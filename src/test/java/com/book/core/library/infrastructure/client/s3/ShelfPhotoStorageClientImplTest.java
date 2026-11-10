@@ -35,4 +35,13 @@ class ShelfPhotoStorageClientImplTest {
         assertThat(upload.headers()).containsOnly(entry("content-type", "image/jpeg"), entry("content-length", "1048576"));
         assertThat(upload.expiresAt()).isBetween(before.plusSeconds(299), Instant.now().plusSeconds(300));
     }
+
+    @Test
+    void 읽기_주소는_2분_동안_해당_사진만_읽게_서명한다() {
+        final URI url = URI.create(client.presignRead(PHOTO_KEY));
+
+        assertThat(url.getHost()).isEqualTo("book-photos.s3.ap-northeast-2.amazonaws.com");
+        assertThat(url.getPath()).isEqualTo("/" + PHOTO_KEY);
+        assertThat(url.getQuery()).contains("X-Amz-Expires=120").contains("X-Amz-SignedHeaders=host");
+    }
 }

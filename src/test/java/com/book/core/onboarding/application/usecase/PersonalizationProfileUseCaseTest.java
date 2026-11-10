@@ -88,7 +88,7 @@ class PersonalizationProfileUseCaseTest {
     }
 
     @Test
-    void 갱신_요청_중_동의가_철회되면_갱신_뒤_삭제_작업을_다시_예약해_프로필이_남지_않게_한다() {
+    void 갱신_요청_중_동의가_없어지면_갱신_뒤_삭제_작업을_다시_예약한다() {
         termRepository.activeTerm = personalizationTerm();
         agreementRepository.agreed = true;
         profileClient.onUpdate = () -> agreementRepository.agreed = false;

@@ -249,7 +249,7 @@ class OnboardingProfileRefreshIntegrationTest {
     }
 
     @Test
-    void 프로필_계산_중_동의가_철회되면_진행_중인_갱신_뒤에_삭제가_마지막으로_전달된다() throws Exception {
+    void PUT_도중_동의_행이_없어지면_PUT_다음_DELETE를_보낸다() throws Exception {
         final Long userId = insertUser("프로필갱신회원7");
         final Long bookId = insertBook("프로필 갱신 도서 8");
         authenticateAs(userId);

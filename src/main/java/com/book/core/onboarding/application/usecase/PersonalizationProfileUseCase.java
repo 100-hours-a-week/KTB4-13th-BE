@@ -47,7 +47,7 @@ public class PersonalizationProfileUseCase {
             return;
         }
         profileClient.updateProfile(request.orElseThrow());
-        // 갱신 중 동의가 철회되면 철회 쪽 삭제가 이 갱신보다 먼저 처리됐을 수 있어 삭제를 다시 예약합니다.
+        // 갱신 요청 중 동의가 없어졌다면 다른 삭제 작업이 이 갱신보다 먼저 처리됐을 수 있어 삭제를 다시 예약합니다.
         if (!agreed(userId)) {
             profileJobs.enqueue(userId, clock.instant());
         }

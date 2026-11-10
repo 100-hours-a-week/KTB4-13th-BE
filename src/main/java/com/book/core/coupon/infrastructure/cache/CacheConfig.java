@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties({CacheProperties.class, SoldOutProperties.class, CouponIssueRateLimitProperties.class})
+@EnableConfigurationProperties({CacheProperties.class, SoldOutProperties.class})
 public class CacheConfig {
     private static final long MAX_TRACKED_COUPONS = 1_000L;
 

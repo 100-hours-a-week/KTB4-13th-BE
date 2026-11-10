@@ -10,7 +10,6 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.command.IssueCouponCommand;
 import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
-import com.book.core.coupon.application.port.CouponIssueRateLimitPort;
 import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.result.CouponIssueState.Stock;
 import com.book.core.coupon.application.port.CouponStockPort;
@@ -27,7 +26,6 @@ import com.book.core.coupon.domain.enums.OwnedCouponStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -56,9 +54,6 @@ class OwnedCouponRepositoryIntegrationTest {
     RevertOwnedCouponUseCase revertOwnedCoupon;
 
     @MockitoBean
-    private CouponIssueRateLimitPort rateLimit;
-
-    @MockitoBean
     private CouponCacheRepositoryPort couponIssuePolicyCache;
 
     @MockitoBean
@@ -66,8 +61,8 @@ class OwnedCouponRepositoryIntegrationTest {
 
     @BeforeEach
     void setRedisStockAvailable() {
-        when(couponIssuePolicyCache.getOrLoad(anyLong(), any())).thenAnswer((final var invocation) -> invocation
-            .<Supplier<Optional<CouponIssuePolicy>>>getArgument(1).get().map(policy -> new CouponIssueState(policy, Stock.UNKNOWN)));
+        when(couponIssuePolicyCache.getOrLoad(anyLong(), any())).thenAnswer(
+            (final var invocation) -> new CouponIssueState(invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get(), Stock.UNKNOWN));
         when(couponStockPort.tryIssue(anyLong())).thenReturn(IssueResult.ISSUED);
     }
 

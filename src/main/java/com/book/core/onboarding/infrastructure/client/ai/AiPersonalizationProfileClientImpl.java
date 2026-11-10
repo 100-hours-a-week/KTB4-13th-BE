@@ -38,7 +38,7 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
                 AiProfileRequest.from(request, idempotencyKeyGenerator.generate(request), identifiers.findIsbns(request.likedBookIds())))
                 .retrieve().toBodilessEntity();
         } catch (final RestClientException exception) {
-            throw failureOf(exception);
+            throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
         }
     }
 
@@ -47,16 +47,11 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
         try {
             restClient.delete().uri(uriBuilder -> uriBuilder.path(PROFILE_PATH).queryParam("user_id", userId).build())
                 .header(REQUEST_ID_HEADER, currentRequestId()).retrieve().toBodilessEntity();
+        } catch (final HttpClientErrorException.BadRequest exception) {
+            throw new CoreException(ErrorCode.AI_SERVICE_INVALID_REQUEST, exception);
         } catch (final RestClientException exception) {
-            throw failureOf(exception);
+            throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
         }
-    }
-
-    private static CoreException failureOf(final RestClientException exception) {
-        if (exception instanceof final HttpClientErrorException.BadRequest badRequest) {
-            return new CoreException(ErrorCode.AI_SERVICE_INVALID_REQUEST, badRequest);
-        }
-        return new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
     }
 
     private String currentRequestId() {

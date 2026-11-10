@@ -69,7 +69,15 @@ class AiPersonalizationProfileClientImplTest {
     }
 
     @Test
-    void AI가_400으로_거부하면_재시도해도_같은_요청_거부로_변환한다() {
+    void PUT이_400으로_거부되면_기존처럼_재시도할_AI_서비스_호출_실패로_변환한다() {
+        server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT)).andRespond(withStatus(HttpStatus.BAD_REQUEST));
+
+        assertThatThrownBy(() -> client.updateProfile(profileRequest())).isInstanceOf(CoreException.class)
+            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
+    }
+
+    @Test
+    void DELETE가_400으로_거부되면_재시도하지_않을_요청_거부로_변환한다() {
         server.expect(requestTo(PROFILE_URL + "?user_id=42")).andRespond(withStatus(HttpStatus.BAD_REQUEST));
 
         assertThatThrownBy(() -> client.deleteProfile(42L)).isInstanceOf(CoreException.class)

@@ -164,7 +164,8 @@ ALTER TABLE books ALTER COLUMN version SET DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS profile_sync_jobs (
     user_id BIGINT PRIMARY KEY,
-    revision CHAR(36) NOT NULL,
+    revision CHAR(36) NOT NULL UNIQUE,
     available_at DATETIME(6) NOT NULL,
-    attempts INT NOT NULL DEFAULT 0
+    attempts INT NOT NULL DEFAULT 0,
+    kafka_publish_at DATETIME(6)
 );

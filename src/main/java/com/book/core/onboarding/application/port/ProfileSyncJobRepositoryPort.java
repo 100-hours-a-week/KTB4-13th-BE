@@ -9,6 +9,10 @@ public interface ProfileSyncJobRepositoryPort {
 
     Optional<Job> findNext(Instant now);
 
+    Optional<UUID> claimForPublication(Instant now, Instant leaseUntil);
+
+    void markReady(UUID revision);
+
     void complete(Job job);
 
     void retry(Job job, Instant availableAt);

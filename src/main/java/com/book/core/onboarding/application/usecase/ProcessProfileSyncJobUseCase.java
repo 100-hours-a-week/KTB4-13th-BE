@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.transaction.TransactionException;
 
-/** 처리 시점의 회원·동의 상태로 AI 취향 프로필을 갱신·삭제하거나 건너뜁니다. 프로필 쓰기는 이 작업자가 잠금 아래 한 건씩 처리합니다. */
 @UseCase
 @RequiredArgsConstructor
 @Slf4j
@@ -71,7 +70,7 @@ public class ProcessProfileSyncJobUseCase {
         }
     }
 
-    /** 401은 회원별 문제가 아닌 서비스 토큰 설정 오류라 토큰을 고치면 그대로 이어서 처리하도록 작업을 남기고, 최대 간격으로만 다시 시도합니다. */
+    /** 401은 회원별 문제가 아닌 서비스 토큰 오류라 작업을 버리지 않고 최대 간격으로만 다시 시도합니다. */
     private void retry(final Job job, final RuntimeException exception) {
         final boolean unauthorized =
             exception instanceof final CoreException coreException && coreException.errorCode() == ErrorCode.AI_SERVICE_UNAUTHORIZED;

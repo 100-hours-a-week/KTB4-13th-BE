@@ -71,7 +71,6 @@ public class User extends BaseEntity {
         return isActive() && isWithdrawalRequested() && !isWithdrawalRecoverable(now);
     }
 
-    /** 최종 탈퇴했거나 복구 기간이 끝나 더 이상 복구할 수 없는 탈퇴입니다. */
     public boolean isWithdrawalConfirmed(final LocalDateTime now) {
         return !isActive() || (isWithdrawalRequested() && !isWithdrawalRecoverable(now));
     }

@@ -41,17 +41,13 @@ public class PersonalizationProfileUseCase {
     private final ProfileSyncJobRepositoryPort profileJobs;
     private final Clock clock;
 
-    /**
-     * 동의한 회원의 프로필을 갱신합니다. 갱신 중 동의가 철회되면 철회 쪽 삭제가 이 갱신보다 먼저 처리될 수 있으므로, 갱신 응답 뒤 동의를 다시 확인해 삭제 작업을 다시
-     * 예약합니다. AI는 갱신을 응답 전에 저장하고 같은 회원의 갱신·삭제를 잠금으로 차례로 처리하므로 응답을 받은 갱신 뒤에는 삭제가 남습니다. 시간 초과로 결과를 모르는 갱신은
-     * AI에서 늦게 처리될 수 있어 이 확인으로 막지 못합니다.
-     */
     public void executeUpdate(final Long userId) {
         final Optional<AiPersonalizationProfileRequest> request = profileRequestOf(userId);
         if (request.isEmpty()) {
             return;
         }
         profileClient.updateProfile(request.orElseThrow());
+        // 갱신 중 동의가 철회되면 철회 쪽 삭제가 이 갱신보다 먼저 처리됐을 수 있어 삭제를 다시 예약합니다.
         if (!agreed(userId)) {
             profileJobs.enqueue(userId, clock.instant());
         }

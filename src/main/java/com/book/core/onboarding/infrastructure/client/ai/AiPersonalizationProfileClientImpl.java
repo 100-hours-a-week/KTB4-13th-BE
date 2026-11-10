@@ -52,7 +52,6 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
         }
     }
 
-    /** 400은 같은 요청을 다시 보내도 결과가 같으므로 재시도 대상인 일반 실패와 구분합니다. */
     private static CoreException failureOf(final RestClientException exception) {
         if (exception instanceof final HttpClientErrorException.BadRequest badRequest) {
             return new CoreException(ErrorCode.AI_SERVICE_INVALID_REQUEST, badRequest);

@@ -12,10 +12,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 class ProfileSyncJobRepositoryAdapter implements ProfileSyncJobRepositoryPort {
-    /**
-     * 실패 보관 작업의 처리 예정 시각입니다. 상태 컬럼 없이 작업자 조회(available_at <= now)에서 빠지게 합니다. 운영 재개:
-     * {@code UPDATE profile_sync_jobs SET available_at = NOW(6), attempts = 0 WHERE user_id = ? AND available_at >= '9999-01-01'}
-     */
+    /** 상태 컬럼 없이 실패 작업을 작업자 조회(available_at <= now)에서 제외하는 값입니다. */
     static final Instant FAILED_AVAILABLE_AT = Instant.parse("9999-01-01T00:00:00Z");
 
     private final JdbcTemplate jdbc;

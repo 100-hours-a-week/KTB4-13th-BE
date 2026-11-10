@@ -58,7 +58,7 @@ public class UserService {
                     skipped++;
                     continue;
                 }
-                // 복구 기간이 끝나 되돌릴 수 없으므로 AI 프로필 삭제를 먼저 예약하고, AI 장애는 예약 작업이 회원 ID로 재시도합니다.
+                // 탈퇴 완료 커밋 전에 예약해 중단돼도 다음 실행에서 다시 예약됩니다.
                 requestProfileSyncUseCase.execute(userId);
                 unlinkWithdrawalProvidersUseCase.execute(unlinkProviders.orElseThrow());
                 deleteUserOnboardingDataUseCase.execute(userId);

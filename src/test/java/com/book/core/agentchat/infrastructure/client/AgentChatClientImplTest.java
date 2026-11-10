@@ -25,6 +25,7 @@ import com.book.core.recommendation.application.command.RecommendationSpec;
 import com.book.core.recommendation.application.command.RecommendationTurn;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -97,6 +98,46 @@ class AgentChatClientImplTest {
         assertThat(client.chat(command, 8L, 19L, context, (final String text) -> {
             throw new AssertionError("쇼핑 완료 전에 delta가 전송되었습니다");
         }).route()).isEqualTo("shop");
+        server.verify();
+    }
+
+    @Test
+    void 스트림_시작_전_HTTP_422는_초기_spec으로_재시도하고_재시도_조각만_전달한다() {
+        server.expect(requestTo("https://ai.invalid/recommendations/chat")).andExpect(header(HttpHeaders.ACCEPT, "text/event-stream"))
+            .andRespond(withStatus(HttpStatus.UNPROCESSABLE_CONTENT).contentType(MediaType.APPLICATION_JSON)
+                .body("{\"message\":\"spec_schema_violation\"}"));
+        server.expect(requestTo("https://ai.invalid/recommendations/chat")).andExpect(header(HttpHeaders.ACCEPT, "text/event-stream"))
+            .andExpect(jsonPath("$.spec").value(org.hamcrest.Matchers.equalTo(RecommendationSpec.initial()))).andRespond(withSuccess("""
+                event: delta
+                data: {"text":"새 답변"}
+
+                event: done
+                data: {"message":"agent_success","data":{"route":"shop","reply":"새 답변","actions":[],"buttons":[]}}
+
+                """, MediaType.TEXT_EVENT_STREAM));
+
+        final List<String> deltas = new ArrayList<>();
+        assertThat(client.chat(command, 8L, 19L, context, deltas::add).reply()).isEqualTo("새 답변");
+        assertThat(deltas).containsExactly("새 답변");
+        server.verify();
+    }
+
+    @Test
+    void delta_이후_스키마_오류_이벤트는_같은_스트림에서_재시도하지_않는다() {
+        server.expect(requestTo("https://ai.invalid/recommendations/chat")).andExpect(header(HttpHeaders.ACCEPT, "text/event-stream"))
+            .andRespond(withSuccess("""
+                event: delta
+                data: {"text":"임시 답변"}
+
+                event: error
+                data: {"message":"spec_schema_violation"}
+
+                """, MediaType.TEXT_EVENT_STREAM));
+
+        final List<String> deltas = new ArrayList<>();
+        assertThatThrownBy(() -> client.chat(command, 8L, 19L, context, deltas::add)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_RECOMMENDATION_SPEC_VIOLATION));
+        assertThat(deltas).containsExactly("임시 답변");
         server.verify();
     }
 

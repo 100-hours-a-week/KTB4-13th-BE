@@ -145,6 +145,7 @@ public class AgentChatClientImpl implements AgentChatClient {
             return decision;
         } catch (final HttpStatusCodeException exception) {
             final int status = exception.getStatusCode().value();
+            // HTTP 상태 오류는 SSE 본문을 읽기 전에 처리하므로 이 분기에는 전달된 delta가 없습니다.
             if (status == 422 && specViolation(exception)) {
                 if (retried) {
                     throw new CoreException(ErrorCode.AI_RECOMMENDATION_SPEC_VIOLATION);

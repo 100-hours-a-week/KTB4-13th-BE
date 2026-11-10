@@ -111,8 +111,12 @@ class ChatSessionController implements ChatSessionControllerSpec {
 
         // HTTP 연결 수명과 AI 응답 저장의 수명을 분리합니다.
         applicationTaskExecutor.execute(() -> {
-            MDC.setContextMap(context);
             try {
+                if (context == null) {
+                    MDC.clear();
+                } else {
+                    MDC.setContextMap(context);
+                }
                 final ChatResponseSnapshot result =
                     service.send(command, (final String text) -> sendEvent(emitter, closed, "delta", Map.of("text", text)));
                 sendEvent(emitter, closed, "done", ApiResponse.ok(resultConverter.toReplyResponse(result)));

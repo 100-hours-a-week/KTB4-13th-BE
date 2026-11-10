@@ -1,17 +1,23 @@
 package com.book.core.agentchat.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
+import com.book.common.config.security.UserIdArgumentResolver;
 import com.book.common.config.security.UserIdMvcConfig;
+import com.book.common.exception.GlobalExceptionHandler;
 import com.book.core.agentchat.api.converter.ChatSessionCommandConverter;
 import com.book.core.agentchat.api.converter.ChatSessionResultConverter;
 import com.book.core.agentchat.application.command.GetChatHistoryCommand;
@@ -28,9 +34,11 @@ import java.util.Map;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.task.support.TaskExecutorAdapter;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -38,6 +46,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @WebMvcTest(ChatSessionController.class)
 @Import({ChatSessionCommandConverter.class, ChatSessionResultConverter.class, UserIdMvcConfig.class})
@@ -76,6 +85,34 @@ class ChatSessionControllerTest {
             """)).andExpect(status().isOk()).andExpect(header().string("Cache-Control", Matchers.containsString("no-store")))
             .andExpect(jsonPath("$.data.reply").value("답변")).andExpect(jsonPath("$.data.buttons[0]").value("다른 책"));
         verify(service).send(new SendChatMessageCommand(7L, 11L, "key", "질문", true, List.of(12L)));
+    }
+
+    @Test
+    void 요청_MDC가_없어도_작업자의_이전_MDC를_비우고_SSE를_완료한다() throws Exception {
+        authenticate();
+        final TaskExecutorAdapter executor = new TaskExecutorAdapter(task -> {
+            MDC.put("requestId", "previous-request");
+            task.run();
+            assertThat(MDC.getCopyOfContextMap()).isNullOrEmpty();
+        });
+        final ChatSessionController controller = new ChatSessionController(service, new ChatSessionCommandConverter(),
+            new ChatSessionResultConverter(), executor, new GlobalExceptionHandler());
+        final MockMvc withoutRequestMdcFilter =
+            standaloneSetup(controller).setCustomArgumentResolvers(new UserIdArgumentResolver()).build();
+        when(service.send(any(), any())).thenAnswer(invocation -> {
+            assertThat(MDC.getCopyOfContextMap()).isNullOrEmpty();
+            return new ChatResponseSnapshot(1, Map.of(), "stream reply", List.of(), null, List.of(), false, null, List.of(), null);
+        });
+
+        MDC.clear();
+        final MvcResult pending = withoutRequestMdcFilter.perform(post("/api/v1/recommend/chat/sessions/11/messages")
+            .contentType(MediaType.APPLICATION_JSON).accept(MediaType.TEXT_EVENT_STREAM).content("""
+                    {"idempotencyKey":"key", "message":"질문", "consented":true}
+                    """)).andExpect(request().asyncStarted()).andReturn();
+
+        withoutRequestMdcFilter.perform(asyncDispatch(pending)).andExpect(status().isOk())
+            .andExpect(content().string(Matchers.containsString("event:done")))
+            .andExpect(content().string(Matchers.containsString("stream reply")));
     }
 
     @Test

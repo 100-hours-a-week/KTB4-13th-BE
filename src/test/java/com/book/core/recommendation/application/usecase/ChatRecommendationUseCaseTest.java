@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -145,6 +146,11 @@ class ChatRecommendationUseCaseTest {
         public AiRecommendationChatResult chat(final AiRecommendationChatRequest request) {
             this.request = request;
             return result;
+        }
+
+        @Override
+        public AiRecommendationChatResult chat(final AiRecommendationChatRequest request, final Consumer<String> onDelta) {
+            return chat(request);
         }
     }
 

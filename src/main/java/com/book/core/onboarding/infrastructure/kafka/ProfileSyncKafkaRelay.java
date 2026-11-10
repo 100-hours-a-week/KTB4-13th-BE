@@ -44,7 +44,8 @@ class ProfileSyncKafkaRelay {
         log.atWarn().addKeyValue("errorType", error.getClass().getSimpleName()).log("[PROFILE_SYNC] Kafka 발행 실패로 전달 기한 뒤 다시 시도합니다.");
     }
 
-    @KafkaListener(topics = TOPIC, containerFactory = "profileSyncKafkaListenerFactory")
+    @KafkaListener(topics = TOPIC, groupId = "${app.profile-sync.kafka-group-id}", containerFactory = "profileSyncKafkaListenerFactory",
+        properties = "auto.offset.reset=earliest")
     void receive(final String message) {
         final UUID revision;
         try {

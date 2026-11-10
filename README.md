@@ -101,7 +101,8 @@ docker compose -f compose.kafka.yml exec kafka /opt/kafka/bin/kafka-topics.sh --
 PROFILE_SYNC_KAFKA_ENABLED=true KAFKA_BOOTSTRAP_SERVERS=localhost:9092 ./gradlew bootRun
 ```
 
-Kafka 연결·발행·소비 설정은 `profile-kafka.yml`에서 관리합니다.
+브로커 연결과 기본 발행·직렬화 설정은 공통 `kafka.yml`에서 관리합니다.
+프로필 갱신 활성화와 소비자 그룹은 `profile-kafka.yml`, 오프셋 처리와 재시도 정책은 프로필 리스너와 전용 설정에서 관리합니다.
 같은 환경의 인스턴스는 동일한 `PROFILE_SYNC_KAFKA_GROUP_ID`를 사용합니다.
 연결은 기본적으로 꺼져 있으며, 이 경우 MySQL 작업자가 대기 작업을 직접 처리합니다.
 운영에서는 토픽을 미리 만들고 복제·접근 권한·보관 정책을 설정한 뒤, 같은 DB를 사용하는 인스턴스에 동일하게 연결을 켭니다.

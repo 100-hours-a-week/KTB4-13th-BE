@@ -4,7 +4,7 @@ spring:
   profiles:
     default: local
   config:
-    import: classpath:persistence.yml,classpath:ai.yml,classpath:profile-kafka.yml
+    import: classpath:persistence.yml,classpath:ai.yml,classpath:kafka.yml,classpath:profile-kafka.yml
   data:
     redis:
       host: ${REDIS_HOST:localhost}

@@ -36,6 +36,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -71,10 +72,11 @@ public class ChatSessionService {
     }
 
     public ChatResponseSnapshot send(final SendChatMessageCommand command) {
-        return finish(command, begin.execute(command));
+        return send(command, null);
     }
 
-    private ChatResponseSnapshot finish(final SendChatMessageCommand command, final ChatAttemptResult attempt) {
+    public ChatResponseSnapshot send(final SendChatMessageCommand command, final Consumer<String> onDelta) {
+        final ChatAttemptResult attempt = begin.execute(command);
         if (attempt.completedResponse() != null) {
             return attempt.completedResponse();
         }
@@ -85,11 +87,15 @@ public class ChatSessionService {
             throw new CoreException(attempt.failure());
         }
         if (attempt.agentPrepared() || agent.enabled()) {
-            return finishAgent(command, attempt);
+            return finishAgent(command, attempt, onDelta);
         }
         final ChatRecommendationAiOutcome outcome;
         try {
-            outcome = recommend.execute(attempt.aiCommand());
+            if (onDelta == null) {
+                outcome = recommend.execute(attempt.aiCommand());
+            } else {
+                outcome = recommend.execute(attempt.aiCommand(), onDelta);
+            }
         } catch (final RetryAfterException exception) {
             fail.execute(command, attempt.generation(), exception.errorCode(), exception.retryAfterSeconds());
             throw exception;
@@ -101,7 +107,8 @@ public class ChatSessionService {
         return complete.execute(command, attempt.generation(), outcome);
     }
 
-    private ChatResponseSnapshot finishAgent(final SendChatMessageCommand command, final ChatAttemptResult attempt) {
+    private ChatResponseSnapshot finishAgent(final SendChatMessageCommand command, final ChatAttemptResult attempt,
+        final Consumer<String> onDelta) {
         List<OwnedCouponResult> ownedCoupons = List.of();
         BigDecimal pointBalance = BigDecimal.ZERO;
         if (!attempt.agentPrepared()) {
@@ -115,7 +122,11 @@ public class ChatSessionService {
                 throw new CoreException(ErrorCode.AI_RECOMMENDATION_UNAVAILABLE);
             }
             try {
-                decision = agent.execute(attempt.aiCommand(), command.sessionId(), attempt.requestId(), prepared.context());
+                if (onDelta == null) {
+                    decision = agent.execute(attempt.aiCommand(), command.sessionId(), attempt.requestId(), prepared.context());
+                } else {
+                    decision = agent.execute(attempt.aiCommand(), command.sessionId(), attempt.requestId(), prepared.context(), onDelta);
+                }
             } catch (final RetryAfterException exception) {
                 fail.execute(command, attempt.generation(), exception.errorCode(), exception.retryAfterSeconds());
                 throw exception;

@@ -9,6 +9,7 @@ import org.slf4j.event.Level;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.client.RestClientException;
@@ -20,20 +21,32 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 @Slf4j
-class GlobalExceptionHandler {
-    @ExceptionHandler(CoreException.class)
-    ResponseEntity<ErrorResponse> handleCoreException(final CoreException exception) {
-        final ErrorCode errorCode = exception.errorCode();
-        logBusinessError(errorCode);
-        return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode, exception.data()));
+public class GlobalExceptionHandler {
+    /** 응답을 시작한 SSE에서도 HTTP 오류 응답과 같은 본문을 만듭니다. */
+    @ExceptionHandler({CoreException.class, RetryAfterException.class, OptimisticLockingFailureException.class,
+        OptimisticLockException.class, DataIntegrityViolationException.class})
+    public ResponseEntity<ErrorResponse> handleApplicationError(final RuntimeException exception) {
+        return switch (exception) {
+            case CoreException error -> handleCoreException(error);
+            case RetryAfterException error -> handleRetryAfter(error);
+            case OptimisticLockingFailureException _,OptimisticLockException _ -> handleConcurrentChange(exception);
+            case DataIntegrityViolationException error -> handleConstraintConflict(error);
+            default -> handleUnexpected(exception);
+        };
     }
 
-    @ExceptionHandler(RetryAfterException.class)
-    ResponseEntity<ErrorResponse> handleRetryAfter(final RetryAfterException exception) {
+    private ResponseEntity<ErrorResponse> handleCoreException(final CoreException exception) {
+        final ErrorCode errorCode = exception.errorCode();
+        logBusinessError(errorCode);
+        return ResponseEntity.status(errorCode.status()).contentType(MediaType.APPLICATION_JSON)
+            .body(ErrorResponse.of(errorCode, exception.data()));
+    }
+
+    private ResponseEntity<ErrorResponse> handleRetryAfter(final RetryAfterException exception) {
         final ErrorCode errorCode = exception.errorCode();
         logBusinessError(errorCode);
         return ResponseEntity.status(errorCode.status()).header(HttpHeaders.RETRY_AFTER, String.valueOf(exception.retryAfterSeconds()))
-            .body(ErrorResponse.of(errorCode));
+            .contentType(MediaType.APPLICATION_JSON).body(ErrorResponse.of(errorCode));
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
@@ -41,17 +54,16 @@ class GlobalExceptionHandler {
     ResponseEntity<ErrorResponse> handleInvalidRequest(final Exception exception) {
         final ErrorCode errorCode = ErrorCode.INVALID_REQUEST;
         logBusinessError(errorCode);
-        return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode));
+        return ResponseEntity.status(errorCode.status()).contentType(MediaType.APPLICATION_JSON).body(ErrorResponse.of(errorCode));
     }
 
-    @ExceptionHandler({OptimisticLockingFailureException.class, OptimisticLockException.class})
-    ResponseEntity<ErrorResponse> handleConcurrentChange(final Exception exception) {
+    private ResponseEntity<ErrorResponse> handleConcurrentChange(final Exception exception) {
         logBusinessError(ErrorCode.CONCURRENT_CHANGE);
-        return ResponseEntity.status(ErrorCode.CONCURRENT_CHANGE.status()).body(ErrorResponse.of(ErrorCode.CONCURRENT_CHANGE));
+        return ResponseEntity.status(ErrorCode.CONCURRENT_CHANGE.status()).contentType(MediaType.APPLICATION_JSON)
+            .body(ErrorResponse.of(ErrorCode.CONCURRENT_CHANGE));
     }
 
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    ResponseEntity<ErrorResponse> handleConstraintConflict(final DataIntegrityViolationException exception) {
+    private ResponseEntity<ErrorResponse> handleConstraintConflict(final DataIntegrityViolationException exception) {
         // 같은 키·집합의 유일 제약 경합만 충돌로 공개하며 다른 무결성 오류는 내부 오류로 남깁니다.
         final Set<String> concurrentKeys =
             Set.of("uk_cart_item_cart_product", "uk_cart_proposal_source", "uk_cart_change_request_key", "uk_cart_execution_request",
@@ -78,7 +90,7 @@ class GlobalExceptionHandler {
         } else {
             log.error("[GLOBAL_EXCEPTION] 요청 처리 중 오류가 발생했습니다. errorCode={}, code={}", errorCode.name(), errorCode.code(), exception);
         }
-        return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode));
+        return ResponseEntity.status(errorCode.status()).contentType(MediaType.APPLICATION_JSON).body(ErrorResponse.of(errorCode));
     }
 
     private void logBusinessError(final ErrorCode errorCode) {

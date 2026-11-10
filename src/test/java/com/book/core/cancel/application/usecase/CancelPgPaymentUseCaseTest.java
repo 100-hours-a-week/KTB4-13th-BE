@@ -1,10 +1,13 @@
 package com.book.core.cancel.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.cancel.application.command.CancelCommand;
 import com.book.core.cancel.application.command.PartialCancelCommand;
 import com.book.core.cancel.application.port.CancelBalanceRepositoryPort;
@@ -69,6 +72,32 @@ class CancelPgPaymentUseCaseTest {
         when(partial.execute(command.action(), calculated, result)).thenReturn(42L);
         assertThat(partialUseCase.execute(command)).isEqualTo(42L);
         assertThat(operation.completed()).isTrue();
+    }
+
+    @Test
+    void 전체취소_복원_포인트가_소수이면_PG_취소를_요청하지_않는다() {
+        final var command = new CancelCommand(1L, new CancelAction("order"), "request");
+        final var operation = new PgOperation("order", "request", "input", PgOperationType.CANCEL);
+        when(operations.execute(command.operation())).thenReturn(operation);
+        when(payments.execute("order")).thenReturn(
+            new Payment(1L, 2L, BigDecimal.TEN, -1L, BigDecimal.ZERO, new BigDecimal("0.5"), 1L, BigDecimal.TEN, PaymentState.SUCCESS));
+
+        assertThatThrownBy(() -> fullUseCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+        verifyNoInteractions(pg, full, balances);
+    }
+
+    @Test
+    void 부분취소_복원_포인트가_소수이면_PG_취소를_요청하지_않는다() {
+        final var command = new PartialCancelCommand(1L, new PartialCancelAction("order", 4L, 1L), "request");
+        final var operation = new PgOperation("order", "request", "input", PgOperationType.PARTIAL_CANCEL);
+        when(operations.execute(command.operation())).thenReturn(operation);
+        when(calculate.execute(command.action()))
+            .thenReturn(new CancelCalculated(BigDecimal.ONE, BigDecimal.ZERO, new BigDecimal("0.5"), false));
+
+        assertThatThrownBy(() -> partialUseCase.execute(command)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+        verifyNoInteractions(pg, partial, payments, balances);
     }
 
     @Test

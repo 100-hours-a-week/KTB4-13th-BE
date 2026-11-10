@@ -20,10 +20,9 @@ import com.book.core.payment.application.usecase.RecordPaymentHistoryUseCase;
 import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.PaymentHistory;
 import com.book.core.payment.domain.enums.TransactionType;
-import com.book.core.point.application.usecase.DeductPointUseCase;
-import com.book.core.point.application.usecase.EarnPointUseCase;
+import com.book.core.point.application.usecase.ReclaimPaymentBonusUseCase;
+import com.book.core.point.application.usecase.RestorePaymentPointsUseCase;
 import com.book.core.point.domain.PointAmount;
-import com.book.core.point.domain.enums.PointType;
 import java.math.BigDecimal;
 import java.time.Clock;
 import com.book.core.payment.application.result.CanceledPaymentResult;
@@ -39,8 +38,8 @@ public class PartialCancelPaymentUseCase {
     private final GetPaymentUseCase getPaymentUseCase;
     private final CancelBalanceRepositoryPort cancelBalanceRepository;
     private final RevertOwnedCouponUseCase revertOwnedCouponUseCase;
-    private final EarnPointUseCase earnPointUseCase;
-    private final DeductPointUseCase deductPointUseCase;
+    private final RestorePaymentPointsUseCase restorePaymentPointsUseCase;
+    private final ReclaimPaymentBonusUseCase reclaimPaymentBonusUseCase;
     private final CancelRepositoryPort cancelRepository;
     private final RecordPaymentHistoryUseCase recordPaymentHistoryUseCase;
     private final GetOrderItemForCancelUseCase getOrderItemForCancelUseCase;
@@ -63,11 +62,11 @@ public class PartialCancelPaymentUseCase {
             revertOwnedCouponUseCase.execute(payment.ownedCouponId());
         }
         if (calculated.pointAmount().compareTo(BigDecimal.ZERO) > 0) {
-            earnPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), calculated.pointAmount());
+            restorePaymentPointsUseCase.execute(payment.userId(), payment.id(), calculated.pointAmount());
         }
 
         if (cancelRepository.countByOrderId(order.id()) == 0L) {
-            deductPointUseCase.execute(payment.userId(), PointType.PAYMENT, payment.id(), PointAmount.PAYMENT);
+            reclaimPaymentBonusUseCase.execute(payment.userId(), payment.id(), PointAmount.PAYMENT);
         }
         cancelBalance.cancel(calculated.paidAmount(), calculated.pointAmount(), calculated.couponAmount());
         final Cancel cancel = cancelRepository.save(new Cancel(payment.userId(), CancelType.PARTIAL, payment.orderId(),

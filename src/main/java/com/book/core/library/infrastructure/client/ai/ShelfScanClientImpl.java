@@ -30,6 +30,7 @@ class ShelfScanClientImpl implements ShelfScanClient {
     private static final String SUCCESS_MESSAGE = "shelf_scan_success";
     private static final String FOUND = "FOUND";
     private static final Set<String> STATES = Set.of(FOUND, "NOT_FOUND");
+    private static final Set<String> PHOTO_TYPES = Set.of("cover", "shelf", "none");
 
     private final RestClient restClient;
 
@@ -71,13 +72,18 @@ class ShelfScanClientImpl implements ShelfScanClient {
 
     private static boolean isValid(final AiShelfScanEnvelope envelope) {
         return envelope != null && SUCCESS_MESSAGE.equals(envelope.message()) && envelope.data() != null
-            && envelope.data().photoType() != null && envelope.data().items() != null
+            && isOneOf(PHOTO_TYPES, envelope.data().photoType()) && envelope.data().items() != null
             && envelope.data().items().stream().allMatch(ShelfScanClientImpl::isValid);
     }
 
     private static boolean isValid(final AiShelfScanEnvelope.Item item) {
-        return item != null && STATES.contains(item.state()) && (FOUND.equals(item.state()) == (item.book() != null))
+        return item != null && isOneOf(STATES, item.state()) && (FOUND.equals(item.state()) == (item.book() != null))
             && (item.spines() == null || item.spines().stream().allMatch(Objects::nonNull));
+    }
+
+    /** Set.of는 null 조회에서 예외를 던지므로, 빠진 값은 계약 위반으로 판정해 연동 실패로 응답합니다. */
+    private static boolean isOneOf(final Set<String> allowed, final String value) {
+        return value != null && allowed.contains(value);
     }
 
     private static Item toItem(final AiShelfScanEnvelope.Item item) {

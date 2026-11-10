@@ -92,7 +92,11 @@ class ShelfScanClientImplTest {
         "{\"message\":\"shelf_scan_success\",\"data\":{\"photo_type\":\"cover\",\"items\":[{\"state\":\"MAYBE\",\"spines\":[]}]}}",
         "{\"message\":\"shelf_scan_success\",\"data\":{\"photo_type\":\"cover\","
             + "\"items\":[{\"state\":\"FOUND\",\"book\":null,\"spines\":[]}]}}",
-        "{\"message\":\"shelf_scan_success\",\"data\":{\"photo_type\":\"cover\",\"items\":[null]}}", "not-json"})
+        "{\"message\":\"shelf_scan_success\",\"data\":{\"photo_type\":\"cover\",\"items\":[null]}}",
+        "{\"message\":\"shelf_scan_success\",\"data\":{\"photo_type\":\"poster\",\"items\":[]}}",
+        "{\"message\":\"shelf_scan_success\",\"data\":{\"items\":[]}}",
+        "{\"message\":\"shelf_scan_success\",\"data\":{\"photo_type\":\"shelf\",\"items\":[{\"read_text\":\"책\",\"spines\":[]}]}}",
+        "not-json"})
     void 계약과_다른_응답은_사진_인식_실패로_변환한다(final String body) {
         server.expect(requestTo(SCAN_URL)).andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
 

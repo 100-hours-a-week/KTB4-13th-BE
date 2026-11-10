@@ -27,6 +27,7 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+        product.inventory.redis.lock.acquire: true
   endpoint:
     health:
       show-components: never
@@ -40,6 +41,10 @@ sentry:
 app:
   cors:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+  product:
+    inventory:
+      redis-lock:
+        enabled: ${PRODUCT_INVENTORY_REDIS_LOCK_ENABLED:false}
 
 auth:
   cookie:

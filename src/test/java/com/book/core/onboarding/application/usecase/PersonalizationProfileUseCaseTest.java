@@ -1,6 +1,9 @@
 package com.book.core.onboarding.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.book.core.onboarding.application.port.AiPersonalizationProfileClient;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileHistory;
@@ -40,7 +43,7 @@ class PersonalizationProfileUseCaseTest {
     private final FakeOptionRepository optionRepository = new FakeOptionRepository();
     private final FakeBookRepository bookRepository = new FakeBookRepository();
     private final FakeProfileClient profileClient = new FakeProfileClient();
-    private final FakeProfileJobs profileJobs = new FakeProfileJobs();
+    private final ProfileSyncJobRepositoryPort profileJobs = mock(ProfileSyncJobRepositoryPort.class);
     private static final Instant NOW = Instant.parse("2026-11-10T01:00:00Z");
     private final List<AiPersonalizationProfileMemory> memories = new ArrayList<>();
     private AiPersonalizationProfileHistory history = AiPersonalizationProfileHistory.EMPTY;
@@ -84,7 +87,7 @@ class PersonalizationProfileUseCaseTest {
 
         assertThat(profileClient.updateRequests).singleElement().isEqualTo(
             new AiPersonalizationProfileRequest(USER_ID, List.of("아침, 하루를 시작할 때"), List.of(), List.of(), List.of(), List.of(100L)));
-        assertThat(profileJobs.enqueued).isEmpty();
+        verifyNoInteractions(profileJobs);
     }
 
     @Test
@@ -96,7 +99,7 @@ class PersonalizationProfileUseCaseTest {
         useCase.executeUpdate(USER_ID);
 
         assertThat(profileClient.updateRequests).hasSize(1);
-        assertThat(profileJobs.enqueued).containsExactly(USER_ID);
+        verify(profileJobs).enqueue(USER_ID, NOW);
     }
 
     @Test
@@ -249,36 +252,6 @@ class PersonalizationProfileUseCaseTest {
 
         @Override
         public void deleteProfile(final Long userId) {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    private static class FakeProfileJobs implements ProfileSyncJobRepositoryPort {
-        final List<Long> enqueued = new ArrayList<>();
-
-        @Override
-        public void enqueue(final Long userId, final Instant availableAt) {
-            assertThat(availableAt).isEqualTo(NOW);
-            enqueued.add(userId);
-        }
-
-        @Override
-        public Optional<Job> findNext(final Instant now) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void complete(final Job job) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void retry(final Job job, final Instant availableAt) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void fail(final Job job) {
             throw new UnsupportedOperationException();
         }
     }

@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -96,6 +97,20 @@ class ProcessProfileSyncJobUseCaseTest {
         verify(jobs).fail(job);
         verify(jobs, never()).complete(any());
         verify(jobs, never()).retry(any(), any());
+    }
+
+    @Test
+    void 갱신_요청의_400과_401은_기존처럼_첫_재시도를_30초_뒤로_예약한다() {
+        final Job job = givenJob(0);
+        givenAgreedAndCompleted();
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).doThrow(new CoreException(ErrorCode.AI_SERVICE_UNAUTHORIZED))
+            .when(profiles).executeUpdate(USER_ID);
+
+        process.execute();
+        process.execute();
+
+        verify(jobs, times(2)).retry(job, NOW.plusSeconds(30));
+        verify(jobs, never()).fail(any());
     }
 
     @Test

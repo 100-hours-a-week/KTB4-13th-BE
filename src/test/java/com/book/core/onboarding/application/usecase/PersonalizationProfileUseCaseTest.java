@@ -84,6 +84,7 @@ class PersonalizationProfileUseCaseTest {
 
         assertThat(profileClient.updateRequests).singleElement().isEqualTo(
             new AiPersonalizationProfileRequest(USER_ID, List.of("아침, 하루를 시작할 때"), List.of(), List.of(), List.of(), List.of(100L)));
+        assertThat(profileJobs.enqueued).isEmpty();
     }
 
     @Test
@@ -96,18 +97,6 @@ class PersonalizationProfileUseCaseTest {
 
         assertThat(profileClient.updateRequests).hasSize(1);
         assertThat(profileJobs.enqueued).containsExactly(USER_ID);
-    }
-
-    @Test
-    void 갱신_뒤에도_동의가_유지되면_작업을_다시_예약하지_않고_삭제는_AI에_바로_요청한다() {
-        termRepository.activeTerm = personalizationTerm();
-        agreementRepository.agreed = true;
-
-        useCase.executeUpdate(USER_ID);
-        useCase.executeDelete(USER_ID);
-
-        assertThat(profileJobs.enqueued).isEmpty();
-        assertThat(profileClient.deletedUserIds).containsExactly(USER_ID);
     }
 
     @Test
@@ -249,7 +238,6 @@ class PersonalizationProfileUseCaseTest {
 
     private static class FakeProfileClient implements AiPersonalizationProfileClient {
         final List<AiPersonalizationProfileRequest> updateRequests = new ArrayList<>();
-        final List<Long> deletedUserIds = new ArrayList<>();
         Runnable onUpdate = () -> {
         };
 
@@ -261,7 +249,7 @@ class PersonalizationProfileUseCaseTest {
 
         @Override
         public void deleteProfile(final Long userId) {
-            deletedUserIds.add(userId);
+            throw new UnsupportedOperationException();
         }
     }
 

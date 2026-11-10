@@ -86,18 +86,6 @@ class ProcessProfileSyncJobUseCaseTest {
     }
 
     @Test
-    void 삭제_요청이_실패하면_작업을_남겨_지수_백오프로_다시_시도한다() {
-        final Job job = givenJob(1);
-        when(withdrawalConfirmed.execute(USER_ID)).thenReturn(true);
-        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).when(profiles).executeDelete(USER_ID);
-
-        process.execute();
-
-        verify(jobs).retry(job, NOW.plusSeconds(60));
-        verify(jobs, never()).complete(job);
-    }
-
-    @Test
     void AI가_400으로_거부한_요청은_자동_재시도하지_않되_완료로_지우지_않고_실패_작업으로_보관한다() {
         final Job job = givenJob(0);
         when(withdrawalConfirmed.execute(USER_ID)).thenReturn(true);

@@ -53,8 +53,9 @@ class AiPersonalizationProfileClientImplTest {
     private final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator =
         new PersonalizationProfileIdempotencyKeyGenerator();
     private final GetAiBookIdentifiersUseCase identifiers = mock(GetAiBookIdentifiersUseCase.class);
-    private final AiPersonalizationProfileClientImpl client =
-        new AiPersonalizationProfileClientImpl(builder.build(), idempotencyKeyGenerator, identifiers);
+    private final AiPersonalizationProfileExternalMapper mapper =
+        new AiPersonalizationProfileExternalMapper(idempotencyKeyGenerator, identifiers);
+    private final AiPersonalizationProfileClientImpl client = new AiPersonalizationProfileClientImpl(builder.build(), mapper);
 
     @AfterEach
     void clearMdc() {
@@ -161,7 +162,7 @@ class AiPersonalizationProfileClientImplTest {
         final KafkaTemplate<String, String> kafka = mock(KafkaTemplate.class);
         when(kafka.send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), any(String.class)))
             .thenReturn(CompletableFuture.completedFuture(null));
-        new AiPersonalizationProfileKafkaClient(client, kafka, json).updateProfile(request, UUID.randomUUID());
+        new AiPersonalizationProfileKafkaClient(mapper, kafka, json).updateProfile(request, UUID.randomUUID());
         final ArgumentCaptor<String> sent = ArgumentCaptor.forClass(String.class);
         verify(kafka).send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), sent.capture());
         assertThat(json.readTree(sent.getValue()).path("profile")).isEqualTo(json.readTree(httpBody[0]));

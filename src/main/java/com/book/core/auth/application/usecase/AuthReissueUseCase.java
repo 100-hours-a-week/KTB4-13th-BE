@@ -9,6 +9,8 @@ import com.book.core.auth.application.port.RefreshTokenVerifier;
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.application.result.AuthReissueResult;
 import com.book.core.auth.domain.RefreshSession;
+import com.book.core.user.application.port.UserRepositoryPort;
+import com.book.core.user.domain.User;
 import java.time.Clock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,10 +24,16 @@ public class AuthReissueUseCase {
     private final RefreshSessionRepository refreshSessionRepository;
     private final TokenIssuer tokenIssuer;
     private final Clock clock;
+    private final UserRepositoryPort userRepository;
 
     @Transactional
     public AuthReissueResult execute(final String refreshToken) {
         final Long userId = refreshTokenVerifier.verify(refreshToken);
+        final User user =
+            userRepository.findByIdForUpdate(userId).orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
+        if (!user.isActive() || user.isWithdrawalRequested()) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
         final String tokenHash = refreshTokenHasher.hash(refreshToken);
 
         final RefreshSession session = refreshSessionRepository.findActiveByTokenHashForUpdate(tokenHash)

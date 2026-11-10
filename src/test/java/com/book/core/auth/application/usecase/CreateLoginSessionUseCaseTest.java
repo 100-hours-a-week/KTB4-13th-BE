@@ -14,6 +14,8 @@ import com.book.core.auth.application.port.RefreshSessionRepository;
 import com.book.core.auth.application.port.RefreshTokenHasher;
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.auth.domain.RefreshSession;
+import com.book.core.user.application.port.UserRepositoryPort;
+import com.book.core.user.domain.User;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -36,6 +38,12 @@ class CreateLoginSessionUseCaseTest {
 
     @Mock
     RefreshSessionRepository refreshSessionRepository;
+
+    @Mock
+    UserRepositoryPort userRepository;
+
+    @Mock
+    User user;
 
     @Mock
     RefreshTokenHasher refreshTokenHasher;
@@ -91,6 +99,9 @@ class CreateLoginSessionUseCaseTest {
     }
 
     private CreateLoginSessionUseCase useCase() {
-        return new CreateLoginSessionUseCase(tokenIssuer, refreshSessionRepository, refreshTokenHasher, Clock.fixed(NOW, ZoneOffset.UTC));
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
+        when(user.isActive()).thenReturn(true);
+        return new CreateLoginSessionUseCase(tokenIssuer, refreshSessionRepository, refreshTokenHasher, Clock.fixed(NOW, ZoneOffset.UTC),
+            userRepository);
     }
 }

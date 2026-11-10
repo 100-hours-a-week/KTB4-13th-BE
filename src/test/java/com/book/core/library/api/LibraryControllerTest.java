@@ -5,17 +5,21 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.config.security.UserIdMvcConfig;
 import com.book.core.library.api.converter.LibraryCommandConverter;
+import com.book.core.library.application.command.CreateShelfPhotoUploadCommand;
 import com.book.core.library.application.command.DeleteLibraryBooksCommand;
 import com.book.core.library.application.result.LibraryBookResult;
+import com.book.core.library.application.result.ShelfPhotoUploadResult;
 import com.book.core.library.application.service.LibraryService;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -81,6 +85,33 @@ class LibraryControllerTest {
 
         mvc.perform(delete("/api/v1/library/books").contentType(MediaType.APPLICATION_JSON).content(body))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(libraryService);
+    }
+
+    @Test
+    void 업로드_주소_발급은_JWT_회원_ID로_요청하고_서명_헤더와_만료_시각을_응답한다() throws Exception {
+        authenticateAs(42L);
+        given(libraryService.createPhotoUpload(new CreateShelfPhotoUploadCommand(42L, "image/jpeg", 2048L)))
+            .willReturn(new ShelfPhotoUploadResult("shelf-photos/42/a.jpg", "https://s3/upload", Map.of("content-type", "image/jpeg"),
+                Instant.parse("2026-11-10T01:05:00Z")));
+
+        mvc.perform(post("/api/v1/library/photos/upload-url").param("userId", "99").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"contentType\":\"image/jpeg\",\"contentLength\":2048}")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.photoKey").value("shelf-photos/42/a.jpg"))
+            .andExpect(jsonPath("$.data.uploadUrl").value("https://s3/upload"))
+            .andExpect(jsonPath("$.data.headers.content-type").value("image/jpeg"))
+            .andExpect(jsonPath("$.data.expiresAt").value("2026-11-10T01:05:00Z"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"contentType\":\"image/jpeg\"}", "{\"contentType\":\"\",\"contentLength\":1}",
+        "{\"contentType\":\"image/jpeg\",\"contentLength\":0}"})
+    void 업로드_주소_요청_형식이_잘못되면_400을_응답한다(final String body) throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(post("/api/v1/library/photos/upload-url").contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isBadRequest());
 
         verifyNoInteractions(libraryService);
     }

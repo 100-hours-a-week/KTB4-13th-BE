@@ -40,6 +40,9 @@ sentry:
 app:
   cors:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+  shelf-photo:
+    bucket: ${SHELF_PHOTO_BUCKET:}
+    region: ${AWS_REGION:ap-northeast-2}
 
 auth:
   cookie:

@@ -87,7 +87,7 @@ curl -i 'http://localhost:8080/api/v1/user-addresses?userId=42' \
 
 온보딩 완료와 선호 수정으로 생긴 갱신 작업을 MySQL에 먼저 저장합니다.
 Kafka 연결을 켜면 `book.profile-sync.v1`에서 작업 ID가 소비된 뒤 AI 프로필 갱신을 시작합니다.
-토픽에는 무작위 작업 ID만 남고, AI 요청에 필요한 데이터는 작업자가 MySQL에서 읽습니다.
+메시지 본문에는 무작위 작업 ID만 넣고, AI 요청에 필요한 데이터는 작업자가 MySQL에서 읽습니다.
 같은 사용자의 대기 중 변경은 최신 작업 하나로 합칩니다.
 
 로컬에서만 사용하는 단일 브로커는 다음과 같이 시작합니다.
@@ -95,20 +95,25 @@ Kafka 연결을 켜면 `book.profile-sync.v1`에서 작업 ID가 소비된 뒤 A
 ```bash
 docker compose -f compose.kafka.yml up -d
 # 브로커가 기동된 뒤 실행합니다.
-docker compose -f compose.kafka.yml exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
-  --create --if-not-exists --topic book.profile-sync.v1 --partitions 1 --replication-factor 1 \
-  --config retention.ms=86400000
+for topic in book.profile-sync.v1 book.profile-sync.v1.DLT; do
+  docker compose -f compose.kafka.yml exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+    --create --if-not-exists --topic "$topic" --partitions 1 --replication-factor 1 \
+    --config retention.ms=86400000
+done
 PROFILE_SYNC_KAFKA_ENABLED=true KAFKA_BOOTSTRAP_SERVERS=localhost:9092 ./gradlew bootRun
 ```
 
 브로커 연결과 기본 발행·직렬화 설정은 공통 `kafka.yml`에서 관리합니다.
-프로필 갱신 활성화와 소비자 그룹은 `profile-kafka.yml`, 오프셋 처리와 재시도 정책은 프로필 리스너와 전용 설정에서 관리합니다.
+프로필 갱신 활성화와 소비자 그룹은 `profile-kafka.yml`, 오프셋 처리는 프로필 리스너에서 관리합니다.
+공통 `KafkaConfig`가 리스너 팩토리, 소비 재시도와 실패 토픽 발행을 구성합니다.
 같은 환경의 인스턴스는 동일한 `PROFILE_SYNC_KAFKA_GROUP_ID`를 사용합니다.
 연결은 기본적으로 꺼져 있으며, 이 경우 MySQL 작업자가 대기 작업을 직접 처리합니다.
-운영에서는 토픽을 미리 만들고 복제·접근 권한·보관 정책을 설정한 뒤, 같은 DB를 사용하는 인스턴스에 동일하게 연결을 켭니다.
+운영에서는 원본 토픽과 같은 파티션 수로 실패 토픽을 만들고, 복제·접근 권한·보관 정책을 설정합니다.
+그 뒤 같은 DB를 사용하는 인스턴스에 동일하게 연결을 켭니다.
 브로커 장애 시 온보딩 저장은 성공하고, 갱신 작업은 DB에 남아 약 1분 후 다시 발행할 수 있습니다.
 소비 중 DB 반영이 실패하면 1초 간격으로 세 번 재시도합니다.
-그래도 실패하면 오류를 기록하고, MySQL에 남은 작업을 다음 발행 주기에 다시 전달합니다.
+그래도 실패하면 같은 파티션의 `book.profile-sync.v1.DLT`에 기록합니다.
+실패 토픽은 운영 확인에 쓰고, 자동 복구는 MySQL에 남은 작업을 다시 발행해 처리합니다.
 
 ## 검증
 

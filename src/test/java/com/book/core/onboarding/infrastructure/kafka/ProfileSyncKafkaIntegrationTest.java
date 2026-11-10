@@ -16,11 +16,14 @@ import com.book.core.onboarding.application.usecase.ProcessProfileSyncJobUseCase
 import com.book.core.onboarding.application.usecase.RecordPersonalizationAgreementUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +36,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Bean;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -65,6 +70,8 @@ class ProfileSyncKafkaIntegrationTest {
     @Autowired
     Clock clock;
     @Autowired
+    ConsumerFactory<Object, Object> consumerFactory;
+    @Autowired
     TransactionTemplate transaction;
     @Autowired
     RecordPersonalizationAgreementUseCase agree;
@@ -87,6 +94,11 @@ class ProfileSyncKafkaIntegrationTest {
         @Bean
         NewTopic profileSyncTopic() {
             return new NewTopic(ProfileSyncKafkaRelay.TOPIC, 1, (short) 1);
+        }
+
+        @Bean
+        NewTopic profileSyncDeadLetterTopic() {
+            return new NewTopic(ProfileSyncKafkaRelay.TOPIC + ".DLT", 1, (short) 1);
         }
     }
 
@@ -130,7 +142,11 @@ class ProfileSyncKafkaIntegrationTest {
             new DataAccessResourceFailureException("test database failure")).doCallRealMethod().when(jobs).markReady(currentRevision);
 
         releasePublicationLease(userId);
-        await(() -> output.getAll().contains("Kafka 소비 재시도를 소진했습니다."));
+        final ConsumerRecord<Object, Object> deadLetter = readDeadLetter();
+        assertThat(deadLetter.value()).isEqualTo(currentRevision.toString());
+        assertThat(deadLetter.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNotNull();
+        assertThat(deadLetter.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNull();
+        assertThat(deadLetter.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNull();
         assertThat(jobs.findNext(clock.instant())).isEmpty();
         verify(jobs, times(4)).markReady(currentRevision);
 
@@ -142,6 +158,22 @@ class ProfileSyncKafkaIntegrationTest {
         verify(ai).updateProfile(argThat(request -> userId.equals(request.userId())));
         jobs.markReady(UUID.fromString(readyRevision));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs", Integer.class)).isZero();
+    }
+
+    private ConsumerRecord<Object, Object> readDeadLetter() {
+        try (var consumer = consumerFactory.createConsumer("profile-sync-dlt-test")) {
+            final var partition = new TopicPartition(ProfileSyncKafkaRelay.TOPIC + ".DLT", 0);
+            consumer.assign(List.of(partition));
+            consumer.seekToBeginning(List.of(partition));
+            final Instant deadline = Instant.now().plusSeconds(15);
+            while (Instant.now().isBefore(deadline)) {
+                final var records = consumer.poll(Duration.ofMillis(250)).records(partition);
+                if (!records.isEmpty()) {
+                    return records.getFirst();
+                }
+            }
+        }
+        throw new AssertionError("Profile sync dead-letter record was not published");
     }
 
     private void releasePublicationLease(final Long userId) {

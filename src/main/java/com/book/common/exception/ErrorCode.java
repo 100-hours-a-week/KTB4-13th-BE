@@ -113,7 +113,6 @@ public enum ErrorCode {
     PAYMENT_INVALID_AMOUNT(HttpStatus.BAD_REQUEST, "E2002", "결제 금액이 0보다 작을 수 없습니다.", LogLevel.INFO),
     OWNED_COUPON_MIN_AMOUNT_NOT_REACHED(HttpStatus.BAD_REQUEST, "E5002", "쿠폰 사용 가능 최소 금액이 부족합니다.", LogLevel.INFO),
     POINT_EXCEEDS_BALANCE(HttpStatus.BAD_REQUEST, "E6000", "보유 포인트를 초과하여 사용할 수 없습니다.", LogLevel.INFO),
-    COUPON_ISSUE_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "E429", "쿠폰 발급 요청이 많아 잠시 후 다시 시도해야 합니다.", LogLevel.INFO),
     COUPON_SOLD_OUT(HttpStatus.BAD_REQUEST, "E4003", "쿠폰이 매진되었습니다.", LogLevel.INFO),
     COUPON_ISSUE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "COUPON_ISSUE_FAILED", "쿠폰 발급에 실패했습니다.", LogLevel.ERROR);
 

@@ -7,7 +7,7 @@ import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.ProductRepositoryPort;
 import com.book.core.product.application.result.ProductListItem;
-import com.book.core.product.application.usecase.FindProductIdsByBookIdsUseCase;
+import com.book.core.product.application.usecase.GetRecommendationProductsUseCase;
 import com.book.core.product.domain.Product;
 import com.book.core.recommendation.application.command.GetRecommendationFeedCommand;
 import com.book.core.recommendation.application.command.RecommendationFeedSort;
@@ -32,7 +32,7 @@ class GetRecommendationFeedUseCaseTest {
     private final FakeRecommendationFeedClient recommendationFeedClient = new FakeRecommendationFeedClient();
     private final FakeProductRepository productRepository = new FakeProductRepository();
     private final GetRecommendationFeedUseCase useCase =
-        new GetRecommendationFeedUseCase(recommendationFeedClient, new FindProductIdsByBookIdsUseCase(productRepository));
+        new GetRecommendationFeedUseCase(recommendationFeedClient, new GetRecommendationProductsUseCase(productRepository));
 
     @Test
     void 피드_조건을_그대로_AI_피드_요청으로_전달한다() {
@@ -86,14 +86,14 @@ class GetRecommendationFeedUseCaseTest {
     }
 
     private static RecommendationFeedItem feedItem(final long bookId, final String title, final int matchScore) {
-        return new RecommendationFeedItem(bookId, title, "작가", new BigDecimal("9900"), "https://example.com/" + bookId + ".jpg", true,
+        return new RecommendationFeedItem(bookId, title, "작가", new BigDecimal("9900"), "https://example.com/" + bookId + ".jpg",
             matchScore);
     }
 
     private static RecommendationFeedItemResult itemResult(final long bookId, final Long productId, final String title,
         final int matchScore) {
         return new RecommendationFeedItemResult(bookId, productId, title, "작가", new BigDecimal("9900"),
-            "https://example.com/" + bookId + ".jpg", true, matchScore);
+            "https://example.com/" + bookId + ".jpg", productId != null, matchScore);
     }
 
     private static Product product(final long productId, final long bookId) {

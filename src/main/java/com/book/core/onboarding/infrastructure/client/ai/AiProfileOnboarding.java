@@ -9,5 +9,5 @@ record AiProfileOnboarding(
         @JsonProperty("criteria") List<String> criteria,
         @JsonProperty("categories") List<String> categories,
         @JsonProperty("tags") List<String> tags,
-        @JsonProperty("liked_book_ids") List<Long> likedBookIds) {}
+        @JsonProperty("liked_isbns") List<String> likedIsbns) {}
 // @formatter:on

@@ -8,6 +8,7 @@ import com.book.core.onboarding.application.port.AiPersonalizationProfileMemory;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.ProfileHistoryRepositoryPort;
+import com.book.core.onboarding.application.result.OwnedBook;
 import com.book.core.onboarding.application.port.ProfileMemoryRepositoryPort;
 import com.book.core.onboarding.application.port.TermRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
@@ -53,6 +54,11 @@ class PersonalizationProfileUseCaseTest {
             @Override
             public AiPersonalizationProfileHistory findHistory(final Long userId) {
                 return history;
+            }
+
+            @Override
+            public List<OwnedBook> findOwnedBooks(final Long userId) {
+                throw new UnsupportedOperationException();
             }
 
             @Override

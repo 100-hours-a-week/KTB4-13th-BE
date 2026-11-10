@@ -1,3 +1,5 @@
 ai:
   base-url: ${AI_BASE_URL:}
   service-token: ${AI_SERVICE_TOKEN:}
+  # Set to a measured request-target budget for the BE-to-AI route.
+  feed-request-target-max-bytes: ${AI_FEED_REQUEST_TARGET_MAX_BYTES:4096}

@@ -1,16 +1,24 @@
 package com.book.core.recommendation.infrastructure.client.ai;
 
+import com.book.common.config.ai.AiRequestBudget;
 import com.book.common.config.ai.AiRestClientConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
 import com.book.common.filter.RequestMdcFilter;
+import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
+import com.book.core.onboarding.application.result.RecommendationHistory;
+import com.book.core.onboarding.application.usecase.GetRecommendationHistoryUseCase;
 import com.book.core.recommendation.application.command.RecommendationSpec;
 import com.book.core.recommendation.application.command.RecommendationTurn;
 import com.book.core.recommendation.application.port.AiRecommendationCard;
 import com.book.core.recommendation.application.port.AiRecommendationChatRequest;
 import com.book.core.recommendation.application.port.AiRecommendationChatResult;
 import com.book.core.recommendation.application.port.AiRecommendationClient;
+import com.book.core.recommendation.application.result.RecommendationExclusion;
+import com.book.core.recommendation.application.result.RecommendationExclusionSource;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -32,22 +40,33 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
     private static final Map<String, Object> INITIAL_SPEC = RecommendationSpec.initial();
 
     private final RestClient restClient;
+    private final GetAiBookIdentifiersUseCase identifiers;
+    private final GetRecommendationHistoryUseCase history;
+    private final ObjectMapper json;
 
-    public AiRecommendationClientImpl(@Qualifier(AiRestClientConfig.RECOMMENDATION_AI_REST_CLIENT) final RestClient restClient) {
+    public AiRecommendationClientImpl(@Qualifier(AiRestClientConfig.RECOMMENDATION_AI_REST_CLIENT) final RestClient restClient,
+        final GetAiBookIdentifiersUseCase identifiers, final GetRecommendationHistoryUseCase history, final ObjectMapper json) {
         this.restClient = restClient;
+        this.identifiers = identifiers;
+        this.history = history;
+        this.json = json;
     }
 
     @Override
     public AiRecommendationChatResult chat(final AiRecommendationChatRequest request) {
-        final AiChatRequest aiRequest = toAiChatRequest(request);
-        AiChatResponse response = attempt(aiRequest, false);
+        final RecommendationHistory recommendationHistory = history.execute(request.userId());
+        final List<RecommendationExclusion> exclusions =
+            RecommendationExclusion.newestFirst(identifiers.findIsbns(request.excludeBookIds().reversed()), recommendationHistory.books());
+        final List<AiChatTurn> turns = request.recentTurns().stream().map(this::toAiChatTurn).toList();
+        AiChatResponse response = attempt(chatBody(request, recommendationHistory.consented(), request.spec(), turns, exclusions), false);
         if (response == null) {
-            response = attempt(withInitialSpec(aiRequest), true);
+            response = attempt(chatBody(request, recommendationHistory.consented(), INITIAL_SPEC, turns, exclusions), true);
         }
         return toResult(response);
     }
 
-    private AiChatResponse attempt(final AiChatRequest aiRequest, final boolean isRetry) {
+
+    private AiChatResponse attempt(final byte[] aiRequest, final boolean isRetry) {
         try {
             return restClient.post().uri(CHAT_PATH).header(REQUEST_ID_HEADER, currentRequestId()).contentType(MediaType.APPLICATION_JSON)
                 .body(aiRequest).exchange((httpRequest, response) -> {
@@ -107,23 +126,32 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
         return requestId != null ? requestId : UUID.randomUUID().toString();
     }
 
-    private AiChatRequest toAiChatRequest(final AiRecommendationChatRequest request) {
-        final List<AiChatTurn> turns = request.recentTurns().stream().map(this::toAiChatTurn).toList();
-        return new AiChatRequest(request.userId(), request.consented(), request.spec(), request.message(), turns, request.excludeBookIds());
+    private byte[] chatBody(final AiRecommendationChatRequest request, final boolean consented, final Map<String, Object> spec,
+        final List<AiChatTurn> turns, final List<RecommendationExclusion> exclusions) {
+        return AiRequestBudget.fit(exclusions, (final List<RecommendationExclusion> selected) -> {
+            final AiChatRequest body = new AiChatRequest(request.userId(), consented, spec, request.message(), turns,
+                RecommendationExclusion.isbnsFrom(selected, RecommendationExclusionSource.CONVERSATION),
+                RecommendationExclusion.isbnsFrom(selected, RecommendationExclusionSource.PURCHASE),
+                RecommendationExclusion.isbnsFrom(selected, RecommendationExclusionSource.LIBRARY));
+            try {
+                return json.writeValueAsBytes(body);
+            } catch (final JsonProcessingException exception) {
+                throw new CoreException(ErrorCode.AI_RECOMMENDATION_FAILURE, exception);
+            }
+        }, (final byte[] body) -> body.length, AiRequestBudget.CHAT_BODY_BYTES, ErrorCode.AI_RECOMMENDATION_FAILURE);
     }
 
     private AiChatTurn toAiChatTurn(final RecommendationTurn turn) {
         return new AiChatTurn(turn.role(), turn.text());
     }
 
-    private AiChatRequest withInitialSpec(final AiChatRequest request) {
-        return new AiChatRequest(request.userId(), request.consented(), INITIAL_SPEC, request.message(), request.recentTurns(),
-            request.excludeBookIds());
-    }
-
     private AiRecommendationChatResult toResult(final AiChatResponse response) {
-        final List<AiRecommendationCard> cards = response.cards().stream()
-            .map(card -> new AiRecommendationCard(card.bookId(), card.matchScore(), card.reasonShort(), card.reasonLong())).toList();
+        final Map<String, Long> bookIds = identifiers.findBookIds(response.cards().stream().map(AiChatCard::isbn).toList());
+        final List<AiRecommendationCard> cards =
+            response.cards().stream().filter((final AiChatCard card) -> card.isbn() != null && bookIds.containsKey(card.isbn()))
+                .map((final AiChatCard card) -> new AiRecommendationCard(bookIds.get(card.isbn()), card.matchScore(), card.reasonShort(),
+                    card.reasonLong()))
+                .toList();
         return new AiRecommendationChatResult(response.spec(), response.reply(), cards, response.followup(), response.buttons(),
             response.degraded());
     }

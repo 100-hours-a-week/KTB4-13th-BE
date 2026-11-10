@@ -3,6 +3,7 @@ package com.book.core.onboarding.infrastructure.client.ai;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.filter.RequestMdcFilter;
+import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileClient;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import java.util.UUID;
@@ -20,18 +21,21 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
 
     private final RestClient restClient;
     private final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator;
+    private final GetAiBookIdentifiersUseCase identifiers;
 
     public AiPersonalizationProfileClientImpl(@Qualifier("recommendationAiRestClient") final RestClient restClient,
-        final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator) {
+        final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator, final GetAiBookIdentifiersUseCase identifiers) {
         this.restClient = restClient;
         this.idempotencyKeyGenerator = idempotencyKeyGenerator;
+        this.identifiers = identifiers;
     }
 
     @Override
     public void updateProfile(final AiPersonalizationProfileRequest request) {
         try {
-            restClient.put().uri(PROFILE_PATH).header(REQUEST_ID_HEADER, currentRequestId()).contentType(MediaType.APPLICATION_JSON)
-                .body(AiProfileRequest.from(request, idempotencyKeyGenerator.generate(request))).retrieve().toBodilessEntity();
+            restClient.put().uri(PROFILE_PATH).header(REQUEST_ID_HEADER, currentRequestId()).contentType(MediaType.APPLICATION_JSON).body(
+                AiProfileRequest.from(request, idempotencyKeyGenerator.generate(request), identifiers.findIsbns(request.likedBookIds())))
+                .retrieve().toBodilessEntity();
         } catch (final RestClientException exception) {
             throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
         }

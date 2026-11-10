@@ -15,4 +15,14 @@ class BookRepositoryAdapter implements BookRepositoryPort {
     public List<Book> findAllByIdIn(final List<Long> ids) {
         return jpaRepository.findAllById(ids);
     }
+
+    @Override
+    public List<Book> findWithUnambiguousIsbnByIds(final List<Long> ids) {
+        return jpaRepository.findWithUnambiguousIsbnByIds(ids);
+    }
+
+    @Override
+    public List<Book> findWithUnambiguousIsbnByIsbns(final List<String> isbns) {
+        return jpaRepository.findWithUnambiguousIsbnByIsbns(isbns);
+    }
 }

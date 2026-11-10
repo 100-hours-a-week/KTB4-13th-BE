@@ -7,7 +7,6 @@ import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.domain.CouponIssuePolicy;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
@@ -21,14 +20,13 @@ public class GetCouponIssuePolicyUseCase {
     private final PlatformTransactionManager transactionManager;
 
     public CouponIssueState execute(final Long couponId) {
-        return couponCacheRepository.getOrLoad(couponId, () -> loadPolicy(couponId))
-            .orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED));
+        return couponCacheRepository.getOrLoad(couponId, () -> loadPolicy(couponId));
     }
 
-    private Optional<CouponIssuePolicy> loadPolicy(final Long couponId) {
+    private CouponIssuePolicy loadPolicy(final Long couponId) {
         final TransactionTemplate policyReadTransaction = new TransactionTemplate(transactionManager);
         policyReadTransaction.setReadOnly(true);
-        return policyReadTransaction
-            .execute((final TransactionStatus status) -> couponRepository.findById(couponId).map(CouponIssuePolicy::from));
+        return policyReadTransaction.execute((final TransactionStatus status) -> couponRepository.findById(couponId)
+            .map(CouponIssuePolicy::from).orElseThrow(() -> new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED)));
     }
 }

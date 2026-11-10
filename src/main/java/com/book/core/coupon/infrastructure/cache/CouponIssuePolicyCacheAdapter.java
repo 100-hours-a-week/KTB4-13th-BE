@@ -10,9 +10,10 @@ import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.result.CouponIssueState.Stock;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import jakarta.annotation.PreDestroy;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,7 +32,6 @@ public class CouponIssuePolicyCacheAdapter implements CouponCacheRepositoryPort 
     private static final int MAX_RETRIES = 50;
     private static final long WAIT_BACKOFF_MS = 20L;
     private static final long LOCK_TTL_MS = 3_000L;
-    private static final long MISSING_TTL_MS = 2_000L;
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -45,17 +45,16 @@ public class CouponIssuePolicyCacheAdapter implements CouponCacheRepositoryPort 
 
     @SuppressWarnings("rawtypes")
     private final RedisScript<List> lookupScript = listLuaScript("lua/cache-single-flight-swr.lua");
-    private final RedisScript<Long> completeLoadScript = longLuaScript("lua/complete-coupon-policy-load.lua");
     private final RedisScript<Long> releaseLockScript = longLuaScript("lua/release-lock.lua");
 
     @Override
-    public Optional<CouponIssueState> getOrLoad(final Long couponId, final Supplier<Optional<CouponIssuePolicy>> loader) {
+    public CouponIssueState getOrLoad(final Long couponId, final Supplier<CouponIssuePolicy> loader) {
         final String cacheKey = "coupon:" + couponId + ":issue-policy";
         return getOrLoad(couponId, cacheKey, cacheKey + ":lock", loader);
     }
 
-    private Optional<CouponIssueState> getOrLoad(final Long couponId, final String cacheKey, final String lockKey,
-        final Supplier<Optional<CouponIssuePolicy>> loader) {
+    private CouponIssueState getOrLoad(final Long couponId, final String cacheKey, final String lockKey,
+        final Supplier<CouponIssuePolicy> loader) {
         final String token = UUID.randomUUID().toString();
         final String stockKey = "coupon:" + couponId + ":stock";
         for (int retry = 0; retry < MAX_RETRIES; retry++) {
@@ -65,24 +64,21 @@ public class CouponIssuePolicyCacheAdapter implements CouponCacheRepositoryPort 
 
             switch (result.getFirst()) {
                 case "HIT" -> {
-                    return Optional.of(cachedIssueState(result));
+                    return cachedIssueState(result);
                 }
                 case "STALE_REFRESH" -> {
                     backgroundExecutor.execute(() -> {
                         try {
-                            fillCache(cacheKey, lockKey, token, loader);
+                            fillCache(couponId, cacheKey, lockKey, token, loader);
                         } catch (final Exception exception) {
                             log.atWarn().addKeyValue("couponId", couponId).addKeyValue("cause", exception.getMessage())
                                 .log("[COUPON] 발급 정책 캐시의 SWR 백그라운드 갱신에 실패했습니다. couponId={}, cause={}", couponId, exception.getMessage());
                         }
                     });
-                    return Optional.of(cachedIssueState(result));
+                    return cachedIssueState(result);
                 }
                 case "LOAD" -> {
-                    return fillCache(cacheKey, lockKey, token, loader).map(policy -> new CouponIssueState(policy, Stock.UNKNOWN));
-                }
-                case "NOT_FOUND" -> {
-                    return Optional.empty();
+                    return new CouponIssueState(fillCache(couponId, cacheKey, lockKey, token, loader), Stock.UNKNOWN);
                 }
                 case "WAIT" -> waitBackoff();
                 default -> throw new IllegalStateException("예상치 못한 Lua 결과: " + result.getFirst());
@@ -95,21 +91,31 @@ public class CouponIssuePolicyCacheAdapter implements CouponCacheRepositoryPort 
         return new CouponIssueState(objectMapper.readValue(result.get(1), CouponIssuePolicy.class), Stock.valueOf(result.get(2)));
     }
 
-    private Optional<CouponIssuePolicy> fillCache(final String cacheKey, final String lockKey, final String token,
-        final Supplier<Optional<CouponIssuePolicy>> loader) {
+    /**
+     * 캐시를 채우고 락을 해제합니다.<br>
+     * 로딩과 락 해제가 모두 실패하면 로딩 예외를 보존합니다.
+     */
+    private CouponIssuePolicy fillCache(final Long couponId, final String cacheKey, final String lockKey, final String token,
+        final Supplier<CouponIssuePolicy> loader) {
+        boolean cacheFilled = false;
         try {
-            final Optional<CouponIssuePolicy> policy = loader.get();
-            final String value = policy.map(objectMapper::writeValueAsString).orElse("");
-            final long ttlMs = policy.isPresent() ? cacheProperties.ttlMs() : MISSING_TTL_MS;
-            runForLong(redisTemplate, completeLoadScript, List.of(cacheKey, lockKey), token, value, Instant.now().toEpochMilli(), ttlMs);
+            final CouponIssuePolicy policy = loader.get();
+            redisTemplate.<String, String>opsForHash().putAll(cacheKey,
+                Map.of("value", objectMapper.writeValueAsString(policy), "fetchedAtMs", String.valueOf(Instant.now().toEpochMilli())));
+            redisTemplate.expire(cacheKey, Duration.ofMillis(cacheProperties.ttlMs()));
+            cacheFilled = true;
             return policy;
-        } catch (final RuntimeException failure) {
+        } finally {
             try {
                 runForLong(redisTemplate, releaseLockScript, List.of(lockKey), token);
-            } catch (final RuntimeException releaseFailure) {
-                failure.addSuppressed(releaseFailure);
+            } catch (final RuntimeException exception) {
+                if (cacheFilled) {
+                    throw exception;
+                }
+                final String cause = exception.getClass().getSimpleName();
+                log.atWarn().addKeyValue("couponId", couponId).addKeyValue("cause", cause)
+                    .log("[COUPON] 발급 정책 캐시의 락 해제에 실패했습니다. couponId={}, cause={}", couponId, cause);
             }
-            throw failure;
         }
     }
 

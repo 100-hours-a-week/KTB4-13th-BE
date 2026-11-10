@@ -3,6 +3,8 @@ package com.book.core.recommendation.infrastructure.client.ai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.startsWith;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
@@ -11,12 +13,20 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
+import com.book.core.onboarding.application.result.OwnedBook;
+import com.book.core.onboarding.application.result.RecommendationHistory;
+import com.book.core.onboarding.application.usecase.GetRecommendationHistoryUseCase;
 import com.book.core.recommendation.application.command.RecommendationFeedSort;
 import com.book.core.recommendation.application.command.RecommendationFeedSurface;
 import com.book.core.recommendation.application.port.RecommendationFeedRequest;
 import com.book.core.recommendation.application.port.RecommendationFeedResult;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -30,13 +40,24 @@ class RecommendationFeedClientImplTest {
     private static final String SERVICE_TOKEN = "super-secret-feed-token";
     private static final String BASE_URL = "http://ai.internal:8000";
 
+    private final GetAiBookIdentifiersUseCase identifiers = mock(GetAiBookIdentifiersUseCase.class);
+    private final GetRecommendationHistoryUseCase history = mock(GetRecommendationHistoryUseCase.class);
+
+    @BeforeEach
+    void resolveIsbn() {
+        when(history.execute(42L)).thenReturn(RecommendationHistory.NOT_CONSENTED);
+        when(identifiers.findBookIds(org.mockito.ArgumentMatchers.anyList())).thenReturn(Map.of("9788900000066", 3310L));
+    }
+
     @Test
     void Authorization_Bearer_header를_포함한다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
-        server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
+        server
+            .expect(MockRestRequestMatchers
+                .requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15&purchased_isbns=&library_isbns="))
             .andExpect(method(HttpMethod.GET)).andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN))
             .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
 
@@ -49,9 +70,11 @@ class RecommendationFeedClientImplTest {
     void surface_home에서는_cursor가_없으면_전달하지_않는다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
-        server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
+        server
+            .expect(MockRestRequestMatchers
+                .requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15&purchased_isbns=&library_isbns="))
             .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
 
         client.getFeed(homeRequest(null));
@@ -63,9 +86,11 @@ class RecommendationFeedClientImplTest {
     void cursor가_있으면_그대로_전달한다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
-        server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15&cursor=abc"))
+        server
+            .expect(MockRestRequestMatchers
+                .requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15&cursor=abc&purchased_isbns=&library_isbns="))
             .andExpect(queryParam("cursor", "abc")).andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
 
         client.getFeed(homeRequest("abc"));
@@ -77,7 +102,7 @@ class RecommendationFeedClientImplTest {
     void recommend_more_조건을_AI_snake_case_query로_전달한다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
         server.expect(MockRestRequestMatchers.requestTo(startsWith(BASE_URL + "/recommendations/feed?")))
             .andExpect(queryParam("user_id", "42")).andExpect(queryParam("surface", "recommend_more")).andExpect(queryParam("size", "20"))
@@ -96,11 +121,11 @@ class RecommendationFeedClientImplTest {
     void recommend_more에서_값이_없는_조건은_query로_보내지_않는다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
         server
-            .expect(
-                MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=recommend_more&size=15&sort=match"))
+            .expect(MockRestRequestMatchers.requestTo(
+                BASE_URL + "/recommendations/feed?user_id=42&surface=recommend_more&size=15&sort=match&purchased_isbns=&library_isbns="))
             .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
 
         client.getFeed(new RecommendationFeedRequest(42L, RecommendationFeedSurface.RECOMMEND_MORE, 15, null, RecommendationFeedSort.MATCH,
@@ -113,9 +138,11 @@ class RecommendationFeedClientImplTest {
     void 정상_응답의_items_nextCursor_coldStart를_매핑한다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
-        server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
+        server
+            .expect(MockRestRequestMatchers
+                .requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15&purchased_isbns=&library_isbns="))
             .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
 
         final RecommendationFeedResult result = client.getFeed(homeRequest(null));
@@ -123,7 +150,6 @@ class RecommendationFeedClientImplTest {
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).bookId()).isEqualTo(3310L);
         assertThat(result.items().get(0).title()).isEqualTo("아무튼, 산");
-        assertThat(result.items().get(0).inStock()).isTrue();
         assertThat(result.items().get(0).matchScore()).isEqualTo(84);
         assertThat(result.nextCursor()).isEqualTo("next-page");
         assertThat(result.coldStart()).isFalse();
@@ -134,9 +160,11 @@ class RecommendationFeedClientImplTest {
     void 빈_목록도_정상_응답으로_처리한다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
-        server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
+        server
+            .expect(MockRestRequestMatchers
+                .requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15&purchased_isbns=&library_isbns="))
             .andRespond(withSuccess("{\"message\":\"feed_success\",\"data\":{\"items\":[],\"next_cursor\":null,\"cold_start\":false}}",
                 MediaType.APPLICATION_JSON));
 
@@ -150,9 +178,11 @@ class RecommendationFeedClientImplTest {
     void cold_start가_true여도_정상_응답으로_처리한다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
-        server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
+        server
+            .expect(MockRestRequestMatchers
+                .requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15&purchased_isbns=&library_isbns="))
             .andRespond(withSuccess("{\"message\":\"feed_success\",\"data\":{\"items\":[],\"next_cursor\":null,\"cold_start\":true}}",
                 MediaType.APPLICATION_JSON));
 
@@ -165,9 +195,11 @@ class RecommendationFeedClientImplTest {
     void X_Degraded_헤더가_있으면_degraded로_전달한다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
-        server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
+        server
+            .expect(MockRestRequestMatchers
+                .requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15&purchased_isbns=&library_isbns="))
             .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON).header("X-Degraded", "rule-only"));
 
         final RecommendationFeedResult result = client.getFeed(homeRequest(null));
@@ -199,7 +231,7 @@ class RecommendationFeedClientImplTest {
     void 연결_실패는_AI_FEED_TIMEOUT으로_변환한다() {
         final RestClient.Builder builder =
             RestClient.builder().baseUrl("http://127.0.0.1:1").defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN);
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
         assertThatThrownBy(() -> client.getFeed(homeRequest(null))).isInstanceOf(CoreException.class)
             .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_FEED_TIMEOUT));
@@ -209,20 +241,47 @@ class RecommendationFeedClientImplTest {
     void 예외_메시지에_service_token_원문을_노출하지_않는다() {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
-        server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
+        server
+            .expect(MockRestRequestMatchers
+                .requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15&purchased_isbns=&library_isbns="))
             .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
 
         assertThatThrownBy(() -> client.getFeed(homeRequest(null))).hasMessageNotContaining(SERVICE_TOKEN);
     }
 
+    @Test
+    void 인코딩한_요청_크기를_맞추고_구매와_도서관을_통틀어_가장_오래된_책부터_제외한다() {
+        final LocalDateTime date = LocalDateTime.of(2026, 10, 21, 0, 0);
+        when(history.execute(42L)).thenReturn(new RecommendationHistory(true, List.of(new OwnedBook("9788900000011", date, true),
+            new OwnedBook("9788900000042", date.minusDays(1), false), new OwnedBook("9788900000028", date.minusDays(2), true))));
+        final RestClient.Builder builder = restClientBuilder();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 367);
+        server
+            .expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"
+                + "&purchased_isbns=9788900000011&library_isbns=9788900000042"))
+            .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
+        server
+            .expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"
+                + "&cursor=a%2B%2F%3D&purchased_isbns=9788900000011&library_isbns=9788900000042"))
+            .andRespond(withSuccess(successBody(), MediaType.APPLICATION_JSON));
+
+        client.getFeed(homeRequest(null));
+        client.getFeed(homeRequest("a+/="));
+
+        server.verify();
+    }
+
     private void assertErrorMapping(final HttpStatus status, final ErrorCode expected) {
         final RestClient.Builder builder = restClientBuilder();
         final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build());
+        final RecommendationFeedClientImpl client = new RecommendationFeedClientImpl(builder.build(), identifiers, history, 4096);
 
-        server.expect(MockRestRequestMatchers.requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15"))
+        server
+            .expect(MockRestRequestMatchers
+                .requestTo(BASE_URL + "/recommendations/feed?user_id=42&surface=home&size=15&purchased_isbns=&library_isbns="))
             .andRespond(withStatus(status));
 
         assertThatThrownBy(() -> client.getFeed(homeRequest(null))).isInstanceOf(CoreException.class)
@@ -242,7 +301,7 @@ class RecommendationFeedClientImplTest {
               "data": {
                 "items": [
                   {
-                    "book_id": 3310,
+                    "isbn": "9788900000066",
                     "title": "아무튼, 산",
                     "author": "장보영",
                     "price": 9900,

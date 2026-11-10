@@ -105,7 +105,7 @@ public class ChatSessionService {
         List<OwnedCouponResult> ownedCoupons = List.of();
         BigDecimal pointBalance = BigDecimal.ZERO;
         if (!attempt.agentPrepared()) {
-            ownedCoupons = coupons.findAvailable(command.userId(), LocalDateTime.now(clock));
+            ownedCoupons = coupons.findUsable(command.userId(), LocalDateTime.now(clock));
             pointBalance = points.findOrZero(command.userId());
         }
         final AgentPreparedTurn prepared = prepareAgent.execute(command, attempt.generation(), ownedCoupons, pointBalance);

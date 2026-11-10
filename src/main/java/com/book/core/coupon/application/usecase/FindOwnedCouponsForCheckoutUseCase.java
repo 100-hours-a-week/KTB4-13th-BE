@@ -32,8 +32,8 @@ public class FindOwnedCouponsForCheckoutUseCase {
     }
 
     @Transactional(readOnly = true)
-    public List<OwnedCouponResult> findAvailable(final Long userId, final LocalDateTime now) {
-        return toResults(ownedCouponRepository.findAvailable(userId, now));
+    public List<OwnedCouponResult> findUsable(final Long userId, final LocalDateTime now) {
+        return toResults(ownedCouponRepository.findUsable(userId, now));
     }
 
     private List<OwnedCouponResult> toResults(final List<OwnedCoupon> owned) {

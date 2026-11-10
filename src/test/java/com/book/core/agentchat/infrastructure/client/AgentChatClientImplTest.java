@@ -2,7 +2,10 @@ package com.book.core.agentchat.infrastructure.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.ExpectedCount.twice;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
@@ -11,6 +14,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import com.book.common.config.ai.AiChatHttpClient;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
@@ -23,7 +27,6 @@ import com.book.core.onboarding.application.usecase.GetRecommendationHistoryUseC
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
 import com.book.core.recommendation.application.command.RecommendationSpec;
 import com.book.core.recommendation.application.command.RecommendationTurn;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,18 +36,21 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.ObjectMapper;
 
 class AgentChatClientImplTest {
     private final RestClient.Builder builder = RestClient.builder().baseUrl("https://ai.invalid");
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     private final GetAiBookIdentifiersUseCase identifiers = mock(GetAiBookIdentifiersUseCase.class);
     private final GetRecommendationHistoryUseCase history = mock(GetRecommendationHistoryUseCase.class);
-    private final AgentChatClientImpl client = new AgentChatClientImpl(builder.build(), new AgentChatProperties(true),
+    private final AiChatHttpClient http = mock(AiChatHttpClient.class);
+    private final AgentChatClientImpl client = new AgentChatClientImpl(http, new AgentChatProperties(true),
         new AgentChatExternalMapper(identifiers), identifiers, history, new ObjectMapper());
     private final ChatRecommendationCommand command = new ChatRecommendationCommand(7L, true, Map.of(), "1번 5권 담아줘",
         List.of(new RecommendationTurn("user", "추천"), new RecommendationTurn("assistant", "추천합니다")), List.of());
@@ -54,6 +60,7 @@ class AgentChatClientImplTest {
 
     @BeforeEach
     void prepareCatalogAndHistory() {
+        when(http.before(anyLong())).thenReturn(builder.build());
         when(identifiers.findUnambiguousIsbns(List.of("9788900000011"))).thenReturn(Set.of("9788900000011"));
         when(history.execute(7L)).thenReturn(RecommendationHistory.NOT_CONSENTED);
     }
@@ -119,6 +126,9 @@ class AgentChatClientImplTest {
         final List<String> deltas = new ArrayList<>();
         assertThat(client.chat(command, 8L, 19L, context, deltas::add).reply()).isEqualTo("새 답변");
         assertThat(deltas).containsExactly("새 답변");
+        final ArgumentCaptor<Long> deadline = ArgumentCaptor.forClass(Long.class);
+        verify(http, times(2)).before(deadline.capture());
+        assertThat(deadline.getAllValues()).containsOnly(deadline.getValue());
         server.verify();
     }
 
@@ -143,7 +153,7 @@ class AgentChatClientImplTest {
 
     @Test
     void 배포_확인_전_기본값은_비활성이고_호출을_허용하지_않는다() {
-        final AgentChatClientImpl disabled = new AgentChatClientImpl(builder.build(), new AgentChatProperties(false),
+        final AgentChatClientImpl disabled = new AgentChatClientImpl(http, new AgentChatProperties(false),
             new AgentChatExternalMapper(identifiers), identifiers, history, new ObjectMapper());
         assertThat(disabled.enabled()).isFalse();
         assertThatThrownBy(() -> disabled.chat(command, 8L, 19L, context)).isInstanceOf(IllegalStateException.class);

@@ -61,7 +61,7 @@ public interface ChatSessionControllerSpec {
             description = "중복 키 충돌, 처리 중, 시도 만료 또는 CONCURRENT_CHANGE 버전 경합"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "AI 호출 제한, Retry-After 제공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "502", description = "AI 응답 또는 인증 오류"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI 일시 불가, Retry-After 제공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI 일시 불가 또는 SSE 처리 포화, Retry-After 제공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "504", description = "AI 시간 초과")})
     ResponseEntity<ApiResponse<ChatReplyResponse>> send(@Parameter(hidden = true) Long userId, @Positive Long sessionId,
         @Valid SendChatMessageRequest request);

@@ -91,15 +91,19 @@ class UserTest {
         recoverable.requestUserDeletion(requestedAt);
         recoverable.requestUserDeletion(requestedAt.plusDays(1));
 
+        assertThat(recoverable.isWithdrawalConfirmed(requestedAt.plusDays(7).minusNanos(1))).isFalse();
+
         recoverable.recoverWithdrawal(requestedAt.plusDays(7).minusNanos(1));
 
         assertThat(recoverable.isWithdrawalRequested()).isFalse();
+        assertThat(recoverable.isWithdrawalConfirmed(requestedAt.plusDays(30))).isFalse();
         final User expired = User.restore(43L, "북적이");
         expired.requestUserDeletion(requestedAt);
         assertThatThrownBy(() -> expired.recoverWithdrawal(requestedAt.plusDays(7))).isInstanceOfSatisfying(BusinessException.class,
             (final var exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.USER_WITHDRAWAL_PENDING));
         assertThat(expired.deleteRequestedAt()).isEqualTo(requestedAt);
         assertThat(expired.isWithdrawalCompletable(requestedAt.plusDays(7))).isTrue();
+        assertThat(expired.isWithdrawalConfirmed(requestedAt.plusDays(7))).isTrue();
     }
 
     @Test
@@ -112,5 +116,6 @@ class UserTest {
         assertThat(user.nickname()).isEqualTo("탈퇴한 회원");
         assertThat(user.isActive()).isFalse();
         assertThat(user.isWithdrawalCompletable(LocalDateTime.of(2030, 2, 1, 0, 0))).isFalse();
+        assertThat(user.isWithdrawalConfirmed(LocalDateTime.of(2030, 2, 1, 0, 0))).isTrue();
     }
 }

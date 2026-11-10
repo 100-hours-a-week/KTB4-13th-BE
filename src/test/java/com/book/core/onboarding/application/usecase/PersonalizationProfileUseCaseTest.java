@@ -10,6 +10,7 @@ import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.ProfileHistoryRepositoryPort;
 import com.book.core.onboarding.application.result.OwnedBook;
 import com.book.core.onboarding.application.port.ProfileMemoryRepositoryPort;
+import com.book.core.onboarding.application.port.ProfileSyncJobRepositoryPort;
 import com.book.core.onboarding.application.port.TermRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
@@ -20,8 +21,10 @@ import com.book.core.onboarding.domain.TermType;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
 import com.book.core.onboarding.domain.UserTermAgreement;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +40,8 @@ class PersonalizationProfileUseCaseTest {
     private final FakeOptionRepository optionRepository = new FakeOptionRepository();
     private final FakeBookRepository bookRepository = new FakeBookRepository();
     private final FakeProfileClient profileClient = new FakeProfileClient();
+    private final FakeProfileJobs profileJobs = new FakeProfileJobs();
+    private static final Instant NOW = Instant.parse("2026-11-10T01:00:00Z");
     private final List<AiPersonalizationProfileMemory> memories = new ArrayList<>();
     private AiPersonalizationProfileHistory history = AiPersonalizationProfileHistory.EMPTY;
     private final PersonalizationProfileUseCase useCase = new PersonalizationProfileUseCase(termRepository, agreementRepository,
@@ -65,7 +70,7 @@ class PersonalizationProfileUseCaseTest {
             public List<Long> findChangedUserIds(final Instant from, final Instant before) {
                 throw new UnsupportedOperationException();
             }
-        });
+        }, profileJobs, Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
     void 개인화_추천에_동의했으면_같은_요청_데이터로_AI_취향_프로필_갱신을_요청한다() {
@@ -79,6 +84,30 @@ class PersonalizationProfileUseCaseTest {
 
         assertThat(profileClient.updateRequests).singleElement().isEqualTo(
             new AiPersonalizationProfileRequest(USER_ID, List.of("아침, 하루를 시작할 때"), List.of(), List.of(), List.of(), List.of(100L)));
+    }
+
+    @Test
+    void 갱신_요청_중_동의가_철회되면_갱신_뒤_삭제_작업을_다시_예약해_프로필이_남지_않게_한다() {
+        termRepository.activeTerm = personalizationTerm();
+        agreementRepository.agreed = true;
+        profileClient.onUpdate = () -> agreementRepository.agreed = false;
+
+        useCase.executeUpdate(USER_ID);
+
+        assertThat(profileClient.updateRequests).hasSize(1);
+        assertThat(profileJobs.enqueued).containsExactly(USER_ID);
+    }
+
+    @Test
+    void 갱신_뒤에도_동의가_유지되면_작업을_다시_예약하지_않고_삭제는_AI에_바로_요청한다() {
+        termRepository.activeTerm = personalizationTerm();
+        agreementRepository.agreed = true;
+
+        useCase.executeUpdate(USER_ID);
+        useCase.executeDelete(USER_ID);
+
+        assertThat(profileJobs.enqueued).isEmpty();
+        assertThat(profileClient.deletedUserIds).containsExactly(USER_ID);
     }
 
     @Test
@@ -220,10 +249,49 @@ class PersonalizationProfileUseCaseTest {
 
     private static class FakeProfileClient implements AiPersonalizationProfileClient {
         final List<AiPersonalizationProfileRequest> updateRequests = new ArrayList<>();
+        final List<Long> deletedUserIds = new ArrayList<>();
+        Runnable onUpdate = () -> {
+        };
 
         @Override
         public void updateProfile(final AiPersonalizationProfileRequest request) {
             updateRequests.add(request);
+            onUpdate.run();
+        }
+
+        @Override
+        public void deleteProfile(final Long userId) {
+            deletedUserIds.add(userId);
+        }
+    }
+
+    private static class FakeProfileJobs implements ProfileSyncJobRepositoryPort {
+        final List<Long> enqueued = new ArrayList<>();
+
+        @Override
+        public void enqueue(final Long userId, final Instant availableAt) {
+            assertThat(availableAt).isEqualTo(NOW);
+            enqueued.add(userId);
+        }
+
+        @Override
+        public Optional<Job> findNext(final Instant now) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void complete(final Job job) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void retry(final Job job, final Instant availableAt) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void fail(final Job job) {
+            throw new UnsupportedOperationException();
         }
     }
 }

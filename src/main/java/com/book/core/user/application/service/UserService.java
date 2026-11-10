@@ -2,6 +2,7 @@ package com.book.core.user.application.service;
 
 import com.book.core.library.application.usecase.DeleteAllLibraryBooksUseCase;
 import com.book.core.onboarding.application.usecase.DeleteUserOnboardingDataUseCase;
+import com.book.core.onboarding.application.usecase.RequestProfileSyncUseCase;
 import com.book.core.user.application.command.UpdateMyInfoCommand;
 import com.book.core.user.application.result.GetMyInfoResult;
 import com.book.core.user.application.usecase.CompleteUserDeletionUseCase;
@@ -31,6 +32,7 @@ public class UserService {
     private final DeleteUserOnboardingDataUseCase deleteUserOnboardingDataUseCase;
     private final DeleteAllLibraryBooksUseCase deleteAllLibraryBooksUseCase;
     private final CompleteUserDeletionUseCase completeUserDeletionUseCase;
+    private final RequestProfileSyncUseCase requestProfileSyncUseCase;
 
     public GetMyInfoResult getMyInfo(final Long userId) {
         return getMyInfoUseCase.execute(userId);
@@ -56,6 +58,8 @@ public class UserService {
                     skipped++;
                     continue;
                 }
+                // 복구 기간이 끝나 되돌릴 수 없으므로 AI 프로필 삭제를 먼저 예약하고, AI 장애는 예약 작업이 회원 ID로 재시도합니다.
+                requestProfileSyncUseCase.execute(userId);
                 unlinkWithdrawalProvidersUseCase.execute(unlinkProviders.orElseThrow());
                 deleteUserOnboardingDataUseCase.execute(userId);
                 deleteAllLibraryBooksUseCase.execute(userId);

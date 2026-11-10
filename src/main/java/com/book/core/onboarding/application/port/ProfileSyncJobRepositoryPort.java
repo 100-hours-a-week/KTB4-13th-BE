@@ -13,6 +13,9 @@ public interface ProfileSyncJobRepositoryPort {
 
     void retry(Job job, Instant availableAt);
 
+    /** 자동 재시도로 해결되지 않는 작업을 지우지 않고 보관합니다. 같은 회원의 새 예약이나 운영자의 재개로 다시 처리됩니다. */
+    void fail(Job job);
+
     record Job(Long userId, UUID revision, int attempts) {
     }
 }

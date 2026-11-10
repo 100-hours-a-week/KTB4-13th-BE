@@ -11,6 +11,7 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -37,8 +38,26 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
                 AiProfileRequest.from(request, idempotencyKeyGenerator.generate(request), identifiers.findIsbns(request.likedBookIds())))
                 .retrieve().toBodilessEntity();
         } catch (final RestClientException exception) {
-            throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
+            throw failureOf(exception);
         }
+    }
+
+    @Override
+    public void deleteProfile(final Long userId) {
+        try {
+            restClient.delete().uri(uriBuilder -> uriBuilder.path(PROFILE_PATH).queryParam("user_id", userId).build())
+                .header(REQUEST_ID_HEADER, currentRequestId()).retrieve().toBodilessEntity();
+        } catch (final RestClientException exception) {
+            throw failureOf(exception);
+        }
+    }
+
+    /** 400은 같은 요청을 다시 보내도 결과가 같으므로 재시도 대상인 일반 실패와 구분합니다. */
+    private static CoreException failureOf(final RestClientException exception) {
+        if (exception instanceof final HttpClientErrorException.BadRequest badRequest) {
+            return new CoreException(ErrorCode.AI_SERVICE_INVALID_REQUEST, badRequest);
+        }
+        return new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
     }
 
     private String currentRequestId() {

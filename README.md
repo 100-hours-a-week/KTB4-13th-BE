@@ -93,17 +93,21 @@ Kafka 연결을 켜면 `book.profile-sync.v1`에서 작업 ID가 소비된 뒤 A
 로컬에서만 사용하는 단일 브로커는 다음과 같이 시작합니다.
 
 ```bash
-docker run -d --name book-profile-kafka -p 127.0.0.1:9092:9092 apache/kafka:4.1.2
+docker compose -f compose.kafka.yml up -d
 # 브로커가 기동된 뒤 실행합니다.
-docker exec book-profile-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+docker compose -f compose.kafka.yml exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
   --create --if-not-exists --topic book.profile-sync.v1 --partitions 1 --replication-factor 1 \
   --config retention.ms=86400000
 PROFILE_SYNC_KAFKA_ENABLED=true KAFKA_BOOTSTRAP_SERVERS=localhost:9092 ./gradlew bootRun
 ```
 
+Kafka 연결·발행·소비 설정은 `profile-kafka.yml`에서 관리합니다.
+같은 환경의 인스턴스는 동일한 `PROFILE_SYNC_KAFKA_GROUP_ID`를 사용합니다.
 연결은 기본적으로 꺼져 있으며, 이 경우 MySQL 작업자가 대기 작업을 직접 처리합니다.
 운영에서는 토픽을 미리 만들고 복제·접근 권한·보관 정책을 설정한 뒤, 같은 DB를 사용하는 인스턴스에 동일하게 연결을 켭니다.
 브로커 장애 시 온보딩 저장은 성공하고, 갱신 작업은 DB에 남아 약 1분 후 다시 발행할 수 있습니다.
+소비 중 DB 반영이 실패하면 1초 간격으로 세 번 재시도합니다.
+그래도 실패하면 오류를 기록하고, MySQL에 남은 작업을 다음 발행 주기에 다시 전달합니다.
 
 ## 검증
 

@@ -4,23 +4,7 @@ spring:
   profiles:
     default: local
   config:
-    import: classpath:persistence.yml,classpath:ai.yml
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      acks: all
-      properties:
-        enable.idempotence: true
-        max.block.ms: 2000
-        request.timeout.ms: 5000
-        delivery.timeout.ms: 10000
-    consumer:
-      auto-offset-reset: earliest
-      enable-auto-commit: false
-      properties:
-        allow.auto.create.topics: false
-    listener:
-      ack-mode: record
+    import: classpath:persistence.yml,classpath:ai.yml,classpath:profile-kafka.yml
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -54,8 +38,6 @@ sentry:
   traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}
 
 app:
-  profile-sync:
-    kafka-enabled: ${PROFILE_SYNC_KAFKA_ENABLED:false}
   cors:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
 

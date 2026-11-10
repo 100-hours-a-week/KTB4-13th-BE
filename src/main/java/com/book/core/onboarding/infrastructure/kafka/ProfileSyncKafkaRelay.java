@@ -4,19 +4,12 @@ import com.book.core.onboarding.application.port.ProfileSyncJobRepositoryPort;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 
-@Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(name = "app.profile-sync.kafka-enabled", havingValue = "true")
 @RequiredArgsConstructor
 @Slf4j
 class ProfileSyncKafkaRelay {
@@ -26,11 +19,6 @@ class ProfileSyncKafkaRelay {
     private final ProfileSyncJobRepositoryPort jobs;
     private final KafkaTemplate<String, String> kafka;
     private final Clock clock;
-
-    @Bean(defaultCandidate = false, destroyMethod = "shutdown")
-    ScheduledExecutorService profileKafkaExecutor() {
-        return Executors.newSingleThreadScheduledExecutor();
-    }
 
     // shortcut: 주기마다 한 건씩 발행하고, 적체가 반복되면 여러 건을 한 번에 선점합니다.
     @Scheduled(fixedDelay = 1000, scheduler = "profileKafkaExecutor")
@@ -56,7 +44,7 @@ class ProfileSyncKafkaRelay {
         log.atWarn().addKeyValue("errorType", error.getClass().getSimpleName()).log("[PROFILE_SYNC] Kafka 발행 실패로 전달 기한 뒤 다시 시도합니다.");
     }
 
-    @KafkaListener(topics = TOPIC, groupId = "book-profile-sync-v1")
+    @KafkaListener(topics = TOPIC, containerFactory = "profileSyncKafkaListenerFactory")
     void receive(final String message) {
         final UUID revision;
         try {

@@ -3,6 +3,8 @@ package com.book.core.onboarding.infrastructure.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -29,11 +31,13 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.junit.jupiter.Container;
@@ -66,7 +70,7 @@ class ProfileSyncKafkaIntegrationTest {
     RecordPersonalizationAgreementUseCase agree;
     @Autowired
     SaveOnboardingBooksUseCase saveBooks;
-    @Autowired
+    @MockitoSpyBean
     ProfileSyncJobRepositoryPort jobs;
     @Autowired
     ProcessProfileSyncJobUseCase processJob;
@@ -119,8 +123,18 @@ class ProfileSyncKafkaIntegrationTest {
             docker.unpauseContainerCmd(kafka.getContainerId()).exec();
         }
 
-        jdbc.update("UPDATE profile_sync_jobs SET kafka_publish_at = '2000-01-01' WHERE user_id = ? AND kafka_publish_at IS NOT NULL",
-            userId);
+        final UUID currentRevision = UUID.fromString(revision(userId));
+        doThrow(new DataAccessResourceFailureException("test database failure"),
+            new DataAccessResourceFailureException("test database failure"),
+            new DataAccessResourceFailureException("test database failure"),
+            new DataAccessResourceFailureException("test database failure")).doCallRealMethod().when(jobs).markReady(currentRevision);
+
+        releasePublicationLease(userId);
+        await(() -> output.getAll().contains("Kafka 소비 재시도를 소진했습니다."));
+        assertThat(jobs.findNext(clock.instant())).isEmpty();
+        verify(jobs, times(4)).markReady(currentRevision);
+
+        releasePublicationLease(userId);
         await(() -> jobs.findNext(clock.instant()).isPresent());
 
         final String readyRevision = revision(userId);
@@ -128,6 +142,11 @@ class ProfileSyncKafkaIntegrationTest {
         verify(ai).updateProfile(argThat(request -> userId.equals(request.userId())));
         jobs.markReady(UUID.fromString(readyRevision));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs", Integer.class)).isZero();
+    }
+
+    private void releasePublicationLease(final Long userId) {
+        jdbc.update("UPDATE profile_sync_jobs SET kafka_publish_at = '2000-01-01' WHERE user_id = ? AND kafka_publish_at IS NOT NULL",
+            userId);
     }
 
     private String revision(final Long userId) {

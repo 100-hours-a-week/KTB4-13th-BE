@@ -20,8 +20,9 @@ class ShelfPhotoStorageClientImplTest {
     private final ShelfPhotoStorageClientImpl client =
         new ShelfPhotoStorageClientImpl(presigner, new ShelfPhotoProperties("book-photos", "ap-northeast-2"));
 
+    /** 서명된 주소의 만료 시간과 서명 헤더만 확인합니다. 다른 형식·크기 업로드를 S3가 실제로 거부하는지는 실제 버킷에서 확인해야 합니다. */
     @Test
-    void 업로드_주소는_5분_동안_형식과_크기를_서명해_다른_파일을_올리면_S3가_거부하게_한다() {
+    void 업로드_주소는_5분_만료로_Content_Type과_Content_Length를_서명_헤더에_포함한다() {
         final Instant before = Instant.now();
 
         final ShelfPhotoUploadResult upload = client.presignUpload(PHOTO_KEY, "image/jpeg", 1_048_576L);

@@ -39,7 +39,7 @@ public class SearchBooksUseCase {
             productId = product.productId();
             inStock = product.inStock();
         }
-        return new SearchBookItemResult(item.bookId(), productId, item.title(), item.author(), item.publisher(), item.price(), inStock,
-            item.coverUrl());
+        return new SearchBookItemResult(item.bookId(), item.isbn(), productId, item.title(), item.author(), item.publisher(), item.price(),
+            inStock, item.coverUrl());
     }
 }

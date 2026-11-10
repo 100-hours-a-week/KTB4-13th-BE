@@ -94,8 +94,8 @@ class BookSearchClientImplTest {
 
         final BookSearchResult result = client.search(popularRequest());
 
-        assertThat(result.items())
-            .containsExactly(new BookSearchItem(2077L, "여행의 이유", "김영하", "문학동네", new BigDecimal("13500"), "https://example.com/2077.jpg"));
+        assertThat(result.items()).containsExactly(
+            new BookSearchItem(2077L, "9788900000073", "여행의 이유", "김영하", "문학동네", new BigDecimal("13500"), "https://example.com/2077.jpg"));
         assertThat(result.nextCursor()).isEqualTo("next-page");
         assertThat(result.fallbackMessage()).isNull();
         assertThat(result.degraded()).isNull();

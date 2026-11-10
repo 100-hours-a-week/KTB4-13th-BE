@@ -24,6 +24,11 @@ import com.book.core.agentchat.application.usecase.GetChatSessionsUseCase;
 import com.book.core.agentchat.application.usecase.PrepareAgentTurnUseCase;
 import com.book.core.recommendation.application.result.ChatRecommendationAiOutcome;
 import com.book.core.recommendation.application.usecase.ChatRecommendationUseCase;
+import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
+import com.book.core.coupon.application.usecase.FindOwnedCouponsForCheckoutUseCase;
+import com.book.core.point.application.usecase.GetPointBalanceUseCase;
+import com.book.core.product.application.usecase.GetRecommendationProductsUseCase;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -36,13 +41,15 @@ class ChatSessionServiceTest {
     private final FailChatRequestUseCase fail = mock(FailChatRequestUseCase.class);
     private final ChatSessionService service =
         new ChatSessionService(mock(CreateChatSessionUseCase.class), mock(GetChatHistoryUseCase.class), mock(GetChatSessionsUseCase.class),
-            begin, recommend, complete, fail, mock(PrepareAgentTurnUseCase.class), mock(CallAgentChatUseCase.class));
+            begin, recommend, complete, fail, mock(PrepareAgentTurnUseCase.class), mock(CallAgentChatUseCase.class),
+            mock(FindOwnedCouponsForCheckoutUseCase.class), mock(GetPointBalanceUseCase.class), mock(GetAiBookIdentifiersUseCase.class),
+            mock(GetRecommendationProductsUseCase.class), Clock.systemUTC());
     private final SendChatMessageCommand command = new SendChatMessageCommand(1L, 2L, "key", "질문", true, List.of());
 
     @Test
     void 저장된_성공_응답은_AI를_호출하지_않고_반환한다() {
         final ChatResponseSnapshot snapshot =
-            new ChatResponseSnapshot(1, Map.of(), "답변", List.of(), null, List.of(), false, null, List.of(), null);
+            new ChatResponseSnapshot(1, Map.of(), "답변", List.of(), null, List.of(), false, null, List.of(), null, null);
         when(begin.execute(command)).thenReturn(new ChatAttemptResult(3L, 1, null, snapshot, null, null, false));
         assertThat(service.send(command)).isSameAs(snapshot);
         verify(recommend, never()).execute(any());

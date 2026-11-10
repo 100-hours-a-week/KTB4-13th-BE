@@ -10,6 +10,7 @@ import com.book.core.agentchat.application.port.ChatResponseCodec;
 import com.book.core.agentchat.application.result.AgentAction;
 import com.book.core.agentchat.application.result.AgentButton;
 import com.book.core.agentchat.application.result.AgentChatContext;
+import com.book.core.agentchat.application.result.AgentCheckout;
 import com.book.core.agentchat.application.result.AgentChosenBook;
 import com.book.core.agentchat.application.result.AgentDecision;
 import com.book.core.agentchat.application.result.AgentExecutionSummary;
@@ -21,6 +22,8 @@ import com.book.core.agentchat.domain.CartChangeOperation;
 import com.book.core.agentchat.domain.ChatMessage;
 import com.book.core.agentchat.domain.ChatRequest;
 import com.book.core.agentchat.domain.ChatSession;
+import com.book.core.coupon.application.result.OwnedCouponResult;
+import com.book.core.product.application.result.RecommendationProductResult;
 import com.book.core.recommendation.application.result.ChatRecommendationAiOutcome;
 import com.book.core.recommendation.application.result.ChatRecommendationResult;
 import com.book.core.recommendation.application.result.RecommendationCardResult;
@@ -73,7 +76,8 @@ public class CompleteChatRequestUseCase {
     /** 장바구니 변경·제안·최종 화면·발화 쌍을 하나의 완료 트랜잭션으로 확정합니다. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ChatResponseSnapshot executeAgent(final SendChatMessageCommand command, final long generation, final AgentDecision decision,
-        final AgentChatContext context, final Map<String, Object> previousSpec) {
+        final AgentChatContext context, final Map<String, RecommendationProductResult> newProducts,
+        final Map<String, Object> previousSpec) {
         final ChatSession session = chats.findSession(command.sessionId()).orElseThrow(() -> new CoreException(ErrorCode.CHAT_NOT_FOUND));
         session.requireOwner(command.userId());
         final ChatRequest request =
@@ -92,7 +96,7 @@ public class CompleteChatRequestUseCase {
             final List<RecommendationCardResult> cards = saveCards.execute(command.userId(), outcome.cards());
             response = ChatResponseSnapshot.agentRecommendation(ChatRecommendationResult.from(outcome, cards), decision.buttons());
         } else {
-            response = completeShop(command, request.id(), decision, context, previousSpec);
+            response = completeShop(command, request.id(), decision, context, newProducts, previousSpec);
         }
         final String payload = codec.encode(response);
         request.complete(generation, clock.instant());
@@ -103,9 +107,9 @@ public class CompleteChatRequestUseCase {
     }
 
     private ChatResponseSnapshot completeShop(final SendChatMessageCommand command, final Long requestId, final AgentDecision decision,
-        final AgentChatContext context, final Map<String, Object> spec) {
+        final AgentChatContext context, final Map<String, RecommendationProductResult> newProducts, final Map<String, Object> spec) {
         if (decision.selection() == null && decision.actions().isEmpty()) {
-            return ChatResponseSnapshot.shop(spec, decision.reply(), decision.buttons(), null);
+            return ChatResponseSnapshot.shop(spec, decision.reply(), decision.buttons(), null, null);
         }
         final List<CartChangeLine> lines = new ArrayList<>();
         try {
@@ -115,14 +119,16 @@ public class CompleteChatRequestUseCase {
                 }
             } else {
                 for (final AgentAction action : decision.actions()) {
-                    final AgentObservedProduct product = context.requireProduct(action.isbn());
                     if ("remove".equals(action.op())) {
+                        final AgentObservedProduct product = context.requireProduct(action.isbn());
                         if (product.quantity() == 0) {
                             return declined(spec, ErrorCode.CART_STATE_CHANGED);
                         }
                         lines.add(new CartChangeLine(CartChangeOperation.REMOVE, product.productId(), product.quantity(), null, null));
                     } else {
-                        lines.add(changeLine(product, action.quantity()));
+                        lines.add(context.findProduct(action.isbn())
+                            .map((final AgentObservedProduct product) -> changeLine(product, action.quantity()))
+                            .orElseGet(() -> addNewProduct(newProducts.get(action.isbn()), action.quantity())));
                     }
                 }
             }
@@ -141,15 +147,37 @@ public class CompleteChatRequestUseCase {
                 }
                 return button;
             }).toList();
-            return ChatResponseSnapshot.shop(spec, decision.reply(), buttons,
-                new AgentExecutionSummary(null, proposalId, "proposed", null));
+            return ChatResponseSnapshot.shop(spec, decision.reply(), buttons, new AgentExecutionSummary(null, proposalId, "proposed", null),
+                null);
         }
         final CartChangeResult result = executeCart.execute(command.userId(), prepareCart.prepareDirect(changes));
         if (result.rejection() != null) {
             return declined(spec, result.rejection());
         }
-        return ChatResponseSnapshot.shop(spec, decision.reply(), decision.buttons(),
-            new AgentExecutionSummary(result.executionId(), null, "applied", null));
+        final boolean addedBooks = lines.stream().anyMatch((final CartChangeLine line) -> line.operation() != CartChangeOperation.REMOVE);
+        final List<AgentButton> buttons = addedBooks ? decision.buttons()
+            : decision.buttons().stream().filter((final AgentButton button) -> !button.opensCheckout()).toList();
+        return ChatResponseSnapshot.shop(spec, decision.reply(), buttons,
+            new AgentExecutionSummary(result.executionId(), null, "applied", null), validCheckout(decision.checkout(), context, buttons));
+    }
+
+    private AgentCheckout validCheckout(final AgentCheckout checkout, final AgentChatContext context, final List<AgentButton> buttons) {
+        if (checkout == null || buttons.stream().noneMatch(AgentButton::opensCheckout) || checkout.usePoint().signum() < 0
+            || checkout.usePoint().compareTo(context.pointBalance()) > 0) {
+            return null;
+        }
+        if (checkout.useOwnedCouponId() != null
+            && context.ownedCoupons().stream().map(OwnedCouponResult::id).noneMatch(checkout.useOwnedCouponId()::equals)) {
+            return null;
+        }
+        return checkout;
+    }
+
+    private CartChangeLine addNewProduct(final RecommendationProductResult product, final int quantity) {
+        if (product == null) {
+            throw new CoreException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+        return new CartChangeLine(CartChangeOperation.ADD, product.productId(), 0, quantity, product.price());
     }
 
     private CartChangeLine changeLine(final AgentObservedProduct product, final int quantity) {
@@ -164,7 +192,8 @@ public class CompleteChatRequestUseCase {
     }
 
     private ChatResponseSnapshot declined(final Map<String, Object> spec, final ErrorCode error) {
-        return ChatResponseSnapshot.shop(spec, error.message(), List.of(), new AgentExecutionSummary(null, null, "rejected", error.name()));
+        return ChatResponseSnapshot.shop(spec, error.message(), List.of(), new AgentExecutionSummary(null, null, "rejected", error.name()),
+            null);
     }
 
 }

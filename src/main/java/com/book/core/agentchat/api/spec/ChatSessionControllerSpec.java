@@ -49,7 +49,8 @@ public interface ChatSessionControllerSpec {
     @Operation(summary = "대화 전송",
         description = "최근 20개 발화로 AI를 호출하고 같은 키의 성공 또는 실패를 재생합니다. "
             + "Accept: text/event-stream을 보내면 최대 60초 동안 delta({text})를 받은 뒤 기존 JSON 본문의 done 또는 error로 끝납니다. "
-            + "done은 저장 뒤 전송하며 쇼핑과 저장 응답 재생은 delta 없이 끝날 수 있습니다. " + "동시 전송 충돌 등 대화 처리 오류는 SSE에서 error 이벤트로 전달합니다.")
+            + "done은 저장 뒤 전송하며 쇼핑과 저장 응답 재생은 delta 없이 끝날 수 있습니다. " + "쇼핑 담기 성공 시 ORDER-001과 검증된 checkout을 반환할 수 있습니다. "
+            + "동시 전송 충돌 등 대화 처리 오류는 SSE에서 error 이벤트로 전달합니다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
             description = "완료 또는 저장 성공 재생. SSE는 delta 0회 이상과 done 또는 error 1회", useReturnTypeSchema = true,

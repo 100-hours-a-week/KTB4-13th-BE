@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 // @formatter:off
 public record BookSearchItem(
         Long bookId,
+        String isbn,
         String title,
         String author,
         String publisher,

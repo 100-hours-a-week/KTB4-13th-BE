@@ -3,6 +3,7 @@ package com.book.core.agentchat.infrastructure.client;
 import com.book.core.recommendation.application.command.RecommendationTurn;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -12,5 +13,6 @@ record AgentAiRequest(@JsonProperty("user_id") Long userId, boolean consented, M
     @JsonInclude(JsonInclude.Include.NON_NULL) @JsonProperty("idempotency_key") String idempotencyKey,
     @JsonProperty("conversation_id") String conversationId, @JsonProperty("user_context") Map<String, Boolean> userContext,
     @JsonProperty("context_cards") List<AgentAiContextCard> contextCards, @JsonProperty("focused_isbn") String focusedIsbn,
-    List<AgentAiCart> cart, List<AgentAiOffer> offers) {
+    List<AgentAiCart> cart, List<AgentAiOffer> offers, @JsonProperty("owned_coupons") List<AgentAiOwnedCoupon> ownedCoupons,
+    @JsonProperty("point_balance") BigDecimal pointBalance) {
 }

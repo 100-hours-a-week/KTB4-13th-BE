@@ -88,22 +88,23 @@ public class AgentChatClientImpl implements AgentChatClient {
         if (!recommendationOnly) {
             validateShoppingProducts(known);
             cart = known.stream().filter((final AgentObservedProduct product) -> product.quantity() > 0)
-                .map((final AgentObservedProduct product) -> new AgentAiCart(product.isbn(), product.title(), product.price(),
-                    product.quantity(), product.active() && product.stockQuantity() >= product.quantity()))
+                .map((final AgentObservedProduct product) -> new AgentAiCart(product.isbn(), product.productId(), product.title(),
+                    product.price(), product.quantity(), product.active() && product.stockQuantity() >= product.quantity()))
                 .toList();
             final Set<String> cardIsbns = cards.stream().map(AgentAiContextCard::isbn).collect(Collectors.toSet());
             offers = known.stream().filter((final AgentObservedProduct product) -> cardIsbns.contains(product.isbn()))
-                .map((final AgentObservedProduct product) -> new AgentAiOffer(product.isbn(), product.title(), product.price(),
-                    product.active() && product.stockQuantity() > 0, product.stockQuantity()))
+                .map((final AgentObservedProduct product) -> new AgentAiOffer(product.isbn(), product.productId(), product.title(),
+                    product.price(), product.active() && product.stockQuantity() > 0, product.stockQuantity()))
                 .toList();
             idempotencyKey = "chat_" + requestId;
         }
         final RecommendationHistory recommendationHistory = history.execute(command.userId());
         final List<RecommendationExclusion> exclusions =
             RecommendationExclusion.newestFirst(identifiers.findIsbns(command.excludeBookIds().reversed()), recommendationHistory.books());
-        final AgentAiRequest request = new AgentAiRequest(command.userId(), recommendationHistory.consented(), command.spec(),
-            command.message(), command.recentTurns(), List.of(), List.of(), List.of(), idempotencyKey, "cv_" + sessionId,
-            Map.of("logged_in", true), cards, null, cart, offers);
+        final AgentAiRequest request =
+            new AgentAiRequest(command.userId(), recommendationHistory.consented(), command.spec(), command.message(),
+                command.recentTurns(), List.of(), List.of(), List.of(), idempotencyKey, "cv_" + sessionId, Map.of("logged_in", true), cards,
+                null, cart, offers, context.ownedCoupons().stream().map(AgentAiOwnedCoupon::from).toList(), context.pointBalance());
         return attempt(request, exclusions, false, onDelta, AiChatHttpClient.deadline());
     }
 
@@ -121,7 +122,7 @@ public class AgentChatClientImpl implements AgentChatClient {
             RecommendationExclusion.isbnsFrom(selected, RecommendationExclusionSource.PURCHASE),
             RecommendationExclusion.isbnsFrom(selected, RecommendationExclusionSource.LIBRARY), request.idempotencyKey(),
             request.conversationId(), request.userContext(), request.contextCards(), request.focusedIsbn(), request.cart(),
-            request.offers());
+            request.offers(), request.ownedCoupons(), request.pointBalance());
         try {
             return json.writeValueAsBytes(body);
         } catch (final JacksonException exception) {
@@ -139,10 +140,10 @@ public class AgentChatClientImpl implements AgentChatClient {
                 if (retried) {
                     throw new CoreException(ErrorCode.AI_RECOMMENDATION_SPEC_VIOLATION);
                 }
-                final AgentAiRequest reset =
-                    new AgentAiRequest(request.userId(), request.consented(), RecommendationSpec.initial(), request.message(),
-                        request.recentTurns(), List.of(), List.of(), List.of(), request.idempotencyKey(), request.conversationId(),
-                        request.userContext(), request.contextCards(), request.focusedIsbn(), request.cart(), request.offers());
+                final AgentAiRequest reset = new AgentAiRequest(request.userId(), request.consented(), RecommendationSpec.initial(),
+                    request.message(), request.recentTurns(), List.of(), List.of(), List.of(), request.idempotencyKey(),
+                    request.conversationId(), request.userContext(), request.contextCards(), request.focusedIsbn(), request.cart(),
+                    request.offers(), request.ownedCoupons(), request.pointBalance());
                 return attempt(reset, exclusions, true, onDelta, deadline);
             }
             final AgentDecision decision = mapper.map(response.data(), request.idempotencyKey() == null);
@@ -203,7 +204,8 @@ public class AgentChatClientImpl implements AgentChatClient {
         final Set<String> sent =
             Stream.concat(request.cart().stream().map(AgentAiCart::isbn), request.offers().stream().map(AgentAiOffer::isbn))
                 .collect(Collectors.toSet());
-        if (decision.actions().stream().map(AgentAction::isbn).anyMatch((final String isbn) -> !sent.contains(isbn))
+        if (decision.actions().stream().filter((final AgentAction action) -> "remove".equals(action.op())).map(AgentAction::isbn)
+            .anyMatch((final String isbn) -> !sent.contains(isbn))
             || (decision.selection() != null && decision.selection().chosen().stream().map(AgentChosenBook::isbn)
                 .anyMatch((final String isbn) -> !sent.contains(isbn)))) {
             throw new CoreException(ErrorCode.AI_SERVICE_FAILURE);

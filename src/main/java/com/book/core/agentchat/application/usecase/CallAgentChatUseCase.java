@@ -34,7 +34,8 @@ public class CallAgentChatUseCase {
     }
 
     private AgentDecision validate(final AgentDecision decision, final AgentChatContext context) {
-        decision.actions().forEach((final AgentAction action) -> context.requireProduct(action.isbn()));
+        decision.actions().stream().filter((final AgentAction action) -> "remove".equals(action.op()))
+            .forEach((final AgentAction action) -> context.requireProduct(action.isbn()));
         if (decision.selection() != null) {
             BigDecimal total = BigDecimal.ZERO;
             for (final AgentChosenBook chosen : decision.selection().chosen()) {

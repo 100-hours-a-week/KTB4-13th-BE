@@ -4,7 +4,7 @@ import com.book.core.recommendation.application.command.ResolveRecommendationCom
 import java.util.List;
 
 public record AgentDecision(String route, String reply, ResolveRecommendationCommand recommendation, List<AgentAction> actions,
-    AgentSelection selection, List<AgentButton> buttons) {
+    AgentSelection selection, List<AgentButton> buttons, AgentCheckout checkout) {
     public AgentDecision {
         actions = List.copyOf(actions);
         buttons = List.copyOf(buttons);

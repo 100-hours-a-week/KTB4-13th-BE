@@ -96,7 +96,7 @@ public class BookSearchClientImpl implements BookSearchClient {
         final Map<String, Long> bookIds = identifiers.findBookIds(results.stream().map(AiSearchItem::isbn).toList());
         final List<BookSearchItem> items =
             results.stream().filter((final AiSearchItem item) -> item.isbn() != null && bookIds.containsKey(item.isbn()))
-                .map((final AiSearchItem item) -> new BookSearchItem(bookIds.get(item.isbn()), item.title(), item.author(),
+                .map((final AiSearchItem item) -> new BookSearchItem(bookIds.get(item.isbn()), item.isbn(), item.title(), item.author(),
                     item.publisher(), item.price(), item.coverUrl()))
                 .toList();
         final String fallbackMessage = response.fallback() == null ? null : response.fallback().message();

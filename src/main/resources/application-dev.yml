@@ -1,0 +1,3 @@
+app:
+  profile-sync:
+    kafka-group-id: ${PROFILE_SYNC_KAFKA_GROUP_ID:book-profile-sync-v1-dev}

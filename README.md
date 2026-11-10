@@ -103,10 +103,10 @@ done
 PROFILE_SYNC_KAFKA_ENABLED=true KAFKA_BOOTSTRAP_SERVERS=localhost:9092 ./gradlew bootRun
 ```
 
-브로커 연결과 기본 발행·직렬화 설정은 공통 `kafka.yml`에서 관리합니다.
-프로필 갱신 활성화와 소비자 그룹은 `profile-kafka.yml`, 오프셋 처리는 프로필 리스너에서 관리합니다.
-공통 `KafkaConfig`가 리스너 팩토리, 소비 재시도와 실패 토픽 발행을 구성합니다.
-같은 환경의 인스턴스는 동일한 `PROFILE_SYNC_KAFKA_GROUP_ID`를 사용합니다.
+브로커 연결과 발행·직렬화 기본값, 프로필 Kafka 활성화 여부는 `application.yaml`에서 관리합니다.
+`application-local.yml`, `application-dev.yml`, `application-prod.yml`이 환경별 소비자 그룹을 설정합니다.
+같은 환경의 인스턴스는 동일한 그룹을 사용하고, 필요하면 `PROFILE_SYNC_KAFKA_GROUP_ID`로 덮어쓸 수 있습니다.
+프로필 리스너가 오프셋 처리 방식을 정하고, 공통 `KafkaConfig`가 소비 재시도와 실패 토픽 발행을 구성합니다.
 연결은 기본적으로 꺼져 있으며, 이 경우 MySQL 작업자가 대기 작업을 직접 처리합니다.
 운영에서는 원본 토픽과 같은 파티션 수로 실패 토픽을 만들고, 복제·접근 권한·보관 정책을 설정합니다.
 그 뒤 같은 DB를 사용하는 인스턴스에 동일하게 연결을 켭니다.

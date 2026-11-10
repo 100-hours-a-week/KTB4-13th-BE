@@ -22,15 +22,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
-import org.springframework.web.client.RestClient;
 
 class AiPersonalizationProfileKafkaClientTest {
     private final KafkaTemplate<String, String> kafka = mock(KafkaTemplate.class);
     private final GetAiBookIdentifiersUseCase identifiers = mock(GetAiBookIdentifiersUseCase.class);
-    private final AiPersonalizationProfileClientImpl http =
-        new AiPersonalizationProfileClientImpl(RestClient.create(), new PersonalizationProfileIdempotencyKeyGenerator(), identifiers);
+    private final AiPersonalizationProfileExternalMapper mapper =
+        new AiPersonalizationProfileExternalMapper(new PersonalizationProfileIdempotencyKeyGenerator(), identifiers);
     private final ObjectMapper json = new ObjectMapper();
-    private final AiPersonalizationProfileKafkaClient client = new AiPersonalizationProfileKafkaClient(http, kafka, json);
+    private final AiPersonalizationProfileKafkaClient client = new AiPersonalizationProfileKafkaClient(mapper, kafka, json);
     private final AiPersonalizationProfileRequest request =
         new AiPersonalizationProfileRequest(42L, List.of("잠들기 전"), List.of(), List.of("소설"), List.of(), List.of(100L));
 
@@ -48,7 +47,7 @@ class AiPersonalizationProfileKafkaClientTest {
         final var event = json.readTree(value.getValue());
         assertThat(event.get("schema_version").asInt()).isEqualTo(1);
         assertThat(event.get("job_revision").asText()).isEqualTo(revision.toString());
-        assertThat(event.get("profile")).isEqualTo(json.readTree(json.writeValueAsString(http.toProfileRequest(request))));
+        assertThat(event.get("profile")).isEqualTo(json.readTree(json.writeValueAsString(mapper.toProfileRequest(request))));
         assertThat(event.at("/profile/onboarding/liked_isbns/0").asText()).isEqualTo("9788900000011");
     }
 
@@ -76,6 +75,20 @@ class AiPersonalizationProfileKafkaClientTest {
         verify(kafka, times(2)).send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), values.capture());
         assertThat(json.readTree(values.getAllValues().get(0)).path("job_revision").asText()).isEqualTo(revision.toString());
         assertThat(json.readTree(values.getAllValues().get(1)).path("job_revision").asText()).isEqualTo(revision.toString());
+    }
+
+    @Test
+    void 라우터는_일반_요청을_HTTP로_작업_요청은_Kafka로_전달한다() {
+        final var http = mock(AiPersonalizationProfileClientImpl.class);
+        final var publisher = mock(AiPersonalizationProfileKafkaClient.class);
+        final var router = new AiPersonalizationProfileRoutingClient(http, publisher);
+        final var revision = UUID.randomUUID();
+
+        router.updateProfile(request);
+        router.updateProfile(request, revision);
+
+        verify(http).updateProfile(request);
+        verify(publisher).updateProfile(request, revision);
     }
 
 }

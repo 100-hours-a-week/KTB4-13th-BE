@@ -3,7 +3,6 @@ package com.book.core.onboarding.infrastructure.client.ai;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.filter.RequestMdcFilter;
-import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileClient;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import java.util.UUID;
@@ -20,28 +19,22 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
     private static final String REQUEST_ID_HEADER = "X-Request-Id";
 
     private final RestClient restClient;
-    private final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator;
-    private final GetAiBookIdentifiersUseCase identifiers;
+    private final AiPersonalizationProfileExternalMapper mapper;
 
     public AiPersonalizationProfileClientImpl(@Qualifier("recommendationAiRestClient") final RestClient restClient,
-        final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator, final GetAiBookIdentifiersUseCase identifiers) {
+        final AiPersonalizationProfileExternalMapper mapper) {
         this.restClient = restClient;
-        this.idempotencyKeyGenerator = idempotencyKeyGenerator;
-        this.identifiers = identifiers;
+        this.mapper = mapper;
     }
 
     @Override
     public void updateProfile(final AiPersonalizationProfileRequest request) {
         try {
             restClient.put().uri(PROFILE_PATH).header(REQUEST_ID_HEADER, currentRequestId()).contentType(MediaType.APPLICATION_JSON)
-                .body(toProfileRequest(request)).retrieve().toBodilessEntity();
+                .body(mapper.toProfileRequest(request)).retrieve().toBodilessEntity();
         } catch (final RestClientException exception) {
             throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
         }
-    }
-
-    AiProfileRequest toProfileRequest(final AiPersonalizationProfileRequest request) {
-        return AiProfileRequest.from(request, idempotencyKeyGenerator.generate(request), identifiers.findIsbns(request.likedBookIds()));
     }
 
     private String currentRequestId() {

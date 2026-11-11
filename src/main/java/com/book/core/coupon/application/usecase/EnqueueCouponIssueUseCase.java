@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 
 @UseCase
-@Profile({"coupon-streams", "coupon-kafka"})
+@Profile({"coupon-streams", "coupon-kafka", "coupon-redis-kafka & !coupon-kafka"})
 @RequiredArgsConstructor
 public class EnqueueCouponIssueUseCase {
     private final IssueCouponUseCase issueCouponUseCase;

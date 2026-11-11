@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 
 @UseCase
-@Profile({"coupon-streams & coupon-streams-worker", "coupon-kafka"})
+@Profile({"coupon-streams & coupon-streams-worker", "coupon-kafka", "coupon-redis-kafka & !coupon-kafka"})
 @RequiredArgsConstructor
 public class PersistAcceptedCouponIssueUseCase {
     private final CouponRepositoryPort coupons;

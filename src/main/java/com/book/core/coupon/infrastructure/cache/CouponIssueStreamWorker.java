@@ -29,7 +29,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Component
-@Profile("coupon-streams & coupon-streams-worker & !coupon-kafka")
+@Profile("coupon-streams & coupon-streams-worker & !coupon-kafka & !coupon-redis-kafka")
 @RequiredArgsConstructor
 public class CouponIssueStreamWorker {
     private static final String GROUP = "coupon-db";

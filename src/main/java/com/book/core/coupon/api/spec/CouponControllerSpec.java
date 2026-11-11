@@ -5,6 +5,7 @@ import com.book.core.coupon.api.response.CouponResponse;
 import com.book.core.coupon.api.response.OwnedCouponResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -35,7 +36,9 @@ public interface CouponControllerSpec {
     @Operation(summary = "쿠폰 발급", description = "활성 상태이고 발급 기간과 잔여 수량이 유효한 쿠폰을 인증된 회원에게 발급합니다.")
     @ApiResponses({@ApiResponse(responseCode = "202", description = "비동기 발급 접수 완료. 쿠폰함에는 DB 저장 이후 반영됩니다."),
         @ApiResponse(responseCode = "400", description = "잘못된 쿠폰 ID, 발급 기간이 아닌 쿠폰(E4000), 이미 발급한 쿠폰(E4001) 또는 발급 한도 초과(E4003)"),
-        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @ApiResponse(responseCode = "403", description = "행사 쿠폰 입장권이 없거나 만료됨"),
+        @ApiResponse(responseCode = "429", description = "행사 쿠폰의 사용자별 요청 한도 초과", headers = @Header(name = "Retry-After"))})
     ResponseEntity<com.book.common.response.ApiResponse<Void>> issue(@Parameter(hidden = true) final Long userId,
         @Parameter(description = "쿠폰 ID", required = true) @Positive final Long couponId);
 

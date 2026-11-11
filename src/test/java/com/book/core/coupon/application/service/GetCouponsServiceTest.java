@@ -14,6 +14,7 @@ import com.book.core.coupon.application.usecase.GetCouponIssuePolicyUseCase;
 import com.book.core.coupon.application.usecase.GetCouponTargetsUseCase;
 import com.book.core.coupon.application.usecase.GetCouponsUseCase;
 import com.book.core.coupon.application.usecase.IssueCouponUseCase;
+import com.book.core.coupon.application.usecase.WaitingRoomUseCase;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +24,7 @@ class GetCouponsServiceTest {
         final var targets = mock(GetCouponTargetsUseCase.class);
         final var coupons = mock(GetCouponsUseCase.class);
         final var service = new CouponService(targets, coupons, mock(CreateCouponUseCase.class), mock(IssueCouponUseCase.class),
-            mock(GetCouponIssuePolicyUseCase.class), mock(EnqueueCouponIssueUseCase.class));
+            mock(GetCouponIssuePolicyUseCase.class), mock(EnqueueCouponIssueUseCase.class), mock(WaitingRoomUseCase.class));
         final var command = new GetCouponsCommand(List.of(10L, 20L));
         final List<CouponResult> result = List.of();
         when(coupons.execute(command.couponIds())).thenReturn(result);

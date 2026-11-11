@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -43,6 +45,7 @@ import org.testcontainers.mysql.MySQLContainer;
 import org.testcontainers.kafka.KafkaContainer;
 
 @SpringBootTest(properties = {"coupon.kafka.worker-enabled=true", "coupon.cache.fresh-ms=60000", "coupon.cache.ttl-ms=120000",
+    "coupon.waiting-room.rooms[8510012].admit-per-second=1", "coupon.waiting-room.rooms[8510012].pass-ttl-ms=3000",
     "coupon.sold-out.ttl-seconds=86400", "coupon.sold-out.fast-path-ttl-ms=60000"})
 @AutoConfigureMockMvc
 @ActiveProfiles({"test", "mysql-test"})
@@ -332,6 +335,53 @@ class CouponSoldOutHttpIntegrationTest {
                 }
                 return false;
             });
+        }
+    }
+
+    @Test
+    void 행사_대기실을_통과한_사용자만_접수되고_입장권은_만료된다() throws Exception {
+        final long couponId = 8_510_012L;
+        final String room = "/api/v1/waiting-room/" + couponId;
+        final String first = "Bearer " + tokens.issue(1L).accessToken();
+        final String second = "Bearer " + tokens.issue(2L).accessToken();
+        insertActiveCoupon(couponId, 3);
+
+        issue(1L, couponId).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("NO_WAITING_ROOM_PASS"));
+        mvc.perform(get(room).header(HttpHeaders.AUTHORIZATION, first)).andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("WAITING_ROOM_NOT_ENTERED"));
+        mvc.perform(post(room).header(HttpHeaders.AUTHORIZATION, first)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.position").value(1)).andExpect(jsonPath("$.data.estimatedWaitSeconds").value(1));
+        mvc.perform(post(room).header(HttpHeaders.AUTHORIZATION, second)).andExpect(status().isOk());
+        assertThat(redisTemplate.opsForValue().get(stockKey(couponId))).isEqualTo("3");
+
+        await().pollInterval(Duration.ofMillis(250)).atMost(Duration.ofSeconds(3))
+            .untilAsserted(() -> mvc.perform(get(room).header(HttpHeaders.AUTHORIZATION, first)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.admitted").value(true)));
+        issue(1L, couponId).andExpect(status().isAccepted());
+        issue(1L, couponId).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E4001"));
+        await().pollInterval(Duration.ofMillis(250)).atMost(Duration.ofSeconds(3))
+            .untilAsserted(() -> mvc.perform(get(room).header(HttpHeaders.AUTHORIZATION, second)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.admitted").value(true)));
+        issue(2L, couponId).andExpect(status().isAccepted());
+        assertCounts(couponId, 2);
+        assertThat(redisTemplate.opsForValue().get(stockKey(couponId))).isEqualTo("1");
+        await().atMost(Duration.ofSeconds(6)).untilAsserted(() -> issue(1L, couponId).andExpect(status().isForbidden()));
+    }
+
+    @Test
+    void 대기실과_발급은_인증된_사용자의_요청_한도를_공유한다() throws Exception {
+        final long couponId = 8_510_012L;
+        final String auth = "Bearer " + tokens.issue(99L).accessToken();
+        final String room = "/api/v1/waiting-room/" + couponId;
+        redisTemplate.opsForHash().putAll("coupon:issue-rate:user:99",
+            Map.of("tokens", "0", "time", Long.toString(System.currentTimeMillis() + 5000)));
+        try {
+            mvc.perform(post(room).header(HttpHeaders.AUTHORIZATION, auth).header("X-User-Id", "1")).andExpect(status().isTooManyRequests())
+                .andExpect(header().string(HttpHeaders.RETRY_AFTER, "1"));
+            mvc.perform(get(room).header(HttpHeaders.AUTHORIZATION, auth)).andExpect(status().isTooManyRequests());
+            issue(99L, couponId).andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("E429"));
+        } finally {
+            redisTemplate.delete("coupon:issue-rate:user:99");
         }
     }
 

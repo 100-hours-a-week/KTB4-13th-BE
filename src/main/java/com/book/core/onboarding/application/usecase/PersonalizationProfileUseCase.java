@@ -6,6 +6,7 @@ import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest
 import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.ProfileHistoryRepositoryPort;
 import com.book.core.onboarding.application.port.ProfileMemoryRepositoryPort;
+import com.book.core.onboarding.application.port.ProfileSyncJobRepositoryPort;
 import com.book.core.onboarding.application.port.TermRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
@@ -14,6 +15,7 @@ import com.book.core.onboarding.domain.OnboardingOption;
 import com.book.core.onboarding.domain.TermType;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
+import java.time.Clock;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -36,15 +38,32 @@ public class PersonalizationProfileUseCase {
     private final AiPersonalizationProfileClient profileClient;
     private final ProfileMemoryRepositoryPort memoryRepository;
     private final ProfileHistoryRepositoryPort historyRepository;
+    private final ProfileSyncJobRepositoryPort profileJobs;
+    private final Clock clock;
 
     public void executeUpdate(final Long userId) {
-        profileRequestOf(userId).ifPresent(profileClient::updateProfile);
+        final Optional<AiPersonalizationProfileRequest> request = profileRequestOf(userId);
+        if (request.isEmpty()) {
+            return;
+        }
+        profileClient.updateProfile(request.orElseThrow());
+        // 갱신 요청 중 동의가 없어졌다면 다른 삭제 작업이 이 갱신보다 먼저 처리됐을 수 있어 삭제를 다시 예약합니다.
+        if (!agreed(userId)) {
+            profileJobs.enqueue(userId, clock.instant());
+        }
+    }
+
+    public void executeDelete(final Long userId) {
+        profileClient.deleteProfile(userId);
+    }
+
+    private boolean agreed(final Long userId) {
+        return termRepository.findActiveByTermType(TermType.PERSONALIZED_RECOMMENDATION)
+            .map(term -> agreementRepository.existsAgreedByUserIdAndTermId(userId, term.id())).orElse(false);
     }
 
     private Optional<AiPersonalizationProfileRequest> profileRequestOf(final Long userId) {
-        final boolean agreed = termRepository.findActiveByTermType(TermType.PERSONALIZED_RECOMMENDATION)
-            .map(term -> agreementRepository.existsAgreedByUserIdAndTermId(userId, term.id())).orElse(false);
-        if (!agreed) {
+        if (!agreed(userId)) {
             return Optional.empty();
         }
 

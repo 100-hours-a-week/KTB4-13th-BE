@@ -3,6 +3,7 @@ package com.book.core.user.application.usecase;
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.user.application.port.UserRepositoryPort;
+import com.book.core.user.application.port.RefreshSessionRevokerPort;
 import com.book.core.user.domain.User;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecoverWithdrawalUseCase {
     private final UserRepositoryPort userRepository;
     private final Clock clock;
+    private final RefreshSessionRevokerPort refreshSessionRevoker;
 
     @Transactional
     public void execute(final Long userId) {
@@ -25,6 +27,7 @@ public class RecoverWithdrawalUseCase {
         }
         if (user.isWithdrawalRequested()) {
             user.recoverWithdrawal(LocalDateTime.now(clock));
+            refreshSessionRevoker.revokeAll(userId);
         }
     }
 }

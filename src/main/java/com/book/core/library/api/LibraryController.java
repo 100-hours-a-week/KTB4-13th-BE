@@ -3,8 +3,13 @@ package com.book.core.library.api;
 import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.library.api.converter.LibraryCommandConverter;
+import com.book.core.library.api.request.AddLibraryBooksRequest;
+import com.book.core.library.api.request.CreateShelfPhotoUploadRequest;
 import com.book.core.library.api.request.DeleteLibraryBooksRequest;
+import com.book.core.library.api.request.ScanShelfPhotoRequest;
 import com.book.core.library.api.response.LibraryBooksResponse;
+import com.book.core.library.api.response.ShelfPhotoUploadResponse;
+import com.book.core.library.api.response.ShelfScanResponse;
 import com.book.core.library.api.spec.LibraryControllerSpec;
 import com.book.core.library.application.service.LibraryService;
 import jakarta.validation.Valid;
@@ -12,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,10 +36,33 @@ class LibraryController implements LibraryControllerSpec {
     }
 
     @Override
+    @PostMapping("/books")
+    public ResponseEntity<ApiResponse<Void>> addBooks(@UserId final Long userId, @Valid @RequestBody final AddLibraryBooksRequest request) {
+        libraryService.addBooks(commandConverter.toAddLibraryBooksCommand(userId, request));
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
     @DeleteMapping("/books")
     public ResponseEntity<ApiResponse<Void>> deleteBooks(@UserId final Long userId,
         @Valid @RequestBody final DeleteLibraryBooksRequest request) {
         libraryService.deleteBooks(commandConverter.toDeleteLibraryBooksCommand(userId, request));
         return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @PostMapping("/photos/upload-url")
+    public ResponseEntity<ApiResponse<ShelfPhotoUploadResponse>> createPhotoUpload(@UserId final Long userId,
+        @Valid @RequestBody final CreateShelfPhotoUploadRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(ShelfPhotoUploadResponse
+            .from(libraryService.createPhotoUpload(commandConverter.toCreateShelfPhotoUploadCommand(userId, request)))));
+    }
+
+    @Override
+    @PostMapping("/photos/scans")
+    public ResponseEntity<ApiResponse<ShelfScanResponse>> scanPhoto(@UserId final Long userId,
+        @Valid @RequestBody final ScanShelfPhotoRequest request) {
+        return ResponseEntity.ok(
+            ApiResponse.ok(ShelfScanResponse.from(libraryService.scanPhoto(commandConverter.toScanShelfPhotoCommand(userId, request)))));
     }
 }

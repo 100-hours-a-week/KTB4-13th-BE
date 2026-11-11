@@ -45,6 +45,7 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+        product.inventory.redis.lock.acquire: true
   endpoint:
     health:
       show-components: never
@@ -61,6 +62,13 @@ app:
     kafka-group-id: ${PROFILE_SYNC_KAFKA_GROUP_ID:book-profile-sync-v1}
   cors:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+  product:
+    inventory:
+      redis-lock:
+        enabled: ${PRODUCT_INVENTORY_REDIS_LOCK_ENABLED:false}
+  shelf-photo:
+    bucket: ${SHELF_PHOTO_BUCKET:}
+    region: ${AWS_REGION:ap-northeast-2}
 
 auth:
   cookie:

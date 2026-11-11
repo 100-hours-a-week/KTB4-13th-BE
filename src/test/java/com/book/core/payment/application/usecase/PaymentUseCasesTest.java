@@ -27,6 +27,8 @@ import com.book.core.payment.domain.PaymentHistory;
 import com.book.core.payment.domain.enums.PaymentMethod;
 import com.book.core.payment.domain.enums.PaymentState;
 import com.book.core.payment.domain.enums.TransactionType;
+import com.book.core.product.application.command.ProductQuantitiesCommand;
+import com.book.core.product.application.usecase.CompleteProductInventoryUseCase;
 import com.book.core.point.application.usecase.DeductPointUseCase;
 import com.book.core.point.application.usecase.EarnPointUseCase;
 import com.book.core.point.domain.PointAmount;
@@ -39,6 +41,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class PaymentUseCasesTest {
+    private final CompleteProductInventoryUseCase inventory = mock(CompleteProductInventoryUseCase.class);
     private final PaymentRepositoryPort payments = mock(PaymentRepositoryPort.class);
     private final PaymentHistoryRepositoryPort histories = mock(PaymentHistoryRepositoryPort.class);
     private final GetPaymentOrderUseCase orders = mock(GetPaymentOrderUseCase.class);
@@ -119,12 +122,23 @@ class PaymentUseCasesTest {
     }
 
     @Test
-    void 쿠폰_없는_성공은_쿠폰_사용을_생략한다() {
+    void 쿠폰과_예약이_없는_주문은_사용과_재고_확정을_생략한다() {
         when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order());
         when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment(-1L)));
         complete().execute("order", new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
             com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678"));
-        verifyNoInteractions(coupons);
+        verifyNoInteractions(coupons, inventory);
+    }
+
+    @Test
+    void 예약이_있는_주문은_결제_완료시_재고를_확정한다() {
+        final Order order = order();
+        order.reserveUntil(java.time.LocalDateTime.now().plusMinutes(10));
+        when(orders.execute("order", OrderStatus.CREATED)).thenReturn(order);
+        when(payments.findByOrderId(2L)).thenReturn(Optional.of(payment(-1L)));
+        complete().execute("order",
+            new com.book.core.payment.application.result.ApprovedPaymentResult("test-external", PaymentMethod.CARD, "12345678"));
+        verify(inventory).execute(new ProductQuantitiesCommand(java.util.Map.of(10L, 1)));
     }
 
     @Test
@@ -157,7 +171,7 @@ class PaymentUseCasesTest {
     }
 
     private CompletePaymentUseCase complete() {
-        return new CompletePaymentUseCase(payments, orders, coupons, deduct, earn, cancel, histories, enqueueProfileSync);
+        return new CompletePaymentUseCase(payments, inventory, orders, coupons, deduct, earn, cancel, histories, enqueueProfileSync);
     }
 
     private static Order order() {

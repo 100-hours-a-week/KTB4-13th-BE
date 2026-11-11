@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -19,13 +20,16 @@ import com.book.core.cancel.domain.CancelAction;
 import com.book.core.cancel.domain.CancelBalance;
 import com.book.core.cancel.domain.PartialCancelAction;
 import com.book.core.order.application.port.OrderRepositoryPort;
+import com.book.core.order.application.usecase.ExpireOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
+import com.book.core.payment.application.port.PaymentHistoryRepositoryPort;
 import com.book.core.payment.application.result.ApprovedPaymentResult;
 import com.book.core.payment.application.service.PaymentService;
 import com.book.core.payment.application.usecase.CompletePaymentUseCase;
+import com.book.core.payment.application.usecase.GetPgOperationUseCase;
 import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
 import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.enums.PaymentMethod;
@@ -44,6 +48,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -115,6 +121,12 @@ class TossPaymentRecoveryIntegrationTest {
     private CancelPaymentUseCase completeCancel;
     @MockitoSpyBean
     private PostProcessPaymentUseCase postProcessPayment;
+    @MockitoSpyBean
+    private PaymentHistoryRepositoryPort paymentHistory;
+    @MockitoSpyBean
+    private GetPgOperationUseCase getPgOperation;
+    @MockitoSpyBean
+    private ExpireOrderUseCase expireOrder;
 
     @Test
     void 승인전_카드정보가_없어도_승인후_주문과_결제를_완료한다() {
@@ -300,6 +312,252 @@ class TossPaymentRecoveryIntegrationTest {
         payments.success(new ApprovePaymentCommand(fixture.order().key(), newKey, fixture.pg().total));
         assertThat(replacement.approvals).isEqualTo(1);
         assertThat(fixture.pg().approvals).isZero();
+    }
+
+    @Autowired
+    private com.book.core.order.application.service.OrderService orderService;
+    @Autowired
+    private com.book.core.order.infrastructure.scheduler.OrderExpirationScheduler expirationScheduler;
+
+    @Test
+    void 예약_주문은_결제시_재고를_확정하고_만료하지_않는다() {
+        final var fixture = reservedFixture(3);
+        assertInventory(fixture.productIds().getFirst(), 10, 3);
+        final var command = approval(fixture);
+        final Long paymentId = payments.success(command);
+        assertThat(payments.success(command)).isEqualTo(paymentId);
+        assertThat(fixture.fixture().pg().approvals).isEqualTo(1);
+        assertThat(paymentRepository.findById(paymentId).orElseThrow().state()).isEqualTo(PaymentState.SUCCESS);
+        assertThat(orderStatus(fixture)).isEqualTo("PAID");
+        assertInventory(fixture.productIds().getFirst(), 7, 0);
+        expireNow(fixture);
+        expirationScheduler.expireOrders();
+        assertThat(orderStatus(fixture)).isEqualTo("PAID");
+        assertInventory(fixture.productIds().getFirst(), 7, 0);
+    }
+
+    @Test
+    void 예약_만료_시각이_지나도_CREATED면_결제한다() {
+        final var fixture = reservedFixture(3);
+        expireNow(fixture);
+        payments.success(approval(fixture));
+        assertThat(orderStatus(fixture)).isEqualTo("PAID");
+        assertInventory(fixture.productIds().getFirst(), 7, 0);
+    }
+
+    @Test
+    void 여러_상품의_예약을_모두_확정한다() {
+        final var fixture = reservedFixture(3, 2);
+        payments.success(approval(fixture));
+        assertThat(orderStatus(fixture)).isEqualTo("PAID");
+        assertInventory(fixture.productIds().get(0), 7, 0);
+        assertInventory(fixture.productIds().get(1), 8, 0);
+    }
+
+    @Test
+    void PG승인후_두번째_재고_확정_실패는_모두_롤백되고_같은_요청으로_복구된다() {
+        final var fixture = reservedFixture(3, 2);
+        final long second = fixture.productIds().get(1);
+        jdbc.update("UPDATE product_inventory SET reserved_quantity = 0 WHERE product_id = ?", second);
+        final var command = approval(fixture);
+        assertThatThrownBy(() -> payments.success(command)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ORDER_DATA_INCONSISTENT));
+        assertThat(fixture.fixture().pg().approvals).isEqualTo(1);
+        assertThat(pending(fixture.fixture())).isEqualTo(1);
+        final String pgKey = jdbc.queryForObject("SELECT pg_idempotency_key FROM pg_operation WHERE order_key = ?", String.class,
+            fixture.fixture().order().key());
+        assertThat(orderStatus(fixture)).isEqualTo("CREATED");
+        assertThat(paymentRepository.findByOrderId(fixture.fixture().order().id()).orElseThrow().state()).isEqualTo(PaymentState.READY);
+        assertInventory(fixture.productIds().get(0), 10, 3);
+        assertInventory(second, 10, 0);
+        jdbc.update("UPDATE product_inventory SET reserved_quantity = 2 WHERE product_id = ?", second);
+        final Long result = payments.success(command);
+        assertThat(payments.success(command)).isEqualTo(result);
+        assertThat(fixture.fixture().pg().approvals).isEqualTo(1);
+        assertThat(pending(fixture.fixture())).isZero();
+        assertThat(jdbc.queryForObject("SELECT pg_idempotency_key FROM pg_operation WHERE order_key = ?", String.class,
+            fixture.fixture().order().key())).isEqualTo(pgKey);
+        assertThat(orderStatus(fixture)).isEqualTo("PAID");
+        assertInventory(fixture.productIds().get(0), 7, 0);
+        assertInventory(second, 8, 0);
+    }
+
+    @Test
+    void 재고_확정_후_DB실패는_모두_롤백되고_PG_중복승인_없이_복구된다() {
+        final var fixture = reservedFixture(3);
+        final var command = approval(fixture);
+        doAnswer((final var invocation) -> {
+            assertInventory(fixture.productIds().getFirst(), 7, 0);
+            jdbc.update("INSERT INTO missing_payment_history_test_table (id) VALUES (1)");
+            return null;
+        }).doCallRealMethod().when(paymentHistory).save(any());
+
+        assertThatThrownBy(() -> payments.success(command)).isInstanceOf(org.springframework.dao.DataAccessException.class);
+        assertThat(fixture.fixture().pg().approvals).isEqualTo(1);
+        assertThat(pending(fixture.fixture())).isEqualTo(1L);
+        assertThat(orderStatus(fixture)).isEqualTo("CREATED");
+        assertThat(paymentRepository.findByOrderId(fixture.fixture().order().id()).orElseThrow().state()).isEqualTo(PaymentState.READY);
+        assertInventory(fixture.productIds().getFirst(), 10, 3);
+
+        final Long paymentId = payments.success(command);
+        assertThat(payments.success(command)).isEqualTo(paymentId);
+        assertThat(fixture.fixture().pg().approvals).isEqualTo(1);
+        assertThat(pending(fixture.fixture())).isZero();
+        assertThat(orderStatus(fixture)).isEqualTo("PAID");
+        assertThat(paymentRepository.findById(paymentId).orElseThrow().state()).isEqualTo(PaymentState.SUCCESS);
+        assertInventory(fixture.productIds().getFirst(), 7, 0);
+    }
+
+    @Test
+    void 결제가_주문_락을_먼저_획득하면_만료는_대기_후_재고를_해제하지_않는다() throws Exception {
+        final var fixture = reservedFixture(3);
+        expireNow(fixture);
+        final CountDownLatch locked = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        final AtomicLong blocker = new AtomicLong();
+        doAnswer((final var invocation) -> {
+            final Object result = invocation.callRealMethod();
+            blocker.set(jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class));
+            locked.countDown();
+            if (!release.await(15, TimeUnit.SECONDS)) {
+                throw new AssertionError("결제 락 해제 신호 대기 초과");
+            }
+            return result;
+        }).when(org.springframework.test.util.AopTestUtils.<GetPgOperationUseCase>getUltimateTargetObject(getPgOperation)).execute(any());
+        try (final var pool = Executors.newFixedThreadPool(2)) {
+            try {
+                final var payment = pool.submit(() -> payments.success(approval(fixture)));
+                assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
+                final var expiration = pool.submit(() -> orderService.expireOrder(fixture.fixture().order().key()));
+                assertOrderLockWaiting(blocker.get());
+                release.countDown();
+                final Long paymentId = payment.get(20, TimeUnit.SECONDS);
+                expiration.get(20, TimeUnit.SECONDS);
+                assertThat(paymentRepository.findById(paymentId).orElseThrow().state()).isEqualTo(PaymentState.SUCCESS);
+                assertThat(orderStatus(fixture)).isEqualTo("PAID");
+                assertInventory(fixture.productIds().getFirst(), 7, 0);
+            } finally {
+                release.countDown();
+            }
+        }
+    }
+
+    @Test
+    void 만료가_주문_락을_먼저_획득하면_결제는_대기_후_거절된다() throws Exception {
+        final var fixture = reservedFixture(3);
+        expireNow(fixture);
+        final CountDownLatch locked = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        final AtomicLong blocker = new AtomicLong();
+        doAnswer((final var invocation) -> {
+            final Object result = invocation.callRealMethod();
+            blocker.set(jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class));
+            locked.countDown();
+            if (!release.await(15, TimeUnit.SECONDS)) {
+                throw new AssertionError("만료 락 해제 신호 대기 초과");
+            }
+            return result;
+        }).when(org.springframework.test.util.AopTestUtils.<ExpireOrderUseCase>getUltimateTargetObject(expireOrder))
+            .execute(eq(fixture.fixture().order().key()), any());
+        try (final var pool = Executors.newFixedThreadPool(2)) {
+            try {
+                final var expiration = pool.submit(() -> orderService.expireOrder(fixture.fixture().order().key()));
+                assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
+                final var payment = pool.submit(() -> {
+                    try {
+                        payments.success(approval(fixture));
+                        return null;
+                    } catch (final CoreException exception) {
+                        return exception.errorCode();
+                    }
+                });
+                assertOrderLockWaiting(blocker.get());
+                release.countDown();
+                expiration.get(20, TimeUnit.SECONDS);
+                assertThat(payment.get(20, TimeUnit.SECONDS)).isEqualTo(ErrorCode.ORDER_ALREADY_PAID);
+                assertThat(fixture.fixture().pg().approvals).isZero();
+                assertThat(orderStatus(fixture)).isEqualTo("EXPIRED");
+                assertThat(paymentRepository.findByOrderId(fixture.fixture().order().id()).orElseThrow().state())
+                    .isEqualTo(PaymentState.READY);
+                assertInventory(fixture.productIds().getFirst(), 10, 0);
+            } finally {
+                release.countDown();
+            }
+        }
+    }
+
+    private void assertOrderLockWaiting(final long blockingConnectionId) throws Exception {
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        try (final var connection = java.sql.DriverManager.getConnection(mysql.getJdbcUrl(), "root", mysql.getPassword());
+            final var statement = connection.prepareStatement("""
+                SELECT COUNT(*) FROM performance_schema.data_lock_waits waits
+                JOIN performance_schema.data_locks held ON held.engine_lock_id = waits.blocking_engine_lock_id
+                JOIN performance_schema.threads thread ON thread.thread_id = held.thread_id
+                WHERE held.object_name = 'orders' AND thread.processlist_id = ?
+                """)) {
+            statement.setLong(1, blockingConnectionId);
+            while (System.nanoTime() < deadline) {
+                try (final var result = statement.executeQuery()) {
+                    if (result.next() && result.getLong(1) > 0) {
+                        return;
+                    }
+                }
+                Thread.yield();
+            }
+        }
+        throw new AssertionError("주문 행 락 대기를 확인하지 못했습니다.");
+    }
+
+    private ReservedFixture reservedFixture(final int... quantities) {
+        final long userId = users.incrementAndGet();
+        jdbc.update("INSERT INTO users (id, nickname) VALUES (?, ?)", userId, "inventory" + userId);
+        jdbc.update("INSERT INTO carts (user_id) VALUES (?)", userId);
+        final List<Long> productIds = new ArrayList<>();
+        final List<com.book.core.order.application.command.CreateOrderItemCommand> items = new ArrayList<>();
+        for (int index = 0; index < quantities.length; index++) {
+            final long productId = 4000000L + userId * 10 + index;
+            productIds.add(productId);
+            jdbc.update("INSERT INTO books (id, title, author, publisher, category, published_at) "
+                + "VALUES (?, 'book', 'author', 'publisher', 'novel', '2026-01-01')", productId);
+            jdbc.update("INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity) "
+                + "VALUES (?, ?, 'book', 10000, 10000, 0, 10)", productId, productId);
+            jdbc.update("INSERT INTO product_inventory (product_id, on_hand_quantity, reserved_quantity) VALUES (?, 10, 0)", productId);
+            jdbc.update("INSERT INTO cart_item (cart_id, product_id, quantity) SELECT id, ?, 1 FROM carts WHERE user_id = ?", productId,
+                userId);
+            items.add(new com.book.core.order.application.command.CreateOrderItemCommand(productId, quantities[index]));
+        }
+        final String orderKey =
+            orderService.createOrder(new com.book.core.order.application.command.CreateOrderCommand(userId, items)).orderKey();
+        final Order order = orders.findActiveOrderByKey(orderKey).orElseThrow();
+        final String key = "pg-" + UUID.randomUUID();
+        final GatewayPayment pg = new GatewayPayment(orderKey, key, order.totalPrice(), false);
+        gateway.put(key, pg);
+        new TransactionTemplate(transactions).executeWithoutResult((final var status) -> {
+            paymentRepository.save(new Payment(userId, order.id(), order.totalPrice(), -1L, BigDecimal.ZERO, BigDecimal.ZERO, userId,
+                order.totalPrice(), PaymentState.READY));
+            points.save(new PointBalance(null, userId, new BigDecimal("20000")));
+        });
+        return new ReservedFixture(new Fixture(order, key, pg), productIds);
+    }
+
+    private ApprovePaymentCommand approval(final ReservedFixture fixture) {
+        return new ApprovePaymentCommand(fixture.fixture().order().key(), fixture.fixture().key(), fixture.fixture().pg().total);
+    }
+
+    private String orderStatus(final ReservedFixture fixture) {
+        return jdbc.queryForObject("SELECT status FROM orders WHERE `key` = ?", String.class, fixture.fixture().order().key());
+    }
+
+    private void expireNow(final ReservedFixture fixture) {
+        jdbc.update("UPDATE orders SET expires_at = '2020-01-01 00:00:00' WHERE `key` = ?", fixture.fixture().order().key());
+    }
+
+    private void assertInventory(final long productId, final int onHand, final int reserved) {
+        assertThat(jdbc.queryForMap("SELECT on_hand_quantity, reserved_quantity FROM product_inventory WHERE product_id = ?", productId))
+            .containsEntry("on_hand_quantity", onHand).containsEntry("reserved_quantity", reserved);
+    }
+
+    private record ReservedFixture(Fixture fixture, List<Long> productIds) {
     }
 
     private long pending(final Fixture fixture) {

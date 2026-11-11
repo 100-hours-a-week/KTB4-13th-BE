@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -15,6 +16,7 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.memory.application.command.ExtractUserMemoriesCommand;
 import com.book.core.agentchat.application.result.MemoryExtractionTarget;
 import com.book.core.agentchat.application.usecase.GetChatHistoryUseCase;
 import com.book.core.agentchat.application.usecase.GetMemoryExtractionTargetsUseCase;
@@ -43,8 +45,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.LongStream;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InOrder;
 
 class UserPreferenceServiceTest {
@@ -59,14 +70,14 @@ class UserPreferenceServiceTest {
     private final PersonalizationProfileUseCase personalizationProfileUseCase = mock(PersonalizationProfileUseCase.class);
     private final GetProfileRefreshTargetsUseCase getProfileRefreshTargetsUseCase = mock(GetProfileRefreshTargetsUseCase.class);
     private final GetChatHistoryUseCase getChatHistoryUseCase = mock(GetChatHistoryUseCase.class);
+    private final CheckPersonalizationAgreementUseCase agreement = mock(CheckPersonalizationAgreementUseCase.class);
+    private final ExtractUserMemoriesUseCase extraction = mock(ExtractUserMemoriesUseCase.class);
+    private final SaveUserMemoriesUseCase save = mock(SaveUserMemoriesUseCase.class);
     private final CheckUserRestrictionUseCase checkUserRestrictionUseCase = mock(CheckUserRestrictionUseCase.class);
-    private final CheckPersonalizationAgreementUseCase checkPersonalizationAgreementUseCase =
-        mock(CheckPersonalizationAgreementUseCase.class);
-    private final ExtractUserMemoriesUseCase extractUserMemoriesUseCase = mock(ExtractUserMemoriesUseCase.class);
-    private final UserPreferenceService userPreferenceService = new UserPreferenceService(getOnboardingProgressUseCase,
-        getUserMemoriesUseCase, deleteUserMemoriesUseCase, deleteAllUserMemoriesUseCase, checkPersonalizationAgreementUseCase,
-        extractUserMemoriesUseCase, mock(SaveUserMemoriesUseCase.class), getChatHistoryUseCase, getMemoryExtractionTargetsUseCase,
-        personalizationProfileUseCase, getProfileRefreshTargetsUseCase, refreshRecommendationFeedUseCase, checkUserRestrictionUseCase);
+    private final UserPreferenceService userPreferenceService =
+        new UserPreferenceService(getOnboardingProgressUseCase, getUserMemoriesUseCase, deleteUserMemoriesUseCase,
+            deleteAllUserMemoriesUseCase, agreement, extraction, save, getChatHistoryUseCase, getMemoryExtractionTargetsUseCase,
+            personalizationProfileUseCase, getProfileRefreshTargetsUseCase, refreshRecommendationFeedUseCase, checkUserRestrictionUseCase);
 
     @Test
     void 온보딩을_완료하지_않았으면_취향_조회와_삭제를_진행하지_않고_409를_던진다() {
@@ -126,12 +137,12 @@ class UserPreferenceServiceTest {
         when(getMemoryExtractionTargetsUseCase.execute()).thenReturn(List.of(new MemoryExtractionTarget(3L, 10L, 2L)));
         when(getChatHistoryUseCase.executeForMemoryExtraction(anyList(), anyInt())).thenReturn(Map.of(10L, List.of()));
         when(checkUserRestrictionUseCase.execute(3L)).thenReturn(true);
-        when(checkPersonalizationAgreementUseCase.execute(3L)).thenReturn(true);
+        when(agreement.execute(3L)).thenReturn(true);
 
         assertThat(userPreferenceService.extractNightlyMemories()).isEmpty();
         userPreferenceService.refreshNightlyProfiles(Set.of(3L, 5L));
 
-        verifyNoInteractions(extractUserMemoriesUseCase);
+        verifyNoInteractions(extraction);
         verify(personalizationProfileUseCase).executeUpdate(5L);
         verify(personalizationProfileUseCase, times(1)).executeUpdate(any());
     }
@@ -184,6 +195,246 @@ class UserPreferenceServiceTest {
         order.verify(getChatHistoryUseCase).executeForMemoryExtraction(targets.subList(25, 125), 40);
         order.verify(getChatHistoryUseCase).executeForMemoryExtraction(shortSessions.subList(99, 101), 40);
         order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    void 동시성_설정은_1_이상이어야_한다() {
+        ReflectionTestUtils.setField(userPreferenceService, "nightlyConcurrency", 0);
+        assertThatThrownBy(userPreferenceService::extractNightlyMemories).isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(getMemoryExtractionTargetsUseCase);
+    }
+
+    @Test
+    void 기본값은_원래_세션_순서를_유지하고_실패한_사용자의_나머지_세션만_건너뛴다() {
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1), new MemoryExtractionTarget(2L, 21L, 1),
+            new MemoryExtractionTarget(1L, 12L, 1), new MemoryExtractionTarget(2L, 22L, 1), new MemoryExtractionTarget(1L, 13L, 1)));
+        when(extraction.execute(any())).thenAnswer(invocation -> {
+            ExtractUserMemoriesCommand command = invocation.getArgument(0);
+            if (command.conversationId().equals("12")) {
+                throw new IllegalStateException();
+            }
+            return List.of();
+        });
+        when(save.execute(any())).thenReturn(true);
+        assertThat(userPreferenceService.extractNightlyMemories()).containsExactlyInAnyOrder(1L, 2L);
+        InOrder order = inOrder(extraction, save);
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("11")));
+        order.verify(save).execute(argThat(c -> c.sessionId().equals(11L)));
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("21")));
+        order.verify(save).execute(argThat(c -> c.sessionId().equals(21L)));
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("12")));
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("22")));
+        verify(extraction, times(0)).execute(argThat(c -> c.conversationId().equals("13")));
+    }
+
+    @Test
+    void 여덟_사용자까지_병렬_실행하고_모든_추출이_끝난_후_프로필을_계산한다() throws Exception {
+        ReflectionTestUtils.setField(userPreferenceService, "nightlyConcurrency", 8);
+        prepareTargets(LongStream.rangeClosed(1, 12).mapToObj(id -> new MemoryExtractionTarget(id, id, 1)).toList());
+        CountDownLatch entered = new CountDownLatch(8);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicInteger active = new AtomicInteger();
+        AtomicInteger maximum = new AtomicInteger();
+        when(extraction.execute(any())).thenAnswer(invocation -> {
+            int count = active.incrementAndGet();
+            maximum.accumulateAndGet(count, Math::max);
+            entered.countDown();
+            try {
+                if (!release.await(5, TimeUnit.SECONDS))
+                    throw new IllegalStateException("timeout");
+                ExtractUserMemoriesCommand command = invocation.getArgument(0);
+                if (command.userId() == 3L)
+                    throw new IllegalStateException();
+                return List.of();
+            } finally {
+                active.decrementAndGet();
+            }
+        });
+        when(save.execute(any())).thenReturn(true);
+        when(getProfileRefreshTargetsUseCase.execute()).thenReturn(List.of());
+        try (var caller = Executors.newSingleThreadExecutor()) {
+            var batch = caller.submit(userPreferenceService::runNightlyBatch);
+            try {
+                assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+                verifyNoInteractions(personalizationProfileUseCase, getProfileRefreshTargetsUseCase);
+            } finally {
+                release.countDown();
+            }
+            batch.get(5, TimeUnit.SECONDS);
+        }
+        assertThat(maximum.get()).isEqualTo(8);
+        verify(personalizationProfileUseCase, times(11)).executeUpdate(any());
+        verify(personalizationProfileUseCase, times(0)).executeUpdate(3L);
+    }
+
+    @Test
+    void 여러_조회_묶음에_걸친_같은_사용자의_저장과_호출은_순서대로_처리한다() {
+        ReflectionTestUtils.setField(userPreferenceService, "nightlyConcurrency", 8);
+        final List<MemoryExtractionTarget> targets = new ArrayList<>();
+        targets.add(new MemoryExtractionTarget(1L, 11L, 1));
+        LongStream.rangeClosed(2, 100).forEach(id -> targets.add(new MemoryExtractionTarget(id, id + 100, 1)));
+        targets.add(new MemoryExtractionTarget(1L, 12L, 1));
+        prepareTargets(targets);
+        when(extraction.execute(any())).thenReturn(List.of());
+        when(save.execute(any())).thenReturn(true);
+        userPreferenceService.extractNightlyMemories();
+        final InOrder order = inOrder(extraction, save);
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("11")));
+        order.verify(save).execute(argThat(c -> c.sessionId().equals(11L)));
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("12")));
+        order.verify(save).execute(argThat(c -> c.sessionId().equals(12L)));
+    }
+
+    @Test
+    void 완료_대기중_인터럽트되면_프로필_계산을_시작하지_않는다() throws Exception {
+        ReflectionTestUtils.setField(userPreferenceService, "nightlyConcurrency", 2);
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1)));
+        final CountDownLatch entered = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        final AtomicReference<Thread> batchThread = new AtomicReference<>();
+        final AtomicBoolean restored = new AtomicBoolean();
+        when(extraction.execute(any())).thenAnswer(invocation -> {
+            entered.countDown();
+            try {
+                release.await();
+            } catch (final InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(exception);
+            }
+            return List.of();
+        });
+        try (var caller = Executors.newSingleThreadExecutor()) {
+            var result = caller.submit(() -> {
+                batchThread.set(Thread.currentThread());
+                try {
+                    userPreferenceService.runNightlyBatch();
+                } finally {
+                    restored.set(Thread.currentThread().isInterrupted());
+                }
+            });
+            try {
+                assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+                batchThread.get().interrupt();
+            } finally {
+                release.countDown();
+            }
+            assertThatThrownBy(() -> result.get(5, TimeUnit.SECONDS)).hasCauseInstanceOf(IllegalStateException.class);
+        }
+        verifyNoInteractions(getProfileRefreshTargetsUseCase, personalizationProfileUseCase);
+        assertThat(restored).isTrue();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ErrorCode.class, names = {"AI_MEMORY_EXTRACTION_UNAVAILABLE", "AI_MEMORY_EXTRACTION_TIMEOUT"})
+    void 일시적_장애는_2초_후_재시도해_성공할_수_있다(final ErrorCode error) {
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1)));
+        when(extraction.execute(any())).thenThrow(new CoreException(error)).thenReturn(List.of());
+        when(save.execute(any())).thenReturn(true);
+        final long started = System.nanoTime();
+
+        assertThat(userPreferenceService.extractNightlyMemories()).containsExactly(1L);
+
+        assertThat(System.nanoTime() - started).isGreaterThanOrEqualTo(TimeUnit.MILLISECONDS.toNanos(1900));
+        verify(extraction, times(2)).execute(any());
+        verify(save).execute(any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ErrorCode.class, names = {"AI_MEMORY_EXTRACTION_UNAVAILABLE", "AI_MEMORY_EXTRACTION_TIMEOUT"})
+    void 재시도가_모두_실패하면_세_번만_호출하고_같은_사용자의_나머지_세션을_건너뛴다(final ErrorCode error) {
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1), new MemoryExtractionTarget(1L, 12L, 1),
+            new MemoryExtractionTarget(2L, 21L, 1)));
+        when(extraction.execute(any())).thenAnswer(invocation -> {
+            final ExtractUserMemoriesCommand command = invocation.getArgument(0);
+            if (command.userId().equals(1L)) {
+                throw new CoreException(error);
+            }
+            return List.of();
+        });
+        when(save.execute(any())).thenReturn(true);
+
+        assertThat(userPreferenceService.extractNightlyMemories()).containsExactly(2L);
+
+        verify(extraction, times(3)).execute(argThat(c -> c.conversationId().equals("11")));
+        verify(extraction, times(0)).execute(argThat(c -> c.conversationId().equals("12")));
+        verify(extraction).execute(argThat(c -> c.conversationId().equals("21")));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ErrorCode.class, names = {"AI_SERVICE_FAILURE", "AI_MEMORY_EXTRACTION_INVALID_RESPONSE"})
+    void 재시도_대상이_아닌_오류는_즉시_실패한다(final ErrorCode error) {
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1)));
+        when(extraction.execute(any())).thenThrow(new CoreException(error));
+
+        assertThat(userPreferenceService.extractNightlyMemories()).isEmpty();
+
+        verify(extraction).execute(any());
+        verifyNoInteractions(save);
+    }
+
+    @Test
+    void 한_사용자가_재시도_대기해도_다른_사용자는_진행한다() throws Exception {
+        ReflectionTestUtils.setField(userPreferenceService, "nightlyConcurrency", 2);
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1), new MemoryExtractionTarget(2L, 21L, 1)));
+        final CountDownLatch failure = new CountDownLatch(1);
+        final CountDownLatch otherFinished = new CountDownLatch(1);
+        final AtomicInteger attempts = new AtomicInteger();
+        when(extraction.execute(any())).thenAnswer(invocation -> {
+            final ExtractUserMemoriesCommand command = invocation.getArgument(0);
+            if (command.userId().equals(1L) && attempts.incrementAndGet() == 1) {
+                failure.countDown();
+                throw new CoreException(ErrorCode.AI_MEMORY_EXTRACTION_UNAVAILABLE);
+            }
+            if (command.userId().equals(2L)) {
+                assertThat(failure.await(5, TimeUnit.SECONDS)).isTrue();
+                otherFinished.countDown();
+            }
+            return List.of();
+        });
+        when(save.execute(any())).thenReturn(true);
+        try (final var caller = Executors.newSingleThreadExecutor()) {
+            final var batch = caller.submit(userPreferenceService::extractNightlyMemories);
+            assertThat(otherFinished.await(1, TimeUnit.SECONDS)).isTrue();
+            assertThat(attempts.get()).isEqualTo(1);
+            assertThat(batch.get(5, TimeUnit.SECONDS)).containsExactlyInAnyOrder(1L, 2L);
+        }
+    }
+
+    @Test
+    void 재시도_대기중_인터럽트되면_상태를_복원하고_추가_호출하지_않는다() throws Exception {
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1), new MemoryExtractionTarget(1L, 12L, 1)));
+        final CountDownLatch failure = new CountDownLatch(1);
+        final AtomicReference<Thread> worker = new AtomicReference<>();
+        final AtomicBoolean restored = new AtomicBoolean();
+        when(extraction.execute(any())).thenAnswer(invocation -> {
+            failure.countDown();
+            throw new CoreException(ErrorCode.AI_MEMORY_EXTRACTION_TIMEOUT);
+        });
+        try (final var caller = Executors.newSingleThreadExecutor()) {
+            final var batch = caller.submit(() -> {
+                worker.set(Thread.currentThread());
+                try {
+                    return userPreferenceService.extractNightlyMemories();
+                } finally {
+                    restored.set(Thread.currentThread().isInterrupted());
+                }
+            });
+            assertThat(failure.await(5, TimeUnit.SECONDS)).isTrue();
+            worker.get().interrupt();
+            assertThat(batch.get(5, TimeUnit.SECONDS)).isEmpty();
+        }
+        assertThat(restored).isTrue();
+        verify(extraction).execute(any());
+        verifyNoInteractions(save);
+    }
+
+    private void prepareTargets(final List<MemoryExtractionTarget> targets) {
+        when(getMemoryExtractionTargetsUseCase.execute()).thenReturn(targets);
+        when(getChatHistoryUseCase.executeForMemoryExtraction(anyList(), anyInt())).thenAnswer(invocation -> {
+            List<MemoryExtractionTarget> chunk = invocation.getArgument(0);
+            return chunk.stream().collect(java.util.stream.Collectors.toMap(MemoryExtractionTarget::sessionId, target -> List.of()));
+        });
+        when(agreement.execute(any())).thenReturn(true);
     }
 
     private void assertNotCompleted(final ThrowingCallable call) {

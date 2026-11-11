@@ -28,13 +28,19 @@ import com.book.core.recommendation.application.usecase.RefreshRecommendationFee
 import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -43,6 +49,11 @@ import org.springframework.stereotype.Service;
 public class UserPreferenceService {
     private static final int CONVERSATION_CHUNK_SESSIONS = 100;
     private static final long CONVERSATION_CHUNK_MESSAGES = 1_000;
+    private static final int EXTRACTION_MAX_ATTEMPTS = 3;
+    private static final long EXTRACTION_RETRY_DELAY_SECONDS = 2;
+
+    @Value("${preference.nightly.concurrency:1}")
+    private int nightlyConcurrency = 1;
 
     private final GetOnboardingProgressUseCase getOnboardingProgressUseCase;
     private final GetUserMemoriesUseCase getUserMemoriesUseCase;
@@ -83,27 +94,77 @@ public class UserPreferenceService {
     }
 
     public Set<Long> extractNightlyMemories() {
-        final Set<Long> memoryChangedUserIds = new HashSet<>();
-        final Set<Long> failedUserIds = new HashSet<>();
-        for (final List<MemoryExtractionTarget> chunk : conversationChunks(getMemoryExtractionTargetsUseCase.execute())) {
-            final Map<Long, List<ChatHistoryMessage>> conversations = conversations(chunk, failedUserIds);
-            for (final MemoryExtractionTarget target : chunk) {
-                if (failedUserIds.contains(target.userId())) {
-                    continue;
-                }
-                try {
-                    if (extractMemories(target, conversations.get(target.sessionId()))) {
-                        memoryChangedUserIds.add(target.userId());
-                    }
-                } catch (final RuntimeException exception) {
-                    failedUserIds.add(target.userId());
-                    log.atError().addKeyValue("userId", target.userId()).addKeyValue("sessionId", target.sessionId()).log(
-                        "[USER_PREFERENCE] 대화 취향 기억 추출에 실패해 다음 밤에 다시 처리합니다. userId={}, sessionId={}, sequence={}, cause={}",
-                        target.userId(), target.sessionId(), target.sequence(), cause(exception));
-                }
+        if (nightlyConcurrency < 1) {
+            throw new IllegalArgumentException("preference.nightly.concurrency must be at least 1");
+        }
+        final Set<Long> memoryChangedUserIds = ConcurrentHashMap.newKeySet();
+        final Set<Long> failedUserIds = ConcurrentHashMap.newKeySet();
+        final List<List<MemoryExtractionTarget>> chunks = conversationChunks(getMemoryExtractionTargetsUseCase.execute());
+        if (nightlyConcurrency == 1) {
+            for (final List<MemoryExtractionTarget> chunk : chunks) {
+                processTargets(chunk, conversations(chunk, failedUserIds), failedUserIds, memoryChangedUserIds);
+            }
+            return memoryChangedUserIds;
+        }
+        processChunksInParallel(chunks, failedUserIds, memoryChangedUserIds);
+        return memoryChangedUserIds;
+    }
+
+    private void processChunksInParallel(final List<List<MemoryExtractionTarget>> chunks, final Set<Long> failedUserIds,
+        final Set<Long> memoryChangedUserIds) {
+        try (ExecutorService executor = Executors.newFixedThreadPool(nightlyConcurrency)) {
+            for (final List<MemoryExtractionTarget> chunk : chunks) {
+                processChunkInParallel(executor, chunk, failedUserIds, memoryChangedUserIds);
             }
         }
-        return memoryChangedUserIds;
+    }
+
+    private void processChunkInParallel(final ExecutorService executor, final List<MemoryExtractionTarget> chunk,
+        final Set<Long> failedUserIds, final Set<Long> memoryChangedUserIds) {
+        final Map<Long, List<ChatHistoryMessage>> conversations = conversations(chunk, failedUserIds);
+        final Map<Long, List<MemoryExtractionTarget>> targetsByUser = new LinkedHashMap<>();
+        chunk.forEach(target -> targetsByUser.computeIfAbsent(target.userId(), ignored -> new ArrayList<>()).add(target));
+        final AtomicReference<Error> taskError = new AtomicReference<>();
+        final List<Callable<Void>> jobs = targetsByUser.values().stream().map(targets -> (Callable<Void>) () -> {
+            try {
+                processTargets(targets, conversations, failedUserIds, memoryChangedUserIds);
+            } catch (final Error error) {
+                taskError.compareAndSet(null, error);
+            }
+            return null;
+        }).toList();
+        awaitTasks(executor, jobs);
+        if (taskError.get() != null) {
+            throw taskError.get();
+        }
+    }
+
+    private void awaitTasks(final ExecutorService executor, final List<Callable<Void>> jobs) {
+        try {
+            executor.invokeAll(jobs);
+        } catch (final InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private void processTargets(final List<MemoryExtractionTarget> targets, final Map<Long, List<ChatHistoryMessage>> conversations,
+        final Set<Long> failedUserIds, final Set<Long> memoryChangedUserIds) {
+        for (final MemoryExtractionTarget target : targets) {
+            if (failedUserIds.contains(target.userId())) {
+                continue;
+            }
+            try {
+                if (extractMemories(target, conversations.get(target.sessionId()))) {
+                    memoryChangedUserIds.add(target.userId());
+                }
+            } catch (final RuntimeException exception) {
+                failedUserIds.add(target.userId());
+                log.atError().addKeyValue("userId", target.userId()).addKeyValue("sessionId", target.sessionId()).log(
+                    "[USER_PREFERENCE] 대화 취향 기억 추출에 실패해 다음 밤에 다시 처리합니다. userId={}, sessionId={}, sequence={}, cause={}", target.userId(),
+                    target.sessionId(), target.sequence(), cause(exception));
+            }
+        }
     }
 
     public void refreshNightlyProfiles(final Set<Long> memoryChangedUserIds) {
@@ -133,15 +194,23 @@ public class UserPreferenceService {
             history.stream().map((final ChatHistoryMessage message) -> new ConversationMessage(message.role(), message.text())).toList();
         final ExtractUserMemoriesCommand extractCommand =
             new ExtractUserMemoriesCommand(target.userId(), String.valueOf(target.sessionId()), messages);
-        List<UserMemoryExtraction> extractions;
-        try {
-            extractions = extractUserMemoriesUseCase.execute(extractCommand);
-        } catch (final RetryAfterException exception) {
-            waitFor(exception.retryAfterSeconds());
-            extractions = extractUserMemoriesUseCase.execute(extractCommand);
-        }
+        final List<UserMemoryExtraction> extractions = extractWithRetry(extractCommand);
         return saveUserMemoriesUseCase
             .execute(new SaveUserMemoriesCommand(target.userId(), target.sessionId(), target.sequence(), extractions));
+    }
+
+    private List<UserMemoryExtraction> extractWithRetry(final ExtractUserMemoriesCommand command) {
+        for (int attempt = 1;; attempt++) {
+            try {
+                return extractUserMemoriesUseCase.execute(command);
+            } catch (final CoreException exception) {
+                if (attempt >= EXTRACTION_MAX_ATTEMPTS || (exception.errorCode() != ErrorCode.AI_MEMORY_EXTRACTION_UNAVAILABLE
+                    && exception.errorCode() != ErrorCode.AI_MEMORY_EXTRACTION_TIMEOUT)) {
+                    throw exception;
+                }
+                waitFor(EXTRACTION_RETRY_DELAY_SECONDS);
+            }
+        }
     }
 
     private void refreshRecommendationFeed() {

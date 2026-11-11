@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-@Profile("coupon-redis-kafka & !coupon-kafka")
+@Profile("coupon-kafka")
 @RequiredArgsConstructor
 class CouponIssueRedisKafkaRelay {
     static final String GROUP = "coupon-kafka-relay";

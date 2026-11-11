@@ -1,7 +1,5 @@
 package com.book.core.coupon.application.service;
 
-import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.command.CreateCouponCommand;
 import com.book.core.coupon.application.command.GetCouponsCommand;
 import com.book.core.coupon.application.command.IssueCouponCommand;
@@ -41,14 +39,7 @@ public class CouponService {
 
         final EnqueueCouponIssueUseCase enqueue = enqueueCouponIssueUseCase.getIfAvailable();
         if (enqueue != null) {
-            try {
-                enqueue.execute(command, issueState);
-            } catch (final CoreException exception) {
-                if (exception.errorCode() == ErrorCode.COUPON_SOLD_OUT) {
-                    issueCouponUseCase.markSoldOut(command.couponId());
-                }
-                throw exception;
-            }
+            enqueue.execute(command, issueState);
             return CouponIssueOutcome.ACCEPTED;
         }
         issueCouponUseCase.execute(command.userId(), command.couponId(), issueState);

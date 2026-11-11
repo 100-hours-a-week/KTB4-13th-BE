@@ -33,10 +33,6 @@ public class IssueCouponUseCase {
         }
     }
 
-    public void markSoldOut(final long couponId) {
-        couponStockPort.markSoldOut(couponId);
-    }
-
     @Transactional
     public void execute(final Long userId, final Long couponId, final CouponIssueState issueState) {
         log.atDebug().addKeyValue("couponId", couponId).log("[COUPON] 쿠폰 발급 처리를 시작합니다. couponId={}", couponId);

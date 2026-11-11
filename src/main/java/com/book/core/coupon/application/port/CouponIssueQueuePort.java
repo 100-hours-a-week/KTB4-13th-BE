@@ -7,7 +7,6 @@ public interface CouponIssueQueuePort {
         ACCEPTED,
         SOLD_OUT,
         DUPLICATE,
-        UNAVAILABLE,
         FAILED
     }
 

@@ -1,33 +1,16 @@
 # Kafka 쿠폰 발급 운영
 
-`coupon-kafka` 프로필에서 MySQL이 발급 가능 수량과 미완료 예약을 관리합니다. 쿠폰 행을 잠근 트랜잭션에서 예약과 발행 요청을 같이 저장하고 커밋 뒤 `202`를 반환합니다. Redis 정책 캐시와 매진 확인은 앞단에 있습니다. Redis의 기존 재고 값은 Kafka 모드에서 발급 차감에 사용하지 않습니다.
+`coupon-kafka` 프로필은 Redis Lua로 재고 차감과 미발행 요청 기록을 함께 처리한 뒤 `202`를 반환합니다. 발행 작업은 Kafka 확인 뒤 Redis 기록을 ACK하고, 소비자는 MySQL 발급 저장을 커밋한 뒤 Kafka 오프셋을 반영합니다.
 
-## 설정
+## 전환과 역전환
 
-| 항목 | 기본값 및 의미 |
-| --- | --- |
-| `KAFKA_BOOTSTRAP_SERVERS` | Book 공통 브로커 주소 |
-| `coupon.kafka.partitions`, `coupon.kafka.workers` | 토픽 3 파티션, 발급 소비자 1개 |
-| `coupon.kafka.replicas`, `coupon.kafka.min-in-sync-replicas` | 로컬 단일 브로커는 1/1. 운영 복제 구성에 맞춰 토픽 생성 전에 지정 |
-| 생산자 | Book 공통 `acks=all`, 멱등 발행, 재시도 3회. 로컬 단일 복제본은 브로커 장애를 견디지 못함 |
-| 소비자 | DB 커밋 뒤 레코드 단위 오프셋 반영. 공통 1초 간격 최대 3회 재시도 후 DLT |
-| `coupon.kafka.relay-delay-ms` | 발행 작업 주기 100ms, 회차당 최대 64건씩 선점 |
+1. 대상 쿠폰의 발급 요청을 잠시 멈춥니다. Streams의 미전달·미확인 작업이 모두 MySQL에 반영됐는지 확인하고 DB 발급 수량·보유 쿠폰 행·Redis 잔량을 대조합니다.
+2. 모든 발급 인스턴스에서 `coupon-kafka`를 켜고 기존 `coupon-streams` 및 `coupon-streams-worker`를 끕니다. Kafka 브로커는 `KAFKA_BOOTSTRAP_SERVERS`로 지정합니다. 토픽 생성 전 `coupon.kafka.replicas`와 `coupon.kafka.min-in-sync-replicas`를 운영 브로커 구성에 맞춥니다. 로컬 기본값은 각각 1입니다.
+3. 발급 요청을 재개하고 Redis 미발행 기록, Kafka 소비 지연과 실패 토픽을 확인합니다. 역전환 전에는 발급 요청을 다시 멈추고 두 큐의 미처리 요청과 실패 건을 확인한 뒤 DB 발급과 Redis 잔량을 대조합니다.
 
-## 전환
+## 처리 지연과 장애
 
-1. 대상 쿠폰의 기존 발급 유입을 멈추고 Streams의 미전달·미확인 메시지를 모두 반영한 뒤 DB와 보유 쿠폰 수량을 확인합니다.
-2. 동일 쿠폰에 대해 모든 발급 인스턴스를 함께 전환합니다. Streams/동기 발급과 Kafka 발급을 같은 쿠폰에 동시에 운영하면 재고 기준이 달라집니다.
-3. Kafka 모드에서 다시 유입을 열고 오래된 미발행 예약, 소비 지연, 실패 건을 확인합니다. 역전환 시에도 먼저 미완료 예약을 해소하고 Redis 재고를 DB 기준으로 다시 맞춥니다.
-
-## 발급 지연과 실패 확인
-
-발행되지 않은 요청과 발급 완료를 기다리는 요청은 MySQL 접수 기록에서 확인합니다.
-
-```sql
-SELECT id, coupon_id, created_at, published_at
-FROM coupon_issue_request
-WHERE completed_at IS NULL
-ORDER BY created_at;
-```
-
-소비 재시도를 소진하면 Book 공통 Kafka 처리기가 `book.coupon-issuance.v1.DLT`에 요청 ID를 남깁니다. 해당 요청의 예약은 유지되므로 다른 요청이 그 재고를 가져갈 수 없습니다. 운영자 선별 재처리는 #560에서 다룹니다. Kafka 모드에서 Redis 재고는 발급 수량의 기준이 아니므로 역전환 전에 DB와 Redis 재고를 확인해야 합니다.
+- Redis에서 `XINFO GROUPS coupon:issuance:kafka-outbox`로 `coupon-kafka-relay`의 `lag`(미전달)와 `pending`(미확인)을 확인합니다. 두 값이 0이어도 Kafka에 처리할 요청이 남을 수 있으므로 소비자 그룹 `book-coupon-issuance-redis`의 지연도 확인합니다.
+- 소비 재시도를 소진한 요청은 `book.coupon-issuance.redis.v1.DLT`에 남습니다. 원인을 해결한 뒤 발급 여부와 예약을 확인합니다. 선별 재처리는 #560에서 다룹니다.
+- Redis 복제 전에 `202`를 반환한 요청은 주 노드 장애 뒤 유실될 수 있습니다. 접수 유실을 허용할 수 없는 운영 환경에서는 활성화 전에 내구성 보완과 장애 전환 검증이 필요합니다.
+- Redis Stream은 ACK 후에도 항목을 보관합니다. 운영 트래픽을 받기 전에 미처리 요청을 보존할 수 있는 정리 기준과 메모리 한도를 정합니다.

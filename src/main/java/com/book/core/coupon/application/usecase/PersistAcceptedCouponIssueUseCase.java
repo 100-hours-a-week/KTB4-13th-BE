@@ -6,11 +6,9 @@ import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.OwnedCoupon;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 
 @UseCase
-@Profile({"coupon-streams & coupon-streams-worker", "coupon-kafka", "coupon-redis-kafka & !coupon-kafka"})
 @RequiredArgsConstructor
 public class PersistAcceptedCouponIssueUseCase {
     private final CouponRepositoryPort coupons;

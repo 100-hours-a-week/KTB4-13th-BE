@@ -15,10 +15,10 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
-@Profile({"coupon-streams & !coupon-kafka", "coupon-redis-kafka & !coupon-kafka"})
+@Profile({"coupon-streams", "coupon-kafka"})
 @RequiredArgsConstructor
 public class CouponIssueStreamAdapter implements CouponIssueQueuePort {
-    // shortcut: 실험 동안 접수 기록을 보관합니다. 운영 전 ACK 완료 기준 보존 정책이 필요합니다.
+    // shortcut: 접수 기록을 자동 삭제하지 않습니다. 운영 트래픽에서는 처리 완료 기준 보존 정책이 필요합니다.
     static final String STREAM = "coupon:issuance:stream";
     private final RedisScript<Long> reserveScript = longLuaScript("lua/reserve-coupon-issue.lua");
     private final StringRedisTemplate redis;

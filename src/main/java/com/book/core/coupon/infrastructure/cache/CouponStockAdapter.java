@@ -1,7 +1,5 @@
 package com.book.core.coupon.infrastructure.cache;
 
-import java.time.Duration;
-import org.springframework.dao.DataAccessException;
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.port.CouponStockSnapshot;
 import com.book.core.coupon.application.port.IssueResult;
@@ -43,17 +41,6 @@ public class CouponStockAdapter implements CouponStockPort {
             case 0 -> IssueResult.SOLD_OUT;
             default -> IssueResult.FAILED;
         };
-    }
-
-    @Override
-    public void markSoldOut(final long couponId) {
-        final String key = soldOutKey(couponId);
-        try {
-            redisTemplate.opsForValue().setIfAbsent(key, "1", Duration.ofSeconds(soldOutProperties.ttlSeconds()));
-            couponSoldOutCache.invalidate(key);
-        } catch (final DataAccessException exception) {
-            // shortcut: DB 매진 판정을 그대로 반환하고 다음 요청에서 신호를 다시 남깁니다.
-        }
     }
 
     @Override

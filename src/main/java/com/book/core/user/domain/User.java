@@ -71,6 +71,10 @@ public class User extends BaseEntity {
         return isActive() && isWithdrawalRequested() && !isWithdrawalRecoverable(now);
     }
 
+    public boolean isWithdrawalConfirmed(final LocalDateTime now) {
+        return !isActive() || (isWithdrawalRequested() && !isWithdrawalRecoverable(now));
+    }
+
     public void recoverWithdrawal(final LocalDateTime now) {
         if (!isWithdrawalRecoverable(now)) {
             throw new BusinessException(ErrorCode.USER_WITHDRAWAL_PENDING);

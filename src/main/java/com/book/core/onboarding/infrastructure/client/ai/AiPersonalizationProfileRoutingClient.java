@@ -25,4 +25,9 @@ class AiPersonalizationProfileRoutingClient implements AiPersonalizationProfileC
     public void updateProfile(final AiPersonalizationProfileRequest request, final UUID revision) {
         kafkaClient.updateProfile(request, revision);
     }
+
+    @Override
+    public void deleteProfile(final Long userId) {
+        httpClient.deleteProfile(userId);
+    }
 }

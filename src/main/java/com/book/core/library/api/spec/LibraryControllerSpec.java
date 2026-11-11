@@ -1,5 +1,6 @@
 package com.book.core.library.api.spec;
 
+import com.book.core.library.api.request.AddLibraryBooksRequest;
 import com.book.core.library.api.request.CreateShelfPhotoUploadRequest;
 import com.book.core.library.api.request.DeleteLibraryBooksRequest;
 import com.book.core.library.api.response.LibraryBooksResponse;
@@ -26,6 +27,18 @@ public interface LibraryControllerSpec {
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
     ResponseEntity<com.book.common.response.ApiResponse<LibraryBooksResponse>> getBooks(@Parameter(hidden = true) final Long userId);
+
+    @Operation(summary = "나의 도서관 책 담기",
+        description = "인증된 회원이 고른 도서를 나의 도서관에 담습니다. 이미 담긴 책은 그대로 두고, 삭제했던 책은 다시 담긴 상태로 복구합니다. 존재하지 않는 도서가 하나라도 있으면 아무것도 담지 않습니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "담기 성공"),
+        @ApiResponse(responseCode = "400", description = "도서 ID 목록이 비었거나 50개를 넘거나 잘못됨"),
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
+        @ApiResponse(responseCode = "404", description = "존재하지 않는 도서가 포함됨")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> addBooks(@Parameter(hidden = true) final Long userId,
+        @RequestBody(required = true, content = @Content(schema = @Schema(implementation = AddLibraryBooksRequest.class)))
+        @Valid final AddLibraryBooksRequest request);
 
     @Operation(summary = "나의 도서관 책 삭제",
         description = "인증된 회원이 소유한 활성 도서관 항목을 한 권 또는 여러 권 논리 삭제합니다. 존재하지 않거나 이미 삭제된 항목, 다른 회원의 항목은 무시하고 성공을 응답합니다.")

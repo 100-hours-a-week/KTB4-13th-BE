@@ -55,12 +55,30 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Tag("integration")
+@Testcontainers
 class UserWithdrawalIntegrationTest {
+    @Container
+    static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7.4-alpine").withExposedPorts(6379);
+
+    @DynamicPropertySource
+    static void redisProperties(final DynamicPropertyRegistry properties) {
+        properties.add("spring.data.redis.host", REDIS::getHost);
+        properties.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
+    }
+
+    @Autowired
+    StringRedisTemplate redis;
     @Autowired
     MockMvc mvc;
 
@@ -107,6 +125,7 @@ class UserWithdrawalIntegrationTest {
         assertThat(count("SELECT COUNT(*) FROM users WHERE id = ? AND delete_requested_at IS NOT NULL AND deleted_at IS NULL", userId))
             .isEqualTo(1);
         assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ? AND revoked_at IS NULL", userId)).isZero();
+        assertThat(redis.hasKey("auth:refresh-session:v1:{" + userId + "}")).isFalse();
         mvc.perform(get("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)).andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.code").value("E401"));
         mvc.perform(post("/api/v1/auth/reissue").cookie(refreshToken)).andExpect(status().isUnauthorized())
@@ -180,7 +199,8 @@ class UserWithdrawalIntegrationTest {
         assertThat(count("SELECT COUNT(*) FROM user_library_books WHERE user_id = ? AND deleted_at IS NOT NULL", userId)).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT deleted_at FROM user_library_books WHERE user_id = ? AND book_id = ?", LocalDateTime.class,
             userId, 9002L)).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
-        assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ?", userId)).isEqualTo(1);
+        assertThat(count("SELECT COUNT(*) FROM refresh_sessions WHERE user_id = ?", userId)).isZero();
+        assertThat(redis.hasKey("auth:refresh-session:v1:{" + userId + "}")).isFalse();
         assertThat(tablesReferencing("users")).as("users를 참조하는 테이블이 추가되면 최종 탈퇴 보존·파기 대상을 결정해야 합니다.").containsExactlyInAnyOrder(
             "user_providers", "refresh_sessions", "user_onboardings", "user_onboarding_answers", "user_onboarding_books",
             "recommendation_cards", "user_term_agreement", "user_library_books");

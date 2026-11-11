@@ -3,6 +3,8 @@ package com.book.core.auth.infrastructure.token;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.time.Clock;
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
@@ -11,7 +13,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 class RefreshTokenValidatorTest {
     private static final Instant NOW = Instant.parse("2030-01-02T03:04:05Z");
-    private final RefreshTokenValidator validator = new RefreshTokenValidator();
+    private final RefreshTokenValidator validator = new RefreshTokenValidator(Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
     void REFRESH_tokenType과_양수_Long_subject를_허용한다() {

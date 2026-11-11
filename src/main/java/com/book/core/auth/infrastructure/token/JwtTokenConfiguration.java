@@ -3,6 +3,7 @@ package com.book.core.auth.infrastructure.token;
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.Base64;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -52,10 +53,10 @@ class JwtTokenConfiguration {
     @Bean(REFRESH_JWT_DECODER)
     JwtDecoder refreshJwtDecoder(@Qualifier(TOKEN_SECRET_KEY) final SecretKey secretKey, @Qualifier(TOKEN_CLOCK) final Clock clock) {
         final NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(secretKey).macAlgorithm(MacAlgorithm.HS512).build();
-        final JwtTimestampValidator timestampValidator = new JwtTimestampValidator();
+        final JwtTimestampValidator timestampValidator = new JwtTimestampValidator(Duration.ZERO);
         timestampValidator.setAllowEmptyExpiryClaim(false);
         timestampValidator.setClock(clock);
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(timestampValidator, new RefreshTokenValidator()));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(timestampValidator, new RefreshTokenValidator(clock)));
         return decoder;
     }
 

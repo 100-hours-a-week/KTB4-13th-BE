@@ -3,13 +3,10 @@ package com.book.core.auth.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.verify;
 
 import com.book.common.exception.BusinessException;
 import com.book.common.exception.ErrorCode;
-import com.book.core.auth.application.port.RefreshSessionRepository;
 import com.book.core.auth.application.port.RefreshTokenHasher;
 import com.book.core.auth.application.result.AuthLoginResult;
 import com.book.core.user.application.port.UserRepositoryPort;
@@ -17,7 +14,6 @@ import com.book.core.user.application.usecase.RecoverWithdrawalUseCase;
 import com.book.core.user.application.usecase.RequestUserDeletionUseCase;
 import com.book.core.user.domain.User;
 import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -31,12 +27,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -50,6 +49,15 @@ class AuthSessionMySqlConcurrencyTest {
     @Container
     @ServiceConnection
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
+    @Container
+    static final GenericContainer<?> redisContainer = new GenericContainer<>("redis:7.4-alpine").withExposedPorts(6379);
+
+    @DynamicPropertySource
+    static void redisProperties(final DynamicPropertyRegistry properties) {
+        properties.add("spring.data.redis.host", redisContainer::getHost);
+        properties.add("spring.data.redis.port", () -> redisContainer.getMappedPort(6379));
+    }
+
     @Autowired
     CreateLoginSessionUseCase login;
     @Autowired
@@ -64,8 +72,8 @@ class AuthSessionMySqlConcurrencyTest {
     UserRepositoryPort users;
     @MockitoSpyBean
     RefreshTokenHasher hasher;
-    @MockitoSpyBean
-    RefreshSessionRepository sessions;
+    @Autowired
+    StringRedisTemplate redis;
     @Autowired
     JdbcTemplate jdbc;
     @Autowired
@@ -99,8 +107,7 @@ class AuthSessionMySqlConcurrencyTest {
                 final AuthLoginResult secondResult = second.get(10, TimeUnit.SECONDS);
                 assertThat(firstResult.refreshToken()).isNotEqualTo(secondResult.refreshToken());
                 assertThat(activeCount(userId)).isEqualTo(1);
-                assertThat(jdbc.queryForObject("SELECT token_hash FROM refresh_sessions WHERE user_id=? AND revoked_at IS NULL",
-                    String.class, userId)).isEqualTo(hasher.hash(secondResult.refreshToken()));
+                assertThat(redis.opsForValue().get(sessionKey(userId))).isEqualTo(hasher.hash(secondResult.refreshToken()));
             } finally {
                 release.countDown();
             }
@@ -182,34 +189,28 @@ class AuthSessionMySqlConcurrencyTest {
     }
 
     @Test
-    void failedOuterTransactionRestoresPreviousSession() {
+    void failedOuterTransactionLeavesRedisReplacementInPlace() {
         final long userId = users.save(User.create("롤백검증회원")).id();
         final String original = login.execute(userId).refreshToken();
         assertThatThrownBy(() -> new TransactionTemplate(manager).executeWithoutResult((final var status) -> {
             login.execute(userId);
             throw new IllegalStateException("rollback");
         })).isInstanceOf(IllegalStateException.class);
-        assertThat(
-            jdbc.queryForObject("SELECT token_hash FROM refresh_sessions WHERE user_id=? AND revoked_at IS NULL", String.class, userId))
-            .isEqualTo(hasher.hash(original));
+        assertThat(redis.opsForValue().get(sessionKey(userId))).isNotEqualTo(hasher.hash(original));
+        assertThatThrownBy(() -> reissue.execute(original)).isInstanceOfSatisfying(BusinessException.class,
+            (final var error) -> assertThat(error.errorCode()).isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
     }
 
     @Test
-    void failedMySqlInsertRollsBackRevocation() {
+    void invalidRedisHashDoesNotReplacePreviousSession() {
         final long userId = users.save(User.create("저장실패회원")).id();
         final String oldToken = login.execute(userId).refreshToken();
         final String oldHash = hasher.hash(oldToken);
         doReturn("x".repeat(65)).when(hasher).hash(anyString());
 
-        assertThatThrownBy(() -> login.execute(userId)).isInstanceOf(DataAccessException.class).rootCause()
-            .isInstanceOfSatisfying(SQLException.class, (final var error) -> assertThat(error.getErrorCode()).isEqualTo(1406));
-
-        verify(sessions).save(argThat((final var session) -> session.id() != null && !session.isActive()));
-        assertThat(activeCount(userId)).isEqualTo(1);
-        assertThat(
-            jdbc.queryForObject("SELECT token_hash FROM refresh_sessions WHERE user_id=? AND revoked_at IS NULL", String.class, userId))
-            .isEqualTo(oldHash);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM refresh_sessions WHERE user_id=?", Integer.class, userId)).isEqualTo(1);
+        assertThatThrownBy(() -> login.execute(userId)).isInstanceOfSatisfying(BusinessException.class,
+            (final var error) -> assertThat(error.errorCode()).isEqualTo(ErrorCode.TOKEN_ISSUE_FAILURE));
+        assertThat(redis.opsForValue().get(sessionKey(userId))).isEqualTo(oldHash);
     }
 
     private <T> Callable<T> inTransaction(final AtomicLong connection, final CountDownLatch started, final Supplier<T> operation) {
@@ -251,8 +252,15 @@ class AuthSessionMySqlConcurrencyTest {
         throw new AssertionError("Expected user PK lock wait for the specified MySQL connections and user");
     }
 
+    private String sessionKey(final long userId) {
+        return "auth:refresh-session:v1:{" + userId + "}";
+    }
+
     private int activeCount(final long userId) {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM refresh_sessions WHERE user_id=? AND revoked_at IS NULL", Integer.class, userId);
+        if (Boolean.TRUE.equals(redis.hasKey(sessionKey(userId)))) {
+            return 1;
+        }
+        return 0;
     }
 
     private static void await(final CountDownLatch latch) {

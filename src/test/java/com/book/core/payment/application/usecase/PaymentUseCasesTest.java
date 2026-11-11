@@ -13,6 +13,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.cancel.application.usecase.CreateCancelBalanceUseCase;
 import com.book.core.coupon.application.usecase.UseOwnedCouponUseCase;
+import com.book.core.onboarding.application.usecase.EnqueueProfileSyncUseCase;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderItem;
@@ -45,6 +46,7 @@ class PaymentUseCasesTest {
     private final DeductPointUseCase deduct = mock(DeductPointUseCase.class);
     private final EarnPointUseCase earn = mock(EarnPointUseCase.class);
     private final CreateCancelBalanceUseCase cancel = mock(CreateCancelBalanceUseCase.class);
+    private final EnqueueProfileSyncUseCase enqueueProfileSync = mock(EnqueueProfileSyncUseCase.class);
 
     @Test
     void 생성은_주문_소유자와_결제자_및_할인_값을_유지한다() {
@@ -134,7 +136,7 @@ class PaymentUseCasesTest {
             () -> complete().execute("order", new com.book.core.payment.application.result.ApprovedPaymentResult("test-external",
                 com.book.core.payment.domain.enums.PaymentMethod.CARD, "12345678")))
             .isInstanceOf(CoreException.class);
-        verifyNoInteractions(deduct, earn, cancel, histories);
+        verifyNoInteractions(deduct, earn, cancel, histories, enqueueProfileSync);
     }
 
     @Test
@@ -155,7 +157,7 @@ class PaymentUseCasesTest {
     }
 
     private CompletePaymentUseCase complete() {
-        return new CompletePaymentUseCase(payments, orders, coupons, deduct, earn, cancel, histories);
+        return new CompletePaymentUseCase(payments, orders, coupons, deduct, earn, cancel, histories, enqueueProfileSync);
     }
 
     private static Order order() {

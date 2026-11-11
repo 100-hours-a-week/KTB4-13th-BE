@@ -14,6 +14,7 @@ import com.book.core.cancel.domain.PartialCancelAction;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.OwnedCoupon;
 import com.book.core.coupon.domain.enums.OwnedCouponStatus;
+import com.book.core.onboarding.application.port.ProfileHistoryRepositoryPort;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
@@ -55,6 +56,8 @@ class CancelIntegrationTest {
     @Autowired
     private JdbcTemplate jdbc;
     @Autowired
+    private ProfileHistoryRepositoryPort profileHistory;
+    @Autowired
     private PlatformTransactionManager transactionManager;
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -82,6 +85,7 @@ class CancelIntegrationTest {
             jdbc.queryForObject("select count(*) from transaction_history where order_id = ? and type = 'CANCEL'", Long.class, order.id()))
             .isEqualTo(1L);
 
+        assertThat(profileJobs(10001L)).isEqualTo(1L);
         assertThat(jdbc.queryForObject("select quantity from order_item where order_id = ?", Integer.class, order.id())).isEqualTo(5);
         assertThat(jdbc.queryForObject("select status from order_item where order_id = ?", String.class, order.id())).isEqualTo("PAID");
         assertThat(jdbc.queryForObject("select canceled_quantity from order_item where order_id = ?", Long.class, order.id())).isZero();
@@ -165,22 +169,56 @@ class CancelIntegrationTest {
         assertThat(jdbc.queryForObject("select count(*) from `cancel` where order_id = ?", Long.class, order.id())).isZero();
     }
 
+    @Test
+    void 부분취소_후_남은_도서만_추천_이력에_남고_갱신_작업은_사용자당_하나다() {
+        final long userId = 10008L;
+        final long otherProductId = 2010008L;
+        insertProduct(otherProductId, otherProductId);
+        final Order order = fixture(userId, 3, false, false, otherProductId);
+        final Long itemId = order.items().getFirst().id();
+        jdbc.update("update books set isbn13 = ? where id = ?", "9788900010002", 900000L + userId);
+        jdbc.update("update books set isbn13 = ? where id = ?", "9788900010019", otherProductId);
+
+        service.partialCancel(new PartialCancelCommand(userId, new PartialCancelAction(order.key(), itemId, 1L), "first"));
+        assertThat(profileJobs(userId)).isEqualTo(1L);
+        assertThat(profileHistory.findHistory(userId).purchasedIsbns()).containsExactlyInAnyOrder("9788900010002", "9788900010019");
+
+        service.partialCancel(new PartialCancelCommand(userId, new PartialCancelAction(order.key(), itemId, 2L), "last"));
+        assertThat(profileJobs(userId)).isEqualTo(1L);
+        assertThat(profileHistory.findHistory(userId).purchasedIsbns()).containsExactly("9788900010019");
+    }
+
+    private long profileJobs(final long userId) {
+        return jdbc.queryForObject("select count(*) from profile_sync_jobs where user_id = ?", Long.class, userId);
+    }
+
     private Long itemId(final Order order) {
         return jdbc.queryForObject("select id from order_item where order_id = ?", Long.class, order.id());
     }
 
     private Order fixture(final Long userId, final int quantity, final boolean hasCoupon, final boolean couponUsed) {
-        final long bookId = 900000L + userId;
-        final long productId = 1000000L + userId;
+        return fixture(userId, quantity, hasCoupon, couponUsed, null);
+    }
+
+    private void insertProduct(final long productId, final long bookId) {
         jdbc.update("INSERT INTO books (id, title, author, publisher, category, published_at) VALUES (?, ?, ?, ?, ?, ?)", bookId,
             "취소 테스트 도서", "저자", "출판사", "소설", "2026-01-01");
         jdbc.update(
             "INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?)",
             productId, bookId, "취소 테스트 상품", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), BigDecimal.ZERO, 10);
+    }
+
+    private Order fixture(final Long userId, final int quantity, final boolean hasCoupon, final boolean couponUsed,
+        final Long otherProductId) {
+        final long productId = 1000000L + userId;
+        insertProduct(productId, 900000L + userId);
         return new TransactionTemplate(transactionManager).execute((final TransactionStatus status) -> {
             final Order order = Order.create(userId, "test-cancel-" + UUID.randomUUID(), null);
             order.addItem(productId, "책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), quantity);
+            if (otherProductId != null) {
+                order.addItem(otherProductId, "다른 책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), 1);
+            }
             order.paid();
             orders.save(order);
             Long ownedCouponId = -1L;

@@ -23,6 +23,7 @@ import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.command.ApprovePaymentCommand;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
+import com.book.core.payment.application.result.ApprovedPaymentResult;
 import com.book.core.payment.application.service.PaymentService;
 import com.book.core.payment.application.usecase.CompletePaymentUseCase;
 import com.book.core.payment.application.usecase.PostProcessPaymentUseCase;
@@ -128,11 +129,29 @@ class TossPaymentRecoveryIntegrationTest {
         assertThat(payment.approveCode()).isEqualTo("12345678");
         assertThat(orders.findActiveOrderByKey(fixture.order().key()).orElseThrow().status()).isEqualTo(OrderStatus.PAID);
         assertThat(payments.success(command)).isEqualTo(paymentId);
+        assertThat(profileJobs(fixture)).isEqualTo(1L);
         assertThat(fixture.pg().approvals).isEqualTo(1);
         assertThat(pending(fixture)).isZero();
         assertThat(points.findByUserId(fixture.order().userId()).orElseThrow().balance()).isEqualByComparingTo("22000");
         assertThat(jdbc.queryForObject("select count(*) from transaction_history where order_id = ? and type = 'PAYMENT'", Long.class,
             fixture.order().id())).isEqualTo(1L);
+    }
+
+    @Test
+    void 결제완료_트랜잭션이_롤백되면_추천_프로필_갱신_작업도_롤백된다() {
+        final Fixture fixture = fixture(false, 1);
+        new TransactionTemplate(transactions).executeWithoutResult((final var status) -> {
+            completePayment.execute(fixture.order().key(), new ApprovedPaymentResult(fixture.key(), PaymentMethod.CARD, "12345678"));
+            assertThat(profileJobs(fixture)).isEqualTo(1L);
+            status.setRollbackOnly();
+        });
+
+        assertThat(profileJobs(fixture)).isZero();
+        assertThat(orders.findActiveOrderByKey(fixture.order().key()).orElseThrow().status()).isEqualTo(OrderStatus.CREATED);
+    }
+
+    private long profileJobs(final Fixture fixture) {
+        return jdbc.queryForObject("select count(*) from profile_sync_jobs where user_id = ?", Long.class, fixture.order().userId());
     }
 
     @ParameterizedTest
@@ -310,6 +329,7 @@ class TossPaymentRecoveryIntegrationTest {
 
     private Fixture fixture(final boolean paid, final int quantity) {
         final long userId = users.incrementAndGet();
+        jdbc.update("INSERT INTO users (id, nickname) VALUES (?, ?)", userId, "pg-test-" + userId);
         final long productId = 2000000 + userId;
         jdbc.update("INSERT INTO books (id, title, author, publisher, category, published_at) "
             + "VALUES (?, 'PG 테스트', '저자', '출판사', '소설', '2026-01-01')", productId);

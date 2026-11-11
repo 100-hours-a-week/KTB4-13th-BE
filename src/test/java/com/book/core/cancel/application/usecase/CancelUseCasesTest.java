@@ -20,6 +20,7 @@ import com.book.core.cancel.domain.CancelCalculated;
 import com.book.core.cancel.domain.PartialCancelAction;
 import com.book.core.cancel.domain.enums.CancelType;
 import com.book.core.coupon.application.usecase.RevertOwnedCouponUseCase;
+import com.book.core.onboarding.application.usecase.EnqueueProfileSyncUseCase;
 import com.book.core.order.application.usecase.GetOrderForCancelUseCase;
 import com.book.core.order.application.usecase.GetOrderItemForCancelUseCase;
 import com.book.core.order.domain.Order;
@@ -58,6 +59,7 @@ class CancelUseCasesTest {
     private final DeductPointUseCase deduct = mock(DeductPointUseCase.class);
     private final RecordPaymentHistoryUseCase histories = mock(RecordPaymentHistoryUseCase.class);
     private final Clock clock = Clock.fixed(Instant.EPOCH, ZoneId.of("Asia/Seoul"));
+    private final EnqueueProfileSyncUseCase enqueueProfileSync = mock(EnqueueProfileSyncUseCase.class);
 
     @Test
     void 전체취소는_쿠폰과_포인트를_복원하고_적립포인트를_회수하며_이력을_기록한다() {
@@ -172,11 +174,12 @@ class CancelUseCasesTest {
     }
 
     private CancelPaymentUseCase full() {
-        return new CancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories, clock);
+        return new CancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories, clock, enqueueProfileSync);
     }
 
     private PartialCancelPaymentUseCase partial() {
-        return new PartialCancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories, items, clock);
+        return new PartialCancelPaymentUseCase(orders, payments, balances, coupons, earn, deduct, cancels, histories, items, clock,
+            enqueueProfileSync);
     }
 
     private CancelBalance prepare(final Order order, final Long ownedCouponId) {

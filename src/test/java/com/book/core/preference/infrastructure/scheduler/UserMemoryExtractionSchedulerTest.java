@@ -7,7 +7,6 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -71,16 +70,31 @@ class UserMemoryExtractionSchedulerTest {
     }
 
     @Test
-    void 해제_결과가_0이거나_null이거나_SQL_예외이면_연결을_폐기한다() throws SQLException {
+    void 해제_결과가_0이면_연결을_폐기한다() throws SQLException {
         setup();
-        when(released.getInt(1)).thenReturn(0, 0);
-        when(released.wasNull()).thenReturn(false, true);
+        when(released.getInt(1)).thenReturn(0);
         scheduler.runNightlyBatch();
+        verify(pool).evictConnection(connection);
+        verify(connection).close();
+    }
+
+    @Test
+    void 해제_결과가_null이면_연결을_폐기한다() throws SQLException {
+        setup();
+        when(released.getInt(1)).thenReturn(0);
+        when(released.wasNull()).thenReturn(true);
         scheduler.runNightlyBatch();
+        verify(pool).evictConnection(connection);
+        verify(connection).close();
+    }
+
+    @Test
+    void 해제_중_SQL_예외가_발생하면_연결을_폐기한다() throws SQLException {
+        setup();
         when(release.executeQuery()).thenThrow(new SQLException("failure"));
         scheduler.runNightlyBatch();
-        verify(pool, times(3)).evictConnection(connection);
-        verify(connection, times(3)).close();
+        verify(pool).evictConnection(connection);
+        verify(connection).close();
     }
 
     @Test

@@ -39,6 +39,7 @@ public class UserMemoryExtractionScheduler {
             try {
                 userPreferenceService.runNightlyBatch();
             } finally {
+                // 인터럽트 상태에서도 락 해제를 시도하고 정리 후 상태를 복원합니다.
                 final boolean interrupted = Thread.interrupted();
                 try {
                     if (!releaseLock(lockConnection)) {

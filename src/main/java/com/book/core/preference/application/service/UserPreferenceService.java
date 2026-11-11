@@ -86,6 +86,7 @@ public class UserPreferenceService {
 
     public void runNightlyBatch() {
         final Set<Long> memoryChangedUserIds = extractNightlyMemories();
+        // 추출 대기 중 인터럽트는 나머지 배치 단계를 마친 뒤 복원합니다.
         final boolean interrupted = Thread.interrupted();
         try {
             refreshNightlyProfiles(memoryChangedUserIds);
@@ -123,16 +124,15 @@ public class UserPreferenceService {
                     futures.add(executor.submit(() -> processTargets(job, conversations, failedUserIds, memoryChangedUserIds)));
                 }
                 for (final Future<?> future : futures) {
-                    boolean complete = false;
-                    while (!complete) {
+                    while (true) {
                         try {
                             future.get();
-                            complete = true;
+                            break;
                         } catch (final InterruptedException exception) {
                             interrupted = true;
                         } catch (final ExecutionException exception) {
                             log.error("[USER_PREFERENCE] 사용자 취향 추출 작업이 예기치 않게 실패했습니다.", exception.getCause());
-                            complete = true;
+                            break;
                         }
                     }
                 }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -199,13 +200,13 @@ class UserPreferenceServiceTest {
         when(save.execute(any())).thenReturn(true);
         assertThat(userPreferenceService.extractNightlyMemories()).containsExactlyInAnyOrder(1L, 2L);
         InOrder order = inOrder(extraction, save);
-        order.verify(extraction).execute(org.mockito.ArgumentMatchers.argThat(c -> c.conversationId().equals("11")));
-        order.verify(save).execute(org.mockito.ArgumentMatchers.argThat(c -> c.sessionId().equals(11L)));
-        order.verify(extraction).execute(org.mockito.ArgumentMatchers.argThat(c -> c.conversationId().equals("21")));
-        order.verify(save).execute(org.mockito.ArgumentMatchers.argThat(c -> c.sessionId().equals(21L)));
-        order.verify(extraction).execute(org.mockito.ArgumentMatchers.argThat(c -> c.conversationId().equals("12")));
-        order.verify(extraction).execute(org.mockito.ArgumentMatchers.argThat(c -> c.conversationId().equals("22")));
-        verify(extraction, times(0)).execute(org.mockito.ArgumentMatchers.argThat(c -> c.conversationId().equals("13")));
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("11")));
+        order.verify(save).execute(argThat(c -> c.sessionId().equals(11L)));
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("21")));
+        order.verify(save).execute(argThat(c -> c.sessionId().equals(21L)));
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("12")));
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("22")));
+        verify(extraction, times(0)).execute(argThat(c -> c.conversationId().equals("13")));
     }
 
     @Test
@@ -249,7 +250,7 @@ class UserPreferenceServiceTest {
     }
 
     @Test
-    void 같은_사용자의_세션은_저장까지_끝낸_뒤_다음을_처리하고_다른_사용자는_429_대기중에도_진행한다() throws Exception {
+    void 응답_429_발생시_한번_재시도하고_같은_사용자의_세션을_순서대로_처리한다() throws Exception {
         ReflectionTestUtils.setField(userPreferenceService, "nightlyConcurrency", 8);
         prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1), new MemoryExtractionTarget(1L, 12L, 1),
             new MemoryExtractionTarget(2L, 21L, 1)));
@@ -277,10 +278,10 @@ class UserPreferenceServiceTest {
             assertThat(result.get(5, TimeUnit.SECONDS)).containsExactlyInAnyOrder(1L, 2L);
         }
         InOrder order = inOrder(extraction, save);
-        order.verify(extraction, times(2)).execute(org.mockito.ArgumentMatchers.argThat(c -> c.conversationId().equals("11")));
-        order.verify(save).execute(org.mockito.ArgumentMatchers.argThat(c -> c.sessionId().equals(11L)));
-        order.verify(extraction).execute(org.mockito.ArgumentMatchers.argThat(c -> c.conversationId().equals("12")));
-        order.verify(save).execute(org.mockito.ArgumentMatchers.argThat(c -> c.sessionId().equals(12L)));
+        order.verify(extraction, times(2)).execute(argThat(c -> c.conversationId().equals("11")));
+        order.verify(save).execute(argThat(c -> c.sessionId().equals(11L)));
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("12")));
+        order.verify(save).execute(argThat(c -> c.sessionId().equals(12L)));
     }
 
     @Test
@@ -295,10 +296,10 @@ class UserPreferenceServiceTest {
         when(save.execute(any())).thenReturn(true);
         userPreferenceService.extractNightlyMemories();
         final InOrder order = inOrder(extraction, save);
-        order.verify(extraction).execute(org.mockito.ArgumentMatchers.argThat(c -> c.conversationId().equals("11")));
-        order.verify(save).execute(org.mockito.ArgumentMatchers.argThat(c -> c.sessionId().equals(11L)));
-        order.verify(extraction).execute(org.mockito.ArgumentMatchers.argThat(c -> c.conversationId().equals("12")));
-        order.verify(save).execute(org.mockito.ArgumentMatchers.argThat(c -> c.sessionId().equals(12L)));
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("11")));
+        order.verify(save).execute(argThat(c -> c.sessionId().equals(11L)));
+        order.verify(extraction).execute(argThat(c -> c.conversationId().equals("12")));
+        order.verify(save).execute(argThat(c -> c.sessionId().equals(12L)));
     }
 
     @Test

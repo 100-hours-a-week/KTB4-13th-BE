@@ -67,6 +67,23 @@ class JwtRefreshTokenVerifierTest {
     }
 
     @Test
+    void refreshTokenExpiresExactlyAtExp() {
+        final String token = tokenIssuer.issue(USER_ID).refreshToken();
+        final Instant expiry = NOW.plus(REFRESH_TOKEN_EXPIRATION);
+        assertThat(verifierAt(expiry.minusNanos(1)).verify(token)).isEqualTo(USER_ID);
+        assertInvalidRefreshToken(() -> verifierAt(expiry).verify(token));
+        assertInvalidRefreshToken(() -> verifierAt(expiry.plusNanos(1)).verify(token));
+    }
+
+    @Test
+    void accessTokenKeepsItsExistingClockSkew() {
+        final String token = tokenIssuer.issue(USER_ID).accessToken();
+        final Instant afterExpiry = NOW.plus(ACCESS_TOKEN_EXPIRATION).plusSeconds(30);
+        final JwtDecoder decoder = new JwtTokenConfiguration().serviceJwtDecoder(secretKey, Clock.fixed(afterExpiry, ZoneOffset.UTC));
+        assertThat(decoder.decode(token).getSubject()).isEqualTo(USER_ID.toString());
+    }
+
+    @Test
     void 다른_Secret으로_서명된_Refresh_Token을_거부한다() {
         final byte[] otherSecretBytes = new byte[64];
         Arrays.fill(otherSecretBytes, (byte) 1);

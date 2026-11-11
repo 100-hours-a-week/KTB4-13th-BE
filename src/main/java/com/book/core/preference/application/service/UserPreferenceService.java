@@ -102,32 +102,46 @@ public class UserPreferenceService {
             }
             return memoryChangedUserIds;
         }
+        processChunksInParallel(chunks, failedUserIds, memoryChangedUserIds);
+        return memoryChangedUserIds;
+    }
+
+    private void processChunksInParallel(final List<List<MemoryExtractionTarget>> chunks, final Set<Long> failedUserIds,
+        final Set<Long> memoryChangedUserIds) {
         try (ExecutorService executor = Executors.newFixedThreadPool(nightlyConcurrency)) {
             for (final List<MemoryExtractionTarget> chunk : chunks) {
-                final Map<Long, List<ChatHistoryMessage>> conversations = conversations(chunk, failedUserIds);
-                final Map<Long, List<MemoryExtractionTarget>> targetsByUser = new LinkedHashMap<>();
-                chunk.forEach(target -> targetsByUser.computeIfAbsent(target.userId(), ignored -> new ArrayList<>()).add(target));
-                final AtomicReference<Error> taskError = new AtomicReference<>();
-                final List<Callable<Void>> jobs = targetsByUser.values().stream().map(targets -> (Callable<Void>) () -> {
-                    try {
-                        processTargets(targets, conversations, failedUserIds, memoryChangedUserIds);
-                    } catch (final Error error) {
-                        taskError.compareAndSet(null, error);
-                    }
-                    return null;
-                }).toList();
-                try {
-                    executor.invokeAll(jobs);
-                } catch (final InterruptedException exception) {
-                    Thread.currentThread().interrupt();
-                    throw new IllegalStateException(exception);
-                }
-                if (taskError.get() != null) {
-                    throw taskError.get();
-                }
+                processChunkInParallel(executor, chunk, failedUserIds, memoryChangedUserIds);
             }
         }
-        return memoryChangedUserIds;
+    }
+
+    private void processChunkInParallel(final ExecutorService executor, final List<MemoryExtractionTarget> chunk,
+        final Set<Long> failedUserIds, final Set<Long> memoryChangedUserIds) {
+        final Map<Long, List<ChatHistoryMessage>> conversations = conversations(chunk, failedUserIds);
+        final Map<Long, List<MemoryExtractionTarget>> targetsByUser = new LinkedHashMap<>();
+        chunk.forEach(target -> targetsByUser.computeIfAbsent(target.userId(), ignored -> new ArrayList<>()).add(target));
+        final AtomicReference<Error> taskError = new AtomicReference<>();
+        final List<Callable<Void>> jobs = targetsByUser.values().stream().map(targets -> (Callable<Void>) () -> {
+            try {
+                processTargets(targets, conversations, failedUserIds, memoryChangedUserIds);
+            } catch (final Error error) {
+                taskError.compareAndSet(null, error);
+            }
+            return null;
+        }).toList();
+        awaitTasks(executor, jobs);
+        if (taskError.get() != null) {
+            throw taskError.get();
+        }
+    }
+
+    private void awaitTasks(final ExecutorService executor, final List<Callable<Void>> jobs) {
+        try {
+            executor.invokeAll(jobs);
+        } catch (final InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(exception);
+        }
     }
 
     private void processTargets(final List<MemoryExtractionTarget> targets, final Map<Long, List<ChatHistoryMessage>> conversations,

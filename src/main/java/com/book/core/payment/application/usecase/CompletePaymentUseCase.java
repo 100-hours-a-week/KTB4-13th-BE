@@ -14,6 +14,8 @@ import com.book.core.payment.domain.Payment;
 import com.book.core.payment.domain.PaymentHistory;
 import com.book.core.payment.application.result.ApprovedPaymentResult;
 import com.book.core.payment.domain.enums.TransactionType;
+import com.book.core.product.application.command.ProductQuantitiesCommand;
+import com.book.core.product.application.usecase.CompleteProductInventoryUseCase;
 import com.book.core.point.application.usecase.DeductPointUseCase;
 import com.book.core.point.application.usecase.EarnPointUseCase;
 import com.book.core.point.domain.PointAmount;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class CompletePaymentUseCase {
     private final PaymentRepositoryPort paymentRepository;
+    private final CompleteProductInventoryUseCase completeProductInventory;
     private final GetPaymentOrderUseCase getPaymentOrderUseCase;
     private final UseOwnedCouponUseCase useOwnedCouponUseCase;
     private final DeductPointUseCase deductPointUseCase;
@@ -38,6 +41,9 @@ public class CompletePaymentUseCase {
     public Long execute(final String orderKey, final ApprovedPaymentResult approval) {
         final Order order = getPaymentOrderUseCase.execute(orderKey, OrderStatus.CREATED);
         final Payment payment = paymentRepository.findByOrderId(order.id()).orElseThrow(() -> new CoreException(ErrorCode.NOT_FOUND_DATA));
+        if (order.hasReservation()) {
+            completeProductInventory.execute(new ProductQuantitiesCommand(order.reservedQuantities()));
+        }
         payment.success(approval.paymentKey(), approval.method(), approval.approveCode());
         order.paid();
         if (payment.hasAppliedCoupon()) {

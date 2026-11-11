@@ -2,8 +2,8 @@ package com.book.core.coupon.infrastructure.kafka;
 
 import com.book.core.coupon.application.command.AcceptedCouponIssue;
 import com.book.core.coupon.application.port.CouponIssueQueuePort;
-import com.book.core.coupon.application.port.CouponIssuePendingPort;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 @Profile("coupon-kafka")
 @RequiredArgsConstructor
-class CouponIssueRequestRepository implements CouponIssueQueuePort, CouponIssuePendingPort {
+class CouponIssueRequestRepository implements CouponIssueQueuePort {
     private final JdbcClient jdbc;
 
     @Override
@@ -43,39 +43,22 @@ class CouponIssueRequestRepository implements CouponIssueQueuePort, CouponIssueP
         return Reservation.ACCEPTED;
     }
 
-    @Override
-    public long countPending(final long couponId) {
-        return jdbc.sql("SELECT COUNT(*) FROM coupon_issue_request WHERE coupon_id = ? AND completed_at IS NULL").param(couponId)
-            .query(Long.class).single();
-    }
-
-    List<Publication> lockPublications() {
+    List<Long> lockPublications() {
         return jdbc.sql("""
-            SELECT id, generation FROM coupon_issue_request
+            SELECT id FROM coupon_issue_request
             WHERE published_at IS NULL ORDER BY id LIMIT 64 FOR UPDATE SKIP LOCKED
-            """).query(Publication.class).list();
+            """).query(Long.class).list();
     }
 
-    List<Publication> lockReplays() {
-        return jdbc.sql("""
-            SELECT id, generation + 1 AS generation FROM coupon_issue_request
-            WHERE replay_requested = TRUE AND failed_at IS NOT NULL AND completed_at IS NULL
-            ORDER BY id LIMIT 64 FOR UPDATE SKIP LOCKED
-            """).query(Publication.class).list();
+    void published(final long id) {
+        jdbc.sql("UPDATE coupon_issue_request SET published_at = CURRENT_TIMESTAMP(6) WHERE id = ?").param(id).update();
     }
 
-    void published(final Publication publication) {
-        jdbc.sql("""
-            UPDATE coupon_issue_request SET published_at = CURRENT_TIMESTAMP(6), generation = ?,
-                failed_at = NULL, replay_requested = FALSE WHERE id = ?
-            """).params(publication.generation(), publication.id()).update();
-    }
-
-    java.util.Optional<AcceptedCouponIssue> lockPending(final long id, final int generation) {
+    Optional<AcceptedCouponIssue> lockPending(final long id) {
         return jdbc.sql("""
             SELECT coupon_id, user_id, max_use_count FROM coupon_issue_request
-            WHERE id = ? AND generation = ? AND completed_at IS NULL AND failed_at IS NULL FOR UPDATE
-            """).params(id, generation).query(AcceptedCouponIssue.class).optional();
+            WHERE id = ? AND completed_at IS NULL FOR UPDATE
+            """).param(id).query(AcceptedCouponIssue.class).optional();
     }
 
     void complete(final long id, final long couponId) {
@@ -85,15 +68,5 @@ class CouponIssueRequestRepository implements CouponIssueQueuePort, CouponIssueP
             throw new IllegalStateException("접수된 쿠폰의 예약 수량을 반영할 수 없습니다.");
         }
         jdbc.sql("UPDATE coupon_issue_request SET completed_at = CURRENT_TIMESTAMP(6) WHERE id = ?").param(id).update();
-    }
-
-    void fail(final long id, final int generation, final String payload, final String reason) {
-        jdbc.sql("""
-            UPDATE coupon_issue_request SET failed_at = CURRENT_TIMESTAMP(6), failure_reason = ?, failure_payload = ?
-            WHERE id = ? AND generation = ? AND completed_at IS NULL AND failed_at IS NULL
-            """).params(reason, payload, id, generation).update();
-    }
-
-    record Publication(long id, int generation) {
     }
 }

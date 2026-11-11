@@ -1,6 +1,5 @@
 package com.book.core.coupon.api.converter;
 
-import com.book.core.coupon.application.command.CouponWaitingRoomCommand;
 import com.book.core.coupon.api.request.CreateCouponRequest;
 import com.book.core.coupon.application.command.CreateCouponCommand;
 import com.book.core.coupon.application.command.GetCouponsCommand;
@@ -11,10 +10,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CouponCommandConverter {
-    public CouponWaitingRoomCommand toWaitingRoomCommand(final Long userId, final Long couponId) {
-        return new CouponWaitingRoomCommand(userId, couponId);
-    }
-
     public CreateCouponCommand toCreateCouponCommand(final CreateCouponRequest request) {
         return new CreateCouponCommand(request.name(), request.type(), request.discount(), request.maxUseCount(), request.minOrderAmount(),
             request.totalQuantity(), request.startsAt(), request.expiredAt());

@@ -1,6 +1,5 @@
 package com.book.core.coupon.application.service;
 
-import com.book.core.coupon.application.usecase.CouponWaitingRoomUseCase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -25,8 +24,7 @@ class GetCouponsServiceTest {
         final var targets = mock(GetCouponTargetsUseCase.class);
         final var coupons = mock(GetCouponsUseCase.class);
         final var service = new CouponService(targets, coupons, mock(CreateCouponUseCase.class), mock(IssueCouponUseCase.class),
-            mock(GetCouponIssuePolicyUseCase.class), mock(CouponWaitingRoomUseCase.class),
-            new StaticListableBeanFactory().getBeanProvider(EnqueueCouponIssueUseCase.class));
+            mock(GetCouponIssuePolicyUseCase.class), new StaticListableBeanFactory().getBeanProvider(EnqueueCouponIssueUseCase.class));
         final var command = new GetCouponsCommand(List.of(10L, 20L));
         final List<CouponResult> result = List.of();
         when(coupons.execute(command.couponIds())).thenReturn(result);

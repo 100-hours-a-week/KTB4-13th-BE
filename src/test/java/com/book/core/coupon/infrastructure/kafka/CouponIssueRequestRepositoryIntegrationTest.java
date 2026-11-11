@@ -30,7 +30,7 @@ class CouponIssueRequestRepositoryIntegrationTest {
     JdbcClient jdbc;
 
     @Test
-    void 예약과_발행_기록을_남기고_실패한_예약도_재고에_포함한다() {
+    void 예약한_요청을_발행하고_완료한_요청은_다시_처리하지_않는다() {
         final long couponId = 559001;
         jdbc.sql("""
             INSERT INTO coupon (id, name, type, discount, max_use_count, min_order_amount,
@@ -41,22 +41,12 @@ class CouponIssueRequestRepositoryIntegrationTest {
         final var issue = new AcceptedCouponIssue(couponId, 90001L, 1);
         assertThat(requests.reserve(issue)).isEqualTo(Reservation.ACCEPTED);
         assertThat(requests.reserve(issue)).isEqualTo(Reservation.DUPLICATE);
-        final var publication = requests.lockPublications().getFirst();
-        assertThat(requests.lockPending(publication.id(), 0)).contains(issue);
-        requests.published(publication);
-        assertThat(requests.lockPublications()).isEmpty();
-        requests.fail(publication.id(), 0, "event", "failure");
-        assertThat(requests.countPending(couponId)).isOne();
+        final long requestId = requests.lockPublications().getFirst();
+        assertThat(requests.lockPending(requestId)).contains(issue);
         assertThat(requests.reserve(new AcceptedCouponIssue(couponId, 90002L, 1))).isEqualTo(Reservation.SOLD_OUT);
-        assertThat(requests.lockPending(publication.id(), 0)).isEmpty();
-
-        jdbc.sql("UPDATE coupon_issue_request SET replay_requested = TRUE WHERE id = ?").param(publication.id()).update();
-        final var replay = requests.lockReplays().getFirst();
-        requests.published(replay);
-        assertThat(requests.lockPending(publication.id(), 0)).isEmpty();
-        assertThat(requests.lockPending(publication.id(), 1)).contains(issue);
-        requests.complete(publication.id(), couponId);
-        assertThat(requests.lockPending(publication.id(), 1)).isEmpty();
-        assertThat(requests.countPending(couponId)).isZero();
+        requests.published(requestId);
+        assertThat(requests.lockPublications()).isEmpty();
+        requests.complete(requestId, couponId);
+        assertThat(requests.lockPending(requestId)).isEmpty();
     }
 }

@@ -21,9 +21,8 @@ class ReconcileCouponStockUseCaseTest {
 
     private final CouponRepositoryPort couponRepository = mock();
     private final CouponStockPort couponStockPort = mock();
-    private final ReconcileCouponStockUseCase useCase = new ReconcileCouponStockUseCase(couponRepository, couponStockPort,
-        Clock.fixed(OBSERVED_AT, ZoneOffset.UTC), new org.springframework.beans.factory.support.StaticListableBeanFactory()
-            .getBeanProvider(com.book.core.coupon.application.port.CouponIssuePendingPort.class));
+    private final ReconcileCouponStockUseCase useCase =
+        new ReconcileCouponStockUseCase(couponRepository, couponStockPort, Clock.fixed(OBSERVED_AT, ZoneOffset.UTC));
 
     @Test
     void 쿠폰이_없으면_Redis를_읽지_않는다() {

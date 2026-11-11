@@ -1,8 +1,6 @@
 package com.book.core.coupon.application.usecase;
 
 import com.book.common.annotation.UseCase;
-import com.book.core.coupon.application.port.CouponIssuePendingPort;
-import org.springframework.beans.factory.ObjectProvider;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.result.CouponStockReconciliationResult;
@@ -16,14 +14,12 @@ public class ReconcileCouponStockUseCase {
     private final CouponRepositoryPort couponRepository;
     private final CouponStockPort couponStockPort;
     private final Clock clock;
-    private final ObjectProvider<CouponIssuePendingPort> pendingRequests;
 
     public Optional<CouponStockReconciliationResult> execute(final long couponId) {
         return couponRepository.findIssuanceCounts(couponId).map((final var counts) -> {
             final var stock = couponStockPort.readSnapshot(couponId);
             return new CouponStockReconciliationResult(couponId, clock.instant(), counts.totalQuantity(), counts.issuedQuantity(),
-                counts.ownedCouponCount(), stock.quantity(), stock.soldOutSignalPresent(),
-                Optional.ofNullable(pendingRequests.getIfAvailable()).map(port -> port.countPending(couponId)).orElse(0L));
+                counts.ownedCouponCount(), stock.quantity(), stock.soldOutSignalPresent());
         });
     }
 }

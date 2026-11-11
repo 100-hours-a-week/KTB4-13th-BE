@@ -75,6 +75,7 @@ public enum ErrorCode {
     AI_SERVICE_UNAUTHORIZED(HttpStatus.BAD_GATEWAY, "E502", "외부 AI 서비스 인증에 실패했습니다.", LogLevel.ERROR),
     AI_SERVICE_FAILURE(HttpStatus.BAD_GATEWAY, "E502", "외부 AI 서비스 호출에 실패했습니다.", LogLevel.INFO),
     AI_SERVICE_INVALID_REQUEST(HttpStatus.BAD_GATEWAY, "E502", "외부 AI 서비스가 요청을 거부했습니다.", LogLevel.ERROR),
+    AI_PROFILE_MESSAGE_TOO_LARGE(HttpStatus.BAD_GATEWAY, "E502", "AI 취향 프로필 메시지가 크기 한도를 넘었습니다.", LogLevel.ERROR),
     AI_MEMORY_EXTRACTION_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "E502", "AI 취향 기억 추출 결과가 올바르지 않습니다.", LogLevel.ERROR),
     AI_MEMORY_EXTRACTION_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "E429", "AI 취향 기억 추출 요청이 많아 잠시 후 다시 시도해야 합니다.", LogLevel.INFO),
     AI_MEMORY_EXTRACTION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "E503", "AI 취향 기억 추출 서비스를 일시적으로 사용할 수 없습니다.", LogLevel.ERROR),

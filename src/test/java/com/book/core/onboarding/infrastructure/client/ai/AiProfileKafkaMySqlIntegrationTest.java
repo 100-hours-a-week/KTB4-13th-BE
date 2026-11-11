@@ -2,6 +2,7 @@ package com.book.core.onboarding.infrastructure.client.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.book.common.config.kafka.KafkaTopics;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.command.OnboardingPreferenceAnswerCommand;
 import com.book.core.onboarding.application.command.PutOnboardingPreferencesCommand;
@@ -69,7 +70,7 @@ class AiProfileKafkaMySqlIntegrationTest {
     static class TopicConfig {
         @Bean
         NewTopic aiProfileTopic() {
-            return new NewTopic(AiPersonalizationProfileKafkaClient.TOPIC, 1, (short) 1);
+            return new NewTopic(KafkaTopics.AI_PROFILE, 1, (short) 1);
         }
     }
 
@@ -86,7 +87,7 @@ class AiProfileKafkaMySqlIntegrationTest {
 
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs WHERE user_id = ?", Integer.class, userId)).isZero();
         try (var consumer = consumers.createConsumer("ai-profile-test")) {
-            final var partition = new TopicPartition(AiPersonalizationProfileKafkaClient.TOPIC, 0);
+            final var partition = new TopicPartition(KafkaTopics.AI_PROFILE, 0);
             consumer.assign(List.of(partition));
             consumer.seekToBeginning(List.of(partition));
             final long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
@@ -120,7 +121,7 @@ class AiProfileKafkaMySqlIntegrationTest {
         processJob.execute();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs WHERE user_id = ?", Integer.class, userId)).isZero();
         try (var consumer = consumers.createConsumer("ai-profile-preference-test")) {
-            final var partition = new TopicPartition(AiPersonalizationProfileKafkaClient.TOPIC, 0);
+            final var partition = new TopicPartition(KafkaTopics.AI_PROFILE, 0);
             consumer.assign(List.of(partition));
             consumer.seekToBeginning(List.of(partition));
             final long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();

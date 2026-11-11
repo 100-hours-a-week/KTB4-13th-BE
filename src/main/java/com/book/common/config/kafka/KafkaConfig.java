@@ -29,7 +29,7 @@ class KafkaConfig {
     @Bean
     DeadLetterPublishingRecoverer kafkaDeadLetterRecoverer(final KafkaTemplate<Object, Object> kafka) {
         final var recoverer = new DeadLetterPublishingRecoverer(kafka, (record, exception) -> {
-            final String deadLetterTopic = record.topic() + ".DLT";
+            final String deadLetterTopic = record.topic() + KafkaTopics.DLT_SUFFIX;
             log.atWarn().addKeyValue("topic", deadLetterTopic).log("[KAFKA] Kafka 소비 재시도를 소진했습니다.");
             return new TopicPartition(deadLetterTopic, record.partition());
         });

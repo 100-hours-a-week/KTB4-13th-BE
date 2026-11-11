@@ -1,5 +1,6 @@
 package com.book.core.onboarding.infrastructure.client.ai;
 
+import com.book.common.config.kafka.KafkaTopics;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
@@ -17,7 +18,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "app.profile-sync.ai-kafka-enabled", havingValue = "true")
 class AiPersonalizationProfileKafkaClient {
-    static final String TOPIC = "book.ai-profile.v1";
     private final AiPersonalizationProfileExternalMapper mapper;
     private final KafkaTemplate<String, String> kafka;
     private final ObjectMapper json;
@@ -26,7 +26,7 @@ class AiPersonalizationProfileKafkaClient {
         try {
             final String message =
                 json.writeValueAsString(new AiPersonalizationProfileKafkaEvent(1, revision, mapper.toProfileRequest(request)));
-            kafka.send(TOPIC, request.userId().toString(), message).get(12, TimeUnit.SECONDS);
+            kafka.send(KafkaTopics.AI_PROFILE, request.userId().toString(), message).get(12, TimeUnit.SECONDS);
         } catch (final InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);

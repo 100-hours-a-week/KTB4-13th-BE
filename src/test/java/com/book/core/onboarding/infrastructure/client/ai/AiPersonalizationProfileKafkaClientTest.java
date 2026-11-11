@@ -24,6 +24,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 
 class AiPersonalizationProfileKafkaClientTest {
+    private static final String EXPECTED_TOPIC = "book.ai-profile.v1";
+
     private final KafkaTemplate<String, String> kafka = mock(KafkaTemplate.class);
     private final GetAiBookIdentifiersUseCase identifiers = mock(GetAiBookIdentifiersUseCase.class);
     private final AiPersonalizationProfileExternalMapper mapper =
@@ -37,13 +39,12 @@ class AiPersonalizationProfileKafkaClientTest {
     void 사용자_key와_기존_HTTP_변환_결과를_발행한다() throws Exception {
         final UUID revision = UUID.randomUUID();
         when(identifiers.findIsbns(List.of(100L))).thenReturn(List.of("9788900000011"));
-        when(kafka.send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), any(String.class)))
-            .thenReturn(CompletableFuture.completedFuture(null));
+        when(kafka.send(eq(EXPECTED_TOPIC), eq("42"), any(String.class))).thenReturn(CompletableFuture.completedFuture(null));
 
         client.updateProfile(request, revision);
 
         final ArgumentCaptor<String> value = ArgumentCaptor.forClass(String.class);
-        verify(kafka).send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), value.capture());
+        verify(kafka).send(eq(EXPECTED_TOPIC), eq("42"), value.capture());
         final var event = json.readTree(value.getValue());
         assertThat(event.get("schema_version").asInt()).isEqualTo(1);
         assertThat(event.get("job_revision").asText()).isEqualTo(revision.toString());
@@ -55,7 +56,7 @@ class AiPersonalizationProfileKafkaClientTest {
     void 발행_실패는_작업_재시도에_사용할_예외로_전파한다() {
         final CompletableFuture<SendResult<String, String>> result = new CompletableFuture<>();
         result.completeExceptionally(new RuntimeException("broker unavailable"));
-        when(kafka.send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), any(String.class))).thenReturn(result);
+        when(kafka.send(eq(EXPECTED_TOPIC), eq("42"), any(String.class))).thenReturn(result);
 
         assertThatThrownBy(() -> client.updateProfile(request, UUID.randomUUID())).isInstanceOf(CoreException.class);
     }
@@ -65,14 +66,13 @@ class AiPersonalizationProfileKafkaClientTest {
         final UUID revision = UUID.randomUUID();
         final CompletableFuture<SendResult<String, String>> uncertain = mock(CompletableFuture.class);
         when(uncertain.get(12, TimeUnit.SECONDS)).thenThrow(new TimeoutException());
-        when(kafka.send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), any(String.class))).thenReturn(uncertain,
-            CompletableFuture.completedFuture(null));
+        when(kafka.send(eq(EXPECTED_TOPIC), eq("42"), any(String.class))).thenReturn(uncertain, CompletableFuture.completedFuture(null));
 
         assertThatThrownBy(() -> client.updateProfile(request, revision)).isInstanceOf(CoreException.class);
         client.updateProfile(request, revision);
 
         final ArgumentCaptor<String> values = ArgumentCaptor.forClass(String.class);
-        verify(kafka, times(2)).send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), values.capture());
+        verify(kafka, times(2)).send(eq(EXPECTED_TOPIC), eq("42"), values.capture());
         assertThat(json.readTree(values.getAllValues().get(0)).path("job_revision").asText()).isEqualTo(revision.toString());
         assertThat(json.readTree(values.getAllValues().get(1)).path("job_revision").asText()).isEqualTo(revision.toString());
     }

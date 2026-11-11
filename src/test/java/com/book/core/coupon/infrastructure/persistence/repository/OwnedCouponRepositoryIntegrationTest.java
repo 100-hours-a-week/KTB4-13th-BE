@@ -9,11 +9,12 @@ import static org.mockito.Mockito.when;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.command.IssueCouponCommand;
+import com.book.core.coupon.application.command.AcceptedCouponIssue;
+import com.book.core.coupon.application.usecase.PersistAcceptedCouponIssueUseCase;
 import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
 import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.application.result.CouponIssueState.Stock;
 import com.book.core.coupon.application.port.CouponStockPort;
-import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.application.service.CouponService;
 import com.book.core.coupon.application.usecase.RevertOwnedCouponUseCase;
@@ -49,6 +50,8 @@ class OwnedCouponRepositoryIntegrationTest {
     @Autowired
     CouponService couponService;
     @Autowired
+    PersistAcceptedCouponIssueUseCase persistence;
+    @Autowired
     UseOwnedCouponUseCase useOwnedCoupon;
     @Autowired
     RevertOwnedCouponUseCase revertOwnedCoupon;
@@ -63,7 +66,6 @@ class OwnedCouponRepositoryIntegrationTest {
     void setRedisStockAvailable() {
         when(couponIssuePolicyCache.getOrLoad(anyLong(), any())).thenAnswer(
             (final var invocation) -> new CouponIssueState(invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get(), Stock.UNKNOWN));
-        when(couponStockPort.tryIssue(anyLong())).thenReturn(IssueResult.ISSUED);
     }
 
     @Test
@@ -95,7 +97,7 @@ class OwnedCouponRepositoryIntegrationTest {
     @Test
     void 발급_사용_복원과_삭제_후에도_유지되는_중복_제약을_검증한다() {
         final var coupon = saveCoupon(LocalDateTime.now().plusDays(7));
-        couponService.issue(new IssueCouponCommand(42L, coupon.id()));
+        persistence.execute(new AcceptedCouponIssue(coupon.id(), 42L, coupon.maxUseCount()));
         final var owned = ownedCouponRepository.findByUserIdAndCouponId(42L, coupon.id()).orElseThrow();
         useOwnedCoupon.execute(owned.id());
         useOwnedCoupon.execute(owned.id());

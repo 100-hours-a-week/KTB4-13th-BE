@@ -39,3 +39,7 @@ app:
     cron: "-"
   profile-sync:
     enabled: false
+
+coupon:
+  kafka:
+    worker-enabled: false

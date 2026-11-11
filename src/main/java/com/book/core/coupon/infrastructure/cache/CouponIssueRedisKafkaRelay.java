@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-@Profile("coupon-kafka")
+@ConditionalOnProperty(name = "coupon.kafka.worker-enabled", matchIfMissing = true)
 @RequiredArgsConstructor
 class CouponIssueRedisKafkaRelay {
     static final String GROUP = "coupon-kafka-relay";

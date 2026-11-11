@@ -100,6 +100,10 @@ coupon:
   sold-out:
     ttl-seconds: ${COUPON_SOLD_OUT_TTL_SECONDS:86400}
     fast-path-ttl-ms: ${COUPON_SOLD_OUT_FAST_PATH_TTL_MS:1000}
+  issuance:
+    stream: "coupon:issuance:kafka-outbox"
+  kafka:
+    topic: book.coupon-issuance.redis.v1
 
 preference:
   nightly:

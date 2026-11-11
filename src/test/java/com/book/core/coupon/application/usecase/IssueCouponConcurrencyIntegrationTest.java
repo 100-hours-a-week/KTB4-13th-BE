@@ -1,50 +1,39 @@
 package com.book.core.coupon.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
+import java.time.Duration;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.coupon.application.command.IssueCouponCommand;
-import com.book.core.coupon.application.port.CouponCacheRepositoryPort;
-import com.book.core.coupon.application.result.CouponIssueState;
-import com.book.core.coupon.application.result.CouponIssueState.Stock;
-import com.book.core.coupon.application.port.CouponStockPort;
-import com.book.core.coupon.application.port.IssueResult;
 import com.book.core.coupon.application.service.CouponService;
-import com.book.core.coupon.domain.Coupon;
-import com.book.core.coupon.domain.CouponIssuePolicy;
-import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.testcontainers.containers.GenericContainer;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
+import org.testcontainers.kafka.KafkaContainer;
 
-@SpringBootTest
+@SpringBootTest(properties = "coupon.kafka.worker-enabled=true")
 @ActiveProfiles({"test", "mysql-test"})
 @Testcontainers
 @Tag("integration")
@@ -56,40 +45,22 @@ class IssueCouponConcurrencyIntegrationTest {
     @ServiceConnection
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
 
+    @Container
+    @ServiceConnection
+    static final KafkaContainer kafka = new KafkaContainer("apache/kafka:4.1.2");
+
     @Autowired
     private CouponService couponService;
 
+    @Container
+    @ServiceConnection(name = "redis")
+    static final GenericContainer<?> redis = new GenericContainer<>("redis:8.0").withExposedPorts(6379);
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     @Autowired
     private JdbcTemplate jdbc;
-
-    @Autowired
-    private TransactionTemplate transactionTemplate;
-
-    @Autowired
-    private EntityManager entityManager;
-
-    @MockitoBean
-    private CouponCacheRepositoryPort couponIssuePolicyCache;
-
-    @MockitoBean
-    private CouponStockPort couponStockPort;
-
-    private final ConcurrentMap<String, AtomicLong> redisStocks = new ConcurrentHashMap<>();
-
-    @BeforeEach
-    void configureRedisStockScript() {
-        redisStocks.clear();
-        when(couponIssuePolicyCache.getOrLoad(anyLong(), any())).thenAnswer(
-            (final var invocation) -> new CouponIssueState(invocation.<Supplier<CouponIssuePolicy>>getArgument(1).get(), Stock.UNKNOWN));
-        when(couponStockPort.tryIssue(anyLong())).thenAnswer(invocation -> {
-            final Long couponId = invocation.getArgument(0);
-            final AtomicLong stock = redisStocks.get("coupon:" + couponId + ":stock");
-            if (stock == null) {
-                return IssueResult.SOLD_OUT;
-            }
-            return stock.getAndUpdate((final long quantity) -> Math.max(quantity - 1, 0)) > 0 ? IssueResult.ISSUED : IssueResult.SOLD_OUT;
-        });
-    }
 
     @Test
     void 서로_다른_회원이_동시에_요청해도_발급_한도를_넘지_않는다() throws Exception {
@@ -128,78 +99,6 @@ class IssueCouponConcurrencyIntegrationTest {
             assertCounts(firstCouponId, 1);
             assertCounts(secondCouponId, 1);
         }
-    }
-
-    @Test
-    void 기존_트랜잭션의_일반_조회_후_다른_트랜잭션에서_발급해도_중복을_확인한다() throws Exception {
-        final long couponId = insertCoupon(2);
-        final CountDownLatch snapshotEstablished = new CountDownLatch(1);
-        final CountDownLatch issuanceCommitted = new CountDownLatch(1);
-        try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
-            final Future<ErrorCode> result = executor.submit(() -> {
-                try {
-                    transactionTemplate.executeWithoutResult((final var status) -> {
-                        jdbc.queryForObject("SELECT COUNT(*) FROM owned_coupon WHERE user_id = ?", Integer.class, 123L);
-                        snapshotEstablished.countDown();
-                        await(issuanceCommitted);
-                        couponService.issue(new IssueCouponCommand(123L, couponId));
-                    });
-                    return null;
-                } catch (final CoreException exception) {
-                    return exception.errorCode();
-                }
-            });
-            try {
-                assertThat(snapshotEstablished.await(10, TimeUnit.SECONDS)).isTrue();
-                couponService.issue(new IssueCouponCommand(123L, couponId));
-            } finally {
-                issuanceCommitted.countDown();
-            }
-            assertThat(result.get(30, TimeUnit.SECONDS)).isEqualTo(ErrorCode.COUPON_ALREADY_ISSUED);
-        }
-        assertCounts(couponId, 1);
-    }
-
-    @Test
-    void 기존_트랜잭션에서_조회한_쿠폰도_최신_발급량으로_한도를_검증한다() throws Exception {
-        final long couponId = insertCoupon(1);
-        final CountDownLatch couponLoaded = new CountDownLatch(1);
-        final CountDownLatch issuanceCommitted = new CountDownLatch(1);
-        try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
-            final Future<ErrorCode> result = executor.submit(() -> {
-                try {
-                    transactionTemplate.executeWithoutResult((final var status) -> {
-                        assertThat(entityManager.find(Coupon.class, couponId)).isNotNull();
-                        couponLoaded.countDown();
-                        await(issuanceCommitted);
-                        couponService.issue(new IssueCouponCommand(124L, couponId));
-                    });
-                    return null;
-                } catch (final CoreException exception) {
-                    return exception.errorCode();
-                }
-            });
-            try {
-                assertThat(couponLoaded.await(10, TimeUnit.SECONDS)).isTrue();
-                couponService.issue(new IssueCouponCommand(123L, couponId));
-            } finally {
-                issuanceCommitted.countDown();
-            }
-            assertThat(result.get(30, TimeUnit.SECONDS)).isEqualTo(ErrorCode.COUPON_SOLD_OUT);
-        }
-        assertCounts(couponId, 1);
-    }
-
-    @Test
-    void 같은_트랜잭션에서_두_회원에게_발급하면_수량이_두_번_증가한다() {
-        final long couponId = insertCoupon(2);
-
-        transactionTemplate.executeWithoutResult((final var status) -> {
-            couponService.issue(new IssueCouponCommand(125L, couponId));
-            couponService.issue(new IssueCouponCommand(126L, couponId));
-        });
-
-        assertCounts(couponId, 2);
     }
 
     @Test
@@ -256,25 +155,15 @@ class IssueCouponConcurrencyIntegrationTest {
             VALUES (?, '발급 한도 쿠폰', 'FIXED_AMOUNT', 1000, 1, 0, CURRENT_TIMESTAMP(6) - INTERVAL 1 DAY,
                     CURRENT_TIMESTAMP(6) + INTERVAL 1 DAY, ?, 0)
             """, couponId, totalQuantity);
-        redisStocks.put("coupon:" + couponId + ":stock", new AtomicLong(totalQuantity));
+        redisTemplate.opsForValue().set("coupon:" + couponId + ":stock", Integer.toString(totalQuantity));
         return couponId;
     }
 
     private void assertCounts(final long couponId, final int expected) {
-        assertThat(jdbc.queryForObject("SELECT issued_quantity FROM coupon WHERE id = ?", Integer.class, couponId)).isEqualTo(expected);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM owned_coupon WHERE coupon_id = ?", Integer.class, couponId))
-            .isEqualTo(expected);
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
+            assertThat(jdbc.queryForObject("SELECT issued_quantity FROM coupon WHERE id = ?", Integer.class, couponId)).isEqualTo(expected);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM owned_coupon WHERE coupon_id = ?", Integer.class, couponId))
+                .isEqualTo(expected);
+        });
     }
-
-    private static void await(final CountDownLatch latch) {
-        try {
-            if (!latch.await(10, TimeUnit.SECONDS)) {
-                throw new IllegalStateException("발급 완료를 기다리는 시간이 초과됐습니다.");
-            }
-        } catch (final InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("발급 완료를 기다리는 중 중단됐습니다.", exception);
-        }
-    }
-
 }

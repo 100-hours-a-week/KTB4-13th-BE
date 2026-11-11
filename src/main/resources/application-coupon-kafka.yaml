@@ -1,5 +1,0 @@
-coupon:
-  issuance:
-    stream: "coupon:issuance:kafka-outbox"
-  kafka:
-    topic: book.coupon-issuance.redis.v1

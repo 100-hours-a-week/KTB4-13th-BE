@@ -3,13 +3,13 @@ package com.book.core.coupon.infrastructure.messaging;
 import com.book.core.coupon.application.command.AcceptedCouponIssue;
 import com.book.core.coupon.application.usecase.PersistAcceptedCouponIssueUseCase;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
-@Profile("coupon-kafka")
+@ConditionalOnProperty(name = "coupon.kafka.worker-enabled", matchIfMissing = true)
 @RequiredArgsConstructor
 class CouponIssueKafkaConsumer {
     private final ObjectMapper objectMapper;

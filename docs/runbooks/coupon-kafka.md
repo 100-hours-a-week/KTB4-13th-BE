@@ -1,12 +1,13 @@
 # Kafka 쿠폰 발급 운영
 
-`coupon-kafka` 프로필은 Redis Lua로 재고 차감과 미발행 요청 기록을 함께 처리한 뒤 `202`를 반환합니다. 발행 작업은 Kafka 확인 뒤 Redis 기록을 ACK하고, 소비자는 MySQL 발급 저장을 커밋한 뒤 Kafka 오프셋을 반영합니다.
+쿠폰 발급 요청은 기본으로 Redis Lua로 재고 차감과 미발행 요청 기록을 함께 처리한 뒤 `202`를 반환합니다. 발행 작업은 Kafka 확인 뒤 Redis 기록을 ACK하고, 소비자는 MySQL 발급 저장을 커밋한 뒤 Kafka 오프셋을 반영합니다.
 
 ## 전환과 역전환
 
-1. 대상 쿠폰의 발급 요청을 잠시 멈춥니다. Streams의 미전달·미확인 작업이 모두 MySQL에 반영됐는지 확인하고 DB 발급 수량·보유 쿠폰 행·Redis 잔량을 대조합니다.
-2. 모든 발급 인스턴스에서 `coupon-kafka`를 켜고 기존 `coupon-streams` 및 `coupon-streams-worker`를 끕니다. Kafka 브로커는 `KAFKA_BOOTSTRAP_SERVERS`로 지정합니다. 토픽 생성 전 `coupon.kafka.replicas`와 `coupon.kafka.min-in-sync-replicas`를 운영 브로커 구성에 맞춥니다. 로컬 기본값은 각각 1입니다.
-3. 발급 요청을 재개하고 Redis 미발행 기록, Kafka 소비 지연과 실패 토픽을 확인합니다. 역전환 전에는 발급 요청을 다시 멈추고 두 큐의 미처리 요청과 실패 건을 확인한 뒤 DB 발급과 Redis 잔량을 대조합니다.
+1. 배포 전에 Redis와 Kafka 연결을 확인합니다. Kafka 브로커는 `KAFKA_BOOTSTRAP_SERVERS`로 지정하고, 토픽 생성 전 `coupon.kafka.replicas`와 `coupon.kafka.min-in-sync-replicas`를 운영 구성에 맞춥니다. 로컬 기본값은 각각 1입니다.
+2. 대상 쿠폰의 신규 요청을 멈춥니다. 기존 Streams를 사용 중이면 `coupon:issuance:stream`의 `coupon-db` 그룹을 비운 뒤 DB 발급 수량·보유 쿠폰 행·Redis 잔량을 대조합니다.
+3. 모든 발급 인스턴스를 새 버전으로 전환합니다. 발급 API는 `202`를 반환하며, 쿠폰함은 소비자가 DB에 커밋한 뒤 갱신됩니다. 접수를 재개하고 Redis 미발행 기록과 Kafka 소비 지연을 확인합니다.
+4. 이전 버전으로 역전환하려면 요청을 다시 멈추고 Redis 발행 대기와 Kafka 소비 지연을 해소합니다. 실패 토픽의 미해결 건과 DB 발급·Redis 잔량을 대조한 뒤 이전 버전을 배포합니다.
 
 ## 처리 지연과 장애
 

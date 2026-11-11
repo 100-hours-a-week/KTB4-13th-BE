@@ -9,10 +9,8 @@ import com.book.core.coupon.application.port.CouponIssueQueuePort;
 import com.book.core.coupon.application.result.CouponIssueState;
 import com.book.core.coupon.domain.CouponIssuePolicy;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
 
 @UseCase
-@Profile({"coupon-streams", "coupon-kafka"})
 @RequiredArgsConstructor
 public class EnqueueCouponIssueUseCase {
     private final IssueCouponUseCase issueCouponUseCase;

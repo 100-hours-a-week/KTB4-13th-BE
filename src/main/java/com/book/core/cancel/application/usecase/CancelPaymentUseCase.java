@@ -10,6 +10,7 @@ import com.book.core.cancel.domain.CancelAction;
 import com.book.core.cancel.domain.CancelBalance;
 import com.book.core.cancel.domain.enums.CancelType;
 import com.book.core.coupon.application.usecase.RevertOwnedCouponUseCase;
+import com.book.core.onboarding.application.usecase.EnqueueProfileSyncUseCase;
 import com.book.core.order.application.usecase.GetOrderForCancelUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
@@ -41,6 +42,7 @@ public class CancelPaymentUseCase {
     private final CancelRepositoryPort cancelRepository;
     private final RecordPaymentHistoryUseCase recordPaymentHistoryUseCase;
     private final Clock clock;
+    private final EnqueueProfileSyncUseCase enqueueProfileSync;
 
     @Transactional
     public Long execute(final CancelAction action, final CanceledPaymentResult result) {
@@ -65,6 +67,7 @@ public class CancelPaymentUseCase {
         recordPaymentHistoryUseCase.execute(
             new PaymentHistory(TransactionType.CANCEL, payment.userId(), payment.orderId(), payment.id(), payment.externalPaymentKey(),
                 payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "취소 성공", cancel.canceledAt()));
+        enqueueProfileSync.execute(order.userId());
         log.atInfo().addKeyValue("cancelId", cancel.id()).addKeyValue("paymentId", payment.id()).addKeyValue("orderId", order.id())
             .log("[PAYMENT_CANCEL] 결제 전체 취소 처리를 마쳤습니다. cancelId={}, paymentId={}, orderId={}", cancel.id(), payment.id(), order.id());
         return cancel.id();

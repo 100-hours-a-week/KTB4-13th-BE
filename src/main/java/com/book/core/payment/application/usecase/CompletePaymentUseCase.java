@@ -5,6 +5,7 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.cancel.application.usecase.CreateCancelBalanceUseCase;
 import com.book.core.coupon.application.usecase.UseOwnedCouponUseCase;
+import com.book.core.onboarding.application.usecase.EnqueueProfileSyncUseCase;
 import com.book.core.order.application.usecase.GetPaymentOrderUseCase;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
@@ -36,6 +37,7 @@ public class CompletePaymentUseCase {
     private final EarnPointUseCase earnPointUseCase;
     private final CreateCancelBalanceUseCase createCancelBalanceUseCase;
     private final PaymentHistoryRepositoryPort paymentHistoryRepository;
+    private final EnqueueProfileSyncUseCase enqueueProfileSync;
 
     @Transactional
     public Long execute(final String orderKey, final ApprovedPaymentResult approval) {
@@ -55,6 +57,7 @@ public class CompletePaymentUseCase {
         createCancelBalanceUseCase.execute(order.id(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount());
         paymentHistoryRepository.save(new PaymentHistory(TransactionType.PAYMENT, payment.userId(), payment.orderId(), payment.id(),
             approval.paymentKey(), payment.paidAmount(), payment.usedPoint(), payment.couponDiscount(), "결제 성공", payment.paidAt()));
+        enqueueProfileSync.execute(order.userId());
         log.atInfo().addKeyValue("paymentId", payment.id()).addKeyValue("orderId", order.id())
             .log("[PAYMENT] 결제 승인 처리를 마쳤습니다. paymentId={}, orderId={}", payment.id(), order.id());
         return payment.id();

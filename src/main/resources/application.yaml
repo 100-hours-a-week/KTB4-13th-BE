@@ -45,6 +45,9 @@ app:
     inventory:
       redis-lock:
         enabled: ${PRODUCT_INVENTORY_REDIS_LOCK_ENABLED:false}
+  shelf-photo:
+    bucket: ${SHELF_PHOTO_BUCKET:}
+    region: ${AWS_REGION:ap-northeast-2}
 
 auth:
   cookie:

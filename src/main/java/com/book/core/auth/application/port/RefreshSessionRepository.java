@@ -3,7 +3,7 @@ package com.book.core.auth.application.port;
 import java.time.Instant;
 
 public interface RefreshSessionRepository {
-    void replace(Long userId, String tokenHash, Instant expiresAt);
+    void saveLoginSession(Long userId, String tokenHash, Instant expiresAt);
 
     boolean rotate(Long userId, String expectedHash, String newHash, Instant expiresAt);
 

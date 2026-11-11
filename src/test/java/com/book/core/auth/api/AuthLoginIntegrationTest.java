@@ -157,7 +157,8 @@ class AuthLoginIntegrationTest {
     @Test
     void Session_등록이_실패하면_가입과_초기화는_남고_재가입은_409_로그인은_성공한다() throws Exception {
         givenKakaoUser("session-failure");
-        doThrow(new BusinessException(ErrorCode.AUTH_SESSION_UNAVAILABLE)).when(refreshSessionRepository).replace(any(), any(), any());
+        doThrow(new BusinessException(ErrorCode.AUTH_SESSION_UNAVAILABLE)).when(refreshSessionRepository).saveLoginSession(any(), any(),
+            any());
 
         perform("signup", "session-failure").andExpect(status().isServiceUnavailable())
             .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));

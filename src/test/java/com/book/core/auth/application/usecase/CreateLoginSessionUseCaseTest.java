@@ -36,7 +36,7 @@ class CreateLoginSessionUseCaseTest {
 
         final var order = inOrder(users, sessions);
         order.verify(users).findByIdForUpdate(42L);
-        order.verify(sessions).replace(42L, "hash", expiry);
+        order.verify(sessions).saveLoginSession(42L, "hash", expiry);
         assertThat(result.refreshToken()).isEqualTo("refresh");
         assertThat(result.accessToken()).isEqualTo("access");
     }

@@ -57,7 +57,7 @@ class RedisRefreshSessionRepositoryAdapterTest {
         final String firstNewHash = "b".repeat(64);
         final String secondNewHash = "c".repeat(64);
         final Instant expiry = Instant.now().plusSeconds(60);
-        firstAdapter.replace(1001L, originalHash, expiry);
+        firstAdapter.saveLoginSession(1001L, originalHash, expiry);
         final CountDownLatch start = new CountDownLatch(1);
         try (final var executor = Executors.newFixedThreadPool(2)) {
             final var firstRotation = executor.submit(() -> {
@@ -81,12 +81,12 @@ class RedisRefreshSessionRepositoryAdapterTest {
         try (final var executor = Executors.newFixedThreadPool(2)) {
             final var firstLogin = executor.submit(() -> {
                 start.await();
-                firstAdapter.replace(1007L, "a".repeat(64), expiry);
+                firstAdapter.saveLoginSession(1007L, "a".repeat(64), expiry);
                 return null;
             });
             final var secondLogin = executor.submit(() -> {
                 start.await();
-                secondAdapter.replace(1007L, "b".repeat(64), expiry);
+                secondAdapter.saveLoginSession(1007L, "b".repeat(64), expiry);
                 return null;
             });
             start.countDown();
@@ -107,10 +107,10 @@ class RedisRefreshSessionRepositoryAdapterTest {
     @Test
     void lostRedisSessionRequiresLogin() {
         final Instant expiry = Instant.now().plusSeconds(60);
-        firstAdapter.replace(1006L, "a".repeat(64), expiry);
+        firstAdapter.saveLoginSession(1006L, "a".repeat(64), expiry);
         redis.delete("auth:refresh-session:v1:{1006}");
         assertThat(secondAdapter.rotate(1006L, "a".repeat(64), "b".repeat(64), expiry)).isFalse();
-        secondAdapter.replace(1006L, "c".repeat(64), expiry);
+        secondAdapter.saveLoginSession(1006L, "c".repeat(64), expiry);
         assertThat(redis.opsForValue().get("auth:refresh-session:v1:{1006}")).isEqualTo("c".repeat(64));
     }
 
@@ -119,7 +119,7 @@ class RedisRefreshSessionRepositoryAdapterTest {
         final String couponKey = "coupon:1012:stock";
         redis.opsForValue().set(couponKey, "17");
         final Instant expiry = Instant.now().plusSeconds(60);
-        firstAdapter.replace(1012L, "a".repeat(64), expiry);
+        firstAdapter.saveLoginSession(1012L, "a".repeat(64), expiry);
         assertThat(secondAdapter.rotate(1012L, "a".repeat(64), "b".repeat(64), expiry)).isTrue();
         firstAdapter.revoke(1012L);
         assertThat(redis.opsForValue().get(couponKey)).isEqualTo("17");
@@ -128,11 +128,11 @@ class RedisRefreshSessionRepositoryAdapterTest {
     @Test
     void sessionReplacementAndRevocationAreSharedAndIsolatedByUser() {
         final Instant expiry = Instant.now().plusSeconds(60);
-        firstAdapter.replace(1009L, "a".repeat(64), expiry);
+        firstAdapter.saveLoginSession(1009L, "a".repeat(64), expiry);
         assertThat(secondAdapter.rotate(1010L, "a".repeat(64), "b".repeat(64), expiry)).isFalse();
         secondAdapter.revoke(1010L);
         assertThat(redis.opsForValue().get("auth:refresh-session:v1:{1009}")).isEqualTo("a".repeat(64));
-        secondAdapter.replace(1009L, "b".repeat(64), expiry);
+        secondAdapter.saveLoginSession(1009L, "b".repeat(64), expiry);
         assertThat(firstAdapter.rotate(1009L, "a".repeat(64), "c".repeat(64), expiry)).isFalse();
         firstAdapter.revoke(1009L);
         assertThat(secondAdapter.rotate(1009L, "b".repeat(64), "c".repeat(64), expiry)).isFalse();
@@ -140,7 +140,7 @@ class RedisRefreshSessionRepositoryAdapterTest {
 
     @Test
     void expiresAtTheJwtExpiryTime() {
-        firstAdapter.replace(1004L, "d".repeat(64), Instant.now().plusMillis(500));
+        firstAdapter.saveLoginSession(1004L, "d".repeat(64), Instant.now().plusMillis(500));
         org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(5))
             .untilAsserted(() -> assertThat(redis.hasKey("auth:refresh-session:v1:{1004}")).isFalse());
         assertThat(firstAdapter.rotate(1004L, "d".repeat(64), "e".repeat(64), Instant.now().plusSeconds(10))).isFalse();
@@ -149,7 +149,7 @@ class RedisRefreshSessionRepositoryAdapterTest {
     @Test
     void concurrentRotationAndLogoutLeaveNoUsableSession() throws Exception {
         final Instant expiry = Instant.now().plusSeconds(60);
-        firstAdapter.replace(1005L, "a".repeat(64), expiry);
+        firstAdapter.saveLoginSession(1005L, "a".repeat(64), expiry);
         final CountDownLatch start = new CountDownLatch(1);
         try (final var executor = Executors.newFixedThreadPool(2)) {
             final var rotation = executor.submit(() -> {
@@ -171,12 +171,12 @@ class RedisRefreshSessionRepositoryAdapterTest {
     @Test
     void concurrentLoginAndRotationLeaveTheLoginSession() throws Exception {
         final Instant expiry = Instant.now().plusSeconds(60);
-        firstAdapter.replace(1011L, "a".repeat(64), expiry);
+        firstAdapter.saveLoginSession(1011L, "a".repeat(64), expiry);
         final CountDownLatch start = new CountDownLatch(1);
         try (final var executor = Executors.newFixedThreadPool(2)) {
             final var login = executor.submit(() -> {
                 start.await();
-                firstAdapter.replace(1011L, "b".repeat(64), expiry);
+                firstAdapter.saveLoginSession(1011L, "b".repeat(64), expiry);
                 return null;
             });
             final var rotation = executor.submit(() -> {
@@ -204,7 +204,7 @@ class RedisRefreshSessionRepositoryAdapterTest {
         }
 
         final String key = "auth:refresh-session:v1:{1003}";
-        firstAdapter.replace(1003L, "a".repeat(64), Instant.now().plusSeconds(60));
+        firstAdapter.saveLoginSession(1003L, "a".repeat(64), Instant.now().plusSeconds(60));
         final StringRedisTemplate uncertainRedis = spy(redis);
         doAnswer((final var invocation) -> {
             invocation.callRealMethod();

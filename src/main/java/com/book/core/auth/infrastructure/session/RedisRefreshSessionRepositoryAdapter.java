@@ -33,7 +33,7 @@ class RedisRefreshSessionRepositoryAdapter implements RefreshSessionRepository {
     }
 
     @Override
-    public void replace(final Long userId, final String tokenHash, final Instant expiresAt) {
+    public void saveLoginSession(final Long userId, final String tokenHash, final Instant expiresAt) {
         final Long result =
             invoke("replace", () -> redis.execute(login, List.of(key(userId)), tokenHash, Long.toString(expiresAt.toEpochMilli())));
         if (!Long.valueOf(1).equals(result)) {
@@ -69,7 +69,7 @@ class RedisRefreshSessionRepositoryAdapter implements RefreshSessionRepository {
                 public void afterCompletion(final int status) {
                     if (status != STATUS_COMMITTED) {
                         meters.counter("auth.refresh_session.transaction_not_committed", "operation", operation).increment();
-                        log.warn("Redis refresh session changed but the database transaction did not commit: operation={}", operation);
+                        log.warn("[AUTH] Redis 리프레시 세션 변경 후 DB 트랜잭션이 커밋되지 않았습니다. operation={}", operation);
                     }
                 }
             });
@@ -92,7 +92,7 @@ class RedisRefreshSessionRepositoryAdapter implements RefreshSessionRepository {
             return action.get();
         } catch (final DataAccessException exception) {
             meters.counter("auth.refresh_session.redis_result_unconfirmed", "operation", operation).increment();
-            log.warn("Redis refresh session operation outcome could not be confirmed: operation={}", operation);
+            log.warn("[AUTH] Redis 리프레시 세션 작업 결과를 확인하지 못했습니다. operation={}", operation);
             throw new BusinessException(ErrorCode.AUTH_SESSION_UNAVAILABLE, exception);
         }
     }

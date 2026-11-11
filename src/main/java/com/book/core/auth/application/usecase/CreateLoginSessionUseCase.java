@@ -32,7 +32,7 @@ public class CreateLoginSessionUseCase {
             throw new BusinessException(ErrorCode.USER_WITHDRAWAL_PENDING);
         }
         final IssuedTokens tokens = tokenIssuer.issue(userId);
-        refreshSessionRepository.replace(userId, refreshTokenHasher.hash(tokens.refreshToken()), tokens.refreshExpiresAt());
+        refreshSessionRepository.saveLoginSession(userId, refreshTokenHasher.hash(tokens.refreshToken()), tokens.refreshExpiresAt());
         return new AuthLoginResult(tokens.accessToken(), tokens.refreshToken(), tokens.refreshExpiresAt());
     }
 }

@@ -27,13 +27,19 @@ import com.book.core.preference.application.result.UserPreferencesResult;
 import com.book.core.recommendation.application.usecase.RefreshRecommendationFeedUseCase;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -42,6 +48,9 @@ import org.springframework.stereotype.Service;
 public class UserPreferenceService {
     private static final int CONVERSATION_CHUNK_SESSIONS = 100;
     private static final long CONVERSATION_CHUNK_MESSAGES = 1_000;
+
+    @Value("${preference.nightly.concurrency:1}")
+    private int nightlyConcurrency = 1;
 
     private final GetOnboardingProgressUseCase getOnboardingProgressUseCase;
     private final GetUserMemoriesUseCase getUserMemoriesUseCase;
@@ -76,32 +85,86 @@ public class UserPreferenceService {
     }
 
     public void runNightlyBatch() {
-        refreshNightlyProfiles(extractNightlyMemories());
-        refreshRecommendationFeed();
+        final Set<Long> memoryChangedUserIds = extractNightlyMemories();
+        final boolean interrupted = Thread.interrupted();
+        try {
+            refreshNightlyProfiles(memoryChangedUserIds);
+            refreshRecommendationFeed();
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     public Set<Long> extractNightlyMemories() {
-        final Set<Long> memoryChangedUserIds = new HashSet<>();
-        final Set<Long> failedUserIds = new HashSet<>();
-        for (final List<MemoryExtractionTarget> chunk : conversationChunks(getMemoryExtractionTargetsUseCase.execute())) {
-            final Map<Long, List<ChatHistoryMessage>> conversations = conversations(chunk, failedUserIds);
-            for (final MemoryExtractionTarget target : chunk) {
-                if (failedUserIds.contains(target.userId())) {
-                    continue;
+        if (nightlyConcurrency < 1) {
+            throw new IllegalArgumentException("preference.nightly.concurrency must be at least 1");
+        }
+        final Set<Long> memoryChangedUserIds = ConcurrentHashMap.newKeySet();
+        final Set<Long> failedUserIds = ConcurrentHashMap.newKeySet();
+        boolean interrupted = false;
+        try (ExecutorService executor = Executors.newFixedThreadPool(nightlyConcurrency)) {
+            for (final List<MemoryExtractionTarget> chunk : conversationChunks(getMemoryExtractionTargetsUseCase.execute())) {
+                if (Thread.interrupted()) {
+                    interrupted = true;
                 }
-                try {
-                    if (extractMemories(target, conversations.get(target.sessionId()))) {
-                        memoryChangedUserIds.add(target.userId());
+                final Map<Long, List<ChatHistoryMessage>> conversations = conversations(chunk, failedUserIds);
+                final List<List<MemoryExtractionTarget>> jobs = new ArrayList<>();
+                if (nightlyConcurrency == 1) {
+                    chunk.forEach(target -> jobs.add(List.of(target)));
+                } else {
+                    final Map<Long, List<MemoryExtractionTarget>> byUser = new LinkedHashMap<>();
+                    chunk.forEach(target -> byUser.computeIfAbsent(target.userId(), ignored -> new ArrayList<>()).add(target));
+                    jobs.addAll(byUser.values());
+                }
+                final List<Future<?>> futures = new ArrayList<>();
+                for (final List<MemoryExtractionTarget> job : jobs) {
+                    futures.add(executor.submit(() -> processTargets(job, conversations, failedUserIds, memoryChangedUserIds)));
+                }
+                for (final Future<?> future : futures) {
+                    boolean complete = false;
+                    while (!complete) {
+                        try {
+                            future.get();
+                            complete = true;
+                        } catch (final InterruptedException exception) {
+                            interrupted = true;
+                        } catch (final ExecutionException exception) {
+                            log.error("[USER_PREFERENCE] 사용자 취향 추출 작업이 예기치 않게 실패했습니다.", exception.getCause());
+                            complete = true;
+                        }
                     }
-                } catch (final RuntimeException exception) {
-                    failedUserIds.add(target.userId());
-                    log.atError().addKeyValue("userId", target.userId()).addKeyValue("sessionId", target.sessionId()).log(
-                        "[USER_PREFERENCE] 대화 취향 기억 추출에 실패해 다음 밤에 다시 처리합니다. userId={}, sessionId={}, sequence={}, cause={}",
-                        target.userId(), target.sessionId(), target.sequence(), cause(exception));
                 }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
             }
         }
         return memoryChangedUserIds;
+    }
+
+    private void processTargets(final List<MemoryExtractionTarget> targets, final Map<Long, List<ChatHistoryMessage>> conversations,
+        final Set<Long> failedUserIds, final Set<Long> memoryChangedUserIds) {
+        for (final MemoryExtractionTarget target : targets) {
+            if (failedUserIds.contains(target.userId())) {
+                continue;
+            }
+            try {
+                if (extractMemories(target, conversations.get(target.sessionId()))) {
+                    memoryChangedUserIds.add(target.userId());
+                }
+            } catch (final RuntimeException exception) {
+                failedUserIds.add(target.userId());
+                log.atError().addKeyValue("userId", target.userId()).addKeyValue("sessionId", target.sessionId()).log(
+                    "[USER_PREFERENCE] 대화 취향 기억 추출에 실패해 다음 밤에 다시 처리합니다. userId={}, sessionId={}, sequence={}, cause={}", target.userId(),
+                    target.sessionId(), target.sequence(), cause(exception));
+            } catch (final Error error) {
+                failedUserIds.add(target.userId());
+                throw error;
+            }
+        }
     }
 
     public void refreshNightlyProfiles(final Set<Long> memoryChangedUserIds) {

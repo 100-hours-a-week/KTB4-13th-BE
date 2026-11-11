@@ -3,6 +3,7 @@ package com.book.core.library.api;
 import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.library.api.converter.LibraryCommandConverter;
+import com.book.core.library.api.request.AddLibraryBooksRequest;
 import com.book.core.library.api.request.CreateShelfPhotoUploadRequest;
 import com.book.core.library.api.request.DeleteLibraryBooksRequest;
 import com.book.core.library.api.request.ScanShelfPhotoRequest;
@@ -32,6 +33,13 @@ class LibraryController implements LibraryControllerSpec {
     @GetMapping("/books")
     public ResponseEntity<ApiResponse<LibraryBooksResponse>> getBooks(@UserId final Long userId) {
         return ResponseEntity.ok(ApiResponse.ok(LibraryBooksResponse.from(libraryService.getBooks(userId))));
+    }
+
+    @Override
+    @PostMapping("/books")
+    public ResponseEntity<ApiResponse<Void>> addBooks(@UserId final Long userId, @Valid @RequestBody final AddLibraryBooksRequest request) {
+        libraryService.addBooks(commandConverter.toAddLibraryBooksCommand(userId, request));
+        return ResponseEntity.ok(ApiResponse.ok());
     }
 
     @Override

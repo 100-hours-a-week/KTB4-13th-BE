@@ -25,6 +25,7 @@ import com.book.core.onboarding.application.usecase.GetProfileRefreshTargetsUseC
 import com.book.core.onboarding.application.usecase.PersonalizationProfileUseCase;
 import com.book.core.preference.application.result.UserPreferencesResult;
 import com.book.core.recommendation.application.usecase.RefreshRecommendationFeedUseCase;
+import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -55,6 +56,7 @@ public class UserPreferenceService {
     private final PersonalizationProfileUseCase personalizationProfileUseCase;
     private final GetProfileRefreshTargetsUseCase getProfileRefreshTargetsUseCase;
     private final RefreshRecommendationFeedUseCase refreshRecommendationFeedUseCase;
+    private final CheckUserRestrictionUseCase checkUserRestrictionUseCase;
 
     public UserPreferencesResult getPreferences(final Long userId) {
         final OnboardingProgressResult onboarding = getCompletedOnboarding(userId);
@@ -121,7 +123,7 @@ public class UserPreferenceService {
     }
 
     private boolean extractMemories(final MemoryExtractionTarget target, final List<ChatHistoryMessage> history) {
-        if (!checkPersonalizationAgreementUseCase.execute(target.userId())) {
+        if (checkUserRestrictionUseCase.execute(target.userId()) || !checkPersonalizationAgreementUseCase.execute(target.userId())) {
             return false;
         }
         if (history == null) {
@@ -152,6 +154,9 @@ public class UserPreferenceService {
 
     private void refreshProfile(final Long userId) {
         try {
+            if (checkUserRestrictionUseCase.execute(userId)) {
+                return;
+            }
             personalizationProfileUseCase.executeUpdate(userId);
         } catch (final RuntimeException exception) {
             log.atWarn().addKeyValue("userId", userId).log("[USER_PREFERENCE] AI 취향 프로필 갱신에 실패했습니다. userId={}, cause={}", userId,

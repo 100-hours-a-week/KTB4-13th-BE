@@ -1,6 +1,7 @@
 package com.book.core.library.api;
 
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -13,6 +14,7 @@ import com.book.common.config.security.UserIdMvcConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.library.api.converter.LibraryCommandConverter;
+import com.book.core.library.application.command.AddLibraryBooksCommand;
 import com.book.core.library.application.command.CreateShelfPhotoUploadCommand;
 import com.book.core.library.application.command.DeleteLibraryBooksCommand;
 import com.book.core.library.application.command.ScanShelfPhotoCommand;
@@ -25,9 +27,13 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -71,6 +77,44 @@ class LibraryControllerTest {
             .andExpect(jsonPath("$.data.books[0].addedAt").value("2026-10-02T09:00:00"))
             .andExpect(jsonPath("$.data.books[1].productId").value((Object) null))
             .andExpect(jsonPath("$.data.books[1].coverImageUrl").value((Object) null));
+    }
+
+    @Test
+    void 담기는_JWT_회원_ID와_고른_도서_ID로_Command를_전달한다() throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(
+            post("/api/v1/library/books").param("userId", "99").contentType(MediaType.APPLICATION_JSON).content("{\"bookIds\":[101,102]}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
+
+        verify(libraryService).addBooks(new AddLibraryBooksCommand(42L, List.of(101L, 102L)));
+    }
+
+    @Test
+    void 존재하지_않는_도서를_담으면_404를_응답한다() throws Exception {
+        authenticateAs(42L);
+        willThrow(new CoreException(ErrorCode.LIBRARY_BOOK_NOT_FOUND)).given(libraryService)
+            .addBooks(new AddLibraryBooksCommand(42L, List.of(999L)));
+
+        mvc.perform(post("/api/v1/library/books").contentType(MediaType.APPLICATION_JSON).content("{\"bookIds\":[999]}"))
+            .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("E404"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidAddBooksBodies")
+    void 담을_도서_목록이_없거나_잘못되거나_50권을_넘으면_400을_응답하고_Service를_호출하지_않는다(final String body) throws Exception {
+        authenticateAs(42L);
+
+        mvc.perform(post("/api/v1/library/books").contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(libraryService);
+    }
+
+    private static Stream<String> invalidAddBooksBodies() {
+        final String fiftyOneBookIds = IntStream.rangeClosed(1, 51).mapToObj(String::valueOf).collect(Collectors.joining(","));
+        return Stream.of("{}", "{\"bookIds\":[]}", "{\"bookIds\":[1,0]}", "{\"bookIds\":[1,null]}",
+            "{\"bookIds\":[" + fiftyOneBookIds + "]}");
     }
 
     @Test

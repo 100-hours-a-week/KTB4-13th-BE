@@ -1,4 +1,4 @@
-package com.book.core.coupon.infrastructure.kafka;
+package com.book.core.coupon.infrastructure.messaging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -1,4 +1,4 @@
-package com.book.core.coupon.infrastructure.kafka;
+package com.book.core.coupon.infrastructure.messaging;
 
 import com.book.core.coupon.application.command.AcceptedCouponIssue;
 import com.book.core.coupon.application.usecase.PersistAcceptedCouponIssueUseCase;

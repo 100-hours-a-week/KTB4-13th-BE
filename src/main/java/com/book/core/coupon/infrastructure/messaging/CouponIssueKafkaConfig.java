@@ -1,4 +1,4 @@
-package com.book.core.coupon.infrastructure.kafka;
+package com.book.core.coupon.infrastructure.messaging;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;

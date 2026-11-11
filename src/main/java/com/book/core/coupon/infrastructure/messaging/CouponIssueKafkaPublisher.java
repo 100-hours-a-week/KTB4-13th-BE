@@ -1,6 +1,6 @@
-package com.book.core.coupon.infrastructure.kafka;
+package com.book.core.coupon.infrastructure.messaging;
 
-import static com.book.core.coupon.infrastructure.kafka.CouponIssueKafkaConfig.TOPIC;
+import static com.book.core.coupon.infrastructure.messaging.CouponIssueKafkaConfig.TOPIC;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;

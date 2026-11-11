@@ -9,12 +9,14 @@ import static org.mockito.Mockito.when;
 import com.book.core.coupon.application.command.GetCouponsCommand;
 import com.book.core.coupon.application.result.CouponResult;
 import com.book.core.coupon.application.usecase.CreateCouponUseCase;
+import com.book.core.coupon.application.usecase.EnqueueCouponIssueUseCase;
 import com.book.core.coupon.application.usecase.GetCouponIssuePolicyUseCase;
 import com.book.core.coupon.application.usecase.GetCouponTargetsUseCase;
 import com.book.core.coupon.application.usecase.GetCouponsUseCase;
 import com.book.core.coupon.application.usecase.IssueCouponUseCase;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 class GetCouponsServiceTest {
     @Test
@@ -22,7 +24,7 @@ class GetCouponsServiceTest {
         final var targets = mock(GetCouponTargetsUseCase.class);
         final var coupons = mock(GetCouponsUseCase.class);
         final var service = new CouponService(targets, coupons, mock(CreateCouponUseCase.class), mock(IssueCouponUseCase.class),
-            mock(GetCouponIssuePolicyUseCase.class));
+            mock(GetCouponIssuePolicyUseCase.class), new StaticListableBeanFactory().getBeanProvider(EnqueueCouponIssueUseCase.class));
         final var command = new GetCouponsCommand(List.of(10L, 20L));
         final List<CouponResult> result = List.of();
         when(coupons.execute(command.couponIds())).thenReturn(result);

@@ -38,6 +38,7 @@ import com.book.core.onboarding.application.usecase.GetProfileRefreshTargetsUseC
 import com.book.core.onboarding.application.usecase.PersonalizationProfileUseCase;
 import com.book.core.onboarding.domain.OnboardingStatus;
 import com.book.core.recommendation.application.usecase.RefreshRecommendationFeedUseCase;
+import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -72,10 +73,11 @@ class UserPreferenceServiceTest {
     private final CheckPersonalizationAgreementUseCase agreement = mock(CheckPersonalizationAgreementUseCase.class);
     private final ExtractUserMemoriesUseCase extraction = mock(ExtractUserMemoriesUseCase.class);
     private final SaveUserMemoriesUseCase save = mock(SaveUserMemoriesUseCase.class);
+    private final CheckUserRestrictionUseCase checkUserRestrictionUseCase = mock(CheckUserRestrictionUseCase.class);
     private final UserPreferenceService userPreferenceService =
         new UserPreferenceService(getOnboardingProgressUseCase, getUserMemoriesUseCase, deleteUserMemoriesUseCase,
             deleteAllUserMemoriesUseCase, agreement, extraction, save, getChatHistoryUseCase, getMemoryExtractionTargetsUseCase,
-            personalizationProfileUseCase, getProfileRefreshTargetsUseCase, refreshRecommendationFeedUseCase);
+            personalizationProfileUseCase, getProfileRefreshTargetsUseCase, refreshRecommendationFeedUseCase, checkUserRestrictionUseCase);
 
     @Test
     void 온보딩을_완료하지_않았으면_취향_조회와_삭제를_진행하지_않고_409를_던진다() {
@@ -128,6 +130,21 @@ class UserPreferenceServiceTest {
         order.verify(personalizationProfileUseCase).executeUpdate(5L);
         order.verify(personalizationProfileUseCase).executeUpdate(7L);
         verify(personalizationProfileUseCase, times(3)).executeUpdate(any());
+    }
+
+    @Test
+    void 야간_배치는_탈퇴를_신청했거나_최종_탈퇴한_회원의_취향_기억을_추출하지_않고_프로필도_갱신하지_않는다() {
+        when(getMemoryExtractionTargetsUseCase.execute()).thenReturn(List.of(new MemoryExtractionTarget(3L, 10L, 2L)));
+        when(getChatHistoryUseCase.executeForMemoryExtraction(anyList(), anyInt())).thenReturn(Map.of(10L, List.of()));
+        when(checkUserRestrictionUseCase.execute(3L)).thenReturn(true);
+        when(agreement.execute(3L)).thenReturn(true);
+
+        assertThat(userPreferenceService.extractNightlyMemories()).isEmpty();
+        userPreferenceService.refreshNightlyProfiles(Set.of(3L, 5L));
+
+        verifyNoInteractions(extraction);
+        verify(personalizationProfileUseCase).executeUpdate(5L);
+        verify(personalizationProfileUseCase, times(1)).executeUpdate(any());
     }
 
     @Test

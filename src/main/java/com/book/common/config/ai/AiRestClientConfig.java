@@ -16,9 +16,12 @@ import org.springframework.web.client.RestClient;
 public class AiRestClientConfig {
     public static final String DEFAULT_AI_REST_CLIENT = "aiRestClient";
     public static final String RECOMMENDATION_AI_REST_CLIENT = "recommendationAiRestClient";
+    public static final String SHELF_SCAN_AI_REST_CLIENT = "shelfScanAiRestClient";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration RECOMMENDATION_READ_TIMEOUT = Duration.ofSeconds(30);
+    // AI의 사진 처리 전체 제한(기본 60초)이 먼저 끝나 AI 오류 응답을 받을 수 있도록 더 길게 둡니다.
+    private static final Duration SHELF_SCAN_READ_TIMEOUT = Duration.ofSeconds(65);
 
     @Bean(DEFAULT_AI_REST_CLIENT)
     public RestClient aiRestClient(final AiServerProperties properties) {
@@ -28,6 +31,11 @@ public class AiRestClientConfig {
     @Bean(RECOMMENDATION_AI_REST_CLIENT)
     public RestClient recommendationAiRestClient(final AiServerProperties properties) {
         return restClientBuilder(properties, RECOMMENDATION_READ_TIMEOUT).build();
+    }
+
+    @Bean(SHELF_SCAN_AI_REST_CLIENT)
+    public RestClient shelfScanAiRestClient(final AiServerProperties properties) {
+        return restClientBuilder(properties, SHELF_SCAN_READ_TIMEOUT).build();
     }
 
     static RestClient.Builder restClientBuilder(final AiServerProperties properties) {

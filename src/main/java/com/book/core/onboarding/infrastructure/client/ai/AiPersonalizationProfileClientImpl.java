@@ -10,6 +10,7 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -32,6 +33,18 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
         try {
             restClient.put().uri(PROFILE_PATH).header(REQUEST_ID_HEADER, currentRequestId()).contentType(MediaType.APPLICATION_JSON)
                 .body(mapper.toProfileRequest(request)).retrieve().toBodilessEntity();
+        } catch (final RestClientException exception) {
+            throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
+        }
+    }
+
+    @Override
+    public void deleteProfile(final Long userId) {
+        try {
+            restClient.delete().uri(uriBuilder -> uriBuilder.path(PROFILE_PATH).queryParam("user_id", userId).build())
+                .header(REQUEST_ID_HEADER, currentRequestId()).retrieve().toBodilessEntity();
+        } catch (final HttpClientErrorException.BadRequest exception) {
+            throw new CoreException(ErrorCode.AI_SERVICE_INVALID_REQUEST, exception);
         } catch (final RestClientException exception) {
             throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
         }

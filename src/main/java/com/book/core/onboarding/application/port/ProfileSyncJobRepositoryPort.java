@@ -17,6 +17,9 @@ public interface ProfileSyncJobRepositoryPort {
 
     void retry(Job job, Instant availableAt);
 
+    /** 자동 재시도하지 않을 실패 작업을 지우지 않고 보관합니다. */
+    void fail(Job job);
+
     record Job(Long userId, UUID revision, int attempts) {
     }
 }

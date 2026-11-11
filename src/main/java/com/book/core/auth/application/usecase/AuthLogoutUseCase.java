@@ -2,7 +2,6 @@ package com.book.core.auth.application.usecase;
 
 import com.book.core.auth.application.port.RefreshSessionRepository;
 import com.book.core.user.application.port.UserRepositoryPort;
-import java.time.Clock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthLogoutUseCase {
     private final RefreshSessionRepository refreshSessionRepository;
-    private final Clock clock;
     private final UserRepositoryPort userRepository;
 
     @Transactional
@@ -19,9 +17,6 @@ public class AuthLogoutUseCase {
         if (userRepository.findByIdForUpdate(userId).isEmpty()) {
             return;
         }
-        refreshSessionRepository.findActiveByUserId(userId).ifPresent((final var session) -> {
-            session.revoke(clock.instant());
-            refreshSessionRepository.save(session);
-        });
+        refreshSessionRepository.revoke(userId);
     }
 }

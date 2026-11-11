@@ -22,6 +22,7 @@ import com.book.core.coupon.api.converter.CouponResultConverter;
 import com.book.core.coupon.application.command.IssueCouponCommand;
 import com.book.core.coupon.application.command.GetOwnedCouponsCommand;
 import com.book.core.coupon.application.command.GetCouponsCommand;
+import com.book.core.coupon.application.result.CouponIssueOutcome;
 import com.book.core.coupon.application.result.CouponResult;
 import com.book.core.coupon.application.result.OwnedCouponResult;
 import com.book.core.coupon.application.service.OwnedCouponService;
@@ -133,6 +134,15 @@ class CouponControllerTest {
         mvc.perform(post("/api/v1/coupons/10/issue").header("Authorization", "Bearer test-token").param("userId", "99"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
         verify(couponService).issue(new IssueCouponCommand(42L, 10L));
+    }
+
+    @Test
+    void 비동기_접수는_저장_완료와_구분해_202로_응답한다() throws Exception {
+        authenticate();
+        when(couponService.issue(new IssueCouponCommand(42L, 10L))).thenReturn(CouponIssueOutcome.ACCEPTED);
+
+        mvc.perform(post("/api/v1/coupons/10/issue").header("Authorization", "Bearer test-token")).andExpect(status().isAccepted())
+            .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test

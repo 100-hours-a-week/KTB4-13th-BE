@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -19,10 +21,14 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileClient;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import com.book.core.onboarding.application.usecase.ProcessProfileSyncJobUseCase;
+import com.book.core.onboarding.application.usecase.RequestProfileSyncUseCase;
+import com.book.core.user.application.service.UserService;
+import com.book.core.user.application.usecase.CompleteUserDeletionUseCase;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +38,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -43,6 +50,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -68,6 +76,15 @@ class OnboardingProfileRefreshIntegrationTest {
 
     @Autowired
     ProcessProfileSyncJobUseCase processJob;
+
+    @Autowired
+    UserService userService;
+
+    @MockitoSpyBean
+    RequestProfileSyncUseCase requestProfileSyncUseCase;
+
+    @MockitoSpyBean
+    CompleteUserDeletionUseCase completeUserDeletionUseCase;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -227,7 +244,128 @@ class OnboardingProfileRefreshIntegrationTest {
         jdbc.update("DELETE FROM user_term_agreement WHERE user_id = ?", userId);
         processJob.execute();
         verify(profileClient, never()).updateProfile(any(), any());
+        verify(profileClient).deleteProfile(userId);
         assertThat(jobCount(userId)).isZero();
+    }
+
+    @Test
+    void PUT_도중_동의_행이_없어지면_PUT_다음_DELETE를_보낸다() throws Exception {
+        final Long userId = insertUser("프로필갱신회원7");
+        final Long bookId = insertBook("프로필 갱신 도서 8");
+        authenticateAs(userId);
+        agreePersonalization();
+        completeOnboarding(bookId);
+        doAnswer(invocation -> {
+            jdbc.update("DELETE FROM user_term_agreement WHERE user_id = ?", userId);
+            return null;
+        }).when(profileClient).updateProfile(any(), any());
+
+        processJob.execute();
+        assertThat(jobCount(userId)).isOne();
+        processJob.execute();
+
+        final InOrder order = inOrder(profileClient);
+        order.verify(profileClient).updateProfile(any(), any());
+        order.verify(profileClient).deleteProfile(userId);
+        assertThat(jobCount(userId)).isZero();
+    }
+
+    @Test
+    void 복구_기간이_끝나_최종_탈퇴하면_AI_프로필을_삭제하고_AI_장애_뒤에도_회원_ID로_다시_삭제한다() throws Exception {
+        final Long userId = insertUser("최종탈퇴회원1");
+        final Long bookId = insertBook("최종 탈퇴 도서 1");
+        authenticateAs(userId);
+        agreePersonalization();
+        completeOnboarding(bookId);
+        processJob.execute();
+        jdbc.update("UPDATE users SET delete_requested_at = ? WHERE id = ?", LocalDateTime.now().minusDays(8), userId);
+
+        userService.completeUserDeletion();
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE id = ? AND deleted_at IS NOT NULL", Integer.class, userId))
+            .isOne();
+        assertThat(jobCount(userId)).isOne();
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).doNothing().when(profileClient).deleteProfile(userId);
+        processJob.execute();
+        assertThat(jobCount(userId)).isOne();
+        jdbc.update("UPDATE profile_sync_jobs SET available_at = '2000-01-01' WHERE user_id = ?", userId);
+        processJob.execute();
+
+        verify(profileClient, times(2)).deleteProfile(userId);
+        verify(profileClient, times(1)).updateProfile(any(), any());
+        assertThat(jobCount(userId)).isZero();
+    }
+
+    @Test
+    void AI가_삭제_요청을_400으로_거부하면_작업을_실패로_보관하고_운영자가_다시_열면_삭제한다() throws Exception {
+        final Long userId = insertUser("최종탈퇴회원2");
+        jdbc.update("UPDATE users SET delete_requested_at = ? WHERE id = ?", LocalDateTime.now().minusDays(8), userId);
+        userService.completeUserDeletion();
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_INVALID_REQUEST)).doNothing().when(profileClient).deleteProfile(userId);
+
+        processJob.execute();
+        processJob.execute();
+
+        verify(profileClient, times(1)).deleteProfile(userId);
+        assertThat(jobCount(userId)).isOne();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs WHERE user_id = ? AND available_at >= '9999-01-01'",
+            Integer.class, userId)).isOne();
+
+        jdbc.update("UPDATE profile_sync_jobs SET available_at = NOW(6), attempts = 0 WHERE user_id = ? AND available_at >= '9999-01-01'",
+            userId);
+        processJob.execute();
+
+        verify(profileClient, times(2)).deleteProfile(userId);
+        assertThat(jobCount(userId)).isZero();
+    }
+
+    @Test
+    void 삭제_예약이나_최종_탈퇴_커밋_사이에_중단돼도_다음_실행에서_회원을_다시_찾아_삭제를_예약한다() {
+        final Long beforeEnqueueUserId = insertUser("등록전중단회원");
+        final Long beforeCompleteUserId = insertUser("완료전중단회원");
+        jdbc.update("UPDATE users SET delete_requested_at = ? WHERE id IN (?, ?)", LocalDateTime.now().minusDays(8), beforeEnqueueUserId,
+            beforeCompleteUserId);
+        doThrow(new IllegalStateException("shutdown before enqueue")).doCallRealMethod().when(requestProfileSyncUseCase)
+            .execute(beforeEnqueueUserId);
+        doThrow(new IllegalStateException("shutdown before completion")).doCallRealMethod().when(completeUserDeletionUseCase)
+            .execute(beforeCompleteUserId);
+
+        userService.completeUserDeletion();
+
+        assertThat(deletedUserCount(beforeEnqueueUserId)).isZero();
+        assertThat(jobCount(beforeEnqueueUserId)).isZero();
+        assertThat(deletedUserCount(beforeCompleteUserId)).isZero();
+        assertThat(jobCount(beforeCompleteUserId)).isOne();
+
+        userService.completeUserDeletion();
+
+        assertThat(deletedUserCount(beforeEnqueueUserId)).isOne();
+        assertThat(jobCount(beforeEnqueueUserId)).isOne();
+        assertThat(deletedUserCount(beforeCompleteUserId)).isOne();
+        assertThat(jobCount(beforeCompleteUserId)).isOne();
+    }
+
+    @Test
+    void 복구_기간_중이거나_탈퇴를_취소한_회원은_AI_프로필을_삭제하지_않는다() throws Exception {
+        final Long pendingUserId = insertUser("탈퇴유예회원1");
+        final Long recoveredUserId = insertUser("탈퇴취소회원1");
+        final Long bookId = insertBook("탈퇴 유예 도서 1");
+        for (final Long userId : List.of(pendingUserId, recoveredUserId)) {
+            authenticateAs(userId);
+            agreePersonalization();
+            completeOnboarding(bookId);
+        }
+        jdbc.update("UPDATE users SET delete_requested_at = ? WHERE id = ?", LocalDateTime.now().minusDays(6), pendingUserId);
+        jdbc.update("UPDATE users SET delete_requested_at = NULL WHERE id = ?", recoveredUserId);
+
+        userService.completeUserDeletion();
+        processJob.execute();
+        processJob.execute();
+
+        verify(profileClient, never()).deleteProfile(any());
+        verify(profileClient).updateProfile(any(), any());
+        assertThat(jobCount(pendingUserId)).isZero();
+        assertThat(jobCount(recoveredUserId)).isZero();
     }
 
     @Test
@@ -247,6 +385,10 @@ class OnboardingProfileRefreshIntegrationTest {
 
         assertThat(optionIds(userId)).contains(1L).doesNotContain(2L);
         assertThat(jobCount(userId)).isZero();
+    }
+
+    private int deletedUserCount(final Long userId) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE id = ? AND deleted_at IS NOT NULL", Integer.class, userId);
     }
 
     private int jobCount(final Long userId) {

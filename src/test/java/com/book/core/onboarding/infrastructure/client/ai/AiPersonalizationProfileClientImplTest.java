@@ -38,6 +38,7 @@ import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
@@ -75,6 +76,36 @@ class AiPersonalizationProfileClientImplTest {
 
         assertThatThrownBy(() -> client.updateProfile(profileRequest())).isInstanceOf(CoreException.class)
             .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
+    }
+
+    @Test
+    void PUT이_400으로_거부되면_기존처럼_재시도할_AI_서비스_호출_실패로_변환한다() {
+        server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT)).andRespond(withStatus(HttpStatus.BAD_REQUEST));
+
+        assertThatThrownBy(() -> client.updateProfile(profileRequest())).isInstanceOf(CoreException.class)
+            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
+    }
+
+    @Test
+    void DELETE가_400으로_거부되면_재시도하지_않을_요청_거부로_변환한다() {
+        server.expect(requestTo(PROFILE_URL + "?user_id=42")).andRespond(withStatus(HttpStatus.BAD_REQUEST));
+
+        assertThatThrownBy(() -> client.deleteProfile(42L)).isInstanceOf(CoreException.class)
+            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_INVALID_REQUEST));
+    }
+
+    @Test
+    void DELETE_preferences_profile에_인증_헤더와_회원_ID_쿼리를_보내고_이미_없는_프로필도_성공으로_처리한다() {
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "request-delete-789");
+        server.expect(requestTo(PROFILE_URL + "?user_id=42")).andExpect(method(HttpMethod.DELETE))
+            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "request-delete-789"))
+            .andRespond(withSuccess("""
+                {"message":"profile_delete_success","data":{"deleted":false}}
+                """, MediaType.APPLICATION_JSON));
+
+        client.deleteProfile(42L);
+
+        server.verify();
     }
 
     @Test

@@ -39,10 +39,10 @@ public class UserMemoryExtractionScheduler {
             try {
                 userPreferenceService.runNightlyBatch();
             } finally {
-                // 인터럽트 상태에서도 락 해제를 시도하고 정리 후 상태를 복원합니다.
                 final boolean interrupted = Thread.interrupted();
                 try {
                     if (!releaseLock(lockConnection)) {
+                        log.warn("[USER_PREFERENCE] 야간 취향 배치 잠금을 해제하지 못해 연결을 폐기합니다.");
                         dataSource.evictConnection(lockConnection);
                     }
                 } finally {
@@ -77,19 +77,10 @@ public class UserMemoryExtractionScheduler {
             statement.setString(1, LOCK_NAME);
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (!resultSet.next()) {
-                    log.warn("[USER_PREFERENCE] 야간 취향 배치 잠금 해제 결과가 없습니다.");
                     return false;
                 }
                 final int released = resultSet.getInt(1);
-                if (resultSet.wasNull()) {
-                    log.warn("[USER_PREFERENCE] 야간 취향 배치 잠금 해제가 NULL을 반환했습니다.");
-                    return false;
-                }
-                if (released != 1) {
-                    log.warn("[USER_PREFERENCE] 야간 취향 배치 잠금을 해제하지 못했습니다. result={}", released);
-                    return false;
-                }
-                return true;
+                return !resultSet.wasNull() && released == 1;
             }
         } catch (final SQLException exception) {
             log.warn("[USER_PREFERENCE] 야간 취향 배치 잠금 해제 중 오류가 발생했습니다.", exception);

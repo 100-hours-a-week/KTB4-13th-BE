@@ -3,6 +3,7 @@ package com.book.core.library.api;
 import com.book.common.config.security.UserId;
 import com.book.common.response.ApiResponse;
 import com.book.core.library.api.converter.LibraryCommandConverter;
+import com.book.core.library.api.request.AddLibraryBooksRequest;
 import com.book.core.library.api.request.DeleteLibraryBooksRequest;
 import com.book.core.library.api.response.LibraryBooksResponse;
 import com.book.core.library.api.spec.LibraryControllerSpec;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +29,13 @@ class LibraryController implements LibraryControllerSpec {
     @GetMapping("/books")
     public ResponseEntity<ApiResponse<LibraryBooksResponse>> getBooks(@UserId final Long userId) {
         return ResponseEntity.ok(ApiResponse.ok(LibraryBooksResponse.from(libraryService.getBooks(userId))));
+    }
+
+    @Override
+    @PostMapping("/books")
+    public ResponseEntity<ApiResponse<Void>> addBooks(@UserId final Long userId, @Valid @RequestBody final AddLibraryBooksRequest request) {
+        libraryService.addBooks(commandConverter.toAddLibraryBooksCommand(userId, request));
+        return ResponseEntity.ok(ApiResponse.ok());
     }
 
     @Override

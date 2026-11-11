@@ -5,27 +5,36 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
-@RequiredArgsConstructor
 class ProfileSyncJobRepositoryAdapter implements ProfileSyncJobRepositoryPort {
     /** 상태 컬럼 없이 실패 작업을 작업자 조회(available_at <= now)에서 제외하는 값입니다. */
     static final Instant FAILED_AVAILABLE_AT = Instant.parse("9999-01-01T00:00:00Z");
 
     private final JdbcTemplate jdbc;
+    private final boolean kafkaEnabled;
+
+    ProfileSyncJobRepositoryAdapter(final JdbcTemplate jdbc, @Value("${app.profile-sync.kafka-enabled:false}") final boolean kafkaEnabled) {
+        this.jdbc = jdbc;
+        this.kafkaEnabled = kafkaEnabled;
+    }
 
     @Override
     public void enqueue(final Long userId, final Instant availableAt) {
         final String revision = UUID.randomUUID().toString();
         final Timestamp due = Timestamp.from(availableAt);
+        Timestamp publishAt = null;
+        if (kafkaEnabled) {
+            publishAt = due;
+        }
         jdbc.update("""
-            INSERT INTO profile_sync_jobs (user_id, revision, available_at)
-            VALUES (?, ?, ?)
-            ON DUPLICATE KEY UPDATE revision = ?, available_at = ?, attempts = 0
-            """, userId, revision, due, revision, due);
+            INSERT INTO profile_sync_jobs (user_id, revision, available_at, kafka_publish_at)
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE revision = ?, available_at = ?, attempts = 0, kafka_publish_at = ?
+            """, userId, revision, due, publishAt, revision, due, publishAt);
     }
 
     @Override
@@ -33,11 +42,31 @@ class ProfileSyncJobRepositoryAdapter implements ProfileSyncJobRepositoryPort {
         return jdbc.query("""
             SELECT user_id, revision, attempts
             FROM profile_sync_jobs
-            WHERE available_at <= ?
+            WHERE available_at <= ? AND (kafka_publish_at IS NULL OR ?)
             ORDER BY available_at, user_id
             LIMIT 1
             """, (row, index) -> new Job(row.getLong("user_id"), UUID.fromString(row.getString("revision")), row.getInt("attempts")),
-            Timestamp.from(now)).stream().findFirst();
+            Timestamp.from(now), !kafkaEnabled).stream().findFirst();
+    }
+
+    @Override
+    public Optional<UUID> claimForPublication(final Instant now, final Instant leaseUntil) {
+        final Timestamp due = Timestamp.from(now);
+        return jdbc.query("""
+            SELECT revision FROM profile_sync_jobs
+            WHERE kafka_publish_at <= ?
+            ORDER BY kafka_publish_at, user_id
+            LIMIT 1
+            """, (row, index) -> UUID.fromString(row.getString("revision")), due).stream().findFirst().filter(revision -> jdbc.update("""
+                UPDATE profile_sync_jobs SET kafka_publish_at = ?
+                WHERE revision = ? AND kafka_publish_at <= ?
+                """, Timestamp.from(leaseUntil), revision.toString(), due) == 1);
+    }
+
+    @Override
+    public void markReady(final UUID revision) {
+        jdbc.update("UPDATE profile_sync_jobs SET kafka_publish_at = NULL WHERE revision = ? AND kafka_publish_at IS NOT NULL",
+            revision.toString());
     }
 
     @Override

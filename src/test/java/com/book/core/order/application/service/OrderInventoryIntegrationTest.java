@@ -2,36 +2,57 @@ package com.book.core.order.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
+import com.book.core.order.application.usecase.CreateOrderUseCase;
+import com.book.core.order.domain.Order;
+import com.book.core.product.application.command.ProductQuantitiesCommand;
+import com.book.core.product.application.port.ProductInventoryLockPort;
+import com.book.core.product.application.usecase.ReserveProductInventoryUseCase;
 import com.book.core.product.infrastructure.scheduler.ProductRestockScheduler;
+import java.time.Duration;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
-@SpringBootTest
+@SpringBootTest(properties = "app.product.inventory.redis-lock.enabled=true")
 @ActiveProfiles({"test", "mysql-test"})
 @Testcontainers
 @Tag("integration")
@@ -41,12 +62,34 @@ class OrderInventoryIntegrationTest {
     @Container
     @ServiceConnection
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
+
+    @Container
+    @ServiceConnection(name = "redis")
+    static final GenericContainer<?> redis = new GenericContainer<>("redis:8.0").withExposedPorts(6379);
+
     @Autowired
     private OrderService orderService;
     @Autowired
     private ProductRestockScheduler restockScheduler;
     @Autowired
     private JdbcTemplate jdbc;
+
+    @MockitoSpyBean
+    private ProductInventoryLockPort inventoryLockPort;
+
+    @MockitoSpyBean
+    private StringRedisTemplate redisTemplate;
+
+    @MockitoSpyBean
+    private ReserveProductInventoryUseCase reserveInventoryUseCase;
+
+    @MockitoSpyBean
+    private CreateOrderUseCase createOrderUseCase;
+
+    @BeforeAll
+    static void allowReadOnlyPerformanceSchemaInspection() throws Exception {
+        mysql.execInContainer("mysql", "-uroot", "-p" + mysql.getPassword(), "-e", "GRANT SELECT ON performance_schema.* TO 'test'@'%'");
+    }
 
     @Test
     void 주문을_만들면_예약하고_한_상품이라도_부족하면_주문과_예약과_알림을_모두_롤백한다() throws Exception {
@@ -76,35 +119,220 @@ class OrderInventoryIntegrationTest {
         final long productId = insertProduct(5);
         final long[] userIds = new long[8];
         final CountDownLatch start = new CountDownLatch(1);
-        final List<Future<Boolean>> results = new ArrayList<>();
+        final List<Future<ErrorCode>> results = new ArrayList<>();
         try (ExecutorService executor = Executors.newFixedThreadPool(8)) {
             for (int index = 0; index < 8; index++) {
                 final long userId = insertUser();
                 userIds[index] = userId;
                 addToCart(userId, productId);
-                results.add(executor.submit((Callable<Boolean>) () -> {
+                results.add(executor.submit((Callable<ErrorCode>) () -> {
                     start.await();
                     try {
                         order(userId, productId, 1);
-                        return true;
+                        return null;
                     } catch (final CoreException exception) {
-                        return false;
+                        return exception.errorCode();
                     }
                 }));
             }
             start.countDown();
             int ordered = 0;
-            for (final Future<Boolean> result : results) {
-                if (result.get()) {
+            final List<ErrorCode> failures = new ArrayList<>();
+            for (final Future<ErrorCode> result : results) {
+                final ErrorCode errorCode = result.get();
+                if (errorCode == null) {
                     ordered++;
+                } else {
+                    failures.add(errorCode);
                 }
             }
             assertThat(ordered).isEqualTo(5);
+            assertThat(failures).hasSize(3).containsOnly(ErrorCode.INSUFFICIENT_PRODUCT_STOCK);
         }
         assertThat(inventory(productId)).containsExactly(5, 5);
+        assertThat(orderCount(userIds)).isEqualTo(5);
         awaitNotificationCount(7, userIds);
         Thread.sleep(100);
         assertThat(notifiedUserIds(userIds)).hasSize(7).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void 서로_다른_상품의_락은_독립적으로_획득할_수_있다() {
+        final long firstProductId = NEXT_ID.incrementAndGet();
+        final long secondProductId = NEXT_ID.incrementAndGet();
+        final Map<Long, String> firstLock = inventoryLockPort.acquireAll(List.of(firstProductId));
+        final Map<Long, String> secondLock = inventoryLockPort.acquireAll(List.of(secondProductId));
+
+        try {
+            assertThat(firstLock).containsKey(firstProductId);
+            assertThat(secondLock).containsKey(secondProductId);
+            assertThat(redisTemplate.opsForValue().get(lockKey(firstProductId))).isEqualTo(firstLock.get(firstProductId));
+            assertThat(redisTemplate.opsForValue().get(lockKey(secondProductId))).isEqualTo(secondLock.get(secondProductId));
+        } finally {
+            inventoryLockPort.releaseAll(secondLock);
+            inventoryLockPort.releaseAll(firstLock);
+        }
+    }
+
+    @Test
+    void 여러_상품_중_하나의_락을_얻지_못하면_먼저_얻은_락을_해제한다() {
+        final long firstProductId = NEXT_ID.incrementAndGet();
+        final long blockedProductId = NEXT_ID.incrementAndGet();
+        redisTemplate.opsForValue().set(lockKey(blockedProductId), "other-owner", Duration.ofSeconds(30));
+
+        try {
+            assertThatThrownBy(() -> inventoryLockPort.acquireAll(List.of(blockedProductId, firstProductId))).isInstanceOfSatisfying(
+                CoreException.class,
+                (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PRODUCT_INVENTORY_LOCK_TIMEOUT));
+            assertThat(redisTemplate.hasKey(lockKey(firstProductId))).isFalse();
+            assertThat(redisTemplate.opsForValue().get(lockKey(blockedProductId))).isEqualTo("other-owner");
+        } finally {
+            redisTemplate.delete(lockKey(blockedProductId));
+        }
+    }
+
+    @Test
+    void 락_대기_시간이_초과되면_재고_부족과_구분되는_오류를_반환한다() {
+        final long productId = NEXT_ID.incrementAndGet();
+        redisTemplate.opsForValue().set(lockKey(productId), "other-owner", Duration.ofSeconds(30));
+
+        try {
+            assertThatThrownBy(() -> inventoryLockPort.acquireAll(List.of(productId))).isInstanceOfSatisfying(CoreException.class,
+                (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PRODUCT_INVENTORY_LOCK_TIMEOUT));
+            assertThat(redisTemplate.opsForValue().get(lockKey(productId))).isEqualTo("other-owner");
+        } finally {
+            redisTemplate.delete(lockKey(productId));
+        }
+    }
+
+    @Test
+    void 락_소유자가_바뀐_뒤_이전_소유자가_해제해도_새_락은_유지된다() {
+        final long productId = NEXT_ID.incrementAndGet();
+        final Map<Long, String> acquiredLock = inventoryLockPort.acquireAll(List.of(productId));
+        redisTemplate.opsForValue().set(lockKey(productId), "new-owner", Duration.ofSeconds(30));
+
+        inventoryLockPort.releaseAll(acquiredLock);
+
+        assertThat(redisTemplate.opsForValue().get(lockKey(productId))).isEqualTo("new-owner");
+        redisTemplate.delete(lockKey(productId));
+    }
+
+    @Test
+    void Redis_장애는_주문_생성보다_먼저_실패하고_재고를_변경하지_않는다() {
+        final long userId = insertUser();
+        final long productId = insertProduct(5, userId);
+        doThrow(new RedisConnectionFailureException("forced test failure")).when(redisTemplate).opsForValue();
+
+        assertThatThrownBy(() -> order(userId, productId, 1)).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.PRODUCT_INVENTORY_LOCK_UNAVAILABLE));
+
+        assertThat(inventory(productId)).containsExactly(5, 0);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE user_id = ?", Integer.class, userId)).isZero();
+    }
+
+    @Test
+    void Redis_락은_주문_트랜잭션_커밋_뒤_해제된다() {
+        final long userId = insertUser();
+        final long productId = insertProduct(5, userId);
+        doAnswer((final org.mockito.invocation.InvocationOnMock invocation) -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE user_id = ?", Integer.class, userId)).isEqualTo(1);
+            assertThat(inventory(productId)).containsExactly(5, 1);
+            assertThat(redisTemplate.hasKey(lockKey(productId))).isTrue();
+            return invocation.callRealMethod();
+        }).when(inventoryLockPort).releaseAll(anyMap());
+
+        order(userId, productId, 1);
+
+        assertThat(redisTemplate.hasKey(lockKey(productId))).isFalse();
+    }
+
+    @Test
+    void Redis_락은_주문_트랜잭션_롤백_뒤_해제된다() {
+        final long userId = insertUser();
+        final long productId = insertProduct(5, userId);
+        doAnswer((final org.mockito.invocation.InvocationOnMock invocation) -> {
+            assertThat(invocation.callRealMethod()).isNotNull();
+            throw new DataIntegrityViolationException("forced failure after order persistence");
+        }).when(createOrderUseCase).execute(any(Order.class));
+        doAnswer((final org.mockito.invocation.InvocationOnMock invocation) -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE user_id = ?", Integer.class, userId)).isZero();
+            assertThat(inventory(productId)).containsExactly(5, 0);
+            assertThat(redisTemplate.hasKey(lockKey(productId))).isTrue();
+            return invocation.callRealMethod();
+        }).when(inventoryLockPort).releaseAll(anyMap());
+
+        assertThatThrownBy(() -> order(userId, productId, 1)).isInstanceOf(DataIntegrityViolationException.class);
+
+        assertThat(redisTemplate.hasKey(lockKey(productId))).isFalse();
+        assertThat(inventory(productId)).containsExactly(5, 0);
+    }
+
+    @Test
+    void Redis_TTL이_만료되어도_MySQL_조건부_예약이_초과예약을_막는다() throws Exception {
+        final long firstUserId = insertUser();
+        final long secondUserId = insertUser();
+        final long productId = insertProduct(1, firstUserId, secondUserId);
+        final CountDownLatch firstReservationApplied = new CountDownLatch(1);
+        final CountDownLatch allowFirstTransactionToFinish = new CountDownLatch(1);
+        final CountDownLatch secondLockAcquired = new CountDownLatch(1);
+        final AtomicInteger reserveCalls = new AtomicInteger();
+        final AtomicInteger lockCalls = new AtomicInteger();
+        doAnswer((final org.mockito.invocation.InvocationOnMock invocation) -> {
+            final Object result = invocation.callRealMethod();
+            if (reserveCalls.incrementAndGet() == 1) {
+                assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+                firstReservationApplied.countDown();
+                if (!allowFirstTransactionToFinish.await(5, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("첫 주문 트랜잭션 해제 대기 시간이 초과되었습니다.");
+                }
+            }
+            return result;
+        }).when(reserveInventoryUseCase).execute(any(ProductQuantitiesCommand.class));
+        doAnswer((final org.mockito.invocation.InvocationOnMock invocation) -> {
+            final Object locks = invocation.callRealMethod();
+            if (lockCalls.incrementAndGet() == 2) {
+                secondLockAcquired.countDown();
+            }
+            return locks;
+        }).when(inventoryLockPort).acquireAll(anyList());
+
+        final String key = lockKey(productId);
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            final Future<Boolean> firstOrder = executor.submit((Callable<Boolean>) () -> {
+                order(firstUserId, productId, 1);
+                return true;
+            });
+            assertThat(firstReservationApplied.await(5, TimeUnit.SECONDS)).isTrue();
+            final String firstToken = redisTemplate.opsForValue().get(key);
+            assertThat(firstToken).isNotNull();
+            assertThat(redisTemplate.expire(key, Duration.ofMillis(1))).isTrue();
+            awaitLockExpiration(key);
+
+            final Future<ErrorCode> secondOrder = executor.submit((Callable<ErrorCode>) () -> {
+                try {
+                    order(secondUserId, productId, 1);
+                    return null;
+                } catch (final CoreException exception) {
+                    return exception.errorCode();
+                }
+            });
+            assertThat(secondLockAcquired.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(redisTemplate.opsForValue().get(key)).isNotEqualTo(firstToken);
+            awaitInventoryLockWait(productId);
+            allowFirstTransactionToFinish.countDown();
+
+            assertThat(firstOrder.get(10, TimeUnit.SECONDS)).isTrue();
+            assertThat(secondOrder.get(10, TimeUnit.SECONDS)).isEqualTo(ErrorCode.INSUFFICIENT_PRODUCT_STOCK);
+        } finally {
+            allowFirstTransactionToFinish.countDown();
+            redisTemplate.delete(key);
+        }
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE user_id IN (?, ?)", Integer.class, firstUserId, secondUserId))
+            .isEqualTo(1);
+        assertThat(inventory(productId)).containsExactly(1, 1);
     }
 
     @Test
@@ -265,6 +493,12 @@ class OrderInventoryIntegrationTest {
         return notifiedUserIds(userIds).size();
     }
 
+    private int orderCount(final long... userIds) {
+        final String placeholders = String.join(",", Collections.nCopies(userIds.length, "?"));
+        return jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE user_id IN (" + placeholders + ")", Integer.class,
+            Arrays.stream(userIds).boxed().toArray());
+    }
+
     private List<Long> notifiedUserIds(final long... userIds) {
         final String placeholders = String.join(",", Collections.nCopies(userIds.length, "?"));
         return jdbc.queryForList("SELECT user_id FROM notifications WHERE user_id IN (" + placeholders + ") ORDER BY user_id, id",
@@ -277,6 +511,39 @@ class OrderInventoryIntegrationTest {
             Thread.sleep(25);
         }
         assertThat(notificationCount(userIds)).isEqualTo(expectedCount);
+    }
+
+    private void awaitLockExpiration(final String key) throws InterruptedException {
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (Boolean.TRUE.equals(redisTemplate.hasKey(key)) && System.nanoTime() < deadline) {
+            TimeUnit.MILLISECONDS.sleep(10);
+        }
+        assertThat(redisTemplate.hasKey(key)).isFalse();
+    }
+
+    private void awaitInventoryLockWait(final long productId) throws InterruptedException {
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (inventoryLockWaitCount(productId) == 0 && System.nanoTime() < deadline) {
+            TimeUnit.MILLISECONDS.sleep(10);
+        }
+        assertThat(inventoryLockWaitCount(productId)).isPositive();
+    }
+
+    private int inventoryLockWaitCount(final long productId) {
+        return jdbc.queryForObject("""
+            SELECT COUNT(*)
+            FROM performance_schema.data_lock_waits waits
+            JOIN performance_schema.data_locks requested
+                ON requested.ENGINE = waits.ENGINE
+                AND requested.ENGINE_LOCK_ID = waits.REQUESTING_ENGINE_LOCK_ID
+            WHERE requested.OBJECT_SCHEMA = DATABASE()
+                AND requested.OBJECT_NAME = 'product_inventory'
+                AND requested.LOCK_DATA = CAST(? AS CHAR)
+            """, Integer.class, productId);
+    }
+
+    private String lockKey(final long productId) {
+        return "product:inventory:lock:" + productId;
     }
 
     private List<Integer> inventory(final long productId) {

@@ -33,7 +33,8 @@ class CouponIssueRequestRepositoryIntegrationTest {
     void 예약과_발행_기록을_남기고_실패한_예약도_재고에_포함한다() {
         final long couponId = 559001;
         jdbc.sql("""
-            INSERT INTO coupon (id, name, type, discount, max_use_count, min_order_amount, starts_at, expired_at, total_quantity, issued_quantity)
+            INSERT INTO coupon (id, name, type, discount, max_use_count, min_order_amount,
+                starts_at, expired_at, total_quantity, issued_quantity)
             VALUES (?, 'Kafka fixture', 'FIXED_AMOUNT', 1000, 1, 0, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 1 DAY, 1, 0)
             """).param(couponId).update();
         final var requests = new CouponIssueRequestRepository(jdbc);

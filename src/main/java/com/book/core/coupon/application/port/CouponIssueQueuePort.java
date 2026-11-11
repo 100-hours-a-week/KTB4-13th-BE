@@ -1,6 +1,6 @@
 package com.book.core.coupon.application.port;
 
-import com.book.core.coupon.application.command.AcceptedCouponIssue;
+import com.book.core.coupon.application.command.IssuanceRequested;
 
 public interface CouponIssueQueuePort {
     enum Reservation {
@@ -10,5 +10,5 @@ public interface CouponIssueQueuePort {
         FAILED
     }
 
-    Reservation reserve(AcceptedCouponIssue issue);
+    Reservation reserve(IssuanceRequested issue);
 }

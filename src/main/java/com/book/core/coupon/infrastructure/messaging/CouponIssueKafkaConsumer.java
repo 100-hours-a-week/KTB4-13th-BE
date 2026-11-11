@@ -1,6 +1,6 @@
 package com.book.core.coupon.infrastructure.messaging;
 
-import com.book.core.coupon.application.command.AcceptedCouponIssue;
+import com.book.core.coupon.application.command.IssuanceRequested;
 import com.book.core.coupon.application.usecase.PersistAcceptedCouponIssueUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -18,6 +18,6 @@ class CouponIssueKafkaConsumer {
     @KafkaListener(topics = "${coupon.kafka.topic}", groupId = "${coupon.kafka.group:book-coupon-issuance-redis}",
         concurrency = "${coupon.kafka.workers:1}", ackMode = "RECORD", properties = "auto.offset.reset=earliest")
     public void receive(final String payload) {
-        persistence.execute(objectMapper.readValue(payload, AcceptedCouponIssue.class));
+        persistence.execute(objectMapper.readValue(payload, IssuanceRequested.class));
     }
 }

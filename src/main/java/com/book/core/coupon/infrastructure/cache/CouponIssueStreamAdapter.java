@@ -3,7 +3,7 @@ package com.book.core.coupon.infrastructure.cache;
 import static com.book.core.coupon.infrastructure.cache.RedisLuaSupport.longLuaScript;
 import static com.book.core.coupon.infrastructure.cache.RedisLuaSupport.runForLong;
 
-import com.book.core.coupon.application.command.AcceptedCouponIssue;
+import com.book.core.coupon.application.command.IssuanceRequested;
 import com.book.core.coupon.application.port.CouponIssueQueuePort;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ public class CouponIssueStreamAdapter implements CouponIssueQueuePort {
     private String stream;
 
     @Override
-    public Reservation reserve(final AcceptedCouponIssue issue) {
+    public Reservation reserve(final IssuanceRequested issue) {
         final String prefix = "coupon:" + issue.couponId() + ":";
         final long result =
             runForLong(redis, reserveScript, List.of(prefix + "stock", prefix + "sold_out", prefix + "reservations", stream),

@@ -1,7 +1,7 @@
 package com.book.core.coupon.application.usecase;
 
 import com.book.common.annotation.UseCase;
-import com.book.core.coupon.application.command.AcceptedCouponIssue;
+import com.book.core.coupon.application.command.IssuanceRequested;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.OwnedCoupon;
@@ -15,7 +15,7 @@ public class PersistAcceptedCouponIssueUseCase {
     private final OwnedCouponRepositoryPort ownedCoupons;
 
     @Transactional
-    public boolean execute(final AcceptedCouponIssue issue) {
+    public boolean execute(final IssuanceRequested issue) {
         if (ownedCoupons.existsByUserIdAndCouponId(issue.userId(), issue.couponId())) {
             return false;
         }

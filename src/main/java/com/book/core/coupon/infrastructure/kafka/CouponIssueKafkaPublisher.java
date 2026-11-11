@@ -2,7 +2,6 @@ package com.book.core.coupon.infrastructure.kafka;
 
 import static com.book.core.coupon.infrastructure.kafka.CouponIssueKafkaConfig.TOPIC;
 
-import com.book.core.coupon.application.usecase.PersistAcceptedCouponIssueUseCase;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -10,21 +9,18 @@ import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
-import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Component
 @Profile("coupon-kafka")
 @RequiredArgsConstructor
 @Slf4j
-class CouponIssueKafkaWorker {
+class CouponIssueKafkaPublisher {
     private final CouponIssueRequestRepository requests;
-    private final PersistAcceptedCouponIssueUseCase persistence;
     private final KafkaTemplate<String, String> kafka;
     private final PlatformTransactionManager transactions;
     private final MeterRegistry meters;
@@ -47,16 +43,5 @@ class CouponIssueKafkaWorker {
         }).toArray(CompletableFuture<?>[]::new);
         CompletableFuture.allOf(deliveries).orTimeout(12, TimeUnit.SECONDS).join();
         requestIds.forEach(requests::published);
-    }
-
-    @KafkaListener(topics = TOPIC, groupId = "${coupon.kafka.group:book-coupon-issuance}", concurrency = "${coupon.kafka.workers:1}",
-        ackMode = "RECORD", properties = "auto.offset.reset=earliest")
-    @Transactional
-    public void receive(final String payload) {
-        final long requestId = Long.parseLong(payload);
-        requests.lockPending(requestId).ifPresent(issue -> {
-            persistence.execute(issue);
-            requests.complete(requestId, issue.couponId());
-        });
     }
 }

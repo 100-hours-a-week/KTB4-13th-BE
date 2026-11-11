@@ -12,7 +12,6 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.common.exception.RetryAfterException;
 import com.book.common.filter.RequestMdcFilter;
 import com.book.core.memory.application.command.ConversationMessage;
 import com.book.core.memory.application.command.UserMemoryExtraction;
@@ -23,7 +22,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -117,15 +115,13 @@ class AiMemoryExtractionClientImplTest {
             (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
     }
 
-    @Test
-    void AI가_429를_응답하면_Retry_After와_함께_요청_제한으로_변환한다() {
-        server.expect(requestTo(EXTRACTION_URL)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS).header(HttpHeaders.RETRY_AFTER, "30"));
+    @ParameterizedTest
+    @ValueSource(ints = {400, 401, 429})
+    void AI가_재시도_대상이_아닌_오류를_응답하면_서비스_호출_실패로_변환한다(final int status) {
+        server.expect(requestTo(EXTRACTION_URL)).andRespond(withStatus(HttpStatus.valueOf(status)));
 
-        assertThatThrownBy(() -> client.extract(request())).isInstanceOfSatisfying(RetryAfterException.class,
-            (final RetryAfterException exception) -> {
-                assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_MEMORY_EXTRACTION_RATE_LIMITED);
-                assertThat(exception.retryAfterSeconds()).isEqualTo(30);
-            });
+        assertThatThrownBy(() -> client.extract(request())).isInstanceOfSatisfying(CoreException.class,
+            (final CoreException exception) -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
     }
 
     @ParameterizedTest

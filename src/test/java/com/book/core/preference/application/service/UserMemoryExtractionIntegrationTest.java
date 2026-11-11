@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.common.exception.RetryAfterException;
 import com.book.core.agentchat.application.command.SendChatMessageCommand;
 import com.book.core.agentchat.application.result.ChatAttemptResult;
 import com.book.core.agentchat.application.result.MemoryExtractionTarget;
@@ -134,7 +133,7 @@ class UserMemoryExtractionIntegrationTest {
         userPreferenceService.extractNightlyMemories();
 
         final InOrder order = inOrder(extractionClient);
-        order.verify(extractionClient, times(2)).extract(argThat(
+        order.verify(extractionClient, times(4)).extract(argThat(
             (final AiMemoryExtractionRequest request) -> mine(request) && request.conversationId().equals(String.valueOf(earlier))));
         order.verify(extractionClient).extract(
             argThat((final AiMemoryExtractionRequest request) -> mine(request) && request.conversationId().equals(String.valueOf(later))));
@@ -200,12 +199,12 @@ class UserMemoryExtractionIntegrationTest {
     }
 
     @Test
-    void 요청이_많다는_응답이면_Retry_After만큼_기다린_뒤_다시_부른다() {
+    void 일시적인_서비스_장애면_다시_부른다() {
         agree();
         final Long sessionId = chatSessionService.create(userId);
         send(sessionId, "first", "로맨스는 별로예요");
-        when(extractionClient.extract(argThat(this::mine)))
-            .thenThrow(new RetryAfterException(ErrorCode.AI_MEMORY_EXTRACTION_RATE_LIMITED, 0)).thenReturn(List.of(extraction("로맨스 소설")));
+        when(extractionClient.extract(argThat(this::mine))).thenThrow(new CoreException(ErrorCode.AI_MEMORY_EXTRACTION_UNAVAILABLE))
+            .thenReturn(List.of(extraction("로맨스 소설")));
 
         userPreferenceService.extractNightlyMemories();
 

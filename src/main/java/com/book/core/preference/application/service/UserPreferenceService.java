@@ -48,6 +48,8 @@ import org.springframework.stereotype.Service;
 public class UserPreferenceService {
     private static final int CONVERSATION_CHUNK_SESSIONS = 100;
     private static final long CONVERSATION_CHUNK_MESSAGES = 1_000;
+    private static final int EXTRACTION_MAX_ATTEMPTS = 3;
+    private static final long EXTRACTION_RETRY_DELAY_SECONDS = 2;
 
     @Value("${preference.nightly.concurrency:1}")
     private int nightlyConcurrency = 1;
@@ -190,15 +192,23 @@ public class UserPreferenceService {
             history.stream().map((final ChatHistoryMessage message) -> new ConversationMessage(message.role(), message.text())).toList();
         final ExtractUserMemoriesCommand extractCommand =
             new ExtractUserMemoriesCommand(target.userId(), String.valueOf(target.sessionId()), messages);
-        List<UserMemoryExtraction> extractions;
-        try {
-            extractions = extractUserMemoriesUseCase.execute(extractCommand);
-        } catch (final RetryAfterException exception) {
-            waitFor(exception.retryAfterSeconds());
-            extractions = extractUserMemoriesUseCase.execute(extractCommand);
-        }
+        final List<UserMemoryExtraction> extractions = extractWithRetry(extractCommand);
         return saveUserMemoriesUseCase
             .execute(new SaveUserMemoriesCommand(target.userId(), target.sessionId(), target.sequence(), extractions));
+    }
+
+    private List<UserMemoryExtraction> extractWithRetry(final ExtractUserMemoriesCommand command) {
+        for (int attempt = 1;; attempt++) {
+            try {
+                return extractUserMemoriesUseCase.execute(command);
+            } catch (final CoreException exception) {
+                if (attempt >= EXTRACTION_MAX_ATTEMPTS || (exception.errorCode() != ErrorCode.AI_MEMORY_EXTRACTION_UNAVAILABLE
+                    && exception.errorCode() != ErrorCode.AI_MEMORY_EXTRACTION_TIMEOUT)) {
+                    throw exception;
+                }
+                waitFor(EXTRACTION_RETRY_DELAY_SECONDS);
+            }
+        }
     }
 
     private void refreshRecommendationFeed() {

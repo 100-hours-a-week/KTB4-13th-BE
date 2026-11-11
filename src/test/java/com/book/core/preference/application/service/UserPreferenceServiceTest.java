@@ -53,6 +53,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InOrder;
 
 class UserPreferenceServiceTest {
@@ -303,6 +305,110 @@ class UserPreferenceServiceTest {
         }
         verifyNoInteractions(getProfileRefreshTargetsUseCase, personalizationProfileUseCase);
         assertThat(restored).isTrue();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ErrorCode.class, names = {"AI_MEMORY_EXTRACTION_UNAVAILABLE", "AI_MEMORY_EXTRACTION_TIMEOUT"})
+    void 일시적_장애는_2초_후_재시도해_성공할_수_있다(final ErrorCode error) {
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1)));
+        when(extraction.execute(any())).thenThrow(new CoreException(error)).thenReturn(List.of());
+        when(save.execute(any())).thenReturn(true);
+        final long started = System.nanoTime();
+
+        assertThat(userPreferenceService.extractNightlyMemories()).containsExactly(1L);
+
+        assertThat(System.nanoTime() - started).isGreaterThanOrEqualTo(TimeUnit.MILLISECONDS.toNanos(1900));
+        verify(extraction, times(2)).execute(any());
+        verify(save).execute(any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ErrorCode.class, names = {"AI_MEMORY_EXTRACTION_UNAVAILABLE", "AI_MEMORY_EXTRACTION_TIMEOUT"})
+    void 재시도가_모두_실패하면_세_번만_호출하고_같은_사용자의_나머지_세션을_건너뛴다(final ErrorCode error) {
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1), new MemoryExtractionTarget(1L, 12L, 1),
+            new MemoryExtractionTarget(2L, 21L, 1)));
+        when(extraction.execute(any())).thenAnswer(invocation -> {
+            final ExtractUserMemoriesCommand command = invocation.getArgument(0);
+            if (command.userId().equals(1L)) {
+                throw new CoreException(error);
+            }
+            return List.of();
+        });
+        when(save.execute(any())).thenReturn(true);
+
+        assertThat(userPreferenceService.extractNightlyMemories()).containsExactly(2L);
+
+        verify(extraction, times(3)).execute(argThat(c -> c.conversationId().equals("11")));
+        verify(extraction, times(0)).execute(argThat(c -> c.conversationId().equals("12")));
+        verify(extraction).execute(argThat(c -> c.conversationId().equals("21")));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ErrorCode.class, names = {"AI_SERVICE_FAILURE", "AI_MEMORY_EXTRACTION_INVALID_RESPONSE"})
+    void 재시도_대상이_아닌_오류는_즉시_실패한다(final ErrorCode error) {
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1)));
+        when(extraction.execute(any())).thenThrow(new CoreException(error));
+
+        assertThat(userPreferenceService.extractNightlyMemories()).isEmpty();
+
+        verify(extraction).execute(any());
+        verifyNoInteractions(save);
+    }
+
+    @Test
+    void 한_사용자가_재시도_대기해도_다른_사용자는_진행한다() throws Exception {
+        ReflectionTestUtils.setField(userPreferenceService, "nightlyConcurrency", 2);
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1), new MemoryExtractionTarget(2L, 21L, 1)));
+        final CountDownLatch failure = new CountDownLatch(1);
+        final CountDownLatch otherFinished = new CountDownLatch(1);
+        final AtomicInteger attempts = new AtomicInteger();
+        when(extraction.execute(any())).thenAnswer(invocation -> {
+            final ExtractUserMemoriesCommand command = invocation.getArgument(0);
+            if (command.userId().equals(1L) && attempts.incrementAndGet() == 1) {
+                failure.countDown();
+                throw new CoreException(ErrorCode.AI_MEMORY_EXTRACTION_UNAVAILABLE);
+            }
+            if (command.userId().equals(2L)) {
+                assertThat(failure.await(5, TimeUnit.SECONDS)).isTrue();
+                otherFinished.countDown();
+            }
+            return List.of();
+        });
+        when(save.execute(any())).thenReturn(true);
+        try (final var caller = Executors.newSingleThreadExecutor()) {
+            final var batch = caller.submit(userPreferenceService::extractNightlyMemories);
+            assertThat(otherFinished.await(1, TimeUnit.SECONDS)).isTrue();
+            assertThat(attempts.get()).isEqualTo(1);
+            assertThat(batch.get(5, TimeUnit.SECONDS)).containsExactlyInAnyOrder(1L, 2L);
+        }
+    }
+
+    @Test
+    void 재시도_대기중_인터럽트되면_상태를_복원하고_추가_호출하지_않는다() throws Exception {
+        prepareTargets(List.of(new MemoryExtractionTarget(1L, 11L, 1), new MemoryExtractionTarget(1L, 12L, 1)));
+        final CountDownLatch failure = new CountDownLatch(1);
+        final AtomicReference<Thread> worker = new AtomicReference<>();
+        final AtomicBoolean restored = new AtomicBoolean();
+        when(extraction.execute(any())).thenAnswer(invocation -> {
+            failure.countDown();
+            throw new CoreException(ErrorCode.AI_MEMORY_EXTRACTION_TIMEOUT);
+        });
+        try (final var caller = Executors.newSingleThreadExecutor()) {
+            final var batch = caller.submit(() -> {
+                worker.set(Thread.currentThread());
+                try {
+                    return userPreferenceService.extractNightlyMemories();
+                } finally {
+                    restored.set(Thread.currentThread().isInterrupted());
+                }
+            });
+            assertThat(failure.await(5, TimeUnit.SECONDS)).isTrue();
+            worker.get().interrupt();
+            assertThat(batch.get(5, TimeUnit.SECONDS)).isEmpty();
+        }
+        assertThat(restored).isTrue();
+        verify(extraction).execute(any());
+        verifyNoInteractions(save);
     }
 
     private void prepareTargets(final List<MemoryExtractionTarget> targets) {

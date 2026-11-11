@@ -16,10 +16,13 @@ public class ReconcileCouponStockUseCase {
     private final Clock clock;
 
     public Optional<CouponStockReconciliationResult> execute(final long couponId) {
-        return couponRepository.findIssuanceCounts(couponId).map((final var counts) -> {
-            final var stock = couponStockPort.readSnapshot(couponId);
+        final var before = couponStockPort.readSnapshot(couponId);
+        return couponRepository.findIssuanceCounts(couponId).map(counts -> {
+            final var after = couponStockPort.readSnapshot(couponId);
+            final long pendingReservations =
+                before.reservedUserIds().stream().filter(userId -> !counts.issuedUserIds().contains(userId)).count();
             return new CouponStockReconciliationResult(couponId, clock.instant(), counts.totalQuantity(), counts.issuedQuantity(),
-                counts.ownedCouponCount(), stock.quantity(), stock.soldOutSignalPresent());
+                counts.ownedCouponCount(), before.quantity(), before.soldOutSignalPresent(), pendingReservations, before.equals(after));
         });
     }
 }

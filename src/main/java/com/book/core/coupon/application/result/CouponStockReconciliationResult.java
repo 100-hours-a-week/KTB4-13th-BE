@@ -3,13 +3,13 @@ package com.book.core.coupon.application.result;
 import java.time.Instant;
 
 public record CouponStockReconciliationResult(long couponId, Instant observedAt, int totalQuantity, int issuedQuantity,
-    long ownedCouponCount, Integer redisStock, boolean soldOutSignalPresent) {
+    long ownedCouponCount, Integer redisStock, boolean soldOutSignalPresent, long pendingReservations, boolean stableSnapshot) {
     public long expectedStock() {
-        return (long) totalQuantity - issuedQuantity;
+        return (long) totalQuantity - issuedQuantity - pendingReservations;
     }
 
     public Long stockDifference() {
-        return redisStock == null ? null : expectedStock() - redisStock;
+        return !stableSnapshot || redisStock == null ? null : expectedStock() - redisStock;
     }
 
     public boolean hasIssuanceCountMismatch() {
@@ -17,10 +17,26 @@ public record CouponStockReconciliationResult(long couponId, Instant observedAt,
     }
 
     public boolean hasUnexpectedSoldOutSignal() {
-        return soldOutSignalPresent && expectedStock() > 0;
+        return stableSnapshot && soldOutSignalPresent && expectedStock() > 0;
     }
 
     public boolean isConsistentlySoldOut() {
-        return expectedStock() == 0 && Integer.valueOf(0).equals(redisStock) && !hasIssuanceCountMismatch();
+        return outcome() == CouponReconcileOutcome.MATCHED && Integer.valueOf(0).equals(redisStock);
+    }
+
+    public CouponReconcileOutcome outcome() {
+        if (!stableSnapshot) {
+            return CouponReconcileOutcome.SNAPSHOT_CHANGED;
+        }
+        if (redisStock == null) {
+            return CouponReconcileOutcome.REDIS_STOCK_MISSING;
+        }
+        if (redisStock < 0 || stockDifference() != 0 || hasIssuanceCountMismatch() || hasUnexpectedSoldOutSignal()) {
+            return CouponReconcileOutcome.DRIFT;
+        }
+        if (pendingReservations > 0) {
+            return CouponReconcileOutcome.PENDING;
+        }
+        return CouponReconcileOutcome.MATCHED;
     }
 }

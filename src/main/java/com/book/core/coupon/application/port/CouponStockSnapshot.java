@@ -1,4 +1,6 @@
 package com.book.core.coupon.application.port;
 
-public record CouponStockSnapshot(Integer quantity, boolean soldOutSignalPresent) {
+import java.util.Set;
+
+public record CouponStockSnapshot(Integer quantity, boolean soldOutSignalPresent, Set<Long> reservedUserIds) {
 }

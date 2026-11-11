@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.coupon.application.port.CouponStockPort;
+import com.book.core.coupon.application.result.CouponReconcileOutcome;
 import com.book.core.coupon.application.port.IssuanceDltLogRepositoryPort;
 import com.book.core.coupon.domain.IssuanceDltLog;
 import com.book.core.coupon.application.usecase.ReconcileCouponStockUseCase;
@@ -177,7 +178,7 @@ class CouponSoldOutHttpIntegrationTest {
     }
 
     @Test
-    void 마지막_차감_뒤_DB_롤백으로_인한_재고_부족과_정상_매진을_구분한다() throws Exception {
+    void 미발급_예약과_재고를_임의로_복구한_뒤의_불일치를_구분한다() throws Exception {
         final long couponId = 8_510_007L;
         insertActiveCoupon(couponId, 1);
         jdbc.execute("ALTER TABLE owned_coupon ADD CONSTRAINT test_coupon_rollback CHECK (user_id <> 99 OR coupon_id <> " + couponId + ")");
@@ -189,11 +190,13 @@ class CouponSoldOutHttpIntegrationTest {
             assertThat(shortage.totalQuantity()).isEqualTo(1);
             assertThat(shortage.issuedQuantity()).isZero();
             assertThat(shortage.ownedCouponCount()).isZero();
-            assertThat(shortage.expectedStock()).isEqualTo(1);
+            assertThat(shortage.expectedStock()).isZero();
+            assertThat(shortage.pendingReservations()).isOne();
+            assertThat(shortage.outcome()).isEqualTo(CouponReconcileOutcome.PENDING);
             assertThat(shortage.redisStock()).isZero();
-            assertThat(shortage.stockDifference()).isEqualTo(1L);
+            assertThat(shortage.stockDifference()).isZero();
             assertThat(shortage.soldOutSignalPresent()).isTrue();
-            assertThat(shortage.hasUnexpectedSoldOutSignal()).isTrue();
+            assertThat(shortage.hasUnexpectedSoldOutSignal()).isFalse();
             assertThat(shortage.hasIssuanceCountMismatch()).isFalse();
             assertThat(shortage.isConsistentlySoldOut()).isFalse();
             assertThat(couponSoldOutCache.getIfPresent(soldOutKey(couponId))).isFalse();
@@ -211,12 +214,13 @@ class CouponSoldOutHttpIntegrationTest {
             assertThat(soldOut.totalQuantity()).isEqualTo(1);
             assertThat(soldOut.issuedQuantity()).isEqualTo(1);
             assertThat(soldOut.ownedCouponCount()).isEqualTo(1);
-            assertThat(soldOut.expectedStock()).isZero();
+            assertThat(soldOut.expectedStock()).isEqualTo(-1);
+            assertThat(soldOut.outcome()).isEqualTo(CouponReconcileOutcome.DRIFT);
             assertThat(soldOut.redisStock()).isZero();
-            assertThat(soldOut.stockDifference()).isZero();
+            assertThat(soldOut.stockDifference()).isEqualTo(-1L);
             assertThat(soldOut.soldOutSignalPresent()).isTrue();
             assertThat(soldOut.hasUnexpectedSoldOutSignal()).isFalse();
-            assertThat(soldOut.isConsistentlySoldOut()).isTrue();
+            assertThat(soldOut.isConsistentlySoldOut()).isFalse();
         } finally {
             jdbc.execute("ALTER TABLE owned_coupon DROP CHECK test_coupon_rollback");
         }
@@ -236,6 +240,7 @@ class CouponSoldOutHttpIntegrationTest {
         assertThat(result.issuedQuantity()).isEqualTo(1);
         assertThat(result.ownedCouponCount()).isEqualTo(1);
         assertThat(result.redisStock()).isNull();
+        assertThat(result.outcome()).isEqualTo(CouponReconcileOutcome.REDIS_STOCK_MISSING);
         assertThat(result.stockDifference()).isNull();
         assertThat(result.soldOutSignalPresent()).isTrue();
         assertThat(result.isConsistentlySoldOut()).isFalse();
@@ -273,6 +278,10 @@ class CouponSoldOutHttpIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM issuance_dlt_log WHERE message_key = ?", Integer.class, log.messageKey()))
             .isOne();
 
+        final var pending = reconcileCouponStockUseCase.execute(selectedCoupon).orElseThrow();
+        assertThat(pending.pendingReservations()).isOne();
+        assertThat(pending.outcome()).isEqualTo(CouponReconcileOutcome.PENDING);
+
         jdbc.update("UPDATE issuance_dlt_log SET replay_requested_at = CURRENT_TIMESTAMP(6) WHERE id = ?", selectedId);
         assertCounts(selectedCoupon, 1);
         await().atMost(Duration.ofSeconds(15)).until(() -> Boolean.TRUE
@@ -294,6 +303,14 @@ class CouponSoldOutHttpIntegrationTest {
             });
         }
         assertCounts(selectedCoupon, 1);
+        final var reconciled = reconcileCouponStockUseCase.execute(selectedCoupon).orElseThrow();
+        assertThat(reconciled.pendingReservations()).isZero();
+        assertThat(reconciled.outcome()).isEqualTo(CouponReconcileOutcome.MATCHED);
+
+        redisTemplate.opsForValue().decrement(stockKey(selectedCoupon));
+        final var drift = reconcileCouponStockUseCase.execute(selectedCoupon).orElseThrow();
+        assertThat(drift.stockDifference()).isEqualTo(1);
+        assertThat(drift.outcome()).isEqualTo(CouponReconcileOutcome.DRIFT);
     }
 
     private long awaitDltLogId(final long couponId) {

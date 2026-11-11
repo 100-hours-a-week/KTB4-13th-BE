@@ -1,10 +1,13 @@
 package com.book.core.coupon.infrastructure.cache;
 
+import static com.book.core.coupon.infrastructure.cache.RedisLuaSupport.listLuaScript;
+import static com.book.core.coupon.infrastructure.cache.RedisLuaSupport.runForStrings;
+
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.port.CouponStockSnapshot;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.util.List;
-import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -16,6 +19,9 @@ import org.springframework.stereotype.Component;
 public class CouponStockAdapter implements CouponStockPort {
     private static final RedisScript<Long> INITIALIZE_STOCK_SCRIPT =
         RedisScript.of(new ClassPathResource("lua/initialize-coupon-stock.lua"), Long.class);
+
+    @SuppressWarnings("rawtypes")
+    private static final RedisScript<List> RECONCILIATION_SCRIPT = listLuaScript("lua/read-coupon-reconciliation.lua");
 
     private final StringRedisTemplate redisTemplate;
     private final LoadingCache<String, Boolean> couponSoldOutCache;
@@ -33,9 +39,11 @@ public class CouponStockAdapter implements CouponStockPort {
 
     @Override
     public CouponStockSnapshot readSnapshot(final long couponId) {
-        final List<String> values = Objects.requireNonNull(redisTemplate.opsForValue().multiGet(stockKeys(couponId)));
+        final List<String> values = runForStrings(redisTemplate, RECONCILIATION_SCRIPT,
+            List.of("coupon:" + couponId + ":stock", soldOutKey(couponId), "coupon:" + couponId + ":reservations"));
         final String stock = values.getFirst();
-        return new CouponStockSnapshot(stock == null ? null : Integer.valueOf(stock), values.get(1) != null);
+        return new CouponStockSnapshot(stock.isEmpty() ? null : Integer.valueOf(stock), "1".equals(values.get(1)),
+            values.subList(2, values.size()).stream().map(Long::valueOf).collect(Collectors.toUnmodifiableSet()));
     }
 
     private List<String> stockKeys(final Long couponId) {

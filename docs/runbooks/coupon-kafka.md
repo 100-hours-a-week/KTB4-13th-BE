@@ -12,6 +12,26 @@
 ## 처리 지연과 장애
 
 - Redis에서 `XINFO GROUPS coupon:issuance:kafka-outbox`로 `coupon-kafka-relay`의 `lag`(미전달)와 `pending`(미확인)을 확인합니다. 두 값이 0이어도 Kafka에 처리할 요청이 남을 수 있으므로 소비자 그룹 `book-coupon-issuance-redis`의 지연도 확인합니다.
-- 소비 재시도를 소진한 요청은 `book.coupon-issuance.redis.v1.DLT`에 남습니다. 원인을 해결한 뒤 발급 여부와 예약을 확인합니다. 선별 재처리는 #560에서 다룹니다.
+- 소비 재시도를 소진한 요청은 `book.coupon-issuance.redis.v1.DLT`에 남습니다. 원인을 해결한 뒤 발급 여부와 예약을 확인합니다.
 - Redis 복제 전에 `202`를 반환한 요청은 주 노드 장애 뒤 유실될 수 있습니다. 접수 유실을 허용할 수 없는 운영 환경에서는 활성화 전에 내구성 보완과 장애 전환 검증이 필요합니다.
 - Redis Stream은 ACK 후에도 항목을 보관합니다. 운영 트래픽을 받기 전에 미처리 요청을 보존할 수 있는 정리 기준과 메모리 한도를 정합니다.
+
+## 실패 건 선별 재발행
+
+실패 토픽의 메시지 원문과 예외 유형은 `issuance_dlt_log`에 저장됩니다. DB 기록에 실패하면 소비자는 같은 메시지를 다시 읽습니다. 예외 원문과 스택은 실패 토픽에 싣지 않습니다.
+
+권한 있는 운영자는 원인을 해결하고 미발급 상태를 확인한 뒤 필요한 ID만 선택합니다.
+
+```sql
+SELECT id, message_key, error_type, received_at, replay_requested_at, replayed_at
+FROM issuance_dlt_log
+WHERE replayed_at IS NULL
+ORDER BY received_at DESC
+LIMIT 100;
+
+UPDATE issuance_dlt_log
+SET replay_requested_at = CURRENT_TIMESTAMP(6)
+WHERE id IN (123) AND replay_requested_at IS NULL AND replayed_at IS NULL AND payload IS NOT NULL;
+```
+
+재발행 작업은 기존 메시지 키와 원문을 사용하고, Kafka 확인 후 `replayed_at`을 기록합니다. 이 시각은 재발행 완료를 뜻하므로 최종 발급은 DB에서 확인합니다. 재발행 결과가 불확실하면 같은 메시지가 다시 전달될 수 있으며, 소비자는 기존 발급을 확인해 중복 반영을 막습니다. 다시 실패한 건은 새 실패 기록으로 남고 운영자가 선택할 때까지 대기합니다.

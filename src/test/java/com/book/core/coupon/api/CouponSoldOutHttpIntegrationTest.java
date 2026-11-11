@@ -10,11 +10,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.coupon.application.port.CouponStockPort;
+import com.book.core.coupon.application.port.IssuanceDltLogRepositoryPort;
+import com.book.core.coupon.domain.IssuanceDltLog;
 import com.book.core.coupon.application.usecase.ReconcileCouponStockUseCase;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import org.apache.kafka.clients.admin.Admin;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Tag;
@@ -26,6 +31,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -59,6 +65,12 @@ class CouponSoldOutHttpIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private IssuanceDltLogRepositoryPort dltLogs;
+
+    @Autowired
+    private KafkaTemplate<String, String> kafkaTemplate;
 
     @Autowired
     private StringRedisTemplate redisTemplate;
@@ -168,7 +180,7 @@ class CouponSoldOutHttpIntegrationTest {
     void 마지막_차감_뒤_DB_롤백으로_인한_재고_부족과_정상_매진을_구분한다() throws Exception {
         final long couponId = 8_510_007L;
         insertActiveCoupon(couponId, 1);
-        jdbc.execute("ALTER TABLE owned_coupon ADD CONSTRAINT test_coupon_rollback CHECK (user_id <> 99)");
+        jdbc.execute("ALTER TABLE owned_coupon ADD CONSTRAINT test_coupon_rollback CHECK (user_id <> 99 OR coupon_id <> " + couponId + ")");
         try {
             issue(99L, couponId).andExpect(status().isAccepted());
             awaitFailedIssuance(couponId);
@@ -228,6 +240,66 @@ class CouponSoldOutHttpIntegrationTest {
         assertThat(result.soldOutSignalPresent()).isTrue();
         assertThat(result.isConsistentlySoldOut()).isFalse();
         assertThat(redisTemplate.hasKey(stockKey(couponId))).isFalse();
+    }
+
+    @Test
+    void 실패_원인을_보관하고_선택한_접수만_다시_발급한다() throws Exception {
+        final long selectedCoupon = 8_510_010L;
+        final long untouchedCoupon = 8_510_011L;
+        insertActiveCoupon(selectedCoupon, 2);
+        insertActiveCoupon(untouchedCoupon, 2);
+        jdbc.execute("ALTER TABLE owned_coupon ADD CONSTRAINT test_coupon_dlt_replay CHECK (coupon_id NOT IN (" + selectedCoupon + ", "
+            + untouchedCoupon + "))");
+
+        final long selectedId;
+        final long untouchedId;
+        try {
+            issue(99L, selectedCoupon).andExpect(status().isAccepted());
+            issue(99L, untouchedCoupon).andExpect(status().isAccepted());
+            selectedId = awaitDltLogId(selectedCoupon);
+            untouchedId = awaitDltLogId(untouchedCoupon);
+        } finally {
+            jdbc.execute("ALTER TABLE owned_coupon DROP CHECK test_coupon_dlt_replay");
+        }
+
+        final IssuanceDltLog log = jdbc.queryForObject("""
+            SELECT dlt_topic, dlt_partition, dlt_offset, message_key, payload, error_type
+            FROM issuance_dlt_log WHERE id = ?
+            """, (row, index) -> new IssuanceDltLog(row.getString("dlt_topic"), row.getInt("dlt_partition"), row.getLong("dlt_offset"),
+            row.getString("message_key"), row.getString("payload"), row.getString("error_type")), selectedId);
+        assertThat(log.errorType()).isNotEqualTo("UNKNOWN");
+        assertThat(log.messageKey()).isNotBlank();
+        dltLogs.record(log);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM issuance_dlt_log WHERE message_key = ?", Integer.class, log.messageKey()))
+            .isOne();
+
+        jdbc.update("UPDATE issuance_dlt_log SET replay_requested_at = CURRENT_TIMESTAMP(6) WHERE id = ?", selectedId);
+        assertCounts(selectedCoupon, 1);
+        await().atMost(Duration.ofSeconds(15)).until(() -> Boolean.TRUE
+            .equals(jdbc.queryForObject("SELECT replayed_at IS NOT NULL FROM issuance_dlt_log WHERE id = ?", Boolean.class, selectedId)));
+        assertCounts(untouchedCoupon, 0);
+        assertThat(jdbc.queryForObject("SELECT replay_requested_at IS NULL FROM issuance_dlt_log WHERE id = ?", Boolean.class, untouchedId))
+            .isTrue();
+        assertThat(redisTemplate.opsForValue().get(stockKey(selectedCoupon))).isEqualTo("1");
+
+        final var duplicate = kafkaTemplate.send("book.coupon-issuance.redis.v1", log.messageKey(), log.payload()).get(10, TimeUnit.SECONDS)
+            .getRecordMetadata();
+        final var partition = new TopicPartition(duplicate.topic(), duplicate.partition());
+        try (final var admin = Admin.create(Map.of("bootstrap.servers", kafka.getBootstrapServers()))) {
+            await().atMost(Duration.ofSeconds(15)).until(() -> {
+                final var offsets =
+                    admin.listConsumerGroupOffsets("book-coupon-issuance-redis").partitionsToOffsetAndMetadata().get(3, TimeUnit.SECONDS);
+                final var committed = offsets.get(partition);
+                return committed != null && committed.offset() > duplicate.offset();
+            });
+        }
+        assertCounts(selectedCoupon, 1);
+    }
+
+    private long awaitDltLogId(final long couponId) {
+        return await().atMost(Duration.ofSeconds(15)).until(
+            () -> jdbc.queryForList("SELECT id FROM issuance_dlt_log WHERE payload LIKE ?", Long.class, "%\"couponId\":" + couponId + "%"),
+            ids -> !ids.isEmpty()).getFirst();
     }
 
     private void awaitFailedIssuance(final long couponId) {

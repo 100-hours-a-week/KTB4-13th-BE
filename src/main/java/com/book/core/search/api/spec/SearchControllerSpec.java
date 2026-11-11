@@ -16,9 +16,11 @@ import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Search", description = "도서 검색 API")
 public interface SearchControllerSpec {
-    @Operation(summary = "도서 검색",
-        description = "검색어와 전달한 필터·정렬로 도서를 검색합니다. 검색어에서 조건을 추출하지 않습니다. "
-            + "결과가 없으면 fallbackMessage에 AI 추천 안내 문구가 오고, 벡터 검색을 쓸 수 없으면 X-Degraded 헤더가 함께 옵니다. 항목의 productId는 활성 상품이 없는 도서면 null입니다.")
+    @Operation(summary = "도서 검색", description = """
+        검색어와 전달한 필터·정렬로 도서를 검색합니다. 검색어에서 조건을 추출하지 않습니다.
+        결과가 없으면 fallbackMessage에 AI 추천 안내 문구가 오고, 벡터 검색을 쓸 수 없으면 X-Degraded 헤더가 함께 옵니다.
+        각 항목에는 13자리 ISBN(isbn)이 포함됩니다. productId는 활성 상품이 없는 도서면 null입니다.
+        """)
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "검색 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식이나 범위가 올바르지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "410",

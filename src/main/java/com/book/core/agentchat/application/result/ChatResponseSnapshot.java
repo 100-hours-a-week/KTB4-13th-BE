@@ -7,7 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 public record ChatResponseSnapshot(int schemaVersion, Map<String, Object> spec, String reply, List<ChatCardSnapshot> cards, String followup,
-    List<String> buttons, boolean degraded, String route, List<AgentButton> agentButtons, AgentExecutionSummary execution) {
+    List<String> buttons, boolean degraded, String route, List<AgentButton> agentButtons, AgentExecutionSummary execution,
+    AgentCheckout checkout) {
     public ChatResponseSnapshot {
         if ((schemaVersion != 1 && schemaVersion != 2) || spec == null || reply == null || cards == null || buttons == null) {
             throw new IllegalArgumentException("Unsupported or incomplete chat response");
@@ -19,6 +20,10 @@ public record ChatResponseSnapshot(int schemaVersion, Map<String, Object> spec, 
             agentButtons = List.of();
         }
         agentButtons = List.copyOf(agentButtons);
+        if (execution == null || !"applied".equals(execution.status())) {
+            agentButtons = agentButtons.stream().filter((final AgentButton button) -> !button.opensCheckout()).toList();
+            checkout = null;
+        }
         if (schemaVersion == 2 && !("recommend".equals(route) || "shop".equals(route))) {
             throw new IllegalArgumentException("Unsupported agent route");
         }
@@ -26,17 +31,17 @@ public record ChatResponseSnapshot(int schemaVersion, Map<String, Object> spec, 
 
     public static ChatResponseSnapshot from(final ChatRecommendationResult result) {
         return new ChatResponseSnapshot(1, result.spec(), result.reply(), result.cards().stream().map(ChatCardSnapshot::from).toList(),
-            result.followup(), result.buttons(), result.degraded(), null, List.of(), null);
+            result.followup(), result.buttons(), result.degraded(), null, List.of(), null, null);
     }
 
     public static ChatResponseSnapshot agentRecommendation(final ChatRecommendationResult result, final List<AgentButton> buttons) {
         return new ChatResponseSnapshot(2, result.spec(), result.reply(), result.cards().stream().map(ChatCardSnapshot::from).toList(),
-            result.followup(), List.of(), result.degraded(), "recommend", buttons, null);
+            result.followup(), List.of(), result.degraded(), "recommend", buttons, null, null);
     }
 
     public static ChatResponseSnapshot shop(final Map<String, Object> spec, final String reply, final List<AgentButton> buttons,
-        final AgentExecutionSummary execution) {
-        return new ChatResponseSnapshot(2, spec, reply, List.of(), null, List.of(), false, "shop", buttons, execution);
+        final AgentExecutionSummary execution, AgentCheckout checkout) {
+        return new ChatResponseSnapshot(2, spec, reply, List.of(), null, List.of(), false, "shop", buttons, execution, checkout);
     }
 
     public String conversationText() {

@@ -7,7 +7,7 @@ import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.port.ProductRepositoryPort;
 import com.book.core.product.application.result.ProductListItem;
-import com.book.core.product.application.usecase.FindProductIdsByBookIdsUseCase;
+import com.book.core.product.application.usecase.GetRecommendationProductsUseCase;
 import com.book.core.product.domain.Product;
 import com.book.core.search.application.command.BookSearchSort;
 import com.book.core.search.application.command.SearchBooksCommand;
@@ -31,7 +31,7 @@ class SearchBooksUseCaseTest {
     private final FakeBookSearchClient bookSearchClient = new FakeBookSearchClient();
     private final FakeProductRepository productRepository = new FakeProductRepository();
     private final SearchBooksUseCase useCase =
-        new SearchBooksUseCase(bookSearchClient, new FindProductIdsByBookIdsUseCase(productRepository));
+        new SearchBooksUseCase(bookSearchClient, new GetRecommendationProductsUseCase(productRepository));
 
     @Test
     void 검색_조건을_그대로_AI_검색_요청으로_전달한다() {
@@ -43,14 +43,15 @@ class SearchBooksUseCaseTest {
 
     @Test
     void 각_검색_결과에_도서의_활성_상품_productId를_한_번에_조회해_채우고_AI_검색_값을_보존한다() {
-        productRepository.productsByBookId.put(2077L, product(501L, 2077L));
-        productRepository.productsByBookId.put(3310L, product(502L, 3310L));
+        productRepository.productsByBookId.put(2077L, product(501L, 2077L, 10));
+        productRepository.productsByBookId.put(3310L, product(502L, 3310L, 0));
         bookSearchClient.result =
             new BookSearchResult(List.of(searchItem(2077L, "여행의 이유"), searchItem(3310L, "아무튼, 산")), "next-page", null, "keyword-only");
 
         final SearchBooksResult result = useCase.execute(command());
 
-        assertThat(result.items()).containsExactly(itemResult(2077L, 501L, "여행의 이유"), itemResult(3310L, 502L, "아무튼, 산"));
+        assertThat(result.items()).containsExactly(itemResult(2077L, 501L, "여행의 이유"), new SearchBookItemResult(3310L, "9788900000011", 502L,
+            "아무튼, 산", "작가", "출판사", new BigDecimal("13500"), false, "https://example.com/3310.jpg"));
         assertThat(result.nextCursor()).isEqualTo("next-page");
         assertThat(result.fallbackMessage()).isNull();
         assertThat(result.degraded()).isEqualTo("keyword-only");
@@ -59,7 +60,7 @@ class SearchBooksUseCaseTest {
 
     @Test
     void 활성_상품이_없는_도서의_검색_결과는_productId를_null로_반환한다() {
-        productRepository.productsByBookId.put(2077L, product(501L, 2077L));
+        productRepository.productsByBookId.put(2077L, product(501L, 2077L, 10));
         bookSearchClient.result =
             new BookSearchResult(List.of(searchItem(2077L, "여행의 이유"), searchItem(4400L, "상품 없는 책")), null, null, null);
 
@@ -85,18 +86,19 @@ class SearchBooksUseCaseTest {
     }
 
     private static BookSearchItem searchItem(final long bookId, final String title) {
-        return new BookSearchItem(bookId, title, "작가", "출판사", new BigDecimal("13500"), true, "https://example.com/" + bookId + ".jpg");
-    }
-
-    private static SearchBookItemResult itemResult(final long bookId, final Long productId, final String title) {
-        return new SearchBookItemResult(bookId, productId, title, "작가", "출판사", new BigDecimal("13500"), true,
+        return new BookSearchItem(bookId, "9788900000011", title, "작가", "출판사", new BigDecimal("13500"),
             "https://example.com/" + bookId + ".jpg");
     }
 
-    private static Product product(final long productId, final long bookId) {
+    private static SearchBookItemResult itemResult(final long bookId, final Long productId, final String title) {
+        return new SearchBookItemResult(bookId, "9788900000011", productId, title, "작가", "출판사", new BigDecimal("13500"), productId != null,
+            "https://example.com/" + bookId + ".jpg");
+    }
+
+    private static Product product(final long productId, final long bookId, final int stock) {
         final Book book = new Book(bookId, null, null, "제목", "작가", null, "출판사", "소설", LocalDate.of(2026, 1, 1), null);
         return new Product(productId, book, "상품명", null, new BigDecimal("20000.00"), new BigDecimal("18000.00"), new BigDecimal("12000.00"),
-            10);
+            stock);
     }
 
     private static final class FakeBookSearchClient implements BookSearchClient {

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -20,7 +19,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -36,6 +34,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -74,7 +73,7 @@ class CouponIssuePolicyCacheIntegrationTest {
         final var firstInstance = cache();
         final var secondInstance = cache();
         final String key = "coupon:1:issue-policy";
-        firstInstance.getOrLoad(1L, () -> Optional.of(POLICY));
+        firstInstance.getOrLoad(1L, () -> POLICY);
         redisTemplate.expire(key, Duration.ofMillis(30));
         awaitExpiry(key);
 
@@ -87,23 +86,21 @@ class CouponIssuePolicyCacheIntegrationTest {
                 loads.incrementAndGet();
                 ownerLoading.countDown();
                 await(finishLoad);
-                return Optional.of(POLICY);
+                return POLICY;
             }));
             try {
                 await(ownerLoading);
                 final var waiter = executor.submit(() -> secondInstance.getOrLoad(1L, () -> {
                     loads.incrementAndGet();
-                    return Optional.of(POLICY);
+                    return POLICY;
                 }));
                 assertThatThrownBy(() -> waiter.get(100, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
 
-                final var otherKey = executor.submit(() -> secondInstance.getOrLoad(2L, () -> Optional.of(POLICY)));
-                assertThat(otherKey.get(2, TimeUnit.SECONDS).orElseThrow().policy()).isEqualTo(POLICY);
+                final var otherKey = executor.submit(() -> secondInstance.getOrLoad(2L, () -> POLICY));
+                assertThat(otherKey.get(2, TimeUnit.SECONDS).policy()).isEqualTo(POLICY);
                 finishLoad.countDown();
 
-                assertThat(
-                    List.of(owner.get(2, TimeUnit.SECONDS).orElseThrow().policy(), waiter.get(2, TimeUnit.SECONDS).orElseThrow().policy()))
-                    .containsOnly(POLICY);
+                assertThat(List.of(owner.get(2, TimeUnit.SECONDS).policy(), waiter.get(2, TimeUnit.SECONDS).policy())).containsOnly(POLICY);
                 assertThat(loads).hasValue(1);
             } finally {
                 finishLoad.countDown();
@@ -115,23 +112,6 @@ class CouponIssuePolicyCacheIntegrationTest {
     }
 
     @Test
-    void 없는_쿠폰은_다른_인스턴스에서_재조회하지_않고_TTL_후_다시_읽는다() throws Exception {
-        final var first = cache();
-        final var second = cache();
-        final String key = "coupon:11:issue-policy";
-
-        assertThat(first.getOrLoad(11L, Optional::empty)).isEmpty();
-        assertThat(redisTemplate.getExpire(key, TimeUnit.MILLISECONDS)).isBetween(1L, 2_000L);
-        assertThat(second.getOrLoad(11L, () -> {
-            throw new AssertionError("없는 쿠폰 표식이 있으면 DB를 읽지 않아야 합니다.");
-        })).isEmpty();
-
-        redisTemplate.expire(key, Duration.ofMillis(30));
-        awaitExpiry(key);
-        assertThat(second.getOrLoad(11L, () -> Optional.of(POLICY))).isPresent();
-    }
-
-    @Test
     void 로더_예외를_그대로_전파하고_다음_요청이_다시_로딩할_수_있다() {
         final var cache = cache();
         final var failure = new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
@@ -139,7 +119,7 @@ class CouponIssuePolicyCacheIntegrationTest {
         assertThatThrownBy(() -> cache.getOrLoad(3L, () -> {
             throw failure;
         })).isSameAs(failure);
-        assertThat(cache.getOrLoad(3L, () -> Optional.of(POLICY)).orElseThrow().policy()).isEqualTo(POLICY);
+        assertThat(cache.getOrLoad(3L, () -> POLICY).policy()).isEqualTo(POLICY);
         assertThat(redisTemplate.getExpire("coupon:3:issue-policy", TimeUnit.MILLISECONDS)).isBetween(1L, 10_000L);
     }
 
@@ -159,33 +139,33 @@ class CouponIssuePolicyCacheIntegrationTest {
     }
 
     @Test
-    void 캐시_저장_결과가_null이면_예외를_던진다() {
+    void 캐시를_저장한_뒤_락_해제_결과가_null이면_예외를_던진다() {
         final StringRedisTemplate failingRedis = mock(StringRedisTemplate.class);
         doReturn(List.of("LOAD", "")).when(failingRedis).execute(any(), anyList(), anyString(), anyString(), anyString(), anyString());
-        doReturn(null).when(failingRedis).execute(any(), anyList(), anyString(), anyString(), anyString(), eq("10000"));
-        doReturn(1L).when(failingRedis).execute(any(), anyList(), anyString());
+        doReturn(mock(HashOperations.class)).when(failingRedis).opsForHash();
+        doReturn(true).when(failingRedis).expire(anyString(), any(Duration.class));
+        doReturn(null).when(failingRedis).execute(any(), anyList(), anyString());
         final CouponIssuePolicyCacheAdapter cache =
             new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(), new CacheProperties(10_000, 5_000));
 
-        assertThatThrownBy(() -> cache.getOrLoad(8L, () -> Optional.of(POLICY))).isInstanceOf(IllegalStateException.class)
-            .hasMessage("Lua 결과 null");
+        assertThatThrownBy(() -> cache.getOrLoad(8L, () -> POLICY)).isInstanceOf(IllegalStateException.class).hasMessage("Lua 결과 null");
     }
 
     @Test
     void 저장에_실패하면_자기_락을_해제해_다음_요청이_다시_로딩할_수_있다() {
         final StringRedisTemplate failingRedis = spy(redisTemplate);
         final IllegalStateException saveFailure = new IllegalStateException("캐시 저장 실패");
-        doThrow(saveFailure).when(failingRedis).execute(any(), anyList(), anyString(), anyString(), anyString(), eq("10000"));
+        doThrow(saveFailure).when(failingRedis).opsForHash();
         final CouponIssuePolicyCacheAdapter cache =
             new CouponIssuePolicyCacheAdapter(failingRedis, JsonMapper.builder().build(), new CacheProperties(10_000, 5_000));
 
-        assertThatThrownBy(() -> cache.getOrLoad(7L, () -> Optional.of(POLICY))).isSameAs(saveFailure);
+        assertThatThrownBy(() -> cache.getOrLoad(7L, () -> POLICY)).isSameAs(saveFailure);
         assertThat(redisTemplate.opsForValue().get("coupon:7:issue-policy:lock")).isNull();
-        assertThat(cache().getOrLoad(7L, () -> Optional.of(POLICY)).orElseThrow().policy()).isEqualTo(POLICY);
+        assertThat(cache().getOrLoad(7L, () -> POLICY).policy()).isEqualTo(POLICY);
     }
 
     @Test
-    void 만료된_소유자는_정책을_저장하거나_새_소유자의_락을_지우지_못한다() {
+    void 만료된_소유자도_정책을_저장하지만_새_소유자의_락은_지우지_못한다() {
         final var cache = cache();
         final String policyKey = "coupon:4:issue-policy";
         final String lockKey = policyKey + ":lock";
@@ -194,9 +174,9 @@ class CouponIssuePolicyCacheIntegrationTest {
             assertThat(redisTemplate.getExpire(lockKey, TimeUnit.MILLISECONDS)).isBetween(1L, 3_000L);
             assertThat(redisTemplate.expire(lockKey, Duration.ZERO)).isTrue();
             assertThat(redisTemplate.opsForValue().setIfAbsent(lockKey, "next-owner", Duration.ofSeconds(3))).isTrue();
-            return Optional.of(POLICY);
-        }).orElseThrow().policy()).isEqualTo(POLICY);
-        assertThat(redisTemplate.hasKey(policyKey)).isFalse();
+            return POLICY;
+        }).policy()).isEqualTo(POLICY);
+        assertThat(redisTemplate.opsForHash().get(policyKey, "value")).isEqualTo(JsonMapper.builder().build().writeValueAsString(POLICY));
         assertThat(redisTemplate.opsForValue().get(lockKey)).isEqualTo("next-owner");
     }
 
@@ -242,7 +222,7 @@ class CouponIssuePolicyCacheIntegrationTest {
         final long couponId = 20L - ttlMs;
         final String cacheKey = "coupon:" + couponId + ":issue-policy";
 
-        assertThat(cache(ttlMs).getOrLoad(couponId, () -> Optional.of(POLICY)).orElseThrow().policy()).isEqualTo(POLICY);
+        assertThat(cache(ttlMs).getOrLoad(couponId, () -> POLICY).policy()).isEqualTo(POLICY);
         assertThat(redisTemplate.hasKey(cacheKey)).isFalse();
         assertThat(redisTemplate.hasKey(cacheKey + ":lock")).isFalse();
     }
@@ -253,11 +233,11 @@ class CouponIssuePolicyCacheIntegrationTest {
         final String json = JsonMapper.builder().build().writeValueAsString(POLICY);
         redisTemplate.opsForValue().set(key, json, Duration.ofSeconds(10));
 
-        assertThatThrownBy(() -> cache().getOrLoad(50L, () -> Optional.of(POLICY))).isInstanceOf(DataAccessException.class)
+        assertThatThrownBy(() -> cache().getOrLoad(50L, () -> POLICY)).isInstanceOf(DataAccessException.class)
             .hasStackTraceContaining("WRONGTYPE");
 
         assertThat(redisTemplate.expire(key, Duration.ZERO)).isTrue();
-        assertThat(cache().getOrLoad(50L, () -> Optional.of(POLICY)).orElseThrow().policy()).isEqualTo(POLICY);
+        assertThat(cache().getOrLoad(50L, () -> POLICY).policy()).isEqualTo(POLICY);
         assertThat(redisTemplate.opsForHash().get(key, "value")).isEqualTo(json);
     }
 
@@ -270,35 +250,34 @@ class CouponIssuePolicyCacheIntegrationTest {
         final var loading = new CountDownLatch(1);
         final var finish = new CountDownLatch(1);
         final var loads = new AtomicInteger();
-        final Supplier<Optional<CouponIssuePolicy>> loader = () -> {
+        final Supplier<CouponIssuePolicy> loader = () -> {
             loads.incrementAndGet();
             loading.countDown();
             await(finish);
-            return Optional.of(freshPolicy);
+            return freshPolicy;
         };
 
         try (final var callers = Executors.newFixedThreadPool(4)) {
             final String json = JsonMapper.builder().build().writeValueAsString(POLICY);
-            assertThat(first.getOrLoad(100L, () -> Optional.of(POLICY)).orElseThrow().policy()).isEqualTo(POLICY);
+            assertThat(first.getOrLoad(100L, () -> POLICY).policy()).isEqualTo(POLICY);
             assertThat(redisTemplate.opsForHash().get(key, "value")).isEqualTo(json);
             assertThat(Long.parseLong((String) redisTemplate.opsForHash().get(key, "fetchedAtMs"))).isPositive();
             assertThat(redisTemplate.getExpire(key, TimeUnit.MILLISECONDS)).isBetween(1L, 10_000L);
-            assertThat(first.getOrLoad(100L, loader).orElseThrow().policy()).isEqualTo(POLICY);
+            assertThat(first.getOrLoad(100L, loader).policy()).isEqualTo(POLICY);
             assertThat(loads).hasValue(0);
             markStale(key);
 
-            assertThat(first.getOrLoad(100L, loader).orElseThrow().policy()).isEqualTo(POLICY);
+            assertThat(first.getOrLoad(100L, loader).policy()).isEqualTo(POLICY);
             await(loading);
-            final var requests =
-                callers.<Optional<CouponIssueState>>invokeAll(Collections.nCopies(8, () -> second.getOrLoad(100L, loader)));
+            final var requests = callers.<CouponIssueState>invokeAll(Collections.nCopies(8, () -> second.getOrLoad(100L, loader)));
             for (final var request : requests) {
-                assertThat(request.get().orElseThrow().policy()).isEqualTo(POLICY);
+                assertThat(request.get().policy()).isEqualTo(POLICY);
             }
             assertThat(loads).hasValue(1);
 
             finish.countDown();
             awaitUnlock(key);
-            assertThat(first.getOrLoad(100L, loader).orElseThrow().policy()).isEqualTo(freshPolicy);
+            assertThat(first.getOrLoad(100L, loader).policy()).isEqualTo(freshPolicy);
             assertThat(redisTemplate.opsForHash().get(key, "value"))
                 .isEqualTo(JsonMapper.builder().build().writeValueAsString(freshPolicy));
             assertThat(redisTemplate.opsForHash().get(key, "fetchedAtMs")).isNotEqualTo("0");
@@ -310,38 +289,21 @@ class CouponIssuePolicyCacheIntegrationTest {
     }
 
     @Test
-    void 백그라운드_갱신이_쿠폰_부재를_확인하면_기존_정책을_교체한다() throws Exception {
-        final var cache = cache();
-        final String key = "coupon:12:issue-policy";
-        try {
-            cache.getOrLoad(12L, () -> Optional.of(POLICY));
-            markStale(key);
-
-            assertThat(cache.getOrLoad(12L, Optional::empty)).isPresent();
-            awaitUnlock(key);
-            assertThat(cache.getOrLoad(12L, () -> Optional.of(POLICY))).isEmpty();
-            assertThat(redisTemplate.opsForHash().get(key, "value")).isNull();
-        } finally {
-            cache.stopRefreshExecutor();
-        }
-    }
-
-    @Test
     void 갱신_실패_후_stale을_유지하고_실제_TTL_만료_후에는_삭제_오류를_전파한다() throws Exception {
         final var cache = cache();
         final String key = "coupon:101:issue-policy";
         final var failures = new AtomicInteger();
         final CoreException missing = new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
-        final Supplier<Optional<CouponIssuePolicy>> loader = () -> {
+        final Supplier<CouponIssuePolicy> loader = () -> {
             failures.incrementAndGet();
             throw missing;
         };
         try {
-            cache.getOrLoad(101L, () -> Optional.of(POLICY));
+            cache.getOrLoad(101L, () -> POLICY);
             markStale(key);
-            assertThat(cache.getOrLoad(101L, loader).orElseThrow().policy()).isEqualTo(POLICY);
+            assertThat(cache.getOrLoad(101L, loader).policy()).isEqualTo(POLICY);
             awaitUnlock(key);
-            assertThat(cache.getOrLoad(101L, loader).orElseThrow().policy()).isEqualTo(POLICY);
+            assertThat(cache.getOrLoad(101L, loader).policy()).isEqualTo(POLICY);
             awaitUnlock(key);
             assertThat(failures).hasValue(2);
 
@@ -359,12 +321,12 @@ class CouponIssuePolicyCacheIntegrationTest {
         final var soldOut = new CouponIssuePolicy(POLICY.startsAt(), POLICY.expiredAt(), 1, true);
         final String key = "coupon:103:issue-policy";
         try {
-            cache.getOrLoad(103L, () -> Optional.of(soldOut));
+            cache.getOrLoad(103L, () -> soldOut);
             markStale(key);
 
-            assertThat(cache.getOrLoad(103L, () -> Optional.of(POLICY)).orElseThrow().policy().soldOut()).isTrue();
+            assertThat(cache.getOrLoad(103L, () -> POLICY).policy().soldOut()).isTrue();
             awaitUnlock(key);
-            assertThat(cache.getOrLoad(103L, () -> Optional.of(POLICY)).orElseThrow().policy().soldOut()).isFalse();
+            assertThat(cache.getOrLoad(103L, () -> POLICY).policy().soldOut()).isFalse();
         } finally {
             cache.stopRefreshExecutor();
         }
@@ -381,22 +343,22 @@ class CouponIssuePolicyCacheIntegrationTest {
         final var finishRefresh = new CountDownLatch(1);
         try {
             redisTemplate.opsForValue().set(stockKey, "0");
-            first.getOrLoad(104L, () -> Optional.of(soldOut));
+            first.getOrLoad(104L, () -> soldOut);
             markStale(key);
 
             assertThat(first.getOrLoad(104L, () -> {
                 refreshStarted.countDown();
                 await(finishRefresh);
-                return Optional.of(soldOut);
-            }).orElseThrow().stock()).isEqualTo(Stock.EXHAUSTED);
+                return soldOut;
+            }).stock()).isEqualTo(Stock.EXHAUSTED);
             await(refreshStarted);
 
             redisTemplate.opsForValue().set(stockKey, "1");
-            assertThat(second.getOrLoad(104L, () -> Optional.of(POLICY))).contains(new CouponIssueState(soldOut, Stock.AVAILABLE));
+            assertThat(second.getOrLoad(104L, () -> POLICY)).isEqualTo(new CouponIssueState(soldOut, Stock.AVAILABLE));
             finishRefresh.countDown();
             awaitUnlock(key);
 
-            assertThat(second.getOrLoad(104L, () -> Optional.of(POLICY))).contains(new CouponIssueState(soldOut, Stock.AVAILABLE));
+            assertThat(second.getOrLoad(104L, () -> POLICY)).isEqualTo(new CouponIssueState(soldOut, Stock.AVAILABLE));
         } finally {
             finishRefresh.countDown();
             first.stopRefreshExecutor();

@@ -38,6 +38,7 @@ class CreateLoginSessionUseCaseTest {
         order.verify(users).findByIdForUpdate(42L);
         order.verify(sessions).saveLoginSession(42L, "hash", expiry);
         assertThat(result.refreshToken()).isEqualTo("refresh");
+        assertThat(result.refreshExpiresAt()).isEqualTo(expiry);
         assertThat(result.accessToken()).isEqualTo("access");
     }
 

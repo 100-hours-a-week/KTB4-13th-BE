@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.agentchat.application.command.AgentCartResourceCommand;
 import com.book.core.agentchat.application.command.ConfirmCartProposalCommand;
 import com.book.core.agentchat.application.command.GetChatHistoryCommand;
 import com.book.core.agentchat.application.command.SendChatMessageCommand;
@@ -18,6 +19,7 @@ import com.book.core.agentchat.application.port.ChatResponseCodec;
 import com.book.core.agentchat.application.result.AgentAction;
 import com.book.core.agentchat.application.result.AgentButton;
 import com.book.core.agentchat.application.result.AgentChatContext;
+import com.book.core.agentchat.application.result.AgentCheckout;
 import com.book.core.agentchat.application.result.AgentChosenBook;
 import com.book.core.agentchat.application.result.AgentDecision;
 import com.book.core.agentchat.application.result.AgentSelection;
@@ -48,6 +50,8 @@ import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -122,9 +126,75 @@ class ShoppingAgentChatIntegrationTest {
             return new AgentDecision("recommend", "추천합니다",
                 new ResolveRecommendationCommand(Map.of("intent", "semantic"), "추천합니다",
                     List.of(new RecommendationCardCandidate(userId, 90, "추천", "추천 이유")), null, List.of(), true),
-                List.of(), null, List.of());
+                List.of(), null, List.of(), null);
         });
         chats.send(command("seed", "추천해 줘"));
+    }
+
+    @Test
+    void 목록_밖_책을_담고_사용_가능한_쿠폰과_포인트를_응답과_재시도에_보존한다() {
+        final long productId = userId + 10_000L;
+        final String isbn = "9788900000028";
+        jdbc.update("INSERT INTO books (id,isbn13,title,author,publisher,category,published_at) "
+            + "VALUES (?,?,'새 책','작가','출판사','소설','2026-01-01')", productId, isbn);
+        jdbc.update("INSERT INTO products (id,book_id,name,sale_price,discounted_price,cost_price,stock_quantity) "
+            + "VALUES (?,?,'새 상품',45000,40000,30000,5)", productId, productId);
+        jdbc.update("INSERT INTO product_inventory (product_id, on_hand_quantity) VALUES (?,?)", productId, 5);
+
+        final long ownedCouponId = userId * 10;
+        coupon(ownedCouponId, userId, "ISSUED", "2026-11-30", null, null);
+        jdbc.update("INSERT INTO coupon_target (coupon_id,target_type,target_id) VALUES (?,'PRODUCT',?)", ownedCouponId, productId);
+        coupon(ownedCouponId + 1, userId, "ISSUED", "2026-10-18", null, null);
+        coupon(ownedCouponId + 2, userId, "USED", "2026-11-30", null, null);
+        coupon(ownedCouponId + 3, userId, "ISSUED", "2026-11-30", "2026-10-18", null);
+        coupon(ownedCouponId + 4, userId, "ISSUED", "2026-11-30", null, "2026-10-18");
+        coupon(ownedCouponId + 5, userId + 20_000L, "ISSUED", "2026-11-30", null, null);
+        jdbc.update("INSERT INTO point_balance (user_id,balance,created_at,updated_at) VALUES (?,5000,NOW(),NOW())", userId);
+
+        final AgentCheckout checkout = new AgentCheckout(ownedCouponId, new BigDecimal("5000"));
+        when(ai.chat(any(), anyLong(), anyLong(), any())).thenAnswer((final InvocationOnMock call) -> {
+            final AgentChatContext context = call.getArgument(3);
+            assertThat(context.findProduct(isbn)).isEmpty();
+            assertThat(context.ownedCoupons()).singleElement().satisfies((final var owned) -> {
+                assertThat(owned.id()).isEqualTo(ownedCouponId);
+                assertThat(owned.coupon().discount()).isEqualByComparingTo("0.10");
+            });
+            assertThat(context.pointBalance()).isEqualByComparingTo("5000");
+            return checkoutShop(isbn, 1, checkout);
+        });
+
+        final SendChatMessageCommand request = command("checkout", "새 책을 담고 주문 화면 열어 줘");
+        final ChatResponseSnapshot response = chats.send(request);
+        assertThat(response.execution().status()).isEqualTo("applied");
+        assertThat(response.checkout()).isEqualTo(checkout);
+        assertThat(response.agentButtons()).anyMatch(AgentButton::opensCheckout);
+        assertThat(agentCart.getExecution(new AgentCartResourceCommand(userId, response.execution().executionId())).items()).singleElement()
+            .satisfies((final var item) -> assertThat(item.productId()).isEqualTo(productId));
+        assertThat(chats.send(request)).isEqualTo(response);
+        assertThat(chats.history(new GetChatHistoryCommand(userId, sessionId, 0, 100)).getLast().response()).isEqualTo(response);
+        verify(ai, times(2)).chat(any(), anyLong(), anyLong(), any());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"7,0", ",1", ",-1"})
+    void 쿠폰이나_포인트가_유효하지_않으면_checkout만_비운다(final Long ownedCouponId, final int point) {
+        when(ai.chat(any(), anyLong(), anyLong(), any()))
+            .thenReturn(checkoutShop(ISBN, 1, new AgentCheckout(ownedCouponId, BigDecimal.valueOf(point))));
+        final ChatResponseSnapshot response = chats.send(command("invalid-checkout", "담아 줘"));
+        assertThat(response.execution().status()).isEqualTo("applied");
+        assertThat(response.agentButtons()).anyMatch(AgentButton::opensCheckout);
+        assertThat(response.checkout()).isNull();
+    }
+
+    @Test
+    void 판매_상품을_찾지_못하면_주문_버튼과_checkout_없이_거절한다() {
+        when(ai.chat(any(), anyLong(), anyLong(), any()))
+            .thenReturn(checkoutShop("9789999999999", 1, new AgentCheckout(null, BigDecimal.ZERO)));
+        final ChatResponseSnapshot response = chats.send(command("missing", "담아 줘"));
+        assertThat(response.execution().rejectionCode()).isEqualTo("PRODUCT_NOT_FOUND");
+        assertThat(response.agentButtons()).isEmpty();
+        assertThat(response.checkout()).isNull();
+        assertThat(carts.execute(userId).items()).isEmpty();
     }
 
     @Test
@@ -145,10 +215,12 @@ class ShoppingAgentChatIntegrationTest {
 
     @Test
     void AI200_후_재고_거절은_사용자와_BE_안내를_저장한다() {
-        when(ai.chat(any(), anyLong(), anyLong(), any())).thenReturn(shop(5));
+        when(ai.chat(any(), anyLong(), anyLong(), any())).thenReturn(checkoutShop(ISBN, 5, new AgentCheckout(null, BigDecimal.ZERO)));
         final ChatResponseSnapshot response = chats.send(command("stock", "1번 5권 담아줘"));
         assertThat(response.execution().status()).isEqualTo("rejected");
         assertThat(response.reply()).isEqualTo(ErrorCode.INSUFFICIENT_PRODUCT_STOCK.message());
+        assertThat(response.agentButtons()).isEmpty();
+        assertThat(response.checkout()).isNull();
         assertThat(carts.execute(userId).items()).isEmpty();
         assertThat(chats.history(new GetChatHistoryCommand(userId, sessionId, 0, 100)).getLast().text()).isEqualTo(response.reply());
     }
@@ -170,7 +242,7 @@ class ShoppingAgentChatIntegrationTest {
     void 제안_버튼은_BE_식별자로_연결하고_FE_확인은_같은_성공을_재생한다() {
         when(ai.chat(any(), anyLong(), anyLong(), any())).thenReturn(new AgentDecision("shop", "이 책을 담을까요?", null, List.of(),
             new AgentSelection(List.of(new AgentChosenBook(ISBN, new BigDecimal("12000"))), new BigDecimal("20000"), 1),
-            List.of(new AgentButton("담기", "confirm_selection", null, null))));
+            List.of(new AgentButton("담기", "confirm_selection", null, null)), null));
         final ChatResponseSnapshot response = chats.send(command("proposal", "예산 안에서 골라줘"));
         final Long proposalId = response.agentButtons().getFirst().proposalId();
         assertThat(proposalId).isNotNull();
@@ -200,7 +272,7 @@ class ShoppingAgentChatIntegrationTest {
         when(ai.chat(any(), anyLong(), anyLong(), any())).thenThrow(new CoreException(ErrorCode.AI_RECOMMENDATION_TIMEOUT));
         assertThatThrownBy(() -> chats.send(command("timeout", "담아줘"))).isInstanceOf(CoreException.class);
         assertThat(chats.history(new GetChatHistoryCommand(userId, sessionId, 0, 100))).hasSize(2);
-        Mockito.doReturn(new AgentDecision("shop", "이미 3권 담겨 있어요", null, List.of(), null, List.of())).when(ai).chat(any(), anyLong(),
+        Mockito.doReturn(new AgentDecision("shop", "이미 3권 담겨 있어요", null, List.of(), null, List.of(), null)).when(ai).chat(any(), anyLong(),
             anyLong(), any());
         assertThat(chats.send(command("notice", "담아줘")).reply()).isEqualTo("이미 3권 담겨 있어요");
         assertThat(chats.history(new GetChatHistoryCommand(userId, sessionId, 0, 100))).hasSize(4);
@@ -222,7 +294,7 @@ class ShoppingAgentChatIntegrationTest {
     void 삭제_후_과거_응답을_열어도_당시_카드와_문장을_복원한다() {
         add.execute(new AddCartItemCommand(userId, userId, 2));
         when(ai.chat(any(), anyLong(), anyLong(), any()))
-            .thenReturn(new AgentDecision("shop", "뺐습니다", null, List.of(new AgentAction("remove", ISBN, null)), null, List.of()));
+            .thenReturn(new AgentDecision("shop", "뺐습니다", null, List.of(new AgentAction("remove", ISBN, null)), null, List.of(), null));
         assertThat(chats.send(command("remove", "1번 빼줘")).execution().status()).isEqualTo("applied");
         assertThat(carts.execute(userId).items()).isEmpty();
         jdbc.update("UPDATE products SET discounted_price=13000 WHERE id=?", userId);
@@ -246,9 +318,22 @@ class ShoppingAgentChatIntegrationTest {
         }
     }
 
+    private void coupon(final long id, final long ownerId, final String state, final String expiresAt, final String couponDeletedAt,
+        final String ownedCouponDeletedAt) {
+        jdbc.update("INSERT INTO coupon (id,name,type,discount,max_use_count,min_order_amount,expired_at,deleted_at) "
+            + "VALUES (?,'테스트 정률 쿠폰','PERCENT_RATE',0.10,1,30000,?,?)", id, expiresAt, couponDeletedAt);
+        jdbc.update("INSERT INTO owned_coupon (id,user_id,coupon_id,state,max_use_count,used_count,deleted_at) " + "VALUES (?,?,?,?,1,?,?)",
+            id, ownerId, id, state, "USED".equals(state) ? 1 : 0, ownedCouponDeletedAt);
+    }
+
+    private AgentDecision checkoutShop(final String isbn, final int quantity, final AgentCheckout checkout) {
+        return new AgentDecision("shop", "담았어요", null, List.of(new AgentAction("set", isbn, quantity)), null,
+            List.of(new AgentButton("주문 화면", "navigate", AgentButton.CHECKOUT_TARGET, null)), checkout);
+    }
+
     private AgentDecision shop(final int quantity) {
         return new AgentDecision("shop", quantity + "권 담았어요", null, List.of(new AgentAction("set", ISBN, quantity)), null,
-            List.of(new AgentButton("장바구니 보기", "navigate", "CART-001", null)));
+            List.of(new AgentButton("장바구니 보기", "navigate", "CART-001", null)), null);
     }
 
     private SendChatMessageCommand command(final String key, final String text) {

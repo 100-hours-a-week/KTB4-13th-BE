@@ -1,45 +1,62 @@
 package com.book.core.agentchat.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
+import com.book.common.config.security.UserIdArgumentResolver;
 import com.book.common.config.security.UserIdMvcConfig;
+import com.book.common.exception.GlobalExceptionHandler;
 import com.book.core.agentchat.api.converter.ChatSessionCommandConverter;
 import com.book.core.agentchat.api.converter.ChatSessionResultConverter;
 import com.book.core.agentchat.application.command.GetChatHistoryCommand;
 import com.book.core.agentchat.application.command.GetChatSessionsCommand;
 import com.book.core.agentchat.application.command.SendChatMessageCommand;
+import com.book.core.agentchat.application.result.AgentButton;
+import com.book.core.agentchat.application.result.AgentCheckout;
 import com.book.core.agentchat.application.result.AgentExecutionSummary;
 import com.book.core.agentchat.application.result.ChatHistoryMessage;
 import com.book.core.agentchat.application.result.ChatResponseSnapshot;
 import com.book.core.agentchat.application.result.ChatSessionPageResult;
 import com.book.core.agentchat.application.result.ChatSessionSummary;
 import com.book.core.agentchat.application.service.ChatSessionService;
+import jakarta.servlet.AsyncEvent;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockAsyncContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @WebMvcTest(ChatSessionController.class)
-@Import({ChatSessionCommandConverter.class, ChatSessionResultConverter.class, UserIdMvcConfig.class})
+@Import({ChatSessionCommandConverter.class, ChatSessionResultConverter.class, UserIdMvcConfig.class, ChatSseExecutor.class})
 @ActiveProfiles("test")
 class ChatSessionControllerTest {
     @Autowired
@@ -69,7 +86,7 @@ class ChatSessionControllerTest {
     void 대화_본문은_명령으로_옮기고_추천_응답을_변환한다() throws Exception {
         authenticate();
         when(service.send(any())).thenReturn(new ChatResponseSnapshot(1, Map.of("intent", "semantic"), "답변", List.of(), "다음 질문",
-            List.of("다른 책"), false, null, List.of(), null));
+            List.of("다른 책"), false, null, List.of(), null, null));
         mvc.perform(post("/api/v1/recommend/chat/sessions/11/messages").contentType(MediaType.APPLICATION_JSON).content("""
             {"idempotencyKey":"key", "message":"질문", "consented":true, "excludeBookIds":[12]}
             """)).andExpect(status().isOk()).andExpect(header().string("Cache-Control", Matchers.containsString("no-store")))
@@ -78,15 +95,85 @@ class ChatSessionControllerTest {
     }
 
     @Test
+    void 요청_MDC가_없어도_작업자의_이전_MDC를_비우고_SSE를_완료한다() throws Exception {
+        authenticate();
+        final ChatSseExecutor executor = mock(ChatSseExecutor.class);
+        doAnswer(invocation -> {
+            final ChatSseStream stream = invocation.getArgument(0);
+            final Runnable task = invocation.getArgument(1);
+            MDC.put("requestId", "previous-request");
+            task.run();
+            assertThat(MDC.getCopyOfContextMap()).isNullOrEmpty();
+            stream.write();
+            return null;
+        }).when(executor).execute(any(), any());
+        final MockMvc withoutRequestMdcFilter = standaloneSseMvc(executor);
+        when(service.send(any(), any())).thenAnswer(invocation -> {
+            assertThat(MDC.getCopyOfContextMap()).isNullOrEmpty();
+            return new ChatResponseSnapshot(1, Map.of(), "stream reply", List.of(), null, List.of(), false, null, List.of(), null, null);
+        });
+
+        MDC.clear();
+        final MvcResult pending = withoutRequestMdcFilter.perform(post("/api/v1/recommend/chat/sessions/11/messages")
+            .contentType(MediaType.APPLICATION_JSON).accept(MediaType.TEXT_EVENT_STREAM).content("""
+                    {"idempotencyKey":"key", "message":"질문", "consented":true}
+                    """)).andExpect(request().asyncStarted()).andReturn();
+
+        withoutRequestMdcFilter.perform(asyncDispatch(pending)).andExpect(status().isOk())
+            .andExpect(content().string(Matchers.containsString("event:done")))
+            .andExpect(content().string(Matchers.containsString("stream reply")));
+    }
+
+    @Test
+    void 시작_전_만료된_스트림은_작업을_건너뛰고_응답을_닫는다() throws Exception {
+        authenticate();
+        final ChatSseExecutor executor = mock(ChatSseExecutor.class);
+        final MockMvc standalone = standaloneSseMvc(executor);
+        final MvcResult pending = standalone.perform(post("/api/v1/recommend/chat/sessions/11/messages")
+            .contentType(MediaType.APPLICATION_JSON).accept(MediaType.TEXT_EVENT_STREAM).content("""
+                {"idempotencyKey":"key", "message":"질문", "consented":true}
+                """)).andExpect(request().asyncStarted()).andReturn();
+        final MockAsyncContext async = (MockAsyncContext) pending.getRequest().getAsyncContext();
+        for (final var listener : async.getListeners()) {
+            listener.onTimeout(new AsyncEvent(async));
+        }
+
+        final ArgumentCaptor<Runnable> work = ArgumentCaptor.forClass(Runnable.class);
+        verify(executor).execute(any(), work.capture());
+        work.getValue().run();
+
+        standalone.perform(asyncDispatch(pending)).andExpect(status().isOk()).andExpect(content().string(""));
+        verifyNoInteractions(service);
+    }
+
+    private MockMvc standaloneSseMvc(final ChatSseExecutor executor) {
+        final ChatSessionController controller = new ChatSessionController(service, new ChatSessionCommandConverter(),
+            new ChatSessionResultConverter(), executor, new GlobalExceptionHandler());
+        return standaloneSetup(controller).setCustomArgumentResolvers(new UserIdArgumentResolver()).build();
+    }
+
+    @Test
     void 변경_거절도_채팅은_200이며_실제_안내와_객체_버튼_계약을_반환한다() throws Exception {
         authenticate();
         when(service.send(any())).thenReturn(ChatResponseSnapshot.shop(Map.of(), "재고가 부족해 담지 못했습니다", List.of(),
-            new AgentExecutionSummary(null, null, "rejected", "INSUFFICIENT_PRODUCT_STOCK")));
+            new AgentExecutionSummary(null, null, "rejected", "INSUFFICIENT_PRODUCT_STOCK"), null));
         mvc.perform(post("/api/v1/recommend/chat/sessions/11/messages").contentType(MediaType.APPLICATION_JSON).content("""
             {"idempotencyKey":"stock", "message":"5권 담아줘", "consented":true, "excludeBookIds":[]}
             """)).andExpect(status().isOk()).andExpect(jsonPath("$.data.route").value("shop"))
             .andExpect(jsonPath("$.data.reply").value("재고가 부족해 담지 못했습니다")).andExpect(jsonPath("$.data.execution.status").value("rejected"))
             .andExpect(jsonPath("$.data.cards").doesNotExist()).andExpect(jsonPath("$.data.spec").doesNotExist());
+    }
+
+    @Test
+    void 담기_성공_응답의_checkout은_FE_필드명으로_반환한다() throws Exception {
+        authenticate();
+        when(service.send(any())).thenReturn(
+            ChatResponseSnapshot.shop(Map.of(), "담았어요", List.of(new AgentButton("주문 화면", "navigate", AgentButton.CHECKOUT_TARGET, null)),
+                new AgentExecutionSummary(5L, null, "applied", null), new AgentCheckout(7L, new BigDecimal("5000"))));
+        mvc.perform(post("/api/v1/recommend/chat/sessions/11/messages").contentType(MediaType.APPLICATION_JSON).content("""
+            {"idempotencyKey":"checkout", "message":"담아 줘", "consented":true}
+            """)).andExpect(status().isOk()).andExpect(jsonPath("$.data.buttons[0].target").value("ORDER-001"))
+            .andExpect(jsonPath("$.data.checkout.useOwnedCouponId").value(7)).andExpect(jsonPath("$.data.checkout.usePoint").value(5000));
     }
 
     @Test
@@ -112,6 +199,9 @@ class ChatSessionControllerTest {
             .content("{\"idempotencyKey\":\"key\",\"message\":\"질문\",\"consented\":true}")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/recommend/chat/sessions").param("limit", "101")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/recommend/chat/sessions/11/messages").param("afterSequence", "-1")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/recommend/chat/sessions/11/messages").contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.TEXT_EVENT_STREAM).content("{}")).andExpect(status().isBadRequest())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON)).andExpect(jsonPath("$.success").value(false));
         verifyNoInteractions(service);
     }
 }

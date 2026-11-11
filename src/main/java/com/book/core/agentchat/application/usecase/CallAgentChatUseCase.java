@@ -11,6 +11,7 @@ import com.book.core.agentchat.application.result.AgentDecision;
 import com.book.core.agentchat.application.result.AgentObservedProduct;
 import com.book.core.recommendation.application.command.ChatRecommendationCommand;
 import java.math.BigDecimal;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 
 @UseCase
@@ -24,8 +25,17 @@ public class CallAgentChatUseCase {
 
     public AgentDecision execute(final ChatRecommendationCommand command, final Long sessionId, final Long requestId,
         final AgentChatContext context) {
-        final AgentDecision decision = client.chat(command, sessionId, requestId, context);
-        decision.actions().forEach((final AgentAction action) -> context.requireProduct(action.isbn()));
+        return validate(client.chat(command, sessionId, requestId, context), context);
+    }
+
+    public AgentDecision execute(final ChatRecommendationCommand command, final Long sessionId, final Long requestId,
+        final AgentChatContext context, final Consumer<String> onDelta) {
+        return validate(client.chat(command, sessionId, requestId, context, onDelta), context);
+    }
+
+    private AgentDecision validate(final AgentDecision decision, final AgentChatContext context) {
+        decision.actions().stream().filter((final AgentAction action) -> "remove".equals(action.op()))
+            .forEach((final AgentAction action) -> context.requireProduct(action.isbn()));
         if (decision.selection() != null) {
             BigDecimal total = BigDecimal.ZERO;
             for (final AgentChosenBook chosen : decision.selection().chosen()) {

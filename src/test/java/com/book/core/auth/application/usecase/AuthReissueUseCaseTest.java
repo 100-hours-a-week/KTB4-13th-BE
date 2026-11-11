@@ -38,6 +38,8 @@ class AuthReissueUseCaseTest {
         order.verify(users).findByIdForUpdate(42L);
         order.verify(sessions).rotate(42L, "old-hash", "new-hash", expiry);
         assertThat(result.refreshToken()).isEqualTo("new");
+        assertThat(result.accessToken()).isEqualTo("access");
+        assertThat(result.refreshExpiresAt()).isEqualTo(expiry);
     }
 
     @Test

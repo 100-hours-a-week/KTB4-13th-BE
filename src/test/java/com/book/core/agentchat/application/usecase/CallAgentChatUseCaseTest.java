@@ -28,8 +28,8 @@ class CallAgentChatUseCaseTest {
     private final AgentChatClient client = mock(AgentChatClient.class);
     private final CallAgentChatUseCase useCase = new CallAgentChatUseCase(client);
     private final ChatRecommendationCommand command = new ChatRecommendationCommand(7L, true, Map.of(), "골라줘", List.of(), List.of());
-    private final AgentChatContext context =
-        new AgentChatContext(List.of(new AgentObservedProduct(11L, ISBN, "책", new BigDecimal("12000"), 0, 3, true)), List.of());
+    private final AgentChatContext context = new AgentChatContext(
+        List.of(new AgentObservedProduct(11L, ISBN, "책", new BigDecimal("12000"), 0, 3, true)), List.of(), List.of(), BigDecimal.ZERO);
 
     @Test
     void 허용된_선택은_가격과_예산_개수를_검증한_후_그대로_반환한다() {
@@ -46,21 +46,22 @@ class CallAgentChatUseCaseTest {
         assertInvalid(selection("13000", "20000", 1), context);
         assertInvalid(selection("12000", "10000", 1), context);
         assertInvalid(selection("12000", "20000", 2), context);
-        assertInvalid(selection("12000", "20000", 1), new AgentChatContext(List.of(), List.of()));
+        assertInvalid(selection("12000", "20000", 1), new AgentChatContext(List.of(), List.of(), List.of(), BigDecimal.ZERO));
     }
 
     @Test
-    void 관측하지_않은_직접_변경은_거절하지만_정상_안내는_통과한다() {
-        assertInvalid(new AgentDecision("shop", "담았어요", null, List.of(new AgentAction("set", "9788900000028", 2)), null, List.of()),
+    void 관측하지_않은_상품의_삭제는_거절하지만_정상_안내는_통과한다() {
+        assertInvalid(
+            new AgentDecision("shop", "담았어요", null, List.of(new AgentAction("remove", "9788900000028", null)), null, List.of(), null),
             context);
-        final AgentDecision notice = new AgentDecision("shop", "이미 3권 담겨 있어요", null, List.of(), null, List.of());
+        final AgentDecision notice = new AgentDecision("shop", "이미 3권 담겨 있어요", null, List.of(), null, List.of(), null);
         when(client.chat(command, 8L, 9L, context)).thenReturn(notice);
         assertThat(useCase.execute(command, 8L, 9L, context)).isEqualTo(notice);
     }
 
     private AgentDecision selection(final String price, final String budget, final int count) {
         return new AgentDecision("shop", "이 책을 담을까요?", null, List.of(),
-            new AgentSelection(List.of(new AgentChosenBook(ISBN, new BigDecimal(price))), new BigDecimal(budget), count), List.of());
+            new AgentSelection(List.of(new AgentChosenBook(ISBN, new BigDecimal(price))), new BigDecimal(budget), count), List.of(), null);
     }
 
     private void assertInvalid(final AgentDecision decision, final AgentChatContext observation) {

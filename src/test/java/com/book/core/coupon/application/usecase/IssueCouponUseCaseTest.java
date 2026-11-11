@@ -18,6 +18,7 @@ import com.book.core.coupon.domain.CouponIssuePolicy;
 import com.book.core.coupon.domain.enums.CouponType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class IssueCouponUseCaseTest {
@@ -26,6 +27,28 @@ class IssueCouponUseCaseTest {
     private final OwnedCouponRepositoryPort ownedCouponRepository = mock(OwnedCouponRepositoryPort.class);
     private final LocalDateTime now = LocalDateTime.now();
     private final CouponIssueState activeIssueState = withoutStock(CouponIssuePolicy.from(coupon(10L)));
+
+    @Test
+    void 매진_신호가_있으면_정책_조회_전에_거절한다() {
+        when(couponStockPort.hasSoldOutSignal(10L)).thenReturn(true);
+
+        assertThatThrownBy(() -> issueCouponUseCase().rejectIfSoldOut(10L)).isInstanceOf(CoreException.class).extracting("errorCode")
+            .isEqualTo(ErrorCode.COUPON_SOLD_OUT);
+        verifyNoInteractions(couponRepository, ownedCouponRepository);
+    }
+
+    @Test
+    void 재고가_복구되면_매진_캐시를_그대로_쓰지_않고_DB_정책을_확인한다() {
+        final var stale =
+            new Coupon(10L, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, BigDecimal.ZERO, now.plusDays(1), 1, 1, now.minusDays(1));
+        final var restored = coupon(10L);
+        when(couponRepository.findById(10L)).thenReturn(Optional.of(restored));
+
+        final var policy =
+            issueCouponUseCase().validateIssuable(42L, 10L, new CouponIssueState(CouponIssuePolicy.from(stale), Stock.AVAILABLE));
+
+        assertThat(policy.soldOut()).isFalse();
+    }
 
     @Test
     void 이미_발급한_쿠폰은_다시_발급하지_않는다() {

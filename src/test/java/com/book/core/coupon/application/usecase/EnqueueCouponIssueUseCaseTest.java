@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
-import com.book.core.coupon.application.command.AcceptedCouponIssue;
+import com.book.core.coupon.application.command.IssuanceRequested;
 import com.book.core.coupon.application.command.IssueCouponCommand;
 import com.book.core.coupon.application.port.CouponIssueQueuePort;
 import com.book.core.coupon.application.port.CouponIssueQueuePort.Reservation;
@@ -24,7 +24,7 @@ class EnqueueCouponIssueUseCaseTest {
     private final EnqueueCouponIssueUseCase useCase = new EnqueueCouponIssueUseCase(validation, queue);
     private final CouponIssueState issueState = mock(CouponIssueState.class);
     private final IssueCouponCommand command = new IssueCouponCommand(42L, 10L);
-    private final AcceptedCouponIssue issue = new AcceptedCouponIssue(10L, 42L, 2L);
+    private final IssuanceRequested issue = new IssuanceRequested(10L, 42L, 2L);
 
     @BeforeEach
     void setUp() {

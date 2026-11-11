@@ -1,6 +1,9 @@
 package com.book.core.coupon.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
+import java.time.Duration;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -10,6 +13,10 @@ import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.usecase.ReconcileCouponStockUseCase;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +33,10 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
+import org.testcontainers.kafka.KafkaContainer;
 
-@SpringBootTest(properties = {"coupon.cache.fresh-ms=60000", "coupon.cache.ttl-ms=120000", "coupon.sold-out.ttl-seconds=86400",
-    "coupon.sold-out.fast-path-ttl-ms=60000"})
+@SpringBootTest(properties = {"coupon.kafka.worker-enabled=true", "coupon.cache.fresh-ms=60000", "coupon.cache.ttl-ms=120000",
+    "coupon.sold-out.ttl-seconds=86400", "coupon.sold-out.fast-path-ttl-ms=60000"})
 @AutoConfigureMockMvc
 @ActiveProfiles({"test", "mysql-test"})
 @Testcontainers
@@ -37,6 +45,10 @@ class CouponSoldOutHttpIntegrationTest {
     @Container
     @ServiceConnection
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
+
+    @Container
+    @ServiceConnection
+    static final KafkaContainer kafka = new KafkaContainer("apache/kafka:4.1.2");
 
     @Container
     @ServiceConnection(name = "redis")
@@ -68,9 +80,9 @@ class CouponSoldOutHttpIntegrationTest {
         final long couponId = 8_510_001L;
         insertActiveCoupon(couponId, 2);
 
-        issue(1L, couponId).andExpect(status().isOk());
+        issue(1L, couponId).andExpect(status().isAccepted());
         assertThat(redisTemplate.hasKey(soldOutKey(couponId))).isFalse();
-        issue(2L, couponId).andExpect(status().isOk());
+        issue(2L, couponId).andExpect(status().isAccepted());
         assertThat(redisTemplate.opsForValue().get(stockKey(couponId))).isEqualTo("0");
         assertThat(redisTemplate.opsForValue().get(soldOutKey(couponId))).isEqualTo("1");
         assertThat(redisTemplate.getExpire(soldOutKey(couponId))).isBetween(86_390L, 86_400L);
@@ -133,7 +145,7 @@ class CouponSoldOutHttpIntegrationTest {
     void 재고_복구시_매진_신호를_초기화하면_이전_매진_정책이_남아_있어도_발급한다() throws Exception {
         final long couponId = 8_510_006L;
         insertActiveCoupon(couponId, 1);
-        issue(1L, couponId).andExpect(status().isOk());
+        issue(1L, couponId).andExpect(status().isAccepted());
         expectError(2L, couponId, "E4003");
         redisTemplate.delete(policyKey(couponId));
         expectError(2L, couponId, "E4003");
@@ -147,7 +159,7 @@ class CouponSoldOutHttpIntegrationTest {
         couponStockPort.initialize(couponId, 1);
         assertThat(redisTemplate.hasKey(soldOutKey(couponId))).isFalse();
         expectError(1L, couponId, "E4001");
-        issue(2L, couponId).andExpect(status().isOk());
+        issue(2L, couponId).andExpect(status().isAccepted());
         assertCounts(couponId, 2);
         assertThat(redisTemplate.opsForValue().get(stockKey(couponId))).isEqualTo("0");
     }
@@ -158,7 +170,8 @@ class CouponSoldOutHttpIntegrationTest {
         insertActiveCoupon(couponId, 1);
         jdbc.execute("ALTER TABLE owned_coupon ADD CONSTRAINT test_coupon_rollback CHECK (user_id <> 99)");
         try {
-            issue(99L, couponId).andExpect(status().isInternalServerError()).andExpect(jsonPath("$.code").value("E500"));
+            issue(99L, couponId).andExpect(status().isAccepted());
+            awaitFailedIssuance(couponId);
             assertThat(couponSoldOutCache.getIfPresent(soldOutKey(couponId))).isFalse();
             final var shortage = reconcileCouponStockUseCase.execute(couponId).orElseThrow();
             assertThat(shortage.totalQuantity()).isEqualTo(1);
@@ -179,7 +192,7 @@ class CouponSoldOutHttpIntegrationTest {
 
             couponStockPort.initialize(couponId, 1);
             assertThat(redisTemplate.hasKey(soldOutKey(couponId))).isFalse();
-            issue(2L, couponId).andExpect(status().isOk());
+            issue(2L, couponId).andExpect(status().isAccepted());
             assertCounts(couponId, 1);
 
             final var soldOut = reconcileCouponStockUseCase.execute(couponId).orElseThrow();
@@ -201,7 +214,8 @@ class CouponSoldOutHttpIntegrationTest {
     void 재고_키가_없으면_재고_0과_구분하고_삭제된_발급_이력도_집계한다() throws Exception {
         final long couponId = 8_510_009L;
         insertActiveCoupon(couponId, 1);
-        issue(1L, couponId).andExpect(status().isOk());
+        issue(1L, couponId).andExpect(status().isAccepted());
+        assertCounts(couponId, 1);
         jdbc.update("UPDATE owned_coupon SET deleted_at = CURRENT_TIMESTAMP(6) WHERE coupon_id = ?", couponId);
         redisTemplate.delete(stockKey(couponId));
 
@@ -214,6 +228,22 @@ class CouponSoldOutHttpIntegrationTest {
         assertThat(result.soldOutSignalPresent()).isTrue();
         assertThat(result.isConsistentlySoldOut()).isFalse();
         assertThat(redisTemplate.hasKey(stockKey(couponId))).isFalse();
+    }
+
+    private void awaitFailedIssuance(final long couponId) {
+        final Map<String, Object> settings =
+            Map.of("bootstrap.servers", kafka.getBootstrapServers(), "group.id", "coupon-dlt-test", "auto.offset.reset", "earliest");
+        try (final var consumer = new KafkaConsumer<>(settings, new StringDeserializer(), new StringDeserializer())) {
+            consumer.subscribe(List.of("book.coupon-issuance.redis.v1.DLT"));
+            await().atMost(Duration.ofSeconds(15)).until(() -> {
+                for (final var record : consumer.poll(Duration.ofMillis(200))) {
+                    if (record.value().contains("\"couponId\":" + couponId)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
     }
 
     private void insertActiveCoupon(final long couponId, final int quantity) {
@@ -240,9 +270,11 @@ class CouponSoldOutHttpIntegrationTest {
     }
 
     private void assertCounts(final long couponId, final int expected) {
-        assertThat(jdbc.queryForObject("SELECT issued_quantity FROM coupon WHERE id = ?", Integer.class, couponId)).isEqualTo(expected);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM owned_coupon WHERE coupon_id = ?", Integer.class, couponId))
-            .isEqualTo(expected);
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
+            assertThat(jdbc.queryForObject("SELECT issued_quantity FROM coupon WHERE id = ?", Integer.class, couponId)).isEqualTo(expected);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM owned_coupon WHERE coupon_id = ?", Integer.class, couponId))
+                .isEqualTo(expected);
+        });
     }
 
     private String stockKey(final long couponId) {

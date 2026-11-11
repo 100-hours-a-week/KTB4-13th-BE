@@ -1,23 +1,21 @@
 package com.book.core.coupon.application.usecase;
 
 import com.book.common.annotation.UseCase;
-import com.book.core.coupon.application.command.AcceptedCouponIssue;
+import com.book.core.coupon.application.command.IssuanceRequested;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.OwnedCoupon;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 
 @UseCase
-@Profile("coupon-streams & coupon-streams-worker")
 @RequiredArgsConstructor
 public class PersistAcceptedCouponIssueUseCase {
     private final CouponRepositoryPort coupons;
     private final OwnedCouponRepositoryPort ownedCoupons;
 
     @Transactional
-    public boolean execute(final AcceptedCouponIssue issue) {
+    public boolean execute(final IssuanceRequested issue) {
         if (ownedCoupons.existsByUserIdAndCouponId(issue.userId(), issue.couponId())) {
             return false;
         }

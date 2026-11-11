@@ -12,7 +12,6 @@ import com.book.core.coupon.application.command.CreateCouponCommand;
 import com.book.core.coupon.application.command.GetCouponsCommand;
 import com.book.core.coupon.application.command.GetOwnedCouponsCommand;
 import com.book.core.coupon.application.command.IssueCouponCommand;
-import com.book.core.coupon.application.result.CouponIssueOutcome;
 import com.book.core.coupon.application.result.CouponResult;
 import com.book.core.coupon.application.result.OwnedCouponResult;
 import com.book.core.coupon.application.service.CouponService;
@@ -59,11 +58,8 @@ public class CouponController implements CouponControllerSpec {
     @PostMapping("/api/v1/coupons/{couponId}/issue")
     public ResponseEntity<ApiResponse<Void>> issue(@UserId final Long userId, @PathVariable final Long couponId) {
         final IssueCouponCommand command = commandConverter.toIssueCouponCommand(userId, couponId);
-        final CouponIssueOutcome outcome = couponService.issue(command);
-        if (outcome == CouponIssueOutcome.ACCEPTED) {
-            return ResponseEntity.accepted().body(ApiResponse.ok());
-        }
-        return ResponseEntity.ok(ApiResponse.ok());
+        couponService.issue(command);
+        return ResponseEntity.accepted().body(ApiResponse.ok());
     }
 
     @Override

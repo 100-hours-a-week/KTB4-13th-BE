@@ -9,7 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.book.core.coupon.application.command.AcceptedCouponIssue;
+import com.book.core.coupon.application.command.IssuanceRequested;
 import com.book.core.coupon.application.port.CouponRepositoryPort;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.OwnedCoupon;
@@ -20,7 +20,7 @@ class PersistAcceptedCouponIssueUseCaseTest {
     private final CouponRepositoryPort coupons = mock(CouponRepositoryPort.class);
     private final OwnedCouponRepositoryPort ownedCoupons = mock(OwnedCouponRepositoryPort.class);
     private final PersistAcceptedCouponIssueUseCase useCase = new PersistAcceptedCouponIssueUseCase(coupons, ownedCoupons);
-    private final AcceptedCouponIssue issue = new AcceptedCouponIssue(10L, 42L, 2L);
+    private final IssuanceRequested issue = new IssuanceRequested(10L, 42L, 2L);
 
     @Test
     void 접수된_발급의_수량과_보유_쿠폰을_저장한다() {

@@ -144,3 +144,44 @@ Colima를 사용할 때 Testcontainers가 소켓을 찾지 못하면 해당 실�
 전환 전 커밋 `3ddbb6059b54f1522b72bdad6b5555a071e09a57`은
 [백업 저장소](https://github.com/023-dev/ver2-book/tree/3ddbb6059b54f1522b72bdad6b5555a071e09a57)에 보관합니다.
 백업 저장소 접근에는 권한이 필요합니다.
+
+### AI 추천 프로필 Kafka 직접 전달
+
+기본값은 기존 HTTP PUT입니다. AI Consumer와 삭제·순서 경합을 해결하고 운영 설정을 확인한 후에만 `PROFILE_SYNC_AI_KAFKA_ENABLED=true`로 전환합니다. 이 설정은 #544의 내부 작업 토픽 설정 `PROFILE_SYNC_KAFKA_ENABLED`와 별개입니다. 내부 토픽 사용 여부와 관계없이 MySQL 작업자가 AI 전용 토픽에 발행합니다. 야간 등 큐 외 기존 HTTP 호출은 그대로입니다.
+
+- 토픽: `book.ai-profile.v1` (실패 토픽 예: `book.ai-profile.v1.DLT`)
+- Key: 사용자 ID의 UTF-8 10진 문자열
+- Consumer Group: 환경별로 다른 `book-ai-profile-v1-{환경}`을 사용하고 같은 환경의 AI 인스턴스는 공유합니다.
+- `KAFKA_BOOTSTRAP_SERVERS`에 연결 가능한 브로커 목록을 설정합니다. 운영 TLS/SASL, ACL, 토픽 복제·보관 및 메시지 크기 제한은 운영 환경에 맞게 설정합니다.
+
+```json
+{
+  "schema_version": 1,
+  "job_revision": "2d32c6a2-322d-46c3-b3d3-6c8680b6a723",
+  "profile": {
+    "user_id": 42,
+    "idempotency_key": "existing-http-request-key",
+    "onboarding": {"reading_times": ["잠들기 전"], "criteria": [], "categories": ["소설"], "tags": ["SF"], "liked_isbns": []},
+    "memories": [],
+    "history": {"purchased_isbns": [], "library_isbns": [], "reviews": []}
+  }
+}
+```
+
+`schema_version`은 메시지 계약 버전, `job_revision`은 BE 작업 UUID입니다. `profile`은 기존 PUT 본문이며 AI `ProfileRequest`로 검증합니다. 기억은 기존 계약대로 `type`, `value`, `strength`, `applies_to`, `keyword`, `created_at`, `vector`, `dim`을 포함합니다. AI Consumer는 `profile.user_id`와 key의 일치 여부를 검증한 뒤 기존 `service.rebuild` 계산·저장을 호출합니다. 자동 offset commit을 끄고 DB 저장 성공 후에만 commit합니다. 일시 실패는 backoff로 재시도하고, 재시도 소진 시 DLT 발행 성공을 확인한 다음 원본 offset을 진행합니다. DLT 발행 실패 시 원본을 넘기지 않습니다.
+
+BE의 작업 완료는 Kafka 브로커 발행 확인이지 AI 처리 완료가 아닙니다. 발행 성공 응답 유실이나 AI DB 저장 후 offset commit 전 종료 시 중복될 수 있습니다. `job_revision`은 UUID로 순서를 나타내지 않으며, 재시도 시 같은 revision에 최신 데이터를 다시 읽을 수 있어 이를 단독 중복 제거 키로 사용해서는 안 됩니다. 사용자 key와 파티션별 순차 처리만으로 지연·재시도에 따른 최신 상태를 보장하지 못합니다. 현재 AI의 `idempotency_key`도 중복 제거에 사용되지 않습니다. AI 측 버전 검증·멱등성은 아직 구현되지 않았습니다.
+
+동의 철회나 탈퇴 후 지연된 메시지가 AI 프로필을 재생성할 수 있습니다. 삭제 상태 검증과 경합 대책이 준비되기 전에는 직접 소비를 활성화하지 않습니다. 메시지에는 개인정보와 벡터가 들어갈 수 있으므로 ACL·보관 기간·DLT 접근을 제한하고 본문을 로그에 남기지 않습니다. 큰 본문은 브로커와 Producer·Consumer의 크기 제한을 초과할 수 있습니다. 초과 시 BE 작업은 재시도되며, 제한 조정 또는 입력 축소를 운영자가 해결해야 합니다.
+
+로컬에서 `docker compose -f compose.kafka.yml up -d`로 별도 브로커를 기동한 뒤 다음 토픽을 생성합니다. 기존 README의 내부 작업 토픽도 사용하는 경우 해당 생성 절차를 함께 실행합니다.
+
+```bash
+for topic in book.ai-profile.v1 book.ai-profile.v1.DLT; do
+  docker compose -f compose.kafka.yml exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+    --create --if-not-exists --topic "$topic" --partitions 1 --replication-factor 1 --config retention.ms=86400000
+done
+PROFILE_SYNC_AI_KAFKA_ENABLED=true KAFKA_BOOTSTRAP_SERVERS=localhost:9092 ./gradlew bootRun
+```
+
+AI Consumer를 별도 테스트 DB와 같은 브로커에 연결해 온보딩 완료·취향 수정 메시지와 저장 결과를 확인합니다. Docker 내부 AI에서는 `localhost`가 AI 컨테이너를 가리키므로 브로커의 advertised listener가 컨테이너에서 접근 가능한 주소인지 별도 확인합니다. 위 단일 브로커는 로컬 테스트용입니다.

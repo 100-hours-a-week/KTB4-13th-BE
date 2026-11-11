@@ -19,6 +19,8 @@ import java.time.Clock;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 
 @UseCase
@@ -42,11 +44,19 @@ public class PersonalizationProfileUseCase {
     private final Clock clock;
 
     public void executeUpdate(final Long userId) {
+        update(userId, profileClient::updateProfile);
+    }
+
+    public void executeUpdate(final Long userId, final UUID revision) {
+        update(userId, request -> profileClient.updateProfile(request, revision));
+    }
+
+    private void update(final Long userId, final Consumer<AiPersonalizationProfileRequest> sender) {
         final Optional<AiPersonalizationProfileRequest> request = profileRequestOf(userId);
         if (request.isEmpty()) {
             return;
         }
-        profileClient.updateProfile(request.orElseThrow());
+        sender.accept(request.orElseThrow());
         // 갱신 요청 중 동의가 없어졌다면 다른 삭제 작업이 이 갱신보다 먼저 처리됐을 수 있어 삭제를 다시 예약합니다.
         if (!agreed(userId)) {
             profileJobs.enqueue(userId, clock.instant());

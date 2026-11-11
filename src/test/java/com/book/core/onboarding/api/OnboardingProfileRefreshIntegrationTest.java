@@ -114,7 +114,7 @@ class OnboardingProfileRefreshIntegrationTest {
             committedOptionIdsAtUpdate.add(readOnNewConnection(() -> optionIds(request.userId())));
             committedBookIdsAtUpdate.add(readOnNewConnection(() -> bookIds(request.userId())));
             return null;
-        }).when(profileClient).updateProfile(any());
+        }).when(profileClient).updateProfile(any(), any());
     }
 
     @AfterEach
@@ -137,7 +137,7 @@ class OnboardingProfileRefreshIntegrationTest {
 
         verifyNoInteractions(profileClient);
         unlockWorker();
-        verify(profileClient, timeout(10000)).updateProfile(any());
+        verify(profileClient, timeout(10000)).updateProfile(any(), any());
         lockWorker();
         assertThat(jobCount(userId)).isZero();
     }
@@ -196,12 +196,12 @@ class OnboardingProfileRefreshIntegrationTest {
         agreePersonalization();
         completeOnboarding(bookId);
 
-        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).doNothing().when(profileClient).updateProfile(any());
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).doNothing().when(profileClient).updateProfile(any(), any());
         processJob.execute();
         assertThat(jobCount(userId)).isOne();
         assertThat(jdbc.queryForObject("SELECT attempts FROM profile_sync_jobs WHERE user_id = ?", Integer.class, userId)).isOne();
         processJob.execute();
-        verify(profileClient).updateProfile(any());
+        verify(profileClient).updateProfile(any(), any());
 
         jdbc.update("UPDATE profile_sync_jobs SET available_at = '2000-01-01' WHERE user_id = ?", userId);
         processJob.execute();
@@ -221,7 +221,7 @@ class OnboardingProfileRefreshIntegrationTest {
         }).doAnswer(invocation -> {
             updateRequests.add(invocation.getArgument(0));
             return null;
-        }).when(profileClient).updateProfile(any());
+        }).when(profileClient).updateProfile(any(), any());
 
         processJob.execute();
         assertThat(jobCount(userId)).isOne();
@@ -243,7 +243,7 @@ class OnboardingProfileRefreshIntegrationTest {
 
         jdbc.update("DELETE FROM user_term_agreement WHERE user_id = ?", userId);
         processJob.execute();
-        verify(profileClient, never()).updateProfile(any());
+        verify(profileClient, never()).updateProfile(any(), any());
         verify(profileClient).deleteProfile(userId);
         assertThat(jobCount(userId)).isZero();
     }
@@ -258,14 +258,14 @@ class OnboardingProfileRefreshIntegrationTest {
         doAnswer(invocation -> {
             jdbc.update("DELETE FROM user_term_agreement WHERE user_id = ?", userId);
             return null;
-        }).when(profileClient).updateProfile(any());
+        }).when(profileClient).updateProfile(any(), any());
 
         processJob.execute();
         assertThat(jobCount(userId)).isOne();
         processJob.execute();
 
         final InOrder order = inOrder(profileClient);
-        order.verify(profileClient).updateProfile(any());
+        order.verify(profileClient).updateProfile(any(), any());
         order.verify(profileClient).deleteProfile(userId);
         assertThat(jobCount(userId)).isZero();
     }
@@ -292,7 +292,7 @@ class OnboardingProfileRefreshIntegrationTest {
         processJob.execute();
 
         verify(profileClient, times(2)).deleteProfile(userId);
-        verify(profileClient, times(1)).updateProfile(any());
+        verify(profileClient, times(1)).updateProfile(any(), any());
         assertThat(jobCount(userId)).isZero();
     }
 
@@ -363,7 +363,7 @@ class OnboardingProfileRefreshIntegrationTest {
         processJob.execute();
 
         verify(profileClient, never()).deleteProfile(any());
-        verify(profileClient).updateProfile(any());
+        verify(profileClient).updateProfile(any(), any());
         assertThat(jobCount(pendingUserId)).isZero();
         assertThat(jobCount(recoveredUserId)).isZero();
     }

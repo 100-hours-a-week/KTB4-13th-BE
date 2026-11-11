@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -23,6 +26,12 @@ import java.math.BigDecimal;
 import java.net.SocketTimeoutException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.mockito.ArgumentCaptor;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -44,8 +53,9 @@ class AiPersonalizationProfileClientImplTest {
     private final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator =
         new PersonalizationProfileIdempotencyKeyGenerator();
     private final GetAiBookIdentifiersUseCase identifiers = mock(GetAiBookIdentifiersUseCase.class);
-    private final AiPersonalizationProfileClientImpl client =
-        new AiPersonalizationProfileClientImpl(builder.build(), idempotencyKeyGenerator, identifiers);
+    private final AiPersonalizationProfileExternalMapper mapper =
+        new AiPersonalizationProfileExternalMapper(idempotencyKeyGenerator, identifiers);
+    private final AiPersonalizationProfileClientImpl client = new AiPersonalizationProfileClientImpl(builder.build(), mapper);
 
     @AfterEach
     void clearMdc() {
@@ -137,6 +147,25 @@ class AiPersonalizationProfileClientImplTest {
 
         client.updateProfile(request);
 
+        server.verify();
+    }
+
+    @Test
+    void HTTP_본문과_Kafka_프로필_본문이_일치한다() throws Exception {
+        final var request = profileRequest();
+        when(identifiers.findIsbns(List.of(100L, 300L))).thenReturn(List.of("9788900000011", "9788900000042"));
+        final ObjectMapper json = new ObjectMapper();
+        final String[] httpBody = new String[1];
+        server.expect(requestTo(PROFILE_URL)).andExpect(req -> httpBody[0] = ((MockClientHttpRequest) req).getBodyAsString())
+            .andRespond(withSuccess());
+        client.updateProfile(request);
+        final KafkaTemplate<String, String> kafka = mock(KafkaTemplate.class);
+        when(kafka.send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), any(String.class)))
+            .thenReturn(CompletableFuture.completedFuture(null));
+        new AiPersonalizationProfileKafkaClient(mapper, kafka, json).updateProfile(request, UUID.randomUUID());
+        final ArgumentCaptor<String> sent = ArgumentCaptor.forClass(String.class);
+        verify(kafka).send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), sent.capture());
+        assertThat(json.readTree(sent.getValue()).path("profile")).isEqualTo(json.readTree(httpBody[0]));
         server.verify();
     }
 

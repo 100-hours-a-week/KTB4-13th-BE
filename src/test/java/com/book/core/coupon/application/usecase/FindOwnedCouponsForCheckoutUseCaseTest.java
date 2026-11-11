@@ -44,6 +44,15 @@ class FindOwnedCouponsForCheckoutUseCaseTest {
         verifyNoInteractions(couponRepository);
     }
 
+    @Test
+    void 챗봇_조회는_결제_상품이_정해지기_전에_보유_쿠폰을_반환한다() {
+        when(ownedCouponRepository.findUsable(42L, now)).thenReturn(List.of(ownedCoupon(0L)));
+        when(couponRepository.findAllById(Set.of(10L))).thenReturn(List.of(coupon(10L)));
+        final var useCase = new FindOwnedCouponsForCheckoutUseCase(ownedCouponRepository, couponRepository);
+        assertThat(useCase.findUsable(42L, now)).singleElement()
+            .satisfies((final var owned) -> assertThat(owned.coupon().id()).isEqualTo(10L));
+    }
+
     private Coupon coupon(final Long id) {
         return new Coupon(id, "쿠폰", CouponType.FIXED_AMOUNT, BigDecimal.TEN, 2L, new BigDecimal("1000"), now.plusDays(7), 100, 0,
             now.minusDays(1));

@@ -2,15 +2,19 @@ package com.book.core.onboarding.infrastructure.persistence.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileHistory;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileMemory;
 import com.book.core.onboarding.application.port.ProfileHistoryRepositoryPort;
 import com.book.core.onboarding.application.port.ProfileMemoryRepositoryPort;
+import com.book.core.onboarding.application.usecase.GetRecommendationHistoryUseCase;
+import com.book.core.product.application.usecase.FindProductByBookIdUseCase;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -38,6 +42,39 @@ class ProfileRepositoryAdaptersIntegrationTest {
     JdbcTemplate jdbc;
 
     Long userId;
+
+    @Autowired
+    GetAiBookIdentifiersUseCase identifiers;
+
+    @Autowired
+    FindProductByBookIdUseCase products;
+
+    @Autowired
+    GetRecommendationHistoryUseCase recommendationHistory;
+
+    @Test
+    void 중복_ISBN은_AI에서_빠지고_일반_상품은_그대로_조회된다() {
+        final String duplicate = "9788900000700";
+        final long first = insertProduct(duplicate);
+        final long second = insertProduct(duplicate);
+        final long malformed = insertProduct("not-isbn");
+        final long valid = insertProduct("9788900000799");
+        insertOrderItem(insertOrder(userId, "PAID", WINDOW_START), first, "PAID");
+        insertLibraryBook(userId, second, null, WINDOW_START);
+        insertReview(userId, first, "4.5", null, WINDOW_START);
+        insertLibraryBook(userId, valid, null, WINDOW_START.plusHours(1));
+
+        assertThat(identifiers.findBookIds(List.of(duplicate, "9788900000799"))).containsExactlyEntriesOf(Map.of("9788900000799", valid));
+        assertThat(identifiers.findIsbns(List.of(first, second, malformed, valid))).containsExactly("9788900000799");
+        assertThat(historyRepository.findHistory(userId))
+            .isEqualTo(new AiPersonalizationProfileHistory(List.of(), List.of("9788900000799"), List.of()));
+        assertThat(recommendationHistory.execute(userId).books()).isEmpty();
+        assertThat(products.execute(first)).isPresent();
+
+        jdbc.update("UPDATE books SET isbn13 = ? WHERE id = ?", "9788900000782", second);
+        assertThat(identifiers.findBookIds(List.of(duplicate, "9788900000782"))).containsEntry(duplicate, first)
+            .containsEntry("9788900000782", second);
+    }
 
     @BeforeEach
     void setUp() {

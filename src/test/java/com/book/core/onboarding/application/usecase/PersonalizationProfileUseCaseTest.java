@@ -1,6 +1,9 @@
 package com.book.core.onboarding.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.book.core.onboarding.application.port.AiPersonalizationProfileClient;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileHistory;
@@ -8,7 +11,9 @@ import com.book.core.onboarding.application.port.AiPersonalizationProfileMemory;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import com.book.core.onboarding.application.port.OnboardingOptionRepositoryPort;
 import com.book.core.onboarding.application.port.ProfileHistoryRepositoryPort;
+import com.book.core.onboarding.application.result.OwnedBook;
 import com.book.core.onboarding.application.port.ProfileMemoryRepositoryPort;
+import com.book.core.onboarding.application.port.ProfileSyncJobRepositoryPort;
 import com.book.core.onboarding.application.port.TermRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingAnswerRepositoryPort;
 import com.book.core.onboarding.application.port.UserOnboardingBookRepositoryPort;
@@ -19,8 +24,10 @@ import com.book.core.onboarding.domain.TermType;
 import com.book.core.onboarding.domain.UserOnboardingAnswer;
 import com.book.core.onboarding.domain.UserOnboardingBook;
 import com.book.core.onboarding.domain.UserTermAgreement;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +43,8 @@ class PersonalizationProfileUseCaseTest {
     private final FakeOptionRepository optionRepository = new FakeOptionRepository();
     private final FakeBookRepository bookRepository = new FakeBookRepository();
     private final FakeProfileClient profileClient = new FakeProfileClient();
+    private final ProfileSyncJobRepositoryPort profileJobs = mock(ProfileSyncJobRepositoryPort.class);
+    private static final Instant NOW = Instant.parse("2026-11-10T01:00:00Z");
     private final List<AiPersonalizationProfileMemory> memories = new ArrayList<>();
     private AiPersonalizationProfileHistory history = AiPersonalizationProfileHistory.EMPTY;
     private final PersonalizationProfileUseCase useCase = new PersonalizationProfileUseCase(termRepository, agreementRepository,
@@ -56,10 +65,15 @@ class PersonalizationProfileUseCaseTest {
             }
 
             @Override
+            public List<OwnedBook> findOwnedBooks(final Long userId) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
             public List<Long> findChangedUserIds(final Instant from, final Instant before) {
                 throw new UnsupportedOperationException();
             }
-        });
+        }, profileJobs, Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
     void 개인화_추천에_동의했으면_같은_요청_데이터로_AI_취향_프로필_갱신을_요청한다() {
@@ -73,6 +87,19 @@ class PersonalizationProfileUseCaseTest {
 
         assertThat(profileClient.updateRequests).singleElement().isEqualTo(
             new AiPersonalizationProfileRequest(USER_ID, List.of("아침, 하루를 시작할 때"), List.of(), List.of(), List.of(), List.of(100L)));
+        verifyNoInteractions(profileJobs);
+    }
+
+    @Test
+    void 갱신_요청_중_동의가_없어지면_갱신_뒤_삭제_작업을_다시_예약한다() {
+        termRepository.activeTerm = personalizationTerm();
+        agreementRepository.agreed = true;
+        profileClient.onUpdate = () -> agreementRepository.agreed = false;
+
+        useCase.executeUpdate(USER_ID);
+
+        assertThat(profileClient.updateRequests).hasSize(1);
+        verify(profileJobs).enqueue(USER_ID, NOW);
     }
 
     @Test
@@ -214,10 +241,18 @@ class PersonalizationProfileUseCaseTest {
 
     private static class FakeProfileClient implements AiPersonalizationProfileClient {
         final List<AiPersonalizationProfileRequest> updateRequests = new ArrayList<>();
+        Runnable onUpdate = () -> {
+        };
 
         @Override
         public void updateProfile(final AiPersonalizationProfileRequest request) {
             updateRequests.add(request);
+            onUpdate.run();
+        }
+
+        @Override
+        public void deleteProfile(final Long userId) {
+            throw new UnsupportedOperationException();
         }
     }
 }

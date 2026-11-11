@@ -2,46 +2,57 @@ package com.book.core.agentchat.infrastructure.client;
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
 import com.book.core.agentchat.application.result.AgentAction;
 import com.book.core.agentchat.application.result.AgentButton;
+import com.book.core.agentchat.application.result.AgentCheckout;
 import com.book.core.agentchat.application.result.AgentChosenBook;
 import com.book.core.agentchat.application.result.AgentDecision;
 import com.book.core.agentchat.application.result.AgentSelection;
 import com.book.core.recommendation.application.command.RecommendationCardCandidate;
 import com.book.core.recommendation.application.command.ResolveRecommendationCommand;
+import tools.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 class AgentChatExternalMapper {
-    AgentDecision map(final AgentAiData data) {
+    private final GetAiBookIdentifiersUseCase identifiers;
+
+    AgentDecision map(final AgentAiData data, final boolean recommendationOnly) {
         if (data == null || data.reply() == null || data.reply().isBlank() || data.reply().length() > 4000 || data.buttons() == null
             || data.buttons().size() > 10) {
             throw invalid();
         }
         final List<AgentButton> buttons = data.buttons().stream().map(this::button).toList();
-        if ("recommend".equals(data.route())) {
+        if ("recommend".equals(data.route()) || (recommendationOnly && data.route() == null)) {
             if (data.spec() == null || data.cards() == null || data.degraded() == null
                 || (data.actions() != null && !data.actions().isEmpty()) || data.selection() != null
                 || buttons.stream().anyMatch((final AgentButton button) -> !"navigate".equals(button.action()))) {
                 throw invalid();
             }
-            final List<RecommendationCardCandidate> cards = data.cards().stream().map((final AgentAiCard card) -> {
-                if (card == null || card.bookId() == null || card.bookId() <= 0) {
-                    throw invalid();
-                }
-                return new RecommendationCardCandidate(card.bookId(), card.matchScore(), card.reasonShort(), card.reasonLong());
-            }).toList();
+            if (data.cards().stream().anyMatch(Objects::isNull)) {
+                throw invalid();
+            }
+            final Map<String, Long> bookIds = identifiers.findBookIds(data.cards().stream().map(AgentAiCard::isbn).toList());
+            final List<RecommendationCardCandidate> cards =
+                data.cards().stream().filter((final AgentAiCard card) -> card.isbn() != null && bookIds.containsKey(card.isbn()))
+                    .map((final AgentAiCard card) -> new RecommendationCardCandidate(bookIds.get(card.isbn()), card.matchScore(),
+                        card.reasonShort(), card.reasonLong()))
+                    .toList();
             return new AgentDecision("recommend", data.reply(),
                 new ResolveRecommendationCommand(data.spec(), data.reply(), cards, data.followup(), List.of(), data.degraded()), List.of(),
-                null, buttons);
+                null, buttons, null);
         }
-        if (!"shop".equals(data.route()) || data.actions() == null || data.actions().size() > 30 || data.spec() != null
-            || data.cards() != null || data.followup() != null || data.degraded() != null) {
+        if (recommendationOnly || !"shop".equals(data.route()) || data.actions() == null || data.actions().size() > 30
+            || data.spec() != null || data.cards() != null || data.followup() != null || data.degraded() != null) {
             throw invalid();
         }
         for (final AgentAiAction action : data.actions()) {
@@ -102,7 +113,19 @@ class AgentChatExternalMapper {
             }
             return new AgentAction(action.op(), action.isbn(), quantity);
         }).toList();
-        return new AgentDecision("shop", data.reply(), null, actions, selection, buttons);
+        return new AgentDecision("shop", data.reply(), null, actions, selection, buttons, checkout(data.checkout()));
+    }
+
+    private static AgentCheckout checkout(final JsonNode checkout) {
+        if (checkout == null || !checkout.isObject()) {
+            return null;
+        }
+        final JsonNode couponId = checkout.path("owned_coupon_id");
+        final JsonNode usePoint = checkout.path("use_point");
+        if ((!couponId.isNull() && (!couponId.isIntegralNumber() || !couponId.canConvertToLong())) || !usePoint.isIntegralNumber()) {
+            return null;
+        }
+        return new AgentCheckout(couponId.isNull() ? null : couponId.longValue(), usePoint.decimalValue());
     }
 
     private AgentButton button(final AgentAiButton button) {
@@ -110,7 +133,7 @@ class AgentChatExternalMapper {
             throw invalid();
         }
         if ("navigate".equals(button.action()) && button.target() != null
-            && Set.of("CART-001", "ORDER-LIST-001").contains(button.target())) {
+            && Set.of("CART-001", "ORDER-LIST-001", AgentButton.CHECKOUT_TARGET).contains(button.target())) {
             return new AgentButton(button.label(), button.action(), button.target(), null);
         }
         if ("confirm_selection".equals(button.action())) {

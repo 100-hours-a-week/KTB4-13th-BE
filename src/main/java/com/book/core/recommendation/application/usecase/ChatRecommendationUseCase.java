@@ -16,6 +16,7 @@ import com.book.core.recommendation.application.result.ResolvedRecommendationCar
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -31,10 +32,18 @@ public class ChatRecommendationUseCase {
     private final GetRecommendationProductsUseCase getRecommendationProductsUseCase;
 
     public ChatRecommendationAiOutcome execute(final ChatRecommendationCommand command) {
+        return execute(command, null);
+    }
 
+    public ChatRecommendationAiOutcome execute(final ChatRecommendationCommand command, final Consumer<String> onDelta) {
         final AiRecommendationChatRequest aiRequest = new AiRecommendationChatRequest(command.userId(), command.consented(), command.spec(),
             command.message(), command.recentTurns(), command.excludeBookIds());
-        final AiRecommendationChatResult aiResult = aiRecommendationClient.chat(aiRequest);
+        final AiRecommendationChatResult aiResult;
+        if (onDelta == null) {
+            aiResult = aiRecommendationClient.chat(aiRequest);
+        } else {
+            aiResult = aiRecommendationClient.chat(aiRequest, onDelta);
+        }
 
         return resolve(new ResolveRecommendationCommand(aiResult.spec(), aiResult.reply(),
             aiResult.cards().stream().map((final AiRecommendationCard card) -> new RecommendationCardCandidate(card.bookId(),

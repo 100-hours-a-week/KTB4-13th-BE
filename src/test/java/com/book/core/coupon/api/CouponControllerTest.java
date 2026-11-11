@@ -146,19 +146,19 @@ class CouponControllerTest {
     }
 
     @Test
-    void 보유_응답은_참고_프로젝트의_flat_필드를_유지한다() throws Exception {
+    void 보유_쿠폰_응답은_보유_ID와_쿠폰_ID를_별도_필드로_반환한다() throws Exception {
         authenticate();
         final var coupon = new CouponResult(10L, "할인", CouponType.PERCENT_RATE, new BigDecimal("0.10"), new BigDecimal("1000"),
             LocalDateTime.of(2026, 10, 20, 9, 0));
         when(ownedCouponService.getOwnedCoupons(new GetOwnedCouponsCommand(42L)))
             .thenReturn(List.of(new OwnedCouponResult(1L, 42L, OwnedCouponStatus.ISSUED, 2L, 1L, coupon)));
         mvc.perform(get("/api/v1/owned-coupons").header("Authorization", "Bearer test-token").param("userId", "99"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(1)).andExpect(jsonPath("$.data[0].state").value("ISSUED"))
-            .andExpect(jsonPath("$.data[0].name").value("할인")).andExpect(jsonPath("$.data[0].type").value("PERCENT_RATE"))
-            .andExpect(jsonPath("$.data[0].discount").value(0.10)).andExpect(jsonPath("$.data[0].minOrderAmount").value(1000))
-            .andExpect(jsonPath("$.data[0].maxUseCount").value(2)).andExpect(jsonPath("$.data[0].usedCount").value(1))
-            .andExpect(jsonPath("$.data[0].expiredAt").exists()).andExpect(jsonPath("$.data[0].coupon").doesNotExist())
-            .andExpect(jsonPath("$.data[0].userId").doesNotExist());
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(1)).andExpect(jsonPath("$.data[0].couponId").value(10))
+            .andExpect(jsonPath("$.data[0].state").value("ISSUED")).andExpect(jsonPath("$.data[0].name").value("할인"))
+            .andExpect(jsonPath("$.data[0].type").value("PERCENT_RATE")).andExpect(jsonPath("$.data[0].discount").value(0.10))
+            .andExpect(jsonPath("$.data[0].minOrderAmount").value(1000)).andExpect(jsonPath("$.data[0].maxUseCount").value(2))
+            .andExpect(jsonPath("$.data[0].usedCount").value(1)).andExpect(jsonPath("$.data[0].expiredAt").exists())
+            .andExpect(jsonPath("$.data[0].coupon").doesNotExist()).andExpect(jsonPath("$.data[0].userId").doesNotExist());
     }
 
     @Test

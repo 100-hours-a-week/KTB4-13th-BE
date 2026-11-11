@@ -47,16 +47,19 @@ class SearchControllerTest {
     @Test
     void 검색어만_보내면_popular_정렬과_크기_12로_검색하고_결과를_응답한다() throws Exception {
         when(searchService.searchBooks(any())).thenReturn(new SearchBooksResult(
-            List.of(new SearchBookItemResult(2077L, 501L, "여행의 이유", "김영하", "문학동네", new BigDecimal("13500"), true,
-                "https://example.com/2077.jpg"), new SearchBookItemResult(4400L, null, "상품 없는 책", "작가", "출판사", null, false, null)),
+            List.of(
+                new SearchBookItemResult(2077L, "9788900000011", 501L, "여행의 이유", "김영하", "문학동네", new BigDecimal("13500"), true,
+                    "https://example.com/2077.jpg"),
+                new SearchBookItemResult(4400L, "9788900000028", null, "상품 없는 책", "작가", "출판사", null, false, null)),
             "next-page", null, null));
 
         mvc.perform(get("/api/v1/search").param("query", "여행")).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.items[0].bookId").value(2077)).andExpect(jsonPath("$.data.items[0].productId").value(501))
             .andExpect(jsonPath("$.data.items[1].bookId").value(4400)).andExpect(jsonPath("$.data.items[1].productId").value(nullValue()))
-            .andExpect(jsonPath("$.data.items[0].title").value("여행의 이유")).andExpect(jsonPath("$.data.items[0].author").value("김영하"))
-            .andExpect(jsonPath("$.data.items[0].publisher").value("문학동네")).andExpect(jsonPath("$.data.items[0].price").value(13500))
-            .andExpect(jsonPath("$.data.items[0].inStock").value(true))
+            .andExpect(jsonPath("$.data.items[0].isbn").value("9788900000011"))
+            .andExpect(jsonPath("$.data.items[1].isbn").value("9788900000028")).andExpect(jsonPath("$.data.items[0].title").value("여행의 이유"))
+            .andExpect(jsonPath("$.data.items[0].author").value("김영하")).andExpect(jsonPath("$.data.items[0].publisher").value("문학동네"))
+            .andExpect(jsonPath("$.data.items[0].price").value(13500)).andExpect(jsonPath("$.data.items[0].inStock").value(true))
             .andExpect(jsonPath("$.data.items[0].coverUrl").value("https://example.com/2077.jpg"))
             .andExpect(jsonPath("$.data.nextCursor").value("next-page")).andExpect(jsonPath("$.data.fallbackMessage").doesNotExist())
             .andExpect(jsonPath("$.data.totalCount").doesNotExist()).andExpect(header().doesNotExist("X-Degraded"));

@@ -102,7 +102,7 @@ class BookApplicationTest {
         assertThat(tokenIssuer).isInstanceOf(JwtTokenIssuer.class);
         assertThat(refreshTokenVerifier).isInstanceOf(JwtRefreshTokenVerifier.class);
         assertThat(AopUtils.getTargetClass(refreshTokenHasher).getSimpleName()).isEqualTo("Sha256RefreshTokenHasher");
-        assertThat(AopUtils.getTargetClass(refreshSessionRepository).getSimpleName()).isEqualTo("RefreshSessionRepositoryAdapter");
+        assertThat(AopUtils.getTargetClass(refreshSessionRepository).getSimpleName()).isEqualTo("RedisRefreshSessionRepositoryAdapter");
         assertThat(nicknameGenerator).isInstanceOf(NicknameGenerator.class);
         assertThat(kakaoJwtDecoder).isNotSameAs(serviceJwtDecoder);
         assertThat(securityFilterChain).isNotNull();

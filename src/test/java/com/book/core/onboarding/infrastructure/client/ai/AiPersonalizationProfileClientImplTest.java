@@ -2,6 +2,8 @@ package com.book.core.onboarding.infrastructure.client.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -13,6 +15,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.filter.RequestMdcFilter;
+import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileHistory;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileMemory;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
@@ -26,6 +29,7 @@ import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
@@ -39,8 +43,9 @@ class AiPersonalizationProfileClientImplTest {
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     private final PersonalizationProfileIdempotencyKeyGenerator idempotencyKeyGenerator =
         new PersonalizationProfileIdempotencyKeyGenerator();
+    private final GetAiBookIdentifiersUseCase identifiers = mock(GetAiBookIdentifiersUseCase.class);
     private final AiPersonalizationProfileClientImpl client =
-        new AiPersonalizationProfileClientImpl(builder.build(), idempotencyKeyGenerator);
+        new AiPersonalizationProfileClientImpl(builder.build(), idempotencyKeyGenerator, identifiers);
 
     @AfterEach
     void clearMdc() {
@@ -64,17 +69,49 @@ class AiPersonalizationProfileClientImplTest {
     }
 
     @Test
+    void PUT이_400으로_거부되면_기존처럼_재시도할_AI_서비스_호출_실패로_변환한다() {
+        server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT)).andRespond(withStatus(HttpStatus.BAD_REQUEST));
+
+        assertThatThrownBy(() -> client.updateProfile(profileRequest())).isInstanceOf(CoreException.class)
+            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
+    }
+
+    @Test
+    void DELETE가_400으로_거부되면_재시도하지_않을_요청_거부로_변환한다() {
+        server.expect(requestTo(PROFILE_URL + "?user_id=42")).andRespond(withStatus(HttpStatus.BAD_REQUEST));
+
+        assertThatThrownBy(() -> client.deleteProfile(42L)).isInstanceOf(CoreException.class)
+            .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.AI_SERVICE_INVALID_REQUEST));
+    }
+
+    @Test
+    void DELETE_preferences_profile에_인증_헤더와_회원_ID_쿼리를_보내고_이미_없는_프로필도_성공으로_처리한다() {
+        MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "request-delete-789");
+        server.expect(requestTo(PROFILE_URL + "?user_id=42")).andExpect(method(HttpMethod.DELETE))
+            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "request-delete-789"))
+            .andRespond(withSuccess("""
+                {"message":"profile_delete_success","data":{"deleted":false}}
+                """, MediaType.APPLICATION_JSON));
+
+        client.deleteProfile(42L);
+
+        server.verify();
+    }
+
+    @Test
     void PUT_preferences_profile에_인증_헤더와_요청_본문을_보낸다() {
         MDC.put(RequestMdcFilter.REQUEST_ID_MDC_KEY, "request-put-456");
         final AiPersonalizationProfileRequest request = profileRequest();
+        when(identifiers.findIsbns(List.of(100L, 300L))).thenReturn(List.of("9788900000011", "9788900000042"));
         server.expect(requestTo(PROFILE_URL)).andExpect(method(HttpMethod.PUT))
             .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + SERVICE_TOKEN)).andExpect(header("X-Request-Id", "request-put-456"))
             .andExpect(jsonPath("$.user_id").value(42))
             .andExpect(jsonPath("$.idempotency_key").value(idempotencyKeyGenerator.generate(request)))
             .andExpect(jsonPath("$.onboarding.reading_times[0]").value("잠들기 전"))
             .andExpect(jsonPath("$.onboarding.criteria[0]").value("베스트셀러")).andExpect(jsonPath("$.onboarding.categories[0]").value("소설"))
-            .andExpect(jsonPath("$.onboarding.tags[0]").value("SF")).andExpect(jsonPath("$.onboarding.liked_book_ids[1]").value(300))
-            .andExpect(jsonPath("$.memories").isEmpty()).andRespond(withSuccess());
+            .andExpect(jsonPath("$.onboarding.tags[0]").value("SF"))
+            .andExpect(jsonPath("$.onboarding.liked_isbns[1]").value("9788900000042")).andExpect(jsonPath("$.memories").isEmpty())
+            .andRespond(withSuccess());
 
         client.updateProfile(request);
 

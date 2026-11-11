@@ -42,7 +42,7 @@ class UserMemoryMySqlConstraintTest {
             INSERT INTO user_memories (user_id, type, value, strength, categories, keyword, vector, dim, conversation_id)
             VALUES (?, ?, '기억 문장', ?, CAST(? AS JSON), ?, CAST(? AS JSON), ?, 'cv_1')
             """, userId, type, strength, categories, keyword, vector, dim)).isInstanceOfSatisfying(UncategorizedSQLException.class,
-                (final UncategorizedSQLException exception) -> {
+            (final UncategorizedSQLException exception) -> {
                 final SQLException cause = exception.getSQLException();
                 org.assertj.core.api.Assertions.assertThat(cause.getErrorCode()).isEqualTo(3819);
                 org.assertj.core.api.Assertions.assertThat(cause.getMessage()).contains(constraint);

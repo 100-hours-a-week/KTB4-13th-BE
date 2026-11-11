@@ -20,6 +20,8 @@ import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.product.application.result.ProductOfferResult;
 import com.book.core.product.application.usecase.GetProductOffersUseCase;
+import com.book.core.coupon.application.result.OwnedCouponResult;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -43,10 +45,11 @@ public class PrepareAgentTurnUseCase {
     private final Clock clock;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public AgentPreparedTurn execute(final SendChatMessageCommand command, final long generation) {
+    public AgentPreparedTurn execute(final SendChatMessageCommand command, final long generation,
+        final List<OwnedCouponResult> ownedCoupons, final BigDecimal pointBalance) {
         final ChatRequest request = requireAttempt(command, generation);
         if (request.agentContext() == null) {
-            request.saveAgentContext(payloads.encodeContext(observe(command)));
+            request.saveAgentContext(payloads.encodeContext(observe(command, ownedCoupons, pointBalance)));
         }
         AgentDecision decision = null;
         if (request.agentDecision() != null) {
@@ -76,7 +79,8 @@ public class PrepareAgentTurnUseCase {
         return request;
     }
 
-    private AgentChatContext observe(final SendChatMessageCommand command) {
+    private AgentChatContext observe(final SendChatMessageCommand command, final List<OwnedCouponResult> ownedCoupons,
+        final BigDecimal pointBalance) {
         final List<GetCartItemResult> cart = carts.execute(command.userId()).items();
         final List<ChatCardSnapshot> cards = chats.latestCardResponse(command.sessionId())
             .map((final ChatMessage message) -> responses.decode(message.responsePayload()).cards()).orElse(List.of());
@@ -104,6 +108,6 @@ public class PrepareAgentTurnUseCase {
                 contextCards.add(new AgentContextCard(offer.isbn(), index + 1, card.matchScore()));
             }
         }
-        return new AgentChatContext(observed, contextCards);
+        return new AgentChatContext(observed, contextCards, ownedCoupons, pointBalance);
     }
 }

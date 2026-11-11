@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -146,9 +147,24 @@ class ChatRecommendationUseCaseTest {
             this.request = request;
             return result;
         }
+
+        @Override
+        public AiRecommendationChatResult chat(final AiRecommendationChatRequest request, final Consumer<String> onDelta) {
+            return chat(request);
+        }
     }
 
     private static class FakeBookRepositoryPort implements BookRepositoryPort {
+        @Override
+        public List<Book> findWithUnambiguousIsbnByIds(final List<Long> ids) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public List<Book> findWithUnambiguousIsbnByIsbns(final List<String> isbns) {
+            throw new UnsupportedOperationException();
+        }
+
         final Map<Long, Book> books = new HashMap<>();
 
         @Override

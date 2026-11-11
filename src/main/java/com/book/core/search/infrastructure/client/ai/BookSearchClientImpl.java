@@ -5,11 +5,13 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
 import com.book.common.filter.RequestMdcFilter;
+import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
 import com.book.core.search.application.port.BookSearchClient;
 import com.book.core.search.application.port.BookSearchItem;
 import com.book.core.search.application.port.BookSearchRequest;
 import com.book.core.search.application.port.BookSearchResult;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.MDC;
@@ -30,9 +32,12 @@ public class BookSearchClientImpl implements BookSearchClient {
     private static final long DEFAULT_RETRY_AFTER_SECONDS = 1;
 
     private final RestClient restClient;
+    private final GetAiBookIdentifiersUseCase identifiers;
 
-    public BookSearchClientImpl(@Qualifier(AiRestClientConfig.DEFAULT_AI_REST_CLIENT) final RestClient restClient) {
+    public BookSearchClientImpl(@Qualifier(AiRestClientConfig.DEFAULT_AI_REST_CLIENT) final RestClient restClient,
+        final GetAiBookIdentifiersUseCase identifiers) {
         this.restClient = restClient;
+        this.identifiers = identifiers;
     }
 
     @Override
@@ -87,9 +92,13 @@ public class BookSearchClientImpl implements BookSearchClient {
     }
 
     private BookSearchResult toResult(final AiSearchResponse response, final String degraded) {
+        final List<AiSearchItem> results = Optional.ofNullable(response.results()).orElseGet(List::of);
+        final Map<String, Long> bookIds = identifiers.findBookIds(results.stream().map(AiSearchItem::isbn).toList());
         final List<BookSearchItem> items =
-            Optional.ofNullable(response.results()).orElseGet(List::of).stream().map(item -> new BookSearchItem(item.bookId(), item.title(),
-                item.author(), item.publisher(), item.price(), item.inStock(), item.coverUrl())).toList();
+            results.stream().filter((final AiSearchItem item) -> item.isbn() != null && bookIds.containsKey(item.isbn()))
+                .map((final AiSearchItem item) -> new BookSearchItem(bookIds.get(item.isbn()), item.isbn(), item.title(), item.author(),
+                    item.publisher(), item.price(), item.coverUrl()))
+                .toList();
         final String fallbackMessage = response.fallback() == null ? null : response.fallback().message();
         return new BookSearchResult(items, response.nextCursor(), fallbackMessage, degraded);
     }

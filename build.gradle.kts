@@ -27,6 +27,8 @@ dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
     implementation("io.sentry:sentry-spring-boot-4-starter:8.52.0")
     implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
+    implementation(platform("software.amazon.awssdk:bom:2.57.3"))
+    implementation("software.amazon.awssdk:s3")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("org.flywaydb:flyway-mysql")
     runtimeOnly("com.mysql:mysql-connector-j")

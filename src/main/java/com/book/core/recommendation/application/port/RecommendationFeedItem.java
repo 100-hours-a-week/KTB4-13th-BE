@@ -9,6 +9,5 @@ public record RecommendationFeedItem(
         String author,
         BigDecimal price,
         String coverUrl,
-        boolean inStock,
         int matchScore) {}
 // @formatter:on

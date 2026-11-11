@@ -3,9 +3,9 @@ package com.book.core.coupon.application.result;
 import java.time.Instant;
 
 public record CouponStockReconciliationResult(long couponId, Instant observedAt, int totalQuantity, int issuedQuantity,
-    long ownedCouponCount, Integer redisStock, boolean soldOutSignalPresent) {
+    long ownedCouponCount, Integer redisStock, boolean soldOutSignalPresent, long pendingReservations) {
     public long expectedStock() {
-        return (long) totalQuantity - issuedQuantity;
+        return (long) totalQuantity - issuedQuantity - pendingReservations;
     }
 
     public Long stockDifference() {

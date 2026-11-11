@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 
 @UseCase
-@Profile("coupon-streams")
+@Profile({"coupon-streams", "coupon-kafka"})
 @RequiredArgsConstructor
 public class EnqueueCouponIssueUseCase {
     private final IssueCouponUseCase issueCouponUseCase;
@@ -27,6 +27,7 @@ public class EnqueueCouponIssueUseCase {
             }
             case DUPLICATE -> throw new CoreException(ErrorCode.COUPON_ALREADY_ISSUED);
             case SOLD_OUT -> throw new CoreException(ErrorCode.COUPON_SOLD_OUT);
+            case UNAVAILABLE -> throw new CoreException(ErrorCode.COUPON_NOT_FOUND_OR_EXPIRED);
             case FAILED -> throw new CoreException(ErrorCode.COUPON_ISSUE_FAILED);
         }
     }

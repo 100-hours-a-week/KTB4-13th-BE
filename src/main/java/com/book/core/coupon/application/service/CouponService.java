@@ -1,5 +1,10 @@
 package com.book.core.coupon.application.service;
 
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
+import com.book.core.coupon.application.command.CouponWaitingRoomCommand;
+import com.book.core.coupon.application.result.CouponWaitingRoomStatus;
+import com.book.core.coupon.application.usecase.CouponWaitingRoomUseCase;
 import com.book.core.coupon.application.command.CreateCouponCommand;
 import com.book.core.coupon.application.command.GetCouponsCommand;
 import com.book.core.coupon.application.command.IssueCouponCommand;
@@ -27,6 +32,7 @@ public class CouponService {
     private final IssueCouponUseCase issueCouponUseCase;
     private final GetCouponIssuePolicyUseCase getCouponIssuePolicyUseCase;
 
+    private final CouponWaitingRoomUseCase waitingRoom;
     private final ObjectProvider<EnqueueCouponIssueUseCase> enqueueCouponIssueUseCase;
 
     public CouponResult createCoupon(final CreateCouponCommand command) {
@@ -35,15 +41,31 @@ public class CouponService {
 
     public CouponIssueOutcome issue(final IssueCouponCommand command) {
         issueCouponUseCase.rejectIfSoldOut(command.couponId());
+        waitingRoom.requireAdmission(command.couponId(), command.userId());
         final CouponIssueState issueState = getCouponIssuePolicyUseCase.execute(command.couponId());
 
         final EnqueueCouponIssueUseCase enqueue = enqueueCouponIssueUseCase.getIfAvailable();
         if (enqueue != null) {
-            enqueue.execute(command, issueState);
+            try {
+                enqueue.execute(command, issueState);
+            } catch (final CoreException exception) {
+                if (exception.errorCode() == ErrorCode.COUPON_SOLD_OUT) {
+                    issueCouponUseCase.markSoldOut(command.couponId());
+                }
+                throw exception;
+            }
             return CouponIssueOutcome.ACCEPTED;
         }
         issueCouponUseCase.execute(command.userId(), command.couponId(), issueState);
         return CouponIssueOutcome.COMPLETED;
+    }
+
+    public CouponWaitingRoomStatus enterWaitingRoom(final CouponWaitingRoomCommand command) {
+        return waitingRoom.enter(command);
+    }
+
+    public CouponWaitingRoomStatus getWaitingRoomStatus(final CouponWaitingRoomCommand command) {
+        return waitingRoom.status(command);
     }
 
     public List<CouponResult> getCoupons(final GetCouponsCommand command) {

@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
-@Profile("coupon-streams")
+@Profile("coupon-streams & !coupon-kafka")
 @RequiredArgsConstructor
 public class CouponIssueStreamAdapter implements CouponIssueQueuePort {
     // shortcut: 실험 동안 접수 기록을 보관합니다. 운영 전 ACK 완료 기준 보존 정책이 필요합니다.

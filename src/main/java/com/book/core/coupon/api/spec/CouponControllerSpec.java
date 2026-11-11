@@ -1,5 +1,6 @@
 package com.book.core.coupon.api.spec;
 
+import com.book.core.coupon.application.result.CouponWaitingRoomStatus;
 import com.book.core.coupon.api.request.CreateCouponRequest;
 import com.book.core.coupon.api.response.CouponResponse;
 import com.book.core.coupon.api.response.OwnedCouponResponse;
@@ -34,7 +35,7 @@ public interface CouponControllerSpec {
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "쿠폰 발급", description = "활성 상태이고 발급 기간과 잔여 수량이 유효한 쿠폰을 인증된 회원에게 발급합니다.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "쿠폰 발급 및 DB 저장 완료"),
-        @ApiResponse(responseCode = "202", description = "Streams 실험 모드에서 접수 완료. 쿠폰함에는 DB 저장 이후 반영됩니다."),
+        @ApiResponse(responseCode = "202", description = "비동기 모드에서 접수 완료. 쿠폰함에는 DB 저장 이후 반영됩니다."),
         @ApiResponse(responseCode = "400", description = "잘못된 쿠폰 ID, 발급 기간이 아닌 쿠폰(E4000), 이미 발급한 쿠폰(E4001) 또는 발급 한도 초과(E4003)"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
     ResponseEntity<com.book.common.response.ApiResponse<Void>> issue(@Parameter(hidden = true) final Long userId,
@@ -46,4 +47,8 @@ public interface CouponControllerSpec {
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
     ResponseEntity<com.book.common.response.ApiResponse<List<OwnedCouponResponse>>> getOwnedCoupons(
         @Parameter(hidden = true) final Long userId);
+
+    ResponseEntity<com.book.common.response.ApiResponse<CouponWaitingRoomStatus>> enterWaitingRoom(Long userId, Long couponId);
+
+    ResponseEntity<com.book.common.response.ApiResponse<CouponWaitingRoomStatus>> getWaitingRoomStatus(Long userId, Long couponId);
 }

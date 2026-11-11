@@ -15,6 +15,7 @@ import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.book.domain.Book;
 import com.book.core.library.application.command.AddLibraryBooksCommand;
 import com.book.core.library.application.usecase.AddLibraryBooksUseCase;
+import com.book.core.library.application.usecase.CreateShelfPhotoUploadUseCase;
 import com.book.core.library.application.usecase.DeleteLibraryBooksUseCase;
 import com.book.core.library.application.usecase.GetLibraryBooksUseCase;
 import java.util.List;
@@ -25,7 +26,7 @@ class LibraryServiceTest {
     private final AddLibraryBooksUseCase addLibraryBooksUseCase = mock(AddLibraryBooksUseCase.class);
     private final GetBooksUseCase getBooksUseCase = mock(GetBooksUseCase.class);
     private final LibraryService service = new LibraryService(mock(GetLibraryBooksUseCase.class), addLibraryBooksUseCase, getBooksUseCase,
-        mock(DeleteLibraryBooksUseCase.class));
+        mock(DeleteLibraryBooksUseCase.class), mock(CreateShelfPhotoUploadUseCase.class));
 
     @Test
     void 고른_책이_모두_있으면_중복을_합쳐_확인한_뒤_기존_추가_UseCase로_담는다() {

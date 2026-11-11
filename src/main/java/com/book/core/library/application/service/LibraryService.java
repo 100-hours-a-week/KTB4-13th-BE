@@ -4,9 +4,12 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.book.application.usecase.GetBooksUseCase;
 import com.book.core.library.application.command.AddLibraryBooksCommand;
+import com.book.core.library.application.command.CreateShelfPhotoUploadCommand;
 import com.book.core.library.application.command.DeleteLibraryBooksCommand;
 import com.book.core.library.application.result.LibraryBookResult;
+import com.book.core.library.application.result.ShelfPhotoUploadResult;
 import com.book.core.library.application.usecase.AddLibraryBooksUseCase;
+import com.book.core.library.application.usecase.CreateShelfPhotoUploadUseCase;
 import com.book.core.library.application.usecase.DeleteLibraryBooksUseCase;
 import com.book.core.library.application.usecase.GetLibraryBooksUseCase;
 import java.util.List;
@@ -21,6 +24,7 @@ public class LibraryService {
     private final AddLibraryBooksUseCase addLibraryBooksUseCase;
     private final GetBooksUseCase getBooksUseCase;
     private final DeleteLibraryBooksUseCase deleteLibraryBooksUseCase;
+    private final CreateShelfPhotoUploadUseCase createShelfPhotoUploadUseCase;
 
     public List<LibraryBookResult> getBooks(final Long userId) {
         return getLibraryBooksUseCase.execute(userId);
@@ -41,5 +45,9 @@ public class LibraryService {
 
     public void deleteBooks(final DeleteLibraryBooksCommand command) {
         deleteLibraryBooksUseCase.execute(command);
+    }
+
+    public ShelfPhotoUploadResult createPhotoUpload(final CreateShelfPhotoUploadCommand command) {
+        return createShelfPhotoUploadUseCase.execute(command);
     }
 }

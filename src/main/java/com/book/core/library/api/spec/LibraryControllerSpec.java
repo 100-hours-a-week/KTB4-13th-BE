@@ -1,8 +1,10 @@
 package com.book.core.library.api.spec;
 
 import com.book.core.library.api.request.AddLibraryBooksRequest;
+import com.book.core.library.api.request.CreateShelfPhotoUploadRequest;
 import com.book.core.library.api.request.DeleteLibraryBooksRequest;
 import com.book.core.library.api.response.LibraryBooksResponse;
+import com.book.core.library.api.response.ShelfPhotoUploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -48,4 +50,17 @@ public interface LibraryControllerSpec {
     ResponseEntity<com.book.common.response.ApiResponse<Void>> deleteBooks(@Parameter(hidden = true) final Long userId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = DeleteLibraryBooksRequest.class)))
         @Valid final DeleteLibraryBooksRequest request);
+
+    @Operation(summary = "책 사진 업로드 주소 발급",
+        description = "책 표지나 책장 사진을 S3에 직접 올릴 5분짜리 주소를 발급합니다. JPEG·PNG, 10MB 이하만 가능합니다. "
+            + "응답의 headers를 그대로 붙이고 contentLength와 같은 크기의 파일을 PUT으로 올려야 합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "발급 성공"),
+        @ApiResponse(responseCode = "400", description = "지원하지 않는 형식이거나 10MB를 넘음"),
+        @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
+    @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
+    ResponseEntity<com.book.common.response.ApiResponse<ShelfPhotoUploadResponse>> createPhotoUpload(
+        @Parameter(hidden = true) final Long userId,
+        @RequestBody(required = true, content = @Content(schema = @Schema(implementation = CreateShelfPhotoUploadRequest.class)))
+        @Valid final CreateShelfPhotoUploadRequest request);
 }

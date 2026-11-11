@@ -6,8 +6,10 @@ import com.book.core.library.api.converter.LibraryCommandConverter;
 import com.book.core.library.api.request.AddLibraryBooksRequest;
 import com.book.core.library.api.request.CreateShelfPhotoUploadRequest;
 import com.book.core.library.api.request.DeleteLibraryBooksRequest;
+import com.book.core.library.api.request.ScanShelfPhotoRequest;
 import com.book.core.library.api.response.LibraryBooksResponse;
 import com.book.core.library.api.response.ShelfPhotoUploadResponse;
+import com.book.core.library.api.response.ShelfScanResponse;
 import com.book.core.library.api.spec.LibraryControllerSpec;
 import com.book.core.library.application.service.LibraryService;
 import jakarta.validation.Valid;
@@ -54,5 +56,13 @@ class LibraryController implements LibraryControllerSpec {
         @Valid @RequestBody final CreateShelfPhotoUploadRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(ShelfPhotoUploadResponse
             .from(libraryService.createPhotoUpload(commandConverter.toCreateShelfPhotoUploadCommand(userId, request)))));
+    }
+
+    @Override
+    @PostMapping("/photos/scans")
+    public ResponseEntity<ApiResponse<ShelfScanResponse>> scanPhoto(@UserId final Long userId,
+        @Valid @RequestBody final ScanShelfPhotoRequest request) {
+        return ResponseEntity.ok(
+            ApiResponse.ok(ShelfScanResponse.from(libraryService.scanPhoto(commandConverter.toScanShelfPhotoCommand(userId, request)))));
     }
 }

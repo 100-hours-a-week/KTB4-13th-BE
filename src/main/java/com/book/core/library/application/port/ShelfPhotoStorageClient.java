@@ -4,4 +4,6 @@ import com.book.core.library.application.result.ShelfPhotoUploadResult;
 
 public interface ShelfPhotoStorageClient {
     ShelfPhotoUploadResult presignUpload(String photoKey, String contentType, long contentLength);
+
+    String presignRead(String photoKey);
 }

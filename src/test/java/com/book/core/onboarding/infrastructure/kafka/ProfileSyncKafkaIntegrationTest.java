@@ -59,6 +59,8 @@ import org.testcontainers.mysql.MySQLContainer;
 @Tag("integration")
 @Tag("mysql-migration")
 class ProfileSyncKafkaIntegrationTest {
+    private static final String EXPECTED_TOPIC = "book.profile-sync.v1";
+    private static final String EXPECTED_DLT = "book.profile-sync.v1.DLT";
     @Container
     @ServiceConnection
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
@@ -94,12 +96,12 @@ class ProfileSyncKafkaIntegrationTest {
     static class KafkaTopics {
         @Bean
         NewTopic profileSyncTopic() {
-            return new NewTopic(ProfileSyncKafkaRelay.TOPIC, 1, (short) 1);
+            return new NewTopic(EXPECTED_TOPIC, 1, (short) 1);
         }
 
         @Bean
         NewTopic profileSyncDeadLetterTopic() {
-            return new NewTopic(ProfileSyncKafkaRelay.TOPIC + ".DLT", 1, (short) 1);
+            return new NewTopic(EXPECTED_DLT, 1, (short) 1);
         }
     }
 
@@ -163,7 +165,7 @@ class ProfileSyncKafkaIntegrationTest {
 
     private ConsumerRecord<Object, Object> readDeadLetter() {
         try (var consumer = consumerFactory.createConsumer("profile-sync-dlt-test")) {
-            final var partition = new TopicPartition(ProfileSyncKafkaRelay.TOPIC + ".DLT", 0);
+            final var partition = new TopicPartition(EXPECTED_DLT, 0);
             consumer.assign(List.of(partition));
             consumer.seekToBeginning(List.of(partition));
             final Instant deadline = Instant.now().plusSeconds(15);

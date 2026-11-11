@@ -15,6 +15,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import com.book.common.config.kafka.KafkaTopics;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.filter.RequestMdcFilter;
@@ -160,11 +161,10 @@ class AiPersonalizationProfileClientImplTest {
             .andRespond(withSuccess());
         client.updateProfile(request);
         final KafkaTemplate<String, String> kafka = mock(KafkaTemplate.class);
-        when(kafka.send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), any(String.class)))
-            .thenReturn(CompletableFuture.completedFuture(null));
+        when(kafka.send(eq(KafkaTopics.AI_PROFILE), eq("42"), any(String.class))).thenReturn(CompletableFuture.completedFuture(null));
         new AiPersonalizationProfileKafkaClient(mapper, kafka, json).updateProfile(request, UUID.randomUUID());
         final ArgumentCaptor<String> sent = ArgumentCaptor.forClass(String.class);
-        verify(kafka).send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), sent.capture());
+        verify(kafka).send(eq(KafkaTopics.AI_PROFILE), eq("42"), sent.capture());
         assertThat(json.readTree(sent.getValue()).path("profile")).isEqualTo(json.readTree(httpBody[0]));
         server.verify();
     }

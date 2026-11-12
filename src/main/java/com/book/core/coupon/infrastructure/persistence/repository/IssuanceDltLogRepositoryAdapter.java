@@ -2,7 +2,7 @@ package com.book.core.coupon.infrastructure.persistence.repository;
 
 import com.book.core.coupon.application.port.IssuanceDltLogRepositoryPort;
 import com.book.core.coupon.domain.IssuanceDltLog;
-import java.util.Optional;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -23,14 +23,13 @@ class IssuanceDltLogRepositoryAdapter implements IssuanceDltLogRepositoryPort {
     }
 
     @Override
-    public Optional<ReplayRequest> lockNextRequested() {
+    public List<ReplayRequest> lockPending(final List<Long> ids) {
         return jdbc.sql("""
             SELECT id, message_key, payload
             FROM issuance_dlt_log
-            WHERE replayed_at IS NULL AND replay_requested_at IS NOT NULL AND payload IS NOT NULL
-            ORDER BY replay_requested_at, id
-            LIMIT 1 FOR UPDATE SKIP LOCKED
-            """).query(ReplayRequest.class).optional();
+            WHERE id IN (:ids) AND replayed_at IS NULL AND payload IS NOT NULL
+            ORDER BY id FOR UPDATE
+            """).param("ids", ids).query(ReplayRequest.class).list();
     }
 
     @Override

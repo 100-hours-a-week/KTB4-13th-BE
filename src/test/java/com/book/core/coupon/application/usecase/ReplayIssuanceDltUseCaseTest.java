@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 import com.book.core.coupon.application.port.IssuanceDltLogRepositoryPort;
 import com.book.core.coupon.application.port.IssuanceDltLogRepositoryPort.ReplayRequest;
 import com.book.core.coupon.application.port.IssuanceRequestPublisher;
-import java.util.Optional;
+import java.util.List;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.Test;
@@ -22,25 +22,25 @@ class ReplayIssuanceDltUseCaseTest {
 
     @Test
     void 선택된_실패_건이_없으면_발행하지_않는다() {
-        when(logs.lockNextRequested()).thenReturn(Optional.empty());
+        when(logs.lockPending(List.of(7L))).thenReturn(List.of());
 
-        useCase.execute();
+        assertThatThrownBy(() -> useCase.execute(List.of(7L))).isInstanceOf(com.book.common.exception.CoreException.class);
 
         verifyNoInteractions(publisher);
     }
 
     @Test
     void 발행_확인을_받은_뒤에만_재발행_완료를_기록한다() {
-        when(logs.lockNextRequested()).thenReturn(Optional.of(new ReplayRequest(7L, "stream-id", "{}")));
+        when(logs.lockPending(List.of(7L))).thenReturn(List.of(new ReplayRequest(7L, "stream-id", "{}")));
         doThrow(new CompletionException(new TimeoutException())).doNothing().when(publisher).publishAndWait("stream-id", "{}");
 
-        assertThatThrownBy(useCase::execute).isInstanceOf(CompletionException.class);
-        useCase.execute();
+        assertThatThrownBy(() -> useCase.execute(List.of(7L))).isInstanceOf(CompletionException.class);
+        useCase.execute(List.of(7L));
 
         final var order = inOrder(logs, publisher);
-        order.verify(logs).lockNextRequested();
+        order.verify(logs).lockPending(List.of(7L));
         order.verify(publisher).publishAndWait("stream-id", "{}");
-        order.verify(logs).lockNextRequested();
+        order.verify(logs).lockPending(List.of(7L));
         order.verify(publisher).publishAndWait("stream-id", "{}");
         order.verify(logs).markReplayed(7L);
         order.verifyNoMoreInteractions();

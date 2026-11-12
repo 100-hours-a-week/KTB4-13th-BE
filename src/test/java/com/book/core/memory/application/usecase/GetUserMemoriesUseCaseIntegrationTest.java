@@ -65,8 +65,16 @@ class GetUserMemoriesUseCaseIntegrationTest {
         return jdbc.queryForObject("SELECT MAX(id) FROM users WHERE nickname = ?", Long.class, nickname);
     }
 
-    private Long insertMemory(final Long userId, final String type, final String value, final int strength, final String categories,
-        final String keyword, final String createdAt, final String deletedAt) {
+    private Long insertMemory(
+        final Long userId,
+        final String type,
+        final String value,
+        final int strength,
+        final String categories,
+        final String keyword,
+        final String createdAt,
+        final String deletedAt
+    ) {
         jdbc.update("""
             INSERT INTO user_memories (
                 user_id, type, value, strength, categories, keyword, vector, dim, conversation_id, created_at, updated_at, deleted_at

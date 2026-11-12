@@ -90,8 +90,12 @@ class GetRecommendationFeedUseCaseTest {
             matchScore);
     }
 
-    private static RecommendationFeedItemResult itemResult(final long bookId, final Long productId, final String title,
-        final int matchScore) {
+    private static RecommendationFeedItemResult itemResult(
+        final long bookId,
+        final Long productId,
+        final String title,
+        final int matchScore
+    ) {
         return new RecommendationFeedItemResult(bookId, productId, title, "작가", new BigDecimal("9900"),
             "https://example.com/" + bookId + ".jpg", productId != null, matchScore);
     }
@@ -139,8 +143,14 @@ class GetRecommendationFeedUseCaseTest {
         }
 
         @Override
-        public List<ProductListItem> findActiveProducts(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
-            final ProductListSort sort, final ProductListCursor cursor, final int limit) {
+        public List<ProductListItem> findActiveProducts(
+            final Long categoryId,
+            final LocalDate publishedFrom,
+            final LocalDate publishedTo,
+            final ProductListSort sort,
+            final ProductListCursor cursor,
+            final int limit
+        ) {
             throw new UnsupportedOperationException();
         }
     }

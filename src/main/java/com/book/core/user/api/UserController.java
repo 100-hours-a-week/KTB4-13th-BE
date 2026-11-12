@@ -37,8 +37,10 @@ class UserController implements UserControllerSpec {
 
     @Override
     @PatchMapping("/me")
-    public ResponseEntity<ApiResponse<Void>> updateMyInfo(@UserId final Long userId,
-        @Valid @RequestBody final UpdateMyInfoRequest request) {
+    public ResponseEntity<ApiResponse<Void>> updateMyInfo(
+        @UserId final Long userId,
+        @Valid @RequestBody final UpdateMyInfoRequest request
+    ) {
         userService.updateMyInfo(commandConverter.toUpdateMyInfoCommand(userId, request));
         return ResponseEntity.ok(ApiResponse.ok());
     }

@@ -36,8 +36,10 @@ class AgentCartController implements AgentCartControllerSpec {
 
     @Override
     @PostMapping("/executions")
-    public ResponseEntity<ApiResponse<AgentCartExecutionResponse>> confirm(@UserId final Long userId,
-        @Valid @RequestBody final ConfirmCartProposalRequest request) {
+    public ResponseEntity<ApiResponse<AgentCartExecutionResponse>> confirm(
+        @UserId final Long userId,
+        @Valid @RequestBody final ConfirmCartProposalRequest request
+    ) {
         final CartChangeResult result = service.confirm(commands.toConfirmCommand(userId, request));
         final URI location = URI.create("/api/v1/agent/cart/executions/" + result.executionId());
         if (result.replayed()) {
@@ -49,16 +51,20 @@ class AgentCartController implements AgentCartControllerSpec {
 
     @Override
     @GetMapping("/proposals/{proposalId}")
-    public ResponseEntity<ApiResponse<AgentCartProposalResponse>> proposal(@UserId final Long userId,
-        @Positive @PathVariable final Long proposalId) {
+    public ResponseEntity<ApiResponse<AgentCartProposalResponse>> proposal(
+        @UserId final Long userId,
+        @Positive @PathVariable final Long proposalId
+    ) {
         return ResponseEntity.ok().cacheControl(PRIVATE_NO_STORE)
             .body(ApiResponse.ok(results.toProposalResponse(service.getProposal(commands.toResourceCommand(userId, proposalId)))));
     }
 
     @Override
     @GetMapping("/executions/{executionId}")
-    public ResponseEntity<ApiResponse<AgentCartExecutionResponse>> execution(@UserId final Long userId,
-        @Positive @PathVariable final Long executionId) {
+    public ResponseEntity<ApiResponse<AgentCartExecutionResponse>> execution(
+        @UserId final Long userId,
+        @Positive @PathVariable final Long executionId
+    ) {
         return ResponseEntity.ok().cacheControl(PRIVATE_NO_STORE)
             .body(ApiResponse.ok(results.toExecutionResponse(service.getExecution(commands.toResourceCommand(userId, executionId)))));
     }

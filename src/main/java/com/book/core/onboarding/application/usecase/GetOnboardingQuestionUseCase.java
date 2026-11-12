@@ -57,8 +57,10 @@ public class GetOnboardingQuestionUseCase {
         return allOptions.stream().filter(option -> matchedParentOptionIds.contains(option.parentOptionId())).toList();
     }
 
-    private List<OnboardingOption> resolveOptionsByRequestedParents(final OnboardingQuestion question,
-        final List<Long> requestedParentOptionIds) {
+    private List<OnboardingOption> resolveOptionsByRequestedParents(
+        final OnboardingQuestion question,
+        final List<Long> requestedParentOptionIds
+    ) {
         final List<OnboardingOption> allOptions = optionRepository.findByQuestionId(question.id());
         final List<Long> parentOptionIds =
             allOptions.stream().map(OnboardingOption::parentOptionId).filter(Objects::nonNull).distinct().toList();

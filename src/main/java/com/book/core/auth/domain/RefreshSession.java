@@ -21,8 +21,13 @@ public final class RefreshSession {
         return new RefreshSession(null, userId, tokenHash, expiresAt, null);
     }
 
-    public static RefreshSession restore(final Long id, final Long userId, final String tokenHash, final Instant expiresAt,
-        final Instant revokedAt) {
+    public static RefreshSession restore(
+        final Long id,
+        final Long userId,
+        final String tokenHash,
+        final Instant expiresAt,
+        final Instant revokedAt
+    ) {
         return new RefreshSession(id, userId, tokenHash, expiresAt, revokedAt);
     }
 

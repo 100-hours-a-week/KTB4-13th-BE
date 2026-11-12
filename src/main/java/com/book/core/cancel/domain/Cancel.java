@@ -54,10 +54,24 @@ public class Cancel extends BaseEntity {
     @Column(name = "canceled_at", nullable = false)
     private LocalDateTime canceledAt;
 
-    public Cancel(final Long userId, final CancelType type, final Long orderId, final Long orderItemId, final Long paymentId,
-        final BigDecimal originAmount, final Long ownedCouponId, final BigDecimal couponDiscount, final BigDecimal usedPoint,
-        final BigDecimal paidAmount, final long canceledQuantity, final BigDecimal canceledPaidAmount, final BigDecimal canceledPointAmount,
-        final BigDecimal canceledCouponAmount, final String externalCancelKey, final LocalDateTime canceledAt) {
+    public Cancel(
+        final Long userId,
+        final CancelType type,
+        final Long orderId,
+        final Long orderItemId,
+        final Long paymentId,
+        final BigDecimal originAmount,
+        final Long ownedCouponId,
+        final BigDecimal couponDiscount,
+        final BigDecimal usedPoint,
+        final BigDecimal paidAmount,
+        final long canceledQuantity,
+        final BigDecimal canceledPaidAmount,
+        final BigDecimal canceledPointAmount,
+        final BigDecimal canceledCouponAmount,
+        final String externalCancelKey,
+        final LocalDateTime canceledAt
+    ) {
         this.userId = userId;
         this.type = type;
         this.orderId = orderId;

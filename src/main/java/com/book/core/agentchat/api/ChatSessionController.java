@@ -68,34 +68,45 @@ class ChatSessionController implements ChatSessionControllerSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<ChatSessionListResponse>> list(@UserId final Long userId,
+    public ResponseEntity<ApiResponse<ChatSessionListResponse>> list(
+        @UserId final Long userId,
         @Positive @RequestParam(required = false) final Long beforeId,
-        @Min(1) @Max(100) @RequestParam(defaultValue = "20") final int limit) {
+        @Min(1) @Max(100) @RequestParam(defaultValue = "20") final int limit
+    ) {
         final ChatSessionPageResult result = service.list(commandConverter.toListCommand(userId, beforeId, limit));
         return ResponseEntity.ok().cacheControl(PRIVATE_NO_STORE).body(ApiResponse.ok(resultConverter.toListResponse(result)));
     }
 
     @Override
     @GetMapping("/{sessionId}/messages")
-    public ResponseEntity<ApiResponse<ChatHistoryResponse>> history(@UserId final Long userId, @Positive @PathVariable final Long sessionId,
+    public ResponseEntity<ApiResponse<ChatHistoryResponse>> history(
+        @UserId final Long userId,
+        @Positive @PathVariable final Long sessionId,
         @PositiveOrZero @RequestParam(defaultValue = "0") final long afterSequence,
-        @Min(1) @Max(100) @RequestParam(defaultValue = "50") final int limit) {
+        @Min(1) @Max(100) @RequestParam(defaultValue = "50") final int limit
+    ) {
         final List<ChatHistoryMessage> result = service.history(commandConverter.toHistoryCommand(userId, sessionId, afterSequence, limit));
         return ResponseEntity.ok().cacheControl(PRIVATE_NO_STORE).body(ApiResponse.ok(resultConverter.toHistoryResponse(result)));
     }
 
     @Override
     @PostMapping(value = "/{sessionId}/messages", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ApiResponse<ChatReplyResponse>> send(@UserId final Long userId, @Positive @PathVariable final Long sessionId,
-        @Valid @RequestBody final SendChatMessageRequest request) {
+    public ResponseEntity<ApiResponse<ChatReplyResponse>> send(
+        @UserId final Long userId,
+        @Positive @PathVariable final Long sessionId,
+        @Valid @RequestBody final SendChatMessageRequest request
+    ) {
         final ChatResponseSnapshot result = service.send(commandConverter.toSendCommand(userId, sessionId, request));
         return ResponseEntity.ok().cacheControl(PRIVATE_NO_STORE).body(ApiResponse.ok(resultConverter.toReplyResponse(result)));
     }
 
     @Override
     @PostMapping(value = "/{sessionId}/messages", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public ResponseEntity<SseEmitter> stream(@UserId final Long userId, @Positive @PathVariable final Long sessionId,
-        @Valid @RequestBody final SendChatMessageRequest request) {
+    public ResponseEntity<SseEmitter> stream(
+        @UserId final Long userId,
+        @Positive @PathVariable final Long sessionId,
+        @Valid @RequestBody final SendChatMessageRequest request
+    ) {
         final SendChatMessageCommand command = commandConverter.toSendCommand(userId, sessionId, request);
         final SseEmitter emitter = new SseEmitter(60_000L);
         final ChatSseStream stream = new ChatSseStream(emitter);

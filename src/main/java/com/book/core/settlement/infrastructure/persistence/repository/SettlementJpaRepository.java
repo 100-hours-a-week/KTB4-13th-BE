@@ -17,6 +17,9 @@ interface SettlementJpaRepository extends JpaRepository<Settlement, Long> {
           AND s.state = com.book.core.settlement.domain.SettlementState.SENT
         GROUP BY s.merchantId
         """)
-    List<MerchantAmountProjection> sumOriginalAmount(final Collection<Long> merchantIds, final LocalDate startDate,
-        final LocalDate endDate);
+    List<MerchantAmountProjection> sumOriginalAmount(
+        final Collection<Long> merchantIds,
+        final LocalDate startDate,
+        final LocalDate endDate
+    );
 }

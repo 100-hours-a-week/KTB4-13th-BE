@@ -132,8 +132,11 @@ public class OrderService {
         return result;
     }
 
-    private void notifyLowStockAfterCommit(final Long orderUserId, final Map<Long, Integer> lowStockQuantitiesByProductId,
-        final Map<Long, GetProductDetailResult> productsByProductId) {
+    private void notifyLowStockAfterCommit(
+        final Long orderUserId,
+        final Map<Long, Integer> lowStockQuantitiesByProductId,
+        final Map<Long, GetProductDetailResult> productsByProductId
+    ) {
         final List<CreateNotificationCommand> commands = new ArrayList<>();
         lowStockQuantitiesByProductId.forEach((final Long productId, final Integer availableQuantity) -> {
             final String itemName = productsByProductId.get(productId).itemName();

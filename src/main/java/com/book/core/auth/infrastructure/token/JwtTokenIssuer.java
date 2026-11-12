@@ -29,8 +29,11 @@ public class JwtTokenIssuer implements TokenIssuer {
     private final TokenProperties properties;
     private final Clock clock;
 
-    public JwtTokenIssuer(@Qualifier(JwtTokenConfiguration.TOKEN_JWT_ENCODER) final JwtEncoder jwtEncoder, final TokenProperties properties,
-        @Qualifier(JwtTokenConfiguration.TOKEN_CLOCK) final Clock clock) {
+    public JwtTokenIssuer(
+        @Qualifier(JwtTokenConfiguration.TOKEN_JWT_ENCODER) final JwtEncoder jwtEncoder,
+        final TokenProperties properties,
+        @Qualifier(JwtTokenConfiguration.TOKEN_CLOCK) final Clock clock
+    ) {
         this.jwtEncoder = jwtEncoder;
         this.properties = properties;
         this.clock = clock;

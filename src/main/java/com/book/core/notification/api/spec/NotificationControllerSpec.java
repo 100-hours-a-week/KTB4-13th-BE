@@ -25,6 +25,8 @@ public interface NotificationControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "알림 ID는 양수여야 함"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "유효한 인증 필요"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "알림 없음 또는 다른 회원의 알림")})
-    ResponseEntity<ApiResponse<Void>> read(@Parameter(hidden = true) final Long userId,
-        @Positive @PathVariable("notificationId") final Long notificationId);
+    ResponseEntity<ApiResponse<Void>> read(
+        @Parameter(hidden = true) final Long userId,
+        @Positive @PathVariable("notificationId") final Long notificationId
+    );
 }

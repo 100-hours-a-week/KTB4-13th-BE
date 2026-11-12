@@ -12,8 +12,10 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 interface UserProviderJpaRepository extends JpaRepository<UserProvider, Long> {
-    Optional<UserProvider> findByProviderTypeAndProviderUserIdAndDeletedAtIsNull(final ProviderType providerType,
-        final String providerUserId);
+    Optional<UserProvider> findByProviderTypeAndProviderUserIdAndDeletedAtIsNull(
+        final ProviderType providerType,
+        final String providerUserId
+    );
 
     List<UserProvider> findByUserIdAndDeletedAtIsNull(final Long userId);
 

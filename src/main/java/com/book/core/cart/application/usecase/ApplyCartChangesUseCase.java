@@ -74,8 +74,12 @@ public class ApplyCartChangesUseCase {
         return new CartBatchChangeResult(now, null, false);
     }
 
-    private ErrorCode validate(final Cart cart, final List<CartItemChange> lines, final Map<Long, CartItem> currentItems,
-        final Map<Long, CartChangeProductResult> currentProducts) {
+    private ErrorCode validate(
+        final Cart cart,
+        final List<CartItemChange> lines,
+        final Map<Long, CartItem> currentItems,
+        final Map<Long, CartChangeProductResult> currentProducts
+    ) {
         int finalCount = (int) currentItems.values().stream().filter(CartItem::isActive).count();
         for (final CartItemChange line : lines) {
             final CartItem current = currentItems.get(line.productId());

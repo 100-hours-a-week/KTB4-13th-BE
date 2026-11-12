@@ -43,8 +43,10 @@ class RecommendationController implements RecommendationControllerSpec {
 
     @Override
     @PostMapping("/chat")
-    public ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(@UserId final Long userId,
-        @Valid @RequestBody final ChatRecommendationRequest request) {
+    public ResponseEntity<ApiResponse<ChatRecommendationResponse>> chat(
+        @UserId final Long userId,
+        @Valid @RequestBody final ChatRecommendationRequest request
+    ) {
         final ChatRecommendationCommand command = commandConverter.toChatRecommendationCommand(userId, request);
         final ChatRecommendationResult result = recommendationService.chat(command);
         final ChatRecommendationResponse response = resultConverter.toChatRecommendationResponse(result);
@@ -53,8 +55,10 @@ class RecommendationController implements RecommendationControllerSpec {
 
     @Override
     @GetMapping("/cards/{recommendationCardId}")
-    public ResponseEntity<ApiResponse<RecommendationCardDetailResponse>> getCard(@UserId final Long userId,
-        @Positive @PathVariable("recommendationCardId") final Long recommendationCardId) {
+    public ResponseEntity<ApiResponse<RecommendationCardDetailResponse>> getCard(
+        @UserId final Long userId,
+        @Positive @PathVariable("recommendationCardId") final Long recommendationCardId
+    ) {
         final GetRecommendationCardCommand command = commandConverter.toGetRecommendationCardCommand(userId, recommendationCardId);
         final RecommendationCardDetailResult result = recommendationService.getCard(command);
         final RecommendationCardDetailResponse response = resultConverter.toRecommendationCardDetailResponse(result);
@@ -63,7 +67,8 @@ class RecommendationController implements RecommendationControllerSpec {
 
     @Override
     @GetMapping("/feed")
-    public ResponseEntity<ApiResponse<RecommendationFeedResponse>> getFeed(@UserId final Long userId,
+    public ResponseEntity<ApiResponse<RecommendationFeedResponse>> getFeed(
+        @UserId final Long userId,
         @Pattern(regexp = "home|recommend_more")
         @RequestParam(value = "surface", required = false, defaultValue = "home") final String surface,
         @Positive @Max(50) @RequestParam(value = "size", required = false, defaultValue = "15") final int size,
@@ -72,7 +77,8 @@ class RecommendationController implements RecommendationControllerSpec {
         @RequestParam(value = "category", required = false) final String category,
         @Positive @RequestParam(value = "pubYearFrom", required = false) final Integer pubYearFrom,
         @Positive @RequestParam(value = "pubYearTo", required = false) final Integer pubYearTo,
-        @Min(0) @Max(100) @RequestParam(value = "matchScoreMin", required = false) final Integer matchScoreMin) {
+        @Min(0) @Max(100) @RequestParam(value = "matchScoreMin", required = false) final Integer matchScoreMin
+    ) {
         final GetRecommendationFeedCommand command = commandConverter.toGetRecommendationFeedCommand(userId, surface, size, cursor, sort,
             category, pubYearFrom, pubYearTo, matchScoreMin);
         final GetRecommendationFeedResult result = recommendationService.getFeed(command);

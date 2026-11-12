@@ -59,8 +59,17 @@ public class UserMemory extends BaseEntity {
     @Column(name = "conversation_id", nullable = false, length = 200)
     private String conversationId;
 
-    public UserMemory(final Long userId, final UserMemoryType type, final String value, final int strength, final List<String> categories,
-        final String keyword, final List<Float> vector, final int dim, final String conversationId) {
+    public UserMemory(
+        final Long userId,
+        final UserMemoryType type,
+        final String value,
+        final int strength,
+        final List<String> categories,
+        final String keyword,
+        final List<Float> vector,
+        final int dim,
+        final String conversationId
+    ) {
         validate(userId, type, value, strength, categories, keyword, vector, dim, conversationId);
         this.userId = userId;
         this.type = type;
@@ -85,8 +94,17 @@ public class UserMemory extends BaseEntity {
         return keyword.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
-    private static void validate(final Long userId, final UserMemoryType type, final String value, final int strength,
-        final List<String> categories, final String keyword, final List<Float> vector, final int dim, final String conversationId) {
+    private static void validate(
+        final Long userId,
+        final UserMemoryType type,
+        final String value,
+        final int strength,
+        final List<String> categories,
+        final String keyword,
+        final List<Float> vector,
+        final int dim,
+        final String conversationId
+    ) {
         if (userId == null || type == null || isBlank(value) || isBlank(keyword) || isBlank(conversationId)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }

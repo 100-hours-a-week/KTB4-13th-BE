@@ -77,6 +77,10 @@ interface ProductInventoryJpaRepository extends JpaRepository<ProductInventory, 
             INSERT IGNORE INTO product_inventory (product_id, on_hand_quantity, reserved_quantity, reorder_point, target_stock)
             VALUES (:productId, :onHandQuantity, 0, :reorderPoint, :targetStock)
             """, nativeQuery = true)
-    int insertIfMissing(@Param("productId") Long productId, @Param("onHandQuantity") int onHandQuantity,
-        @Param("reorderPoint") int reorderPoint, @Param("targetStock") int targetStock);
+    int insertIfMissing(
+        @Param("productId") Long productId,
+        @Param("onHandQuantity") int onHandQuantity,
+        @Param("reorderPoint") int reorderPoint,
+        @Param("targetStock") int targetStock
+    );
 }

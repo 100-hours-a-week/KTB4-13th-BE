@@ -196,8 +196,13 @@ class ProfileRepositoryAdaptersIntegrationTest {
             """, ownerId, bookId, updatedAt, deletedAt, updatedAt, updatedAt);
     }
 
-    private void insertReview(final Long ownerId, final long productId, final String rate, final LocalDateTime deletedAt,
-        final LocalDateTime updatedAt) {
+    private void insertReview(
+        final Long ownerId,
+        final long productId,
+        final String rate,
+        final LocalDateTime deletedAt,
+        final LocalDateTime updatedAt
+    ) {
         final long id = NEXT_ID.incrementAndGet();
         jdbc.update("""
             INSERT INTO reviews (id, user_id, review_key, target_type, target_id, rate, content, deleted_at, created_at, updated_at)

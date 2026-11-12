@@ -33,10 +33,12 @@ public interface UserControllerSpec {
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않거나 비활성 회원"),
         @ApiResponse(responseCode = "404", description = "회원을 찾을 수 없음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<Void>> updateMyInfo(@Parameter(hidden = true) final Long userId,
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> updateMyInfo(
+        @Parameter(hidden = true) final Long userId,
         @RequestBody(description = "수정할 회원 정보", required = true,
             content = @Content(schema = @Schema(implementation = UpdateMyInfoRequest.class)))
-        @Valid final UpdateMyInfoRequest request);
+        @Valid final UpdateMyInfoRequest request
+    );
 
     @Operation(summary = "회원 탈퇴 신청",
         description = "인증된 회원의 탈퇴를 신청하고 모든 Refresh Session을 폐기한 뒤 Refresh Token 쿠키를 만료합니다. 7일 이내 카카오 로그인 시 기존 회원으로 복구됩니다.")

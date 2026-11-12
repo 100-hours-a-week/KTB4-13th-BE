@@ -119,8 +119,14 @@ class GetCartUseCaseTest {
         }
 
         @Override
-        public List<ProductListItem> findActiveProducts(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
-            final ProductListSort sort, final ProductListCursor cursor, final int limit) {
+        public List<ProductListItem> findActiveProducts(
+            final Long categoryId,
+            final LocalDate publishedFrom,
+            final LocalDate publishedTo,
+            final ProductListSort sort,
+            final ProductListCursor cursor,
+            final int limit
+        ) {
             return List.of();
         }
     }

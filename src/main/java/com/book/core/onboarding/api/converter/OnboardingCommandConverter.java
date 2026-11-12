@@ -20,8 +20,11 @@ public class OnboardingCommandConverter {
         return new GetOnboardingBookCandidatesCommand(subcategoryCodes);
     }
 
-    public GetOnboardingQuestionCommand toGetOnboardingQuestionCommand(final Long userId, final Long questionId,
-        final List<Long> parentOptionIds) {
+    public GetOnboardingQuestionCommand toGetOnboardingQuestionCommand(
+        final Long userId,
+        final Long questionId,
+        final List<Long> parentOptionIds
+    ) {
         return new GetOnboardingQuestionCommand(userId, questionId, parentOptionIds);
     }
 
@@ -29,8 +32,11 @@ public class OnboardingCommandConverter {
         return new GetOnboardingProgressCommand(userId);
     }
 
-    public PutOnboardingAnswersCommand toPutOnboardingAnswersCommand(final Long userId, final Long questionId,
-        final PutOnboardingAnswersRequest request) {
+    public PutOnboardingAnswersCommand toPutOnboardingAnswersCommand(
+        final Long userId,
+        final Long questionId,
+        final PutOnboardingAnswersRequest request
+    ) {
         return new PutOnboardingAnswersCommand(userId, questionId, request.optionIds());
     }
 
@@ -38,8 +44,10 @@ public class OnboardingCommandConverter {
         return new PutOnboardingBooksCommand(userId, request.bookIds());
     }
 
-    public PutOnboardingPreferencesCommand toPutOnboardingPreferencesCommand(final Long userId,
-        final PutOnboardingPreferencesRequest request) {
+    public PutOnboardingPreferencesCommand toPutOnboardingPreferencesCommand(
+        final Long userId,
+        final PutOnboardingPreferencesRequest request
+    ) {
         final List<OnboardingPreferenceAnswerCommand> answers = request.answers().stream()
             .map(answer -> new OnboardingPreferenceAnswerCommand(answer.questionId(), answer.optionIds())).toList();
         return new PutOnboardingPreferencesCommand(userId, answers, request.bookIds());

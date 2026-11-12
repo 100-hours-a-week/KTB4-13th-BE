@@ -29,16 +29,21 @@ public interface ReviewControllerSpec {
         description = "상품의 활성 리뷰를 최신 ID 순으로 조회합니다. isMyReview는 본인 작성 여부이며 비로그인은 false입니다. offset은 건너뛸 개수이며 기본 limit은 20이며 최대 100개입니다.")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "리뷰 조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "대상 또는 페이징 값 오류")})
-    ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(@Parameter(hidden = true) final Long userId,
-        @RequestParam("targetType") final ReviewTargetType targetType, @Positive @RequestParam("targetId") final Long targetId,
+    ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(
+        @Parameter(hidden = true) final Long userId,
+        @RequestParam("targetType") final ReviewTargetType targetType,
+        @Positive @RequestParam("targetId") final Long targetId,
         @Min(0) @RequestParam(value = "offset", defaultValue = "0") final int offset,
-        @Positive @Max(OffsetLimit.MAX_LIMIT) @RequestParam(value = "limit", defaultValue = "20") final int limit);
+        @Positive @Max(OffsetLimit.MAX_LIMIT) @RequestParam(value = "limit", defaultValue = "20") final int limit
+    );
 
     @Operation(summary = "리뷰 수 조회", description = "targetType과 targetId에 해당하는 활성 리뷰 수를 조회합니다. 소프트 삭제된 리뷰는 제외합니다.")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "리뷰 수 조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "대상 입력 오류")})
-    ResponseEntity<ApiResponse<Long>> countReviews(@RequestParam("targetType") final ReviewTargetType targetType,
-        @Positive @RequestParam("targetId") final Long targetId);
+    ResponseEntity<ApiResponse<Long>> countReviews(
+        @RequestParam("targetType") final ReviewTargetType targetType,
+        @Positive @RequestParam("targetId") final Long targetId
+    );
 
 
     @Operation(summary = "리뷰 작성", description = "결제 완료한 주문상품에 리뷰를 작성합니다. 별점은 0.5~5.0 사이의 0.5 단위이며 본문은 최대 255자입니다.")
@@ -50,8 +55,10 @@ public interface ReviewControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "주문상품을 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Long>> addReview(@Parameter(hidden = true) final Long userId,
-        @RequestBody @Valid final AddReviewRequest request);
+    ResponseEntity<ApiResponse<Long>> addReview(
+        @Parameter(hidden = true) final Long userId,
+        @RequestBody @Valid final AddReviewRequest request
+    );
 
     @Operation(summary = "리뷰 수정", description = "별점과 본문을 함께 수정합니다. 별점은 0.5~5.0 사이의 0.5 단위이며 본문은 공백을 제외한 내용이 필요합니다.")
     @SecurityRequirement(name = "bearerAuth")
@@ -63,8 +70,11 @@ public interface ReviewControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "리뷰를 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Long>> updateReview(@Parameter(hidden = true) final Long userId,
-        @Positive @PathVariable("reviewId") final Long reviewId, @RequestBody @Valid final UpdateReviewRequest request);
+    ResponseEntity<ApiResponse<Long>> updateReview(
+        @Parameter(hidden = true) final Long userId,
+        @Positive @PathVariable("reviewId") final Long reviewId,
+        @RequestBody @Valid final UpdateReviewRequest request
+    );
 
     @Operation(summary = "리뷰 삭제", description = "리뷰를 소프트 삭제합니다.")
     @SecurityRequirement(name = "bearerAuth")
@@ -75,6 +85,8 @@ public interface ReviewControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "리뷰를 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<ApiResponse<Long>> removeReview(@Parameter(hidden = true) final Long userId,
-        @Positive @PathVariable("reviewId") final Long reviewId);
+    ResponseEntity<ApiResponse<Long>> removeReview(
+        @Parameter(hidden = true) final Long userId,
+        @Positive @PathVariable("reviewId") final Long reviewId
+    );
 }

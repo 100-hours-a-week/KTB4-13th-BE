@@ -16,8 +16,14 @@ import org.springframework.stereotype.Component;
 public class OrderCommandConverter {
     private static final int DEFAULT_ORDER_LIST_LIMIT = 20;
 
-    public GetOrdersCommand toGetOrdersCommand(final Long userId, final OrderStatus status, final LocalDate from, final LocalDate to,
-        final String cursor, final Integer limit) {
+    public GetOrdersCommand toGetOrdersCommand(
+        final Long userId,
+        final OrderStatus status,
+        final LocalDate from,
+        final LocalDate to,
+        final String cursor,
+        final Integer limit
+    ) {
         final OrderListCursor parsedCursor = OrderListCursor.parse(cursor, status, from, to);
         if (limit == null) {
             return new GetOrdersCommand(userId, status, from, to, parsedCursor, DEFAULT_ORDER_LIST_LIMIT);

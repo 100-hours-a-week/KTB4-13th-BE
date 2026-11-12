@@ -36,8 +36,15 @@ public class Settlement extends BaseEntity {
     @Column(nullable = false, length = 32)
     private SettlementState state;
 
-    public Settlement(final Long merchantId, final LocalDate settlementDate, final BigDecimal originalAmount, final BigDecimal feeAmount,
-        final BigDecimal feeRate, final BigDecimal settlementAmount, final SettlementState state) {
+    public Settlement(
+        final Long merchantId,
+        final LocalDate settlementDate,
+        final BigDecimal originalAmount,
+        final BigDecimal feeAmount,
+        final BigDecimal feeRate,
+        final BigDecimal settlementAmount,
+        final SettlementState state
+    ) {
         this.merchantId = merchantId;
         this.settlementDate = settlementDate;
         this.originalAmount = originalAmount;

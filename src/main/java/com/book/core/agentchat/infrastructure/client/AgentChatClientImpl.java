@@ -46,8 +46,14 @@ public class AgentChatClientImpl implements AgentChatClient {
     private final GetRecommendationHistoryUseCase history;
     private final ObjectMapper json;
 
-    public AgentChatClientImpl(final AiChatHttpClient http, final AgentChatProperties properties, final AgentChatExternalMapper mapper,
-        final GetAiBookIdentifiersUseCase identifiers, final GetRecommendationHistoryUseCase history, final ObjectMapper json) {
+    public AgentChatClientImpl(
+        final AiChatHttpClient http,
+        final AgentChatProperties properties,
+        final AgentChatExternalMapper mapper,
+        final GetAiBookIdentifiersUseCase identifiers,
+        final GetRecommendationHistoryUseCase history,
+        final ObjectMapper json
+    ) {
         this.http = http;
         this.properties = properties;
         this.mapper = mapper;
@@ -61,14 +67,23 @@ public class AgentChatClientImpl implements AgentChatClient {
     }
 
     @Override
-    public AgentDecision chat(final ChatRecommendationCommand command, final Long sessionId, final Long requestId,
-        final AgentChatContext context) {
+    public AgentDecision chat(
+        final ChatRecommendationCommand command,
+        final Long sessionId,
+        final Long requestId,
+        final AgentChatContext context
+    ) {
         return chat(command, sessionId, requestId, context, null);
     }
 
     @Override
-    public AgentDecision chat(final ChatRecommendationCommand command, final Long sessionId, final Long requestId,
-        final AgentChatContext context, final Consumer<String> onDelta) {
+    public AgentDecision chat(
+        final ChatRecommendationCommand command,
+        final Long sessionId,
+        final Long requestId,
+        final AgentChatContext context,
+        final Consumer<String> onDelta
+    ) {
         if (!enabled()) {
             throw new IllegalStateException("Agent shopping integration is disabled");
         }
@@ -130,8 +145,13 @@ public class AgentChatClientImpl implements AgentChatClient {
         }
     }
 
-    private AgentDecision attempt(final AgentAiRequest request, final List<RecommendationExclusion> exclusions, final boolean retried,
-        final Consumer<String> onDelta, final long deadline) {
+    private AgentDecision attempt(
+        final AgentAiRequest request,
+        final List<RecommendationExclusion> exclusions,
+        final boolean retried,
+        final Consumer<String> onDelta,
+        final long deadline
+    ) {
         try {
             final byte[] body = AiRequestBudget.fit(exclusions, (final List<RecommendationExclusion> selected) -> encode(request, selected),
                 (final byte[] payload) -> payload.length, AiRequestBudget.CHAT_BODY_BYTES, ErrorCode.AI_SERVICE_FAILURE);

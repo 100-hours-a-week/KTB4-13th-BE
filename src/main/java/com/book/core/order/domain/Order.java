@@ -86,8 +86,15 @@ public class Order extends BaseTimeEntity {
         return new Order(userId, key, address);
     }
 
-    public void addItem(final Long productId, final String itemName, final String thumbnailUrl, final String author,
-        final BigDecimal salePrice, final BigDecimal unitPrice, final Integer quantity) {
+    public void addItem(
+        final Long productId,
+        final String itemName,
+        final String thumbnailUrl,
+        final String author,
+        final BigDecimal salePrice,
+        final BigDecimal unitPrice,
+        final Integer quantity
+    ) {
         final OrderItem orderItem = OrderItem.created(this, productId, itemName, thumbnailUrl, author, salePrice, unitPrice, quantity);
         this.items.add(orderItem);
         this.totalPrice = this.totalPrice.add(orderItem.totalPrice());

@@ -25,8 +25,10 @@ public class KakaoOAuthTokenClientImpl implements OAuthTokenClient {
     private final RestClient restClient;
     private final KakaoProperties properties;
 
-    public KakaoOAuthTokenClientImpl(@Qualifier(KakaoTokenClientConfiguration.KAKAO_TOKEN_REST_CLIENT) final RestClient restClient,
-        final KakaoProperties properties) {
+    public KakaoOAuthTokenClientImpl(
+        @Qualifier(KakaoTokenClientConfiguration.KAKAO_TOKEN_REST_CLIENT) final RestClient restClient,
+        final KakaoProperties properties
+    ) {
         this.restClient = restClient;
         this.properties = properties;
     }

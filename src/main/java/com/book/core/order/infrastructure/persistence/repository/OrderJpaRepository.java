@@ -29,8 +29,11 @@ interface OrderJpaRepository extends JpaRepository<Order, Long> {
               )
             ORDER BY orders.expiresAt ASC, orders.id ASC
             """)
-    List<String> findExpiredOrderKeys(@Param("status") final OrderStatus status, @Param("now") final LocalDateTime now,
-        final Pageable pageable);
+    List<String> findExpiredOrderKeys(
+        @Param("status") final OrderStatus status,
+        @Param("now") final LocalDateTime now,
+        final Pageable pageable
+    );
 
     @Query("""
             SELECT COUNT(operation) > 0
@@ -57,7 +60,13 @@ interface OrderJpaRepository extends JpaRepository<Order, Long> {
                    OR (orders.paidAt = :cursorPaidAt AND orders.id < :cursorId))
             ORDER BY orders.paidAt DESC, orders.id DESC
             """)
-    List<Order> findPaidOrders(@Param("userId") final Long userId, @Param("status") final OrderStatus status,
-        @Param("paidAtFrom") final LocalDateTime paidAtFrom, @Param("paidAtBefore") final LocalDateTime paidAtBefore,
-        @Param("cursorPaidAt") final LocalDateTime cursorPaidAt, @Param("cursorId") final Long cursorId, final Pageable pageable);
+    List<Order> findPaidOrders(
+        @Param("userId") final Long userId,
+        @Param("status") final OrderStatus status,
+        @Param("paidAtFrom") final LocalDateTime paidAtFrom,
+        @Param("paidAtBefore") final LocalDateTime paidAtBefore,
+        @Param("cursorPaidAt") final LocalDateTime cursorPaidAt,
+        @Param("cursorId") final Long cursorId,
+        final Pageable pageable
+    );
 }

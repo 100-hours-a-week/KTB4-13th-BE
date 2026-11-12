@@ -8,8 +8,12 @@ public class RecommendationFeedResult {
     private final boolean coldStart;
     private final String degraded;
 
-    public RecommendationFeedResult(final List<RecommendationFeedItem> items, final String nextCursor, final boolean coldStart,
-        final String degraded) {
+    public RecommendationFeedResult(
+        final List<RecommendationFeedItem> items,
+        final String nextCursor,
+        final boolean coldStart,
+        final String degraded
+    ) {
         this.items = items;
         this.nextCursor = nextCursor;
         this.coldStart = coldStart;

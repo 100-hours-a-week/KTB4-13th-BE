@@ -68,8 +68,16 @@ public class OrderItem extends BaseTimeEntity {
     @Column(nullable = false, length = 16)
     private OrderItemStatus status;
 
-    private OrderItem(final Order order, final Long productId, final String itemName, final String thumbnailUrl, final String author,
-        final BigDecimal salePrice, final BigDecimal unitPrice, final Integer quantity) {
+    private OrderItem(
+        final Order order,
+        final Long productId,
+        final String itemName,
+        final String thumbnailUrl,
+        final String author,
+        final BigDecimal salePrice,
+        final BigDecimal unitPrice,
+        final Integer quantity
+    ) {
         if (order == null || productId == null || productId <= 0 || itemName == null || itemName.isBlank() || author == null
             || author.isBlank() || salePrice == null || salePrice.signum() < 0 || unitPrice == null || unitPrice.signum() < 0
             || quantity == null || !isQuantityInRange(quantity)) {
@@ -122,8 +130,16 @@ public class OrderItem extends BaseTimeEntity {
         status = OrderItemStatus.CANCELED;
     }
 
-    static OrderItem created(final Order order, final Long productId, final String itemName, final String thumbnailUrl, final String author,
-        final BigDecimal salePrice, final BigDecimal unitPrice, final Integer quantity) {
+    static OrderItem created(
+        final Order order,
+        final Long productId,
+        final String itemName,
+        final String thumbnailUrl,
+        final String author,
+        final BigDecimal salePrice,
+        final BigDecimal unitPrice,
+        final Integer quantity
+    ) {
         return new OrderItem(order, productId, itemName, thumbnailUrl, author, salePrice, unitPrice, quantity);
     }
 }

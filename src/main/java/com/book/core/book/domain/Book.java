@@ -53,8 +53,16 @@ public class Book extends BaseEntity {
     @Column(name = "cover_image_url")
     private String coverImageUrl;
 
-    public static Book registerNewBook(final String isbn13, final String title, final String author, final String description,
-        final String publisher, final String category, final LocalDate publishedAt, final String coverImageUrl) {
+    public static Book registerNewBook(
+        final String isbn13,
+        final String title,
+        final String author,
+        final String description,
+        final String publisher,
+        final String category,
+        final LocalDate publishedAt,
+        final String coverImageUrl
+    ) {
         final String normalizedIsbn13 = Isbn13.normalize(isbn13).orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
         if (title == null || title.isBlank() || author == null || author.isBlank() || publisher == null || publisher.isBlank()
             || category == null || category.isBlank() || publishedAt == null) {
@@ -66,8 +74,18 @@ public class Book extends BaseEntity {
         return book;
     }
 
-    public Book(final Long id, final String isbn13, final String isbn10, final String title, final String author, final String description,
-        final String publisher, final String category, final LocalDate publishedAt, final String coverImageUrl) {
+    public Book(
+        final Long id,
+        final String isbn13,
+        final String isbn10,
+        final String title,
+        final String author,
+        final String description,
+        final String publisher,
+        final String category,
+        final LocalDate publishedAt,
+        final String coverImageUrl
+    ) {
         super(id);
         this.isbn13 = isbn13;
         this.isbn10 = isbn10;

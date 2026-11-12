@@ -19,8 +19,10 @@ class NewBookImportScheduler {
     private final NewBookImportService imports;
 
     @Bean(defaultCandidate = false, destroyMethod = "shutdown")
-    static ScheduledExecutorService newBookImportExecutor(@Value("${app.new-book.national-library-key}") final String nationalLibraryKey,
-        @Value("${app.new-book.data-for-library-key}") final String dataForLibraryKey) {
+    static ScheduledExecutorService newBookImportExecutor(
+        @Value("${app.new-book.national-library-key}") final String nationalLibraryKey,
+        @Value("${app.new-book.data-for-library-key}") final String dataForLibraryKey
+    ) {
         if (nationalLibraryKey.isBlank() || dataForLibraryKey.isBlank()) {
             throw new IllegalArgumentException("Both new book catalog API keys are required");
         }

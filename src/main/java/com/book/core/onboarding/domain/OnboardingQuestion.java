@@ -49,8 +49,14 @@ public class OnboardingQuestion {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public OnboardingQuestion(final Long id, final String code, final String content, final int minSelection, final Integer maxSelection,
-        final int displayOrder) {
+    public OnboardingQuestion(
+        final Long id,
+        final String code,
+        final String content,
+        final int minSelection,
+        final Integer maxSelection,
+        final int displayOrder
+    ) {
         this.id = id;
         this.code = code;
         this.content = content;

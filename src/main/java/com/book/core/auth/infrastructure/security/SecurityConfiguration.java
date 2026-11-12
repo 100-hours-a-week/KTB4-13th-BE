@@ -21,10 +21,14 @@ import org.springframework.web.cors.CorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfiguration {
     @Bean
-    SecurityFilterChain securityFilterChain(final HttpSecurity http, @Qualifier("serviceJwtDecoder") final JwtDecoder serviceJwtDecoder,
-        final JwtAuthenticationEntryPoint authenticationEntryPoint, final CorsConfigurationSource corsConfigurationSource,
+    SecurityFilterChain securityFilterChain(
+        final HttpSecurity http,
+        @Qualifier("serviceJwtDecoder") final JwtDecoder serviceJwtDecoder,
+        final JwtAuthenticationEntryPoint authenticationEntryPoint,
+        final CorsConfigurationSource corsConfigurationSource,
         final CheckUserRestrictionUseCase checkUserRestrictionUseCase,
-        @Value("${coupon.admin.user-ids:}") final Set<String> couponAdminUserIds) throws Exception {
+        @Value("${coupon.admin.user-ids:}") final Set<String> couponAdminUserIds
+    ) throws Exception {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource)).csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .formLogin(AbstractHttpConfigurer::disable).httpBasic(AbstractHttpConfigurer::disable)

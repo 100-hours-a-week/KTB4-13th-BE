@@ -16,9 +16,14 @@ class AiChatResponse {
     private final boolean degraded;
 
     @JsonCreator
-    AiChatResponse(@JsonProperty("spec") final Map<String, Object> spec, @JsonProperty("reply") final String reply,
-        @JsonProperty("cards") final List<AiChatCard> cards, @JsonProperty("followup") final String followup,
-        @JsonProperty("buttons") final List<String> buttons, @JsonProperty("degraded") final boolean degraded) {
+    AiChatResponse(
+        @JsonProperty("spec") final Map<String, Object> spec,
+        @JsonProperty("reply") final String reply,
+        @JsonProperty("cards") final List<AiChatCard> cards,
+        @JsonProperty("followup") final String followup,
+        @JsonProperty("buttons") final List<String> buttons,
+        @JsonProperty("degraded") final boolean degraded
+    ) {
         this.spec = spec;
         this.reply = reply;
         this.cards = cards;

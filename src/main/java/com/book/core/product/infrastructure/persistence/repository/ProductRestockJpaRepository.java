@@ -21,8 +21,10 @@ interface ProductRestockJpaRepository extends JpaRepository<ProductRestock, Long
               and restock.createdAt <= :createdBefore
             order by restock.id
             """)
-    List<Long> findIdsByStatusCreatedBefore(@Param("status") ProductRestockStatus status,
-        @Param("createdBefore") LocalDateTime createdBefore);
+    List<Long> findIdsByStatusCreatedBefore(
+        @Param("status") ProductRestockStatus status,
+        @Param("createdBefore") LocalDateTime createdBefore
+    );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<ProductRestock> findByIdAndStatus(Long id, ProductRestockStatus status);

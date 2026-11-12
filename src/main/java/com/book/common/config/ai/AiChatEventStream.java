@@ -19,8 +19,13 @@ public final class AiChatEventStream {
     private AiChatEventStream() {}
 
     /** AI의 최종 envelope를 반환하고, 그 전까지 수신한 말풍선 조각을 전달합니다. */
-    public static <T> T read(final InputStream body, final ObjectMapper json, final Class<T> envelopeType, final Consumer<String> onDelta,
-        final ErrorCode failure) throws IOException {
+    public static <T> T read(
+        final InputStream body,
+        final ObjectMapper json,
+        final Class<T> envelopeType,
+        final Consumer<String> onDelta,
+        final ErrorCode failure
+    ) throws IOException {
         final InputStream input = new BufferedInputStream(body);
         final ByteArrayOutputStream line = new ByteArrayOutputStream();
         final StringBuilder data = new StringBuilder();

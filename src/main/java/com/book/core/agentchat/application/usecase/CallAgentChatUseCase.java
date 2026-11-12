@@ -23,13 +23,22 @@ public class CallAgentChatUseCase {
         return client.enabled();
     }
 
-    public AgentDecision execute(final ChatRecommendationCommand command, final Long sessionId, final Long requestId,
-        final AgentChatContext context) {
+    public AgentDecision execute(
+        final ChatRecommendationCommand command,
+        final Long sessionId,
+        final Long requestId,
+        final AgentChatContext context
+    ) {
         return validate(client.chat(command, sessionId, requestId, context), context);
     }
 
-    public AgentDecision execute(final ChatRecommendationCommand command, final Long sessionId, final Long requestId,
-        final AgentChatContext context, final Consumer<String> onDelta) {
+    public AgentDecision execute(
+        final ChatRecommendationCommand command,
+        final Long sessionId,
+        final Long requestId,
+        final AgentChatContext context,
+        final Consumer<String> onDelta
+    ) {
         return validate(client.chat(command, sessionId, requestId, context, onDelta), context);
     }
 

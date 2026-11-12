@@ -12,8 +12,13 @@ public final class AiRequestBudget {
     private AiRequestBudget() {}
 
     /** Fits the longest prefix of a newest-first list to the encoded request budget. */
-    public static <T, R> R fit(final List<T> newestFirst, final Function<List<T>, R> encode, final ToIntFunction<R> size,
-        final int maxBytes, final ErrorCode errorCode) {
+    public static <T, R> R fit(
+        final List<T> newestFirst,
+        final Function<List<T>, R> encode,
+        final ToIntFunction<R> size,
+        final int maxBytes,
+        final ErrorCode errorCode
+    ) {
         final R complete = encode.apply(newestFirst);
         if (size.applyAsInt(complete) <= maxBytes) {
             return complete;

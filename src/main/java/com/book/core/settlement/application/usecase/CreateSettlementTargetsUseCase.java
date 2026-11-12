@@ -101,9 +101,16 @@ public class CreateSettlementTargetsUseCase {
         return merchantMappingMap;
     }
 
-    private SettlementTarget target(final LocalDate settleDate, final OrderItem item, final Long merchantId,
-        final TransactionType transactionType, final Long transactionId, final long quantity, final BigDecimal totalPrice,
-        final BigDecimal targetAmount) {
+    private SettlementTarget target(
+        final LocalDate settleDate,
+        final OrderItem item,
+        final Long merchantId,
+        final TransactionType transactionType,
+        final Long transactionId,
+        final long quantity,
+        final BigDecimal totalPrice,
+        final BigDecimal targetAmount
+    ) {
         return new SettlementTarget(merchantId, settleDate, targetAmount, transactionType, transactionId, item.order().id(),
             item.productId(), quantity, item.unitPrice(), totalPrice);
     }

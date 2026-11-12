@@ -26,7 +26,9 @@ class CouponIssueKafkaConfig {
 
     @Bean(defaultCandidate = false)
     ConcurrentKafkaListenerContainerFactory<Object, Object> issuanceDltListenerFactory(
-        final ConcurrentKafkaListenerContainerFactoryConfigurer configurer, final ConsumerFactory<Object, Object> consumerFactory) {
+        final ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
+        final ConsumerFactory<Object, Object> consumerFactory
+    ) {
         final var factory = new ConcurrentKafkaListenerContainerFactory<Object, Object>();
         configurer.configure(factory, consumerFactory);
         final var errorHandler = new DefaultErrorHandler(new FixedBackOff(5_000L, FixedBackOff.UNLIMITED_ATTEMPTS));
@@ -36,9 +38,12 @@ class CouponIssueKafkaConfig {
     }
 
     @Bean
-    NewTopics couponIssueTopics(@Value("${coupon.kafka.topic}") final String topic,
-        @Value("${coupon.kafka.partitions:3}") final int partitions, @Value("${coupon.kafka.replicas:1}") final int replicas,
-        @Value("${coupon.kafka.min-in-sync-replicas:1}") final String minimumReplicas) {
+    NewTopics couponIssueTopics(
+        @Value("${coupon.kafka.topic}") final String topic,
+        @Value("${coupon.kafka.partitions:3}") final int partitions,
+        @Value("${coupon.kafka.replicas:1}") final int replicas,
+        @Value("${coupon.kafka.min-in-sync-replicas:1}") final String minimumReplicas
+    ) {
         return new NewTopics(issueTopic(topic, partitions, replicas, minimumReplicas),
             issueTopic(topic + ".DLT", partitions, replicas, minimumReplicas));
     }

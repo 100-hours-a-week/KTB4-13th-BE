@@ -20,9 +20,11 @@ class DataForLibraryBookDetailClientImpl implements DataForLibraryBookDetailClie
     private final ObjectMapper mapper;
     private final String apiKey;
 
-    DataForLibraryBookDetailClientImpl(final ObjectMapper mapper,
+    DataForLibraryBookDetailClientImpl(
+        final ObjectMapper mapper,
         @Value("${app.new-book.data-for-library-base-url:https://www.data4library.kr}") final String baseUrl,
-        @Value("${app.new-book.data-for-library-key:}") final String apiKey) {
+        @Value("${app.new-book.data-for-library-key:}") final String apiKey
+    ) {
         this.http = BookCatalogHttp.connect(baseUrl);
         this.mapper = mapper;
         this.apiKey = apiKey;

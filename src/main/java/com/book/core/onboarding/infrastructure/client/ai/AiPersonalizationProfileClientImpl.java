@@ -22,8 +22,10 @@ public class AiPersonalizationProfileClientImpl implements AiPersonalizationProf
     private final RestClient restClient;
     private final AiPersonalizationProfileExternalMapper mapper;
 
-    public AiPersonalizationProfileClientImpl(@Qualifier("recommendationAiRestClient") final RestClient restClient,
-        final AiPersonalizationProfileExternalMapper mapper) {
+    public AiPersonalizationProfileClientImpl(
+        @Qualifier("recommendationAiRestClient") final RestClient restClient,
+        final AiPersonalizationProfileExternalMapper mapper
+    ) {
         this.restClient = restClient;
         this.mapper = mapper;
     }

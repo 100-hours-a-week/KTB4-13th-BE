@@ -40,9 +40,11 @@ public interface UserPreferenceControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "온보딩을 완료하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<Void> deleteMemories(@Parameter(hidden = true) final Long userId,
+    ResponseEntity<Void> deleteMemories(
+        @Parameter(hidden = true) final Long userId,
         @Parameter(in = ParameterIn.QUERY, name = "ids", required = true, example = "101,102") @NotEmpty
-        @RequestParam("ids") final List<@NotNull @Positive Long> memoryIds);
+        @RequestParam("ids") final List<@NotNull @Positive Long> memoryIds
+    );
 
     @Operation(summary = "취향 기억 전체 삭제", description = "본인의 활성 취향 기억을 모두 삭제합니다. 온보딩 취향은 삭제하지 않으며, 삭제할 기억이 없어도 성공으로 처리합니다.")
     @SecurityRequirement(name = "bearerAuth")

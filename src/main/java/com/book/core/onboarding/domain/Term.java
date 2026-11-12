@@ -56,8 +56,16 @@ public class Term {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public Term(final Long id, final TermType termType, final String title, final String content, final String version,
-        final boolean isRequired, final boolean isActive, final int displayOrder) {
+    public Term(
+        final Long id,
+        final TermType termType,
+        final String title,
+        final String content,
+        final String version,
+        final boolean isRequired,
+        final boolean isActive,
+        final int displayOrder
+    ) {
         this.id = id;
         this.termType = termType;
         this.title = title;

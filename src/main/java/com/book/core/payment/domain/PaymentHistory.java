@@ -42,9 +42,18 @@ public class PaymentHistory extends BaseEntity {
     @Column(name = "occurred_at", nullable = false)
     private LocalDateTime occurredAt;
 
-    public PaymentHistory(final TransactionType type, final Long userId, final Long orderId, final Long paymentId,
-        final String externalPaymentKey, final BigDecimal paidAmount, final BigDecimal pointAmount, final BigDecimal couponAmount,
-        final String message, final LocalDateTime occurredAt) {
+    public PaymentHistory(
+        final TransactionType type,
+        final Long userId,
+        final Long orderId,
+        final Long paymentId,
+        final String externalPaymentKey,
+        final BigDecimal paidAmount,
+        final BigDecimal pointAmount,
+        final BigDecimal couponAmount,
+        final String message,
+        final LocalDateTime occurredAt
+    ) {
         this.type = type;
         this.userId = userId;
         this.orderId = orderId;

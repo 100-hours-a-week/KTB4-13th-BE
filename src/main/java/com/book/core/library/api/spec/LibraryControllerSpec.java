@@ -38,9 +38,11 @@ public interface LibraryControllerSpec {
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @ApiResponse(responseCode = "404", description = "존재하지 않는 도서가 포함됨")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<Void>> addBooks(@Parameter(hidden = true) final Long userId,
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> addBooks(
+        @Parameter(hidden = true) final Long userId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = AddLibraryBooksRequest.class)))
-        @Valid final AddLibraryBooksRequest request);
+        @Valid final AddLibraryBooksRequest request
+    );
 
     @Operation(summary = "나의 도서관 책 삭제",
         description = "인증된 회원이 소유한 활성 도서관 항목을 한 권 또는 여러 권 논리 삭제합니다. 존재하지 않거나 이미 삭제된 항목, 다른 회원의 항목은 무시하고 성공을 응답합니다.")
@@ -49,9 +51,11 @@ public interface LibraryControllerSpec {
         @ApiResponse(responseCode = "400", description = "요청 목록이 비었거나 도서관 항목 ID가 잘못됨"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<Void>> deleteBooks(@Parameter(hidden = true) final Long userId,
+    ResponseEntity<com.book.common.response.ApiResponse<Void>> deleteBooks(
+        @Parameter(hidden = true) final Long userId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = DeleteLibraryBooksRequest.class)))
-        @Valid final DeleteLibraryBooksRequest request);
+        @Valid final DeleteLibraryBooksRequest request
+    );
 
     @Operation(summary = "책 사진 업로드 주소 발급",
         description = "책 표지나 책장 사진을 S3에 직접 올릴 5분짜리 주소를 발급합니다. JPEG·PNG, 10MB 이하만 가능합니다. "
@@ -64,7 +68,8 @@ public interface LibraryControllerSpec {
     ResponseEntity<com.book.common.response.ApiResponse<ShelfPhotoUploadResponse>> createPhotoUpload(
         @Parameter(hidden = true) final Long userId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = CreateShelfPhotoUploadRequest.class)))
-        @Valid final CreateShelfPhotoUploadRequest request);
+        @Valid final CreateShelfPhotoUploadRequest request
+    );
 
     @Operation(summary = "책 사진 인식",
         description = "본인이 올린 사진에서 책을 찾습니다. FOUND는 찾은 책, NOT_FOUND는 못 찾은 책이며, 책을 하나도 못 찾으면 items가 빈 목록입니다. "
@@ -79,7 +84,9 @@ public interface LibraryControllerSpec {
         @ApiResponse(responseCode = "503", description = "AI 사진 인식을 일시적으로 사용할 수 없음"),
         @ApiResponse(responseCode = "504", description = "AI 사진 인식 시간 초과")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
-    ResponseEntity<com.book.common.response.ApiResponse<ShelfScanResponse>> scanPhoto(@Parameter(hidden = true) final Long userId,
+    ResponseEntity<com.book.common.response.ApiResponse<ShelfScanResponse>> scanPhoto(
+        @Parameter(hidden = true) final Long userId,
         @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ScanShelfPhotoRequest.class)))
-        @Valid final ScanShelfPhotoRequest request);
+        @Valid final ScanShelfPhotoRequest request
+    );
 }

@@ -96,8 +96,14 @@ class ServiceJwtDecoderTest {
         return issuer.issue(USER_ID);
     }
 
-    private String issue(final JwtEncoder encoder, final MacAlgorithm algorithm, final Instant issuedAt, final String tokenType,
-        final boolean includeExpiration, final String subject) {
+    private String issue(
+        final JwtEncoder encoder,
+        final MacAlgorithm algorithm,
+        final Instant issuedAt,
+        final String tokenType,
+        final boolean includeExpiration,
+        final String subject
+    ) {
         final JwtClaimsSet.Builder claims =
             JwtClaimsSet.builder().issuedAt(issuedAt).subject(subject).claim(JwtTokenIssuer.TOKEN_TYPE_CLAIM, tokenType);
         if (includeExpiration) {

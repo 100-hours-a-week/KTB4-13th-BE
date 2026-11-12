@@ -15,8 +15,12 @@ import com.book.core.review.domain.enums.ReviewTargetType;
 
 @Component
 public class ReviewCommandConverter {
-    public GetReviewsCommand toGetReviewsCommand(final ReviewTargetType targetType, final Long targetId, final int offset,
-        final int limit) {
+    public GetReviewsCommand toGetReviewsCommand(
+        final ReviewTargetType targetType,
+        final Long targetId,
+        final int offset,
+        final int limit
+    ) {
         return new GetReviewsCommand(new ReviewTarget(targetType, targetId), new OffsetLimit(offset, limit));
     }
 

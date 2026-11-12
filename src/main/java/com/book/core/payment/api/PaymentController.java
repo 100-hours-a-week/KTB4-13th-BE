@@ -30,25 +30,32 @@ class PaymentController implements PaymentControllerSpec {
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<CreatePaymentResponse>> create(@UserId final Long userId,
-        @Valid @RequestBody final CreatePaymentRequest request) {
+    public ResponseEntity<ApiResponse<CreatePaymentResponse>> create(
+        @UserId final Long userId,
+        @Valid @RequestBody final CreatePaymentRequest request
+    ) {
         return ResponseEntity
             .ok(ApiResponse.ok(new CreatePaymentResponse(paymentService.create(commandConverter.toCreateCommand(userId, request)))));
     }
 
     @Override
     @PostMapping("/callback/success")
-    public ResponseEntity<ApiResponse<Void>> callbackForSuccess(@NotBlank @Size(max = 255) @RequestParam("orderKey") final String orderKey,
+    public ResponseEntity<ApiResponse<Void>> callbackForSuccess(
+        @NotBlank @Size(max = 255) @RequestParam("orderKey") final String orderKey,
         @Size(max = 200) @RequestParam(value = "paymentKey", defaultValue = "") final String paymentKey,
-        @RequestParam("amount") final BigDecimal amount) {
+        @RequestParam("amount") final BigDecimal amount
+    ) {
         paymentService.success(commandConverter.toApproveCommand(orderKey, paymentKey, amount));
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
     @Override
     @PostMapping("/callback/fail")
-    public ResponseEntity<ApiResponse<Void>> callbackForFail(@NotBlank @Size(max = 255) @RequestParam("orderKey") final String orderKey,
-        @RequestParam("code") final String code, @RequestParam("message") final String message) {
+    public ResponseEntity<ApiResponse<Void>> callbackForFail(
+        @NotBlank @Size(max = 255) @RequestParam("orderKey") final String orderKey,
+        @RequestParam("code") final String code,
+        @RequestParam("message") final String message
+    ) {
         paymentService.fail(commandConverter.toFailCommand(orderKey, code, message));
         return ResponseEntity.ok(ApiResponse.ok());
     }

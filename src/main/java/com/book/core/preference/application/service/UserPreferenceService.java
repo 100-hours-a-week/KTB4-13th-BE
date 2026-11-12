@@ -110,8 +110,11 @@ public class UserPreferenceService {
         return memoryChangedUserIds;
     }
 
-    private void processChunksInParallel(final List<List<MemoryExtractionTarget>> chunks, final Set<Long> failedUserIds,
-        final Set<Long> memoryChangedUserIds) {
+    private void processChunksInParallel(
+        final List<List<MemoryExtractionTarget>> chunks,
+        final Set<Long> failedUserIds,
+        final Set<Long> memoryChangedUserIds
+    ) {
         try (ExecutorService executor = Executors.newFixedThreadPool(nightlyConcurrency)) {
             for (final List<MemoryExtractionTarget> chunk : chunks) {
                 processChunkInParallel(executor, chunk, failedUserIds, memoryChangedUserIds);
@@ -119,8 +122,12 @@ public class UserPreferenceService {
         }
     }
 
-    private void processChunkInParallel(final ExecutorService executor, final List<MemoryExtractionTarget> chunk,
-        final Set<Long> failedUserIds, final Set<Long> memoryChangedUserIds) {
+    private void processChunkInParallel(
+        final ExecutorService executor,
+        final List<MemoryExtractionTarget> chunk,
+        final Set<Long> failedUserIds,
+        final Set<Long> memoryChangedUserIds
+    ) {
         final Map<Long, List<ChatHistoryMessage>> conversations = conversations(chunk, failedUserIds);
         final Map<Long, List<MemoryExtractionTarget>> targetsByUser = new LinkedHashMap<>();
         chunk.forEach(target -> targetsByUser.computeIfAbsent(target.userId(), ignored -> new ArrayList<>()).add(target));
@@ -148,8 +155,12 @@ public class UserPreferenceService {
         }
     }
 
-    private void processTargets(final List<MemoryExtractionTarget> targets, final Map<Long, List<ChatHistoryMessage>> conversations,
-        final Set<Long> failedUserIds, final Set<Long> memoryChangedUserIds) {
+    private void processTargets(
+        final List<MemoryExtractionTarget> targets,
+        final Map<Long, List<ChatHistoryMessage>> conversations,
+        final Set<Long> failedUserIds,
+        final Set<Long> memoryChangedUserIds
+    ) {
         for (final MemoryExtractionTarget target : targets) {
             if (failedUserIds.contains(target.userId())) {
                 continue;

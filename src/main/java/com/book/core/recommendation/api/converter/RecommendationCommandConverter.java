@@ -24,9 +24,17 @@ public class RecommendationCommandConverter {
         return new GetRecommendationCardCommand(userId, recommendationCardId);
     }
 
-    public GetRecommendationFeedCommand toGetRecommendationFeedCommand(final Long userId, final String surface, final int size,
-        final String cursor, final String sort, final String category, final Integer pubYearFrom, final Integer pubYearTo,
-        final Integer matchScoreMin) {
+    public GetRecommendationFeedCommand toGetRecommendationFeedCommand(
+        final Long userId,
+        final String surface,
+        final int size,
+        final String cursor,
+        final String sort,
+        final String category,
+        final Integer pubYearFrom,
+        final Integer pubYearTo,
+        final Integer matchScoreMin
+    ) {
         final RecommendationFeedSort feedSort = sort == null ? null : RecommendationFeedSort.valueOf(sort.toUpperCase(Locale.ROOT));
         return new GetRecommendationFeedCommand(userId, RecommendationFeedSurface.valueOf(surface.toUpperCase(Locale.ROOT)), size, cursor,
             feedSort, category, pubYearFrom, pubYearTo, matchScoreMin);

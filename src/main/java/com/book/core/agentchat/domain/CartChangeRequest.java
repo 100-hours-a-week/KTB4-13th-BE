@@ -48,8 +48,14 @@ public class CartChangeRequest extends BaseEntity {
     @Column(length = 80)
     private ErrorCode rejection;
 
-    public CartChangeRequest(final Long userId, final CartChangeRequestKind kind, final String requestKey, final String intent,
-        final Long proposalId, final List<CartChangeLine> items) {
+    public CartChangeRequest(
+        final Long userId,
+        final CartChangeRequestKind kind,
+        final String requestKey,
+        final String intent,
+        final Long proposalId,
+        final List<CartChangeLine> items
+    ) {
         super(null);
         if (userId == null || userId <= 0 || kind == null || requestKey == null || requestKey.isBlank() || requestKey.length() > 100
             || intent == null || intent.isBlank() || intent.length() > 2000 || items == null || items.isEmpty() || items.size() > 30

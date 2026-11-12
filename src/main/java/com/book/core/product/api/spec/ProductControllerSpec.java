@@ -25,7 +25,8 @@ public interface ProductControllerSpec {
         @ApiResponse(responseCode = "400", description = "요청이 올바르지 않음"), @ApiResponse(responseCode = "404", description = "상품을 찾을 수 없음"),
         @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     ResponseEntity<com.book.common.response.ApiResponse<ProductDetailResponse>> getProductDetail(
-        @Parameter(in = ParameterIn.PATH, required = true, example = "1") @Positive @PathVariable("productId") final Long productId);
+        @Parameter(in = ParameterIn.PATH, required = true, example = "1") @Positive @PathVariable("productId") final Long productId
+    );
 
     @Operation(summary = "상품 목록 조회",
         description = "활성 상품을 cursor 방식으로 조회합니다. sort=POPULARITY는 전체 기간 결제된 주문 상품 수량 합계 DESC, "
@@ -47,5 +48,6 @@ public interface ProductControllerSpec {
         @RequestParam(value = "publishedFrom", required = false) final LocalDate publishedFrom,
         @Parameter(in = ParameterIn.QUERY, description = "출간일 종료(yyyy-MM-dd, 포함). 생략하면 상한 없이 조회합니다. publishedFrom보다 이르면 400입니다.",
             example = "2025-12-31")
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @RequestParam(value = "publishedTo", required = false) final LocalDate publishedTo);
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @RequestParam(value = "publishedTo", required = false) final LocalDate publishedTo
+    );
 }

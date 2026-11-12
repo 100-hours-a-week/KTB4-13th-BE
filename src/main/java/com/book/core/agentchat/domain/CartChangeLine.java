@@ -31,8 +31,13 @@ public class CartChangeLine {
     @Column(name = "expected_unit_price", precision = 19, scale = 2, updatable = false)
     private BigDecimal expectedUnitPrice;
 
-    public CartChangeLine(final CartChangeOperation operation, final Long productId, final int expectedQuantity, final Integer quantity,
-        final BigDecimal expectedUnitPrice) {
+    public CartChangeLine(
+        final CartChangeOperation operation,
+        final Long productId,
+        final int expectedQuantity,
+        final Integer quantity,
+        final BigDecimal expectedUnitPrice
+    ) {
         if (operation == null || productId == null || productId <= 0 || expectedQuantity < 0) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }

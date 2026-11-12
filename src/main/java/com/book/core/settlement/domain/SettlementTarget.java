@@ -42,9 +42,18 @@ public class SettlementTarget extends BaseEntity {
     @Column(name = "total_price", nullable = false, precision = 38, scale = 2)
     private BigDecimal totalPrice;
 
-    public SettlementTarget(final Long merchantId, final LocalDate settlementDate, final BigDecimal targetAmount,
-        final TransactionType transactionType, final Long transactionId, final Long orderId, final Long productId, final long quantity,
-        final BigDecimal unitPrice, final BigDecimal totalPrice) {
+    public SettlementTarget(
+        final Long merchantId,
+        final LocalDate settlementDate,
+        final BigDecimal targetAmount,
+        final TransactionType transactionType,
+        final Long transactionId,
+        final Long orderId,
+        final Long productId,
+        final long quantity,
+        final BigDecimal unitPrice,
+        final BigDecimal totalPrice
+    ) {
         this.merchantId = merchantId;
         this.settlementDate = settlementDate;
         this.targetAmount = targetAmount;

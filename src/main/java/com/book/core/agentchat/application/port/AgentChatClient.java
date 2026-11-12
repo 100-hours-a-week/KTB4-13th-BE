@@ -11,6 +11,11 @@ public interface AgentChatClient {
 
     AgentDecision chat(ChatRecommendationCommand command, Long sessionId, Long requestId, AgentChatContext context);
 
-    AgentDecision chat(ChatRecommendationCommand command, Long sessionId, Long requestId, AgentChatContext context,
-        Consumer<String> onDelta);
+    AgentDecision chat(
+        ChatRecommendationCommand command,
+        Long sessionId,
+        Long requestId,
+        AgentChatContext context,
+        Consumer<String> onDelta
+    );
 }

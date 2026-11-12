@@ -17,8 +17,13 @@ import lombok.RequiredArgsConstructor;
 public class RequestPgCancelUseCase {
     private final PaymentClient client;
 
-    public CanceledPaymentResult execute(final String orderKey, final Payment payment, final BigDecimal amount,
-        final BigDecimal refundableAmount, final String idempotencyKey) {
+    public CanceledPaymentResult execute(
+        final String orderKey,
+        final Payment payment,
+        final BigDecimal amount,
+        final BigDecimal refundableAmount,
+        final String idempotencyKey
+    ) {
         if (amount.signum() < 0 || amount.stripTrailingZeros().scale() > 0 || refundableAmount.compareTo(amount) < 0) {
             throw new CoreException(ErrorCode.PAYMENT_INVALID_AMOUNT);
         }

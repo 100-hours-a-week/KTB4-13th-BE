@@ -17,6 +17,12 @@ public interface ProductRepositoryPort {
 
     List<Product> findActiveByBookIds(final List<Long> bookIds);
 
-    List<ProductListItem> findActiveProducts(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
-        final ProductListSort sort, final ProductListCursor cursor, final int limit);
+    List<ProductListItem> findActiveProducts(
+        final Long categoryId,
+        final LocalDate publishedFrom,
+        final LocalDate publishedTo,
+        final ProductListSort sort,
+        final ProductListCursor cursor,
+        final int limit
+    );
 }

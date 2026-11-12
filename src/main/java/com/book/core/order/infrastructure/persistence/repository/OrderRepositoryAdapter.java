@@ -50,8 +50,14 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
     }
 
     @Override
-    public List<Order> findPaidOrders(final Long userId, final OrderStatus status, final LocalDateTime paidAtFrom,
-        final LocalDateTime paidAtBefore, final OrderListCursor cursor, final int limit) {
+    public List<Order> findPaidOrders(
+        final Long userId,
+        final OrderStatus status,
+        final LocalDateTime paidAtFrom,
+        final LocalDateTime paidAtBefore,
+        final OrderListCursor cursor,
+        final int limit
+    ) {
         final PageRequest page = PageRequest.of(0, limit);
         if (cursor == null) {
             return jpaRepository.findPaidOrders(userId, status, paidAtFrom, paidAtBefore, null, null, page);

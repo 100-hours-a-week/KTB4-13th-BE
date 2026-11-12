@@ -65,8 +65,14 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort, CartChan
     }
 
     @Override
-    public List<ProductListItem> findActiveProducts(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
-        final ProductListSort sort, final ProductListCursor cursor, final int limit) {
+    public List<ProductListItem> findActiveProducts(
+        final Long categoryId,
+        final LocalDate publishedFrom,
+        final LocalDate publishedTo,
+        final ProductListSort sort,
+        final ProductListCursor cursor,
+        final int limit
+    ) {
         return queryRepository.findActiveProducts(categoryId, publishedFrom, publishedTo, sort, cursor, limit);
     }
 }

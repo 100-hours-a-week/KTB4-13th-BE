@@ -39,8 +39,13 @@ public class RefreshSessionEntity {
 
     protected RefreshSessionEntity() {}
 
-    public RefreshSessionEntity(final Long id, final Long userId, final String tokenHash, final Instant expiresAt,
-        final Instant revokedAt) {
+    public RefreshSessionEntity(
+        final Long id,
+        final Long userId,
+        final String tokenHash,
+        final Instant expiresAt,
+        final Instant revokedAt
+    ) {
         this.id = id;
         this.userId = userId;
         this.tokenHash = tokenHash;

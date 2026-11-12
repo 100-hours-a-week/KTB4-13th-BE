@@ -107,8 +107,11 @@ public class ChatSessionService {
         return complete.execute(command, attempt.generation(), outcome);
     }
 
-    private ChatResponseSnapshot finishAgent(final SendChatMessageCommand command, final ChatAttemptResult attempt,
-        final Consumer<String> onDelta) {
+    private ChatResponseSnapshot finishAgent(
+        final SendChatMessageCommand command,
+        final ChatAttemptResult attempt,
+        final Consumer<String> onDelta
+    ) {
         List<OwnedCouponResult> ownedCoupons = List.of();
         BigDecimal pointBalance = BigDecimal.ZERO;
         if (!attempt.agentPrepared()) {

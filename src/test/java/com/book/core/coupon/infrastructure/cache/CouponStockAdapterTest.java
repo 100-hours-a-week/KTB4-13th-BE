@@ -18,7 +18,7 @@ class CouponStockAdapterTest {
 
     private final StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
     private final LoadingCache<String, Boolean> soldOutCache = mock();
-    private final CouponStockAdapter adapter = new CouponStockAdapter(redisTemplate, soldOutCache);
+    private final CouponStockAdapter adapter = new CouponStockAdapter(redisTemplate, soldOutCache, new SoldOutProperties(86400, 1000));
 
     @Test
     void 재고를_초기화할_때_이전_매진_키와_로컬_캐시를_무효화한다() {

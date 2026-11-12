@@ -1,4 +1,9 @@
 package com.book.core.coupon.application.port;
 
-public record CouponIssuanceCounts(int totalQuantity, int issuedQuantity, long ownedCouponCount) {
+import java.util.Set;
+
+public record CouponIssuanceCounts(int totalQuantity, int issuedQuantity, Set<Long> issuedUserIds) {
+    public long ownedCouponCount() {
+        return issuedUserIds.size();
+    }
 }

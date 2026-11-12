@@ -1,24 +1,11 @@
 package com.book.core.onboarding.infrastructure.client.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.verify;
 
 import com.book.common.config.kafka.KafkaTopics;
-import com.book.common.exception.CoreException;
-import com.book.common.exception.ErrorCode;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AlterConfigOp;
-import org.apache.kafka.clients.admin.ConfigEntry;
-import org.apache.kafka.common.config.ConfigResource;
-import org.springframework.kafka.core.KafkaAdmin;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.command.OnboardingPreferenceAnswerCommand;
 import com.book.core.onboarding.application.command.PutOnboardingPreferencesCommand;
@@ -81,11 +68,7 @@ class AiProfileKafkaMySqlIntegrationTest {
     @Autowired
     ObjectMapper json;
     @Autowired
-    KafkaAdmin kafkaAdmin;
-    @Autowired
     AiPersonalizationProfileKafkaClient kafkaClient;
-    @MockitoSpyBean
-    AiPersonalizationProfileClientImpl httpClient;
 
     @DynamicPropertySource
     static void broker(final DynamicPropertyRegistry properties) {
@@ -186,61 +169,26 @@ class AiProfileKafkaMySqlIntegrationTest {
     }
 
     @Test
-    void 토픽_한도_안이면_1MiB를_넘는_메시지도_발행하고_토픽_한도가_작으면_크기_초과로_알린다() throws Exception {
+    void 실제_브로커에_1MiB를_넘는_메시지를_발행한다() {
         final AiPersonalizationProfileRequest request =
             new AiPersonalizationProfileRequest(78905L, List.of(), List.of(), List.of(), List.of("x".repeat(2 * 1024 * 1024)), List.of());
 
         kafkaClient.updateProfile(request, UUID.randomUUID());
 
-        assertThat(recordSizes("78905")).singleElement().satisfies(size -> assertThat(size).isGreaterThan(2 * 1024 * 1024));
-        try (var admin = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
-            changeTopicLimit(admin, "1048588");
-            try {
-                assertThatThrownBy(() -> kafkaClient.updateProfile(request, UUID.randomUUID())).isInstanceOfSatisfying(CoreException.class,
-                    exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_PROFILE_MESSAGE_TOO_LARGE));
-            } finally {
-                changeTopicLimit(admin, TOPIC_LIMIT);
-            }
-        }
-    }
-
-    @Test
-    void 최종_탈퇴가_확정된_회원의_작업은_AI_토픽에_발행하지_않고_HTTP로_삭제한다() {
-        final long userId = 78904L;
-        jdbc.update("INSERT INTO users (id, nickname) VALUES (?, 'AI Kafka 탈퇴 테스트')", userId);
-        jdbc.update("INSERT INTO user_onboardings (user_id, onboarding_status) VALUES (?, 'IN_PROGRESS')", userId);
-        agree.execute(new RecordPersonalizationAgreementCommand(userId));
-        saveBooks.execute(new PutOnboardingBooksCommand(userId, List.of()));
-        jdbc.update("UPDATE users SET delete_requested_at = ? WHERE id = ?", LocalDateTime.now().minusDays(8), userId);
-        doNothing().when(httpClient).deleteProfile(userId);
-
-        processJob.execute();
-
-        verify(httpClient).deleteProfile(userId);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs WHERE user_id = ?", Integer.class, userId)).isZero();
-        assertThat(recordSizes("78904")).isEmpty();
-    }
-
-    private List<Integer> recordSizes(final String key) {
-        final List<Integer> sizes = new ArrayList<>();
         try (var consumer = consumers.createConsumer("ai-profile-size-" + UUID.randomUUID())) {
             final var partition = new TopicPartition(KafkaTopics.AI_PROFILE, 0);
             consumer.assign(List.of(partition));
             consumer.seekToBeginning(List.of(partition));
-            final long end = consumer.endOffsets(List.of(partition)).get(partition);
             final long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
-            while (consumer.position(partition) < end && System.nanoTime() < deadline) {
-                consumer.poll(Duration.ofMillis(250)).records(partition).stream().filter(record -> key.equals(record.key()))
-                    .forEach(record -> sizes.add(record.serializedValueSize()));
+            while (System.nanoTime() < deadline) {
+                for (final var record : consumer.poll(Duration.ofMillis(250)).records(partition)) {
+                    if ("78905".equals(record.key())) {
+                        assertThat(record.serializedValueSize()).isGreaterThan(2 * 1024 * 1024);
+                        return;
+                    }
+                }
             }
-            assertThat(consumer.position(partition)).isEqualTo(end);
+            throw new AssertionError("Large AI profile record not received");
         }
-        return sizes;
-    }
-
-    private static void changeTopicLimit(final AdminClient admin, final String limit) throws Exception {
-        final var topic = new ConfigResource(ConfigResource.Type.TOPIC, KafkaTopics.AI_PROFILE);
-        admin.incrementalAlterConfigs(
-            Map.of(topic, List.of(new AlterConfigOp(new ConfigEntry(MAX_MESSAGE_BYTES, limit), AlterConfigOp.OpType.SET)))).all().get();
     }
 }

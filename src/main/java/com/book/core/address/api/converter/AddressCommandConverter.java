@@ -12,15 +12,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class AddressCommandConverter {
     public RegisterAddressCommand toRegisterAddressCommand(final Long userId, final RegisterAddressRequest request) {
-        // @formatter:off
         return new RegisterAddressCommand(
-                userId,
-                request.label(),
-                request.postalCode(),
-                request.address(),
-                request.detailAddress(),
-                request.isDefault());
-        // @formatter:on
+            userId,
+            request.label(),
+            request.postalCode(),
+            request.address(),
+            request.detailAddress(),
+            request.isDefault());
     }
 
     public GetAddressesCommand toGetAddressesCommand(final Long userId) {
@@ -32,10 +30,8 @@ public class AddressCommandConverter {
         final Long addressId,
         final UpdateAddressRequest request
     ) {
-        // @formatter:off
         return new UpdateAddressCommand(
-                userId, addressId, request.label(), request.postalCode(), request.address(), request.detailAddress());
-        // @formatter:on
+            userId, addressId, request.label(), request.postalCode(), request.address(), request.detailAddress());
     }
 
     public SetDefaultAddressCommand toSetDefaultAddressCommand(final Long userId, final Long addressId) {

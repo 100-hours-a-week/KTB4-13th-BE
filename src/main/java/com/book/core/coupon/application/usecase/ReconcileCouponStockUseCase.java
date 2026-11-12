@@ -6,6 +6,7 @@ import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.result.CouponStockReconciliationResult;
 import java.time.Clock;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 
 @UseCase
@@ -21,8 +22,23 @@ public class ReconcileCouponStockUseCase {
             final var after = couponStockPort.readSnapshot(couponId);
             final long pendingReservations =
                 before.reservedUserIds().stream().filter(userId -> !counts.issuedUserIds().contains(userId)).count();
+            final boolean stable = before.equals(after);
+            final boolean consistentQuantity = before.quantity() != null && before.quantity() >= 0
+                && (long) counts.totalQuantity() == (long) counts.issuedQuantity() + before.quantity()
+                && counts.issuedQuantity() == counts.ownedCouponCount();
+            if (stable && consistentQuantity && pendingReservations == 0) {
+                final var missing = counts.issuedUserIds().stream().filter(id -> !before.reservedUserIds().contains(id))
+                    .collect(Collectors.toUnmodifiableSet());
+                final boolean shouldBeSoldOut = before.quantity() == 0;
+                if (!missing.isEmpty() || before.soldOutSignalPresent() != shouldBeSoldOut) {
+                    final boolean repaired = couponStockPort.repairSnapshot(couponId, before, missing);
+                    return new CouponStockReconciliationResult(couponId, clock.instant(), counts.totalQuantity(), counts.issuedQuantity(),
+                        counts.ownedCouponCount(), before.quantity(), repaired ? shouldBeSoldOut : before.soldOutSignalPresent(), 0,
+                        repaired);
+                }
+            }
             return new CouponStockReconciliationResult(couponId, clock.instant(), counts.totalQuantity(), counts.issuedQuantity(),
-                counts.ownedCouponCount(), before.quantity(), before.soldOutSignalPresent(), pendingReservations, before.equals(after));
+                counts.ownedCouponCount(), before.quantity(), before.soldOutSignalPresent(), pendingReservations, stable);
         });
     }
 }

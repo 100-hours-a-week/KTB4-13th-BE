@@ -324,6 +324,23 @@ class CouponSoldOutHttpIntegrationTest {
             ids -> !ids.isEmpty()).getFirst();
     }
 
+    @Test
+    void 수량이_일치하면_누락_발급자와_매진_신호를_복구한다() throws Exception {
+        final long couponId = 8_510_016L;
+        insertActiveCoupon(couponId, 1);
+        issue(1L, couponId).andExpect(status().isAccepted());
+        assertCounts(couponId, 1);
+        final String reservations = "coupon:" + couponId + ":reservations";
+        redisTemplate.delete(List.of(reservations, soldOutKey(couponId)));
+
+        final var repaired = reconcileCouponStockUseCase.execute(couponId).orElseThrow();
+
+        assertThat(repaired.outcome()).isEqualTo(CouponReconcileOutcome.MATCHED);
+        assertThat(redisTemplate.opsForSet().isMember(reservations, "1")).isTrue();
+        assertThat(redisTemplate.hasKey(soldOutKey(couponId))).isTrue();
+        assertThat(redisTemplate.opsForValue().get(stockKey(couponId))).isEqualTo("0");
+    }
+
     private void awaitFailedIssuance(final long couponId) {
         final Map<String, Object> settings =
             Map.of("bootstrap.servers", kafka.getBootstrapServers(), "group.id", "coupon-dlt-test", "auto.offset.reset", "earliest");

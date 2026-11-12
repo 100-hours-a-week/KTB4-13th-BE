@@ -165,6 +165,17 @@ class SaveOnboardingBooksUseCaseTest {
     }
 
     private static final class FakeBookRepository implements BookRepositoryPort {
+
+        @Override
+        public boolean existsByIsbn13(final String isbn13) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void save(final Book book) {
+            throw new UnsupportedOperationException();
+        }
+
         @Override
         public List<Book> findWithUnambiguousIsbnByIds(final List<Long> ids) {
             throw new UnsupportedOperationException();

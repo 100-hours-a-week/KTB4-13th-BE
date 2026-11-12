@@ -3,6 +3,9 @@ package com.book.core.onboarding.infrastructure.client.ai;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.common.config.kafka.KafkaTopics;
+import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
+import java.util.Map;
+import java.util.UUID;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
 import com.book.core.onboarding.application.command.OnboardingPreferenceAnswerCommand;
 import com.book.core.onboarding.application.command.PutOnboardingPreferencesCommand;
@@ -43,6 +46,10 @@ class AiProfileKafkaMySqlIntegrationTest {
     @Container
     @ServiceConnection
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
+    private static final String MAX_MESSAGE_BYTES = "max.message.bytes";
+    // 운영 토픽에 요구하는 한도입니다. Producer max.request.size와 같습니다.
+    private static final String TOPIC_LIMIT = "8454144";
+
     @Container
     static final KafkaContainer kafka = new KafkaContainer("apache/kafka:4.1.2");
 
@@ -60,6 +67,8 @@ class AiProfileKafkaMySqlIntegrationTest {
     ConsumerFactory<Object, Object> consumers;
     @Autowired
     ObjectMapper json;
+    @Autowired
+    AiPersonalizationProfileKafkaClient kafkaClient;
 
     @DynamicPropertySource
     static void broker(final DynamicPropertyRegistry properties) {
@@ -70,7 +79,7 @@ class AiProfileKafkaMySqlIntegrationTest {
     static class TopicConfig {
         @Bean
         NewTopic aiProfileTopic() {
-            return new NewTopic(KafkaTopics.AI_PROFILE, 1, (short) 1);
+            return new NewTopic(KafkaTopics.AI_PROFILE, 1, (short) 1).configs(Map.of(MAX_MESSAGE_BYTES, TOPIC_LIMIT));
         }
     }
 
@@ -159,4 +168,27 @@ class AiProfileKafkaMySqlIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs WHERE user_id = ?", Integer.class, userId)).isZero();
     }
 
+    @Test
+    void 실제_브로커에_1MiB를_넘는_메시지를_발행한다() {
+        final AiPersonalizationProfileRequest request =
+            new AiPersonalizationProfileRequest(78905L, List.of(), List.of(), List.of(), List.of("x".repeat(2 * 1024 * 1024)), List.of());
+
+        kafkaClient.updateProfile(request, UUID.randomUUID());
+
+        try (var consumer = consumers.createConsumer("ai-profile-size-" + UUID.randomUUID())) {
+            final var partition = new TopicPartition(KafkaTopics.AI_PROFILE, 0);
+            consumer.assign(List.of(partition));
+            consumer.seekToBeginning(List.of(partition));
+            final long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
+            while (System.nanoTime() < deadline) {
+                for (final var record : consumer.poll(Duration.ofMillis(250)).records(partition)) {
+                    if ("78905".equals(record.key())) {
+                        assertThat(record.serializedValueSize()).isGreaterThan(2 * 1024 * 1024);
+                        return;
+                    }
+                }
+            }
+            throw new AssertionError("Large AI profile record not received");
+        }
+    }
 }

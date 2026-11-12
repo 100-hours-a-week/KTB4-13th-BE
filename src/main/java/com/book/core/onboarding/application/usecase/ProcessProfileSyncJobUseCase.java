@@ -39,15 +39,17 @@ public class ProcessProfileSyncJobUseCase {
         try {
             deleting = deletionRequired(job.userId());
             if (deleting) {
-                profiles.executeDelete(job.userId());
+                profiles.executeDelete(job.userId(), job.revision());
             } else if (updateAllowed(job.userId())) {
                 profiles.executeUpdate(job.userId(), job.revision());
             }
         } catch (final CoreException exception) {
-            if (deleting && exception.errorCode() == ErrorCode.AI_SERVICE_INVALID_REQUEST) {
+            if (exception.errorCode() == ErrorCode.AI_PROFILE_MESSAGE_TOO_LARGE
+                || deleting && exception.errorCode() == ErrorCode.AI_SERVICE_INVALID_REQUEST) {
                 jobs.fail(job);
                 log.atError().addKeyValue("userId", job.userId()).addKeyValue("revision", job.revision())
-                    .log("[PROFILE_SYNC] AI가 요청을 거부해 자동 재시도를 멈추고 실패 작업으로 보관합니다. 원인을 고친 뒤 작업을 다시 열어야 합니다.");
+                    .addKeyValue("errorCode", exception.errorCode())
+                    .log("[PROFILE_SYNC] 재시도로 해결되지 않는 오류라 자동 재시도를 멈추고 실패 작업으로 보관합니다. 원인을 고친 뒤 작업을 다시 열어야 합니다.");
                 return;
             }
             retry(job, exception, deleting);

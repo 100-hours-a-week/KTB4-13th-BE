@@ -17,6 +17,8 @@ spring:
         max.block.ms: 2000
         request.timeout.ms: 5000
         delivery.timeout.ms: 10000
+        # AI 프로필 메시지 값 한도(8MiB)에 레코드 머리글 여유(64KiB)를 더합니다. 브로커·토픽 한도도 이 값 이상이어야 합니다.
+        max.request.size: 8454144
     consumer:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -57,6 +59,11 @@ sentry:
   traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}
 
 app:
+  new-book:
+    enabled: ${NEW_BOOK_IMPORT_ENABLED:false}
+    national-library-key: ${NATIONAL_LIBRARY_ISBN_API_KEY:}
+    data-for-library-key: ${DATA_FOR_LIBRARY_API_KEY:}
+    detail-daily-limit: ${DATA_FOR_LIBRARY_DAILY_LIMIT:500}
   profile-sync:
     ai-kafka-enabled: ${PROFILE_SYNC_AI_KAFKA_ENABLED:false}
     kafka-enabled: ${PROFILE_SYNC_KAFKA_ENABLED:false}

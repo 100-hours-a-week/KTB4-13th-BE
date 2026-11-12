@@ -67,6 +67,10 @@ public class PersonalizationProfileUseCase {
         profileClient.deleteProfile(userId);
     }
 
+    public void executeDelete(final Long userId, final UUID revision) {
+        profileClient.deleteProfile(userId, revision);
+    }
+
     private boolean agreed(final Long userId) {
         return termRepository.findActiveByTermType(TermType.PERSONALIZED_RECOMMENDATION)
             .map(term -> agreementRepository.existsAgreedByUserIdAndTermId(userId, term.id())).orElse(false);

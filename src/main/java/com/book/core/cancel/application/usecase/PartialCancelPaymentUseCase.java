@@ -11,6 +11,7 @@ import com.book.core.cancel.domain.CancelCalculated;
 import com.book.core.cancel.domain.PartialCancelAction;
 import com.book.core.cancel.domain.enums.CancelType;
 import com.book.core.coupon.application.usecase.RevertOwnedCouponUseCase;
+import com.book.core.onboarding.application.usecase.RequestProfileSyncUseCase;
 import com.book.core.order.application.usecase.GetOrderForCancelUseCase;
 import com.book.core.order.application.usecase.GetOrderItemForCancelUseCase;
 import com.book.core.order.domain.Order;
@@ -45,6 +46,7 @@ public class PartialCancelPaymentUseCase {
     private final RecordPaymentHistoryUseCase recordPaymentHistoryUseCase;
     private final GetOrderItemForCancelUseCase getOrderItemForCancelUseCase;
     private final Clock clock;
+    private final RequestProfileSyncUseCase requestProfileSync;
 
     @Transactional
     public Long execute(final PartialCancelAction action, final CancelCalculated calculated, final CanceledPaymentResult result) {
@@ -77,6 +79,7 @@ public class PartialCancelPaymentUseCase {
         recordPaymentHistoryUseCase.execute(new PaymentHistory(TransactionType.PARTIAL_CANCEL, payment.userId(), payment.orderId(),
             payment.id(), payment.externalPaymentKey(), calculated.paidAmount(), calculated.pointAmount(), calculated.couponAmount(),
             "부분 취소 성공", cancel.canceledAt()));
+        requestProfileSync.execute(order.userId());
         log.atInfo().addKeyValue("cancelId", cancel.id()).addKeyValue("paymentId", payment.id()).addKeyValue("orderId", order.id())
             .log("[PAYMENT_CANCEL] 결제 부분 취소 처리를 마쳤습니다. cancelId={}, paymentId={}, orderId={}", cancel.id(), payment.id(), order.id());
         return cancel.id();

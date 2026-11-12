@@ -4,6 +4,10 @@ import com.book.core.book.domain.Book;
 import java.util.List;
 
 public interface BookRepositoryPort {
+    boolean existsByIsbn13(String isbn13);
+
+    void save(Book book);
+
     List<Book> findAllByIdIn(final List<Long> ids);
 
     List<Book> findWithUnambiguousIsbnByIds(final List<Long> ids);

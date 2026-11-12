@@ -24,6 +24,9 @@ public class Book extends BaseEntity {
     @Column(length = 20)
     private String isbn13;
 
+    @Column(name = "imported_isbn13", length = 13, updatable = false)
+    private String importedIsbn13;
+
     @Column(length = 20)
     private String isbn10;
 
@@ -47,6 +50,19 @@ public class Book extends BaseEntity {
 
     @Column(name = "cover_image_url")
     private String coverImageUrl;
+
+    public static Book registerNewBook(final String isbn13, final String title, final String author, final String description,
+        final String publisher, final String category, final LocalDate publishedAt, final String coverImageUrl) {
+        final String normalizedIsbn13 = Isbn13.normalize(isbn13).orElseThrow();
+        if (title == null || title.isBlank() || author == null || author.isBlank() || publisher == null || publisher.isBlank()
+            || category == null || category.isBlank() || publishedAt == null) {
+            throw new IllegalArgumentException("Required book metadata is missing");
+        }
+        final Book book =
+            new Book(null, normalizedIsbn13, null, title, author, description, publisher, category, publishedAt, coverImageUrl);
+        book.importedIsbn13 = normalizedIsbn13;
+        return book;
+    }
 
     public Book(final Long id, final String isbn13, final String isbn10, final String title, final String author, final String description,
         final String publisher, final String category, final LocalDate publishedAt, final String coverImageUrl) {

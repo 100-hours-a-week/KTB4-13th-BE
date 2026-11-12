@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -14,6 +15,8 @@ import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
+import com.book.core.onboarding.application.usecase.RequestProfileSyncUseCase;
+import com.book.core.user.application.usecase.CheckWithdrawalConfirmedUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -143,7 +146,9 @@ class AiPersonalizationProfileKafkaClientTest {
     void 라우터는_일반_요청을_HTTP로_작업_요청은_Kafka로_전달한다() {
         final var http = mock(AiPersonalizationProfileClientImpl.class);
         final var publisher = mock(AiPersonalizationProfileKafkaClient.class);
-        final var router = new AiPersonalizationProfileRoutingClient(http, publisher);
+        final var withdrawal = mock(CheckWithdrawalConfirmedUseCase.class);
+        final var requestSync = mock(RequestProfileSyncUseCase.class);
+        final var router = new AiPersonalizationProfileRoutingClient(http, publisher, withdrawal, requestSync);
         final var revision = UUID.randomUUID();
 
         router.updateProfile(request);
@@ -156,6 +161,8 @@ class AiPersonalizationProfileKafkaClientTest {
         verify(http).deleteProfile(42L);
         verify(publisher).deleteProfile(42L, revision);
         verifyNoMoreInteractions(publisher);
+        verify(withdrawal).execute(42L);
+        verifyNoInteractions(requestSync);
     }
 
     private static AiPersonalizationProfileRequest requestWithTag(final String tag) {

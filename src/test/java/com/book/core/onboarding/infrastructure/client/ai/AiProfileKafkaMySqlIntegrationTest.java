@@ -5,6 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.book.common.config.kafka.KafkaTopics;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
+import com.book.core.onboarding.application.port.AiPersonalizationProfileClient;
+import java.sql.DriverManager;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.Map;
 import java.util.UUID;
 import com.book.core.onboarding.application.command.PutOnboardingBooksCommand;
@@ -73,6 +78,8 @@ class AiProfileKafkaMySqlIntegrationTest {
     RequestProfileSyncUseCase requestSync;
     @Autowired
     AiPersonalizationProfileKafkaClient kafkaClient;
+    @Autowired
+    AiPersonalizationProfileClient profileClient;
 
     @DynamicPropertySource
     static void broker(final DynamicPropertyRegistry properties) {
@@ -191,6 +198,67 @@ class AiProfileKafkaMySqlIntegrationTest {
             }
             assertThat(operations).containsExactly("UPSERT", "DELETE");
         }
+    }
+
+    @Test
+    void 락_연결을_잃은_작업자의_늦은_UPSERT_뒤에_삭제를_다시_발행한다() throws Exception {
+        final long userId = 78906L;
+        jdbc.update("INSERT INTO users (id, nickname) VALUES (?, 'AI Kafka 락 상실 테스트')", userId);
+        final var request = new AiPersonalizationProfileRequest(userId, List.of(), List.of(), List.of(), List.of(), List.of());
+        final var started = new CountDownLatch(1);
+        final var resume = new CountDownLatch(1);
+        try (var oldConnection = DriverManager.getConnection(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            var oldStatement = oldConnection.createStatement();
+            var newConnection = DriverManager.getConnection(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            var newStatement = newConnection.createStatement();
+            var executor = Executors.newSingleThreadExecutor()) {
+            try (var lock = oldStatement.executeQuery("SELECT GET_LOCK('book_profile_sync', 0), CONNECTION_ID()")) {
+                assertThat(lock.next()).isTrue();
+                assertThat(lock.getInt(1)).isEqualTo(1);
+                final long oldConnectionId = lock.getLong(2);
+                final var oldWorker = executor.submit(() -> {
+                    started.countDown();
+                    if (!resume.await(10, TimeUnit.SECONDS)) {
+                        throw new AssertionError("old worker did not resume");
+                    }
+                    profileClient.updateProfile(request, UUID.randomUUID());
+                    return null;
+                });
+                try {
+                    assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+                    newStatement.execute("KILL CONNECTION " + oldConnectionId);
+                    try (var newLock = newStatement.executeQuery("SELECT GET_LOCK('book_profile_sync', 0)")) {
+                        assertThat(newLock.next()).isTrue();
+                        assertThat(newLock.getInt(1)).isEqualTo(1);
+                    }
+                    jdbc.update("UPDATE users SET delete_requested_at = DATE_SUB(NOW(), INTERVAL 8 DAY) WHERE id = ?", userId);
+                    profileClient.deleteProfile(userId, UUID.randomUUID());
+                    newStatement.execute("SELECT RELEASE_LOCK('book_profile_sync')");
+                } finally {
+                    resume.countDown();
+                }
+                oldWorker.get(15, TimeUnit.SECONDS);
+            }
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs WHERE user_id = ?", Integer.class, userId)).isOne();
+        processJob.execute();
+
+        try (var consumer = consumers.createConsumer("ai-profile-lock-loss-test")) {
+            final var partition = new TopicPartition(KafkaTopics.AI_PROFILE, 0);
+            consumer.assign(List.of(partition));
+            consumer.seekToBeginning(List.of(partition));
+            final var operations = new java.util.ArrayList<String>();
+            final long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
+            while (System.nanoTime() < deadline && operations.size() < 3) {
+                for (final var record : consumer.poll(Duration.ofMillis(250)).records(partition)) {
+                    if (Long.toString(userId).equals(record.key())) {
+                        operations.add(json.readTree((String) record.value()).path("operation").asText());
+                    }
+                }
+            }
+            assertThat(operations).containsExactly("DELETE", "UPSERT", "DELETE");
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs WHERE user_id = ?", Integer.class, userId)).isZero();
     }
 
     @Test

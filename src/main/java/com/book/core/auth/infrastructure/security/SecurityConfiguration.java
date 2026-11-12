@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -36,7 +37,8 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.POST, "/admin-api/v1/coupons").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/*/login", "/api/v1/auth/*/signup", "/api/v1/auth/reissue").permitAll()
                 .requestMatchers(HttpMethod.POST, "/admin-api/v1/coupons/issuance-dlt/replay")
-                .access((authentication, context) -> new AuthorizationDecision(couponAdminUserIds.contains(authentication.get().getName())))
+                .access((authentication, context) -> new AuthorizationDecision(
+                    authentication.get() instanceof JwtAuthenticationToken token && couponAdminUserIds.contains(token.getName())))
                 .anyRequest().authenticated())
             .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint))
             .oauth2ResourceServer(oauth2 -> oauth2

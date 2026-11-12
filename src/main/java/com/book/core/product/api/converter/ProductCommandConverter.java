@@ -17,8 +17,14 @@ public class ProductCommandConverter {
         return GetProductDetailCommand.of(productId);
     }
 
-    public GetProductsCommand toGetProductsCommand(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
-        final String sort, final String cursor, final Integer limit) {
+    public GetProductsCommand toGetProductsCommand(
+        final Long categoryId,
+        final LocalDate publishedFrom,
+        final LocalDate publishedTo,
+        final String sort,
+        final String cursor,
+        final Integer limit
+    ) {
         final ProductListSort parsedSort = parseSort(sort);
         return new GetProductsCommand(categoryId, publishedFrom, publishedTo, parsedSort, parseCursor(parsedSort, cursor), limit);
     }

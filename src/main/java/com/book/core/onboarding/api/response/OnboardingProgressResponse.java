@@ -12,8 +12,12 @@ public class OnboardingProgressResponse {
     private final List<OnboardingAnswerGroupResponse> answers;
     private final List<Long> bookIds;
 
-    public OnboardingProgressResponse(final OnboardingStatus status, final LocalDateTime completedAt,
-        final List<OnboardingAnswerGroupResponse> answers, final List<Long> bookIds) {
+    public OnboardingProgressResponse(
+        final OnboardingStatus status,
+        final LocalDateTime completedAt,
+        final List<OnboardingAnswerGroupResponse> answers,
+        final List<Long> bookIds
+    ) {
         this.status = status;
         this.completedAt = completedAt;
         this.answers = answers;

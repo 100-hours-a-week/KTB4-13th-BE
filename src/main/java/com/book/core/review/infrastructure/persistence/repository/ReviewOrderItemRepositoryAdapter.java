@@ -18,8 +18,12 @@ class ReviewOrderItemRepositoryAdapter implements ReviewOrderItemRepositoryPort 
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<Long> findRecentOrderItemsForProduct(final Long userId, final Long productId, final OrderStatus orderStatus,
-        final LocalDateTime fromDate) {
+    public List<Long> findRecentOrderItemsForProduct(
+        final Long userId,
+        final Long productId,
+        final OrderStatus orderStatus,
+        final LocalDateTime fromDate
+    ) {
         return queryFactory
             .select(orderItem.id).from(orderItem).join(orderItem.order, order).where(order.deletedAt.isNull(), order.userId.eq(userId),
                 order.status.eq(orderStatus), order.paidAt.goe(fromDate), orderItem.deletedAt.isNull(), orderItem.productId.eq(productId))

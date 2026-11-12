@@ -50,9 +50,18 @@ public class Coupon extends BaseEntity {
     @Column(name = "starts_at", nullable = false)
     private LocalDateTime startsAt;
 
-    public Coupon(final Long id, final String name, final CouponType type, final BigDecimal discount, final long maxUseCount,
-        final BigDecimal minOrderAmount, final LocalDateTime expiredAt, final int totalQuantity, final int issuedQuantity,
-        final LocalDateTime startsAt) {
+    public Coupon(
+        final Long id,
+        final String name,
+        final CouponType type,
+        final BigDecimal discount,
+        final long maxUseCount,
+        final BigDecimal minOrderAmount,
+        final LocalDateTime expiredAt,
+        final int totalQuantity,
+        final int issuedQuantity,
+        final LocalDateTime startsAt
+    ) {
         super(id);
         this.name = name;
         this.type = type;
@@ -65,8 +74,16 @@ public class Coupon extends BaseEntity {
         this.startsAt = startsAt;
     }
 
-    public Coupon(final String name, final CouponType type, final BigDecimal discount, final long maxUseCount,
-        final BigDecimal minOrderAmount, final LocalDateTime expiredAt, final int totalQuantity, final LocalDateTime startsAt) {
+    public Coupon(
+        final String name,
+        final CouponType type,
+        final BigDecimal discount,
+        final long maxUseCount,
+        final BigDecimal minOrderAmount,
+        final LocalDateTime expiredAt,
+        final int totalQuantity,
+        final LocalDateTime startsAt
+    ) {
         if (name == null || name.isBlank() || name.length() > 255 || type == null || discount == null || discount.signum() < 0
             || maxUseCount <= 0 || minOrderAmount == null || minOrderAmount.signum() < 0 || expiredAt == null || totalQuantity <= 0
             || startsAt == null || !startsAt.isBefore(expiredAt)) {

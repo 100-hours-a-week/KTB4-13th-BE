@@ -12,8 +12,14 @@ public class OnboardingQuestionResponse {
     private final List<OnboardingOptionResponse> options;
     private final Long nextQuestionId;
 
-    public OnboardingQuestionResponse(final Long questionId, final String content, final int minSelection, final Integer maxSelection,
-        final List<OnboardingOptionResponse> options, final Long nextQuestionId) {
+    public OnboardingQuestionResponse(
+        final Long questionId,
+        final String content,
+        final int minSelection,
+        final Integer maxSelection,
+        final List<OnboardingOptionResponse> options,
+        final Long nextQuestionId
+    ) {
         this.questionId = questionId;
         this.content = content;
         this.minSelection = minSelection;

@@ -15,7 +15,9 @@ interface AddressJpaRepository extends JpaRepository<Address, Long> {
     Optional<Address> findByIdAndUserIdAndDeletedAtIsNull(final Long id, final Long userId);
 
     Optional<Address> findFirstByUserIdAndDeletedAtIsNullAndIdNotOrderByCreatedAtDescIdDesc(
-            final Long userId, final Long id);
+        final Long userId,
+        final Long id
+    );
 
     List<Address> findByUserIdAndDeletedAtIsNullOrderByDefaultAddressDescCreatedAtAscIdAsc(final Long userId);
 
@@ -31,9 +33,10 @@ interface AddressJpaRepository extends JpaRepository<Address, Long> {
                    or address.detailAddress = :detailAddress)
             """)
     boolean existsActiveDuplicateAddress(
-            @Param("userId") final Long userId,
-            @Param("addressId") final Long addressId,
-            @Param("label") final String label,
-            @Param("address") final String address,
-            @Param("detailAddress") final String detailAddress);
+        @Param("userId") final Long userId,
+        @Param("addressId") final Long addressId,
+        @Param("label") final String label,
+        @Param("address") final String address,
+        @Param("detailAddress") final String detailAddress
+    );
 }

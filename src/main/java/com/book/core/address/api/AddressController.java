@@ -36,8 +36,10 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PostMapping
-    public ResponseEntity<ApiResponse<Void>> registerAddress(@UserId final Long userId,
-        @Valid @RequestBody final RegisterAddressRequest request) {
+    public ResponseEntity<ApiResponse<Void>> registerAddress(
+        @UserId final Long userId,
+        @Valid @RequestBody final RegisterAddressRequest request
+    ) {
         final var command = commandConverter.toRegisterAddressCommand(userId, request);
         addressService.registerAddress(command);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -53,8 +55,11 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PutMapping("/{addressId}")
-    public ResponseEntity<ApiResponse<UpdateAddressResponse>> updateAddress(@UserId final Long userId,
-        @Positive @PathVariable("addressId") final Long addressId, @Valid @RequestBody final UpdateAddressRequest request) {
+    public ResponseEntity<ApiResponse<UpdateAddressResponse>> updateAddress(
+        @UserId final Long userId,
+        @Positive @PathVariable("addressId") final Long addressId,
+        @Valid @RequestBody final UpdateAddressRequest request
+    ) {
         final var command = commandConverter.toUpdateAddressCommand(userId, addressId, request);
         final var result = addressService.updateAddress(command);
         final var response = resultConverter.toUpdateAddressResponse(result);
@@ -63,8 +68,10 @@ class AddressController implements AddressControllerSpec {
 
     @Override
     @PutMapping("/{addressId}/default")
-    public ResponseEntity<ApiResponse<UpdateAddressResponse>> setDefaultAddress(@UserId final Long userId,
-        @Positive @PathVariable("addressId") final Long addressId) {
+    public ResponseEntity<ApiResponse<UpdateAddressResponse>> setDefaultAddress(
+        @UserId final Long userId,
+        @Positive @PathVariable("addressId") final Long addressId
+    ) {
         final var command = commandConverter.toSetDefaultAddressCommand(userId, addressId);
         final var result = addressService.setDefaultAddress(command);
         final var response = resultConverter.toSetDefaultAddressResponse(result);

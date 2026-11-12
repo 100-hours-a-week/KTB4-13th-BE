@@ -17,8 +17,11 @@ interface TossPaymentHttpClient {
     TossPaymentResponse find(@PathVariable("paymentKey") final String paymentKey);
 
     @PostExchange("/{paymentKey}/cancel")
-    TossPaymentResponse cancel(@PathVariable("paymentKey") final String paymentKey,
-        @RequestHeader("Idempotency-Key") final String idempotencyKey, @RequestBody final CancelRequest request);
+    TossPaymentResponse cancel(
+        @PathVariable("paymentKey") final String paymentKey,
+        @RequestHeader("Idempotency-Key") final String idempotencyKey,
+        @RequestBody final CancelRequest request
+    );
 
     record ApproveRequest(String paymentKey, String orderId, BigDecimal amount) {
         @Override

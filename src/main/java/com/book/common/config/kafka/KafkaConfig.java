@@ -18,8 +18,10 @@ import org.springframework.util.backoff.FixedBackOff;
 class KafkaConfig {
     @Bean
     ConcurrentKafkaListenerContainerFactory<Object, Object> kafkaListenerContainerFactory(
-        final ConcurrentKafkaListenerContainerFactoryConfigurer configurer, final ConsumerFactory<Object, Object> consumerFactory,
-        final DefaultErrorHandler kafkaErrorHandler) {
+        final ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
+        final ConsumerFactory<Object, Object> consumerFactory,
+        final DefaultErrorHandler kafkaErrorHandler
+    ) {
         final var factory = new ConcurrentKafkaListenerContainerFactory<Object, Object>();
         configurer.configure(factory, consumerFactory);
         factory.setCommonErrorHandler(kafkaErrorHandler);

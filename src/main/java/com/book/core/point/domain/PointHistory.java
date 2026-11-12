@@ -25,8 +25,14 @@ public class PointHistory extends BaseEntity {
     private BigDecimal balanceAfter;
 
     @Builder
-    public PointHistory(final Long id, final Long userId, final PointType type, final Long referenceId, final BigDecimal amount,
-        final BigDecimal balanceAfter) {
+    public PointHistory(
+        final Long id,
+        final Long userId,
+        final PointType type,
+        final Long referenceId,
+        final BigDecimal amount,
+        final BigDecimal balanceAfter
+    ) {
         super(id);
         this.userId = userId;
         this.type = type;

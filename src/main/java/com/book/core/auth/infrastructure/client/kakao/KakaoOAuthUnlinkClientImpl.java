@@ -23,8 +23,10 @@ public class KakaoOAuthUnlinkClientImpl implements OAuthUnlinkClient {
     private final RestClient restClient;
     private final KakaoProperties properties;
 
-    public KakaoOAuthUnlinkClientImpl(@Qualifier(KakaoUnlinkClientConfiguration.KAKAO_API_REST_CLIENT) final RestClient restClient,
-        final KakaoProperties properties) {
+    public KakaoOAuthUnlinkClientImpl(
+        @Qualifier(KakaoUnlinkClientConfiguration.KAKAO_API_REST_CLIENT) final RestClient restClient,
+        final KakaoProperties properties
+    ) {
         this.restClient = restClient;
         this.properties = properties;
     }

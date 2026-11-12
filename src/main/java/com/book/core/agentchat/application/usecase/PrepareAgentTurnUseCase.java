@@ -45,8 +45,12 @@ public class PrepareAgentTurnUseCase {
     private final Clock clock;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public AgentPreparedTurn execute(final SendChatMessageCommand command, final long generation,
-        final List<OwnedCouponResult> ownedCoupons, final BigDecimal pointBalance) {
+    public AgentPreparedTurn execute(
+        final SendChatMessageCommand command,
+        final long generation,
+        final List<OwnedCouponResult> ownedCoupons,
+        final BigDecimal pointBalance
+    ) {
         final ChatRequest request = requireAttempt(command, generation);
         if (request.agentContext() == null) {
             request.saveAgentContext(payloads.encodeContext(observe(command, ownedCoupons, pointBalance)));
@@ -79,8 +83,11 @@ public class PrepareAgentTurnUseCase {
         return request;
     }
 
-    private AgentChatContext observe(final SendChatMessageCommand command, final List<OwnedCouponResult> ownedCoupons,
-        final BigDecimal pointBalance) {
+    private AgentChatContext observe(
+        final SendChatMessageCommand command,
+        final List<OwnedCouponResult> ownedCoupons,
+        final BigDecimal pointBalance
+    ) {
         final List<GetCartItemResult> cart = carts.execute(command.userId()).items();
         final List<ChatCardSnapshot> cards = chats.latestCardResponse(command.sessionId())
             .map((final ChatMessage message) -> responses.decode(message.responsePayload()).cards()).orElse(List.of());

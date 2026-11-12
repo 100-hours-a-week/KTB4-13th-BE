@@ -363,13 +363,26 @@ class ProductRepositoryIntegrationTest {
         insertPaidItem(id, productId, quantity, status, deletedAt, null);
     }
 
-    private void insertPaidItem(final long id, final long productId, final int quantity, final String status, final Timestamp deletedItemAt,
-        final Timestamp deletedOrderAt) {
+    private void insertPaidItem(
+        final long id,
+        final long productId,
+        final int quantity,
+        final String status,
+        final Timestamp deletedItemAt,
+        final Timestamp deletedOrderAt
+    ) {
         insertPaidItem(id, productId, quantity, status, deletedItemAt, deletedOrderAt, 4100L);
     }
 
-    private void insertPaidItem(final long id, final long productId, final int quantity, final String status, final Timestamp deletedItemAt,
-        final Timestamp deletedOrderAt, final long addressId) {
+    private void insertPaidItem(
+        final long id,
+        final long productId,
+        final int quantity,
+        final String status,
+        final Timestamp deletedItemAt,
+        final Timestamp deletedOrderAt,
+        final long addressId
+    ) {
         final String itemStatus;
         if (status == null) {
             itemStatus = "PAID";

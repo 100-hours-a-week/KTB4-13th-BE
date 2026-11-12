@@ -20,6 +20,10 @@ interface PaymentJpaRepository extends JpaRepository<Payment, Long> {
         """)
     Optional<Payment> findByOrderKey(@Param("orderKey") final String orderKey);
 
-    Slice<Payment> findAllByStateAndPaidAtBetween(final PaymentState state, final LocalDateTime from, final LocalDateTime to,
-        final Pageable pageable);
+    Slice<Payment> findAllByStateAndPaidAtBetween(
+        final PaymentState state,
+        final LocalDateTime from,
+        final LocalDateTime to,
+        final Pageable pageable
+    );
 }

@@ -49,8 +49,16 @@ public class Product extends BaseEntity {
     @OneToOne(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     private ProductInventory inventory;
 
-    public Product(final Long id, final Book book, final String name, final String thumbnailUrl, final BigDecimal salePrice,
-        final BigDecimal discountedPrice, final BigDecimal costPrice, final Integer stockQuantity) {
+    public Product(
+        final Long id,
+        final Book book,
+        final String name,
+        final String thumbnailUrl,
+        final BigDecimal salePrice,
+        final BigDecimal discountedPrice,
+        final BigDecimal costPrice,
+        final Integer stockQuantity
+    ) {
         super(id);
         this.book = book;
         this.name = name;

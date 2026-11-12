@@ -42,10 +42,13 @@ class ReviewController implements ReviewControllerSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(@UserId(required = false) final Long userId,
-        @RequestParam("targetType") final ReviewTargetType targetType, @RequestParam("targetId") final Long targetId,
+    public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(
+        @UserId(required = false) final Long userId,
+        @RequestParam("targetType") final ReviewTargetType targetType,
+        @RequestParam("targetId") final Long targetId,
         @RequestParam(value = "offset", defaultValue = "0") final int offset,
-        @RequestParam(value = "limit", defaultValue = "20") final int limit) {
+        @RequestParam(value = "limit", defaultValue = "20") final int limit
+    ) {
         final GetReviewsCommand command = commandConverter.toGetReviewsCommand(targetType, targetId, offset, limit);
         final Page<ReviewItemResult> result = reviewService.findReviews(command);
         final PageResponse<ReviewResponse> response = resultConverter.toResponse(result, userId);
@@ -54,8 +57,10 @@ class ReviewController implements ReviewControllerSpec {
 
     @Override
     @GetMapping("/count")
-    public ResponseEntity<ApiResponse<Long>> countReviews(@RequestParam("targetType") final ReviewTargetType targetType,
-        @RequestParam("targetId") final Long targetId) {
+    public ResponseEntity<ApiResponse<Long>> countReviews(
+        @RequestParam("targetType") final ReviewTargetType targetType,
+        @RequestParam("targetId") final Long targetId
+    ) {
         final GetReviewCountCommand command = commandConverter.toGetReviewCountCommand(targetType, targetId);
         final Long result = reviewService.countReviews(command);
         return ResponseEntity.ok(ApiResponse.ok(result));
@@ -71,8 +76,11 @@ class ReviewController implements ReviewControllerSpec {
 
     @Override
     @PatchMapping("/{reviewId}")
-    public ResponseEntity<ApiResponse<Long>> updateReview(@UserId final Long userId, @PathVariable("reviewId") final Long reviewId,
-        @RequestBody final UpdateReviewRequest request) {
+    public ResponseEntity<ApiResponse<Long>> updateReview(
+        @UserId final Long userId,
+        @PathVariable("reviewId") final Long reviewId,
+        @RequestBody final UpdateReviewRequest request
+    ) {
         final UpdateReviewCommand command = commandConverter.toUpdateReviewCommand(userId, reviewId, request);
         final Long result = reviewService.updateReview(command);
         return ResponseEntity.ok(ApiResponse.ok(result));

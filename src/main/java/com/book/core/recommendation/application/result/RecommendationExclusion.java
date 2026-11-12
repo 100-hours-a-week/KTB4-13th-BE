@@ -7,8 +7,10 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 public record RecommendationExclusion(String isbn, RecommendationExclusionSource source) {
-    public static List<RecommendationExclusion> newestFirst(final List<String> conversationNewestFirst,
-        final List<OwnedBook> ownedBooksNewestFirst) {
+    public static List<RecommendationExclusion> newestFirst(
+        final List<String> conversationNewestFirst,
+        final List<OwnedBook> ownedBooksNewestFirst
+    ) {
         final Set<String> seen = new HashSet<>();
         return Stream
             .concat(

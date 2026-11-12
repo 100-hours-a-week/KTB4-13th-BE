@@ -38,9 +38,11 @@ class OnboardingController implements OnboardingControllerSpec {
 
     @Override
     @GetMapping("/questions/{questionId}")
-    public ResponseEntity<ApiResponse<OnboardingQuestionResponse>> getQuestion(@UserId final Long userId,
+    public ResponseEntity<ApiResponse<OnboardingQuestionResponse>> getQuestion(
+        @UserId final Long userId,
         @Positive @PathVariable("questionId") final Long questionId,
-        @RequestParam(value = "parentOptionIds", required = false) final List<Long> parentOptionIds) {
+        @RequestParam(value = "parentOptionIds", required = false) final List<Long> parentOptionIds
+    ) {
         final var command = commandConverter.toGetOnboardingQuestionCommand(userId, questionId, parentOptionIds);
         final var response = resultConverter.toOnboardingQuestionResponse(onboardingService.getQuestion(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -56,8 +58,11 @@ class OnboardingController implements OnboardingControllerSpec {
 
     @Override
     @PutMapping("/questions/{questionId}/answers")
-    public ResponseEntity<ApiResponse<Void>> saveAnswers(@UserId final Long userId,
-        @Positive @PathVariable("questionId") final Long questionId, @Valid @RequestBody final PutOnboardingAnswersRequest request) {
+    public ResponseEntity<ApiResponse<Void>> saveAnswers(
+        @UserId final Long userId,
+        @Positive @PathVariable("questionId") final Long questionId,
+        @Valid @RequestBody final PutOnboardingAnswersRequest request
+    ) {
         final var command = commandConverter.toPutOnboardingAnswersCommand(userId, questionId, request);
         onboardingService.saveAnswers(command);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -65,8 +70,10 @@ class OnboardingController implements OnboardingControllerSpec {
 
     @Override
     @GetMapping("/books")
-    public ResponseEntity<ApiResponse<OnboardingBookCandidatesResponse>> getBookCandidates(@UserId final Long userId,
-        @RequestParam("subcategoryCodes") final List<String> subcategoryCodes) {
+    public ResponseEntity<ApiResponse<OnboardingBookCandidatesResponse>> getBookCandidates(
+        @UserId final Long userId,
+        @RequestParam("subcategoryCodes") final List<String> subcategoryCodes
+    ) {
         final var command = commandConverter.toGetOnboardingBookCandidatesCommand(subcategoryCodes);
         final var response = resultConverter.toOnboardingBookCandidatesResponse(onboardingService.getBookCandidates(command));
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -74,8 +81,10 @@ class OnboardingController implements OnboardingControllerSpec {
 
     @Override
     @PutMapping("/books")
-    public ResponseEntity<ApiResponse<Void>> saveBooks(@UserId final Long userId,
-        @Valid @RequestBody final PutOnboardingBooksRequest request) {
+    public ResponseEntity<ApiResponse<Void>> saveBooks(
+        @UserId final Long userId,
+        @Valid @RequestBody final PutOnboardingBooksRequest request
+    ) {
         final var command = commandConverter.toPutOnboardingBooksCommand(userId, request);
         onboardingService.saveBooks(command);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -83,8 +92,10 @@ class OnboardingController implements OnboardingControllerSpec {
 
     @Override
     @PutMapping("/preferences")
-    public ResponseEntity<ApiResponse<Void>> updatePreferences(@UserId final Long userId,
-        @Valid @RequestBody final PutOnboardingPreferencesRequest request) {
+    public ResponseEntity<ApiResponse<Void>> updatePreferences(
+        @UserId final Long userId,
+        @Valid @RequestBody final PutOnboardingPreferencesRequest request
+    ) {
         final var command = commandConverter.toPutOnboardingPreferencesCommand(userId, request);
         onboardingService.updatePreferences(command);
         return ResponseEntity.ok(ApiResponse.ok());

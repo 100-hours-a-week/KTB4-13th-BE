@@ -33,8 +33,11 @@ public class SettlementRepositoryAdapter implements SettlementRepositoryPort {
     }
 
     @Override
-    public Map<Long, BigDecimal> readRecentSalesAmounts(final LocalDate startDate, final LocalDate endDate,
-        final Collection<Long> merchantIds) {
+    public Map<Long, BigDecimal> readRecentSalesAmounts(
+        final LocalDate startDate,
+        final LocalDate endDate,
+        final Collection<Long> merchantIds
+    ) {
         return settlementRepository.sumOriginalAmount(merchantIds, startDate, endDate).stream()
             .collect(Collectors.toMap(MerchantAmountProjection::getMerchantId, MerchantAmountProjection::getAmount));
     }

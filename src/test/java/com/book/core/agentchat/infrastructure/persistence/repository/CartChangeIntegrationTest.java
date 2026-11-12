@@ -511,8 +511,12 @@ class CartChangeIntegrationTest {
         return new PrepareCartChangeCommand(userId, key, items);
     }
 
-    private static CartChangeLine line(final CartChangeOperation operation, final long productId, final int expectedQuantity,
-        final int quantity) {
+    private static CartChangeLine line(
+        final CartChangeOperation operation,
+        final long productId,
+        final int expectedQuantity,
+        final int quantity
+    ) {
         return new CartChangeLine(operation, productId, expectedQuantity, quantity, UNIT_PRICE);
     }
 

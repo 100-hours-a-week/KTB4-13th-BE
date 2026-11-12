@@ -12,8 +12,11 @@ class AiFeedResponse {
     private final boolean coldStart;
 
     @JsonCreator
-    AiFeedResponse(@JsonProperty("items") final List<AiFeedItem> items, @JsonProperty("next_cursor") final String nextCursor,
-        @JsonProperty("cold_start") final boolean coldStart) {
+    AiFeedResponse(
+        @JsonProperty("items") final List<AiFeedItem> items,
+        @JsonProperty("next_cursor") final String nextCursor,
+        @JsonProperty("cold_start") final boolean coldStart
+    ) {
         this.items = items;
         this.nextCursor = nextCursor;
         this.coldStart = coldStart;

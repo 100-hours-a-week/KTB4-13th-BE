@@ -19,8 +19,12 @@ public class PaymentDiscount {
     private final BigDecimal couponMinOrderAmount;
     private final BigDecimal usePoint;
 
-    public PaymentDiscount(final List<PaymentCoupon> ownedCoupons, final BigDecimal pointBalance, final Long useOwnedCouponId,
-        final BigDecimal usePointAmount) {
+    public PaymentDiscount(
+        final List<PaymentCoupon> ownedCoupons,
+        final BigDecimal pointBalance,
+        final Long useOwnedCouponId,
+        final BigDecimal usePointAmount
+    ) {
         this.useOwnedCouponId = useOwnedCouponId;
         this.usePointAmount = usePointAmount;
         if (useOwnedCouponId > 0) {

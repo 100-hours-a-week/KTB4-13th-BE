@@ -53,8 +53,12 @@ public class CouponIssuePolicyCacheAdapter implements CouponCacheRepositoryPort 
         return getOrLoad(couponId, cacheKey, cacheKey + ":lock", loader);
     }
 
-    private CouponIssueState getOrLoad(final Long couponId, final String cacheKey, final String lockKey,
-        final Supplier<CouponIssuePolicy> loader) {
+    private CouponIssueState getOrLoad(
+        final Long couponId,
+        final String cacheKey,
+        final String lockKey,
+        final Supplier<CouponIssuePolicy> loader
+    ) {
         final String token = UUID.randomUUID().toString();
         final String stockKey = "coupon:" + couponId + ":stock";
         for (int retry = 0; retry < MAX_RETRIES; retry++) {
@@ -95,8 +99,13 @@ public class CouponIssuePolicyCacheAdapter implements CouponCacheRepositoryPort 
      * 캐시를 채우고 락을 해제합니다.<br>
      * 로딩과 락 해제가 모두 실패하면 로딩 예외를 보존합니다.
      */
-    private CouponIssuePolicy fillCache(final Long couponId, final String cacheKey, final String lockKey, final String token,
-        final Supplier<CouponIssuePolicy> loader) {
+    private CouponIssuePolicy fillCache(
+        final Long couponId,
+        final String cacheKey,
+        final String lockKey,
+        final String token,
+        final Supplier<CouponIssuePolicy> loader
+    ) {
         boolean cacheFilled = false;
         try {
             final CouponIssuePolicy policy = loader.get();

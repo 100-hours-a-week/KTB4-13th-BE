@@ -44,24 +44,30 @@ class LibraryController implements LibraryControllerSpec {
 
     @Override
     @DeleteMapping("/books")
-    public ResponseEntity<ApiResponse<Void>> deleteBooks(@UserId final Long userId,
-        @Valid @RequestBody final DeleteLibraryBooksRequest request) {
+    public ResponseEntity<ApiResponse<Void>> deleteBooks(
+        @UserId final Long userId,
+        @Valid @RequestBody final DeleteLibraryBooksRequest request
+    ) {
         libraryService.deleteBooks(commandConverter.toDeleteLibraryBooksCommand(userId, request));
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
     @Override
     @PostMapping("/photos/upload-url")
-    public ResponseEntity<ApiResponse<ShelfPhotoUploadResponse>> createPhotoUpload(@UserId final Long userId,
-        @Valid @RequestBody final CreateShelfPhotoUploadRequest request) {
+    public ResponseEntity<ApiResponse<ShelfPhotoUploadResponse>> createPhotoUpload(
+        @UserId final Long userId,
+        @Valid @RequestBody final CreateShelfPhotoUploadRequest request
+    ) {
         return ResponseEntity.ok(ApiResponse.ok(ShelfPhotoUploadResponse
             .from(libraryService.createPhotoUpload(commandConverter.toCreateShelfPhotoUploadCommand(userId, request)))));
     }
 
     @Override
     @PostMapping("/photos/scans")
-    public ResponseEntity<ApiResponse<ShelfScanResponse>> scanPhoto(@UserId final Long userId,
-        @Valid @RequestBody final ScanShelfPhotoRequest request) {
+    public ResponseEntity<ApiResponse<ShelfScanResponse>> scanPhoto(
+        @UserId final Long userId,
+        @Valid @RequestBody final ScanShelfPhotoRequest request
+    ) {
         return ResponseEntity.ok(
             ApiResponse.ok(ShelfScanResponse.from(libraryService.scanPhoto(commandConverter.toScanShelfPhotoCommand(userId, request)))));
     }

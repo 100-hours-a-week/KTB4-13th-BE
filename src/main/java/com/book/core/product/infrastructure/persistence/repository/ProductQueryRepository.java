@@ -73,8 +73,14 @@ class ProductQueryRepository {
         jdbcTemplate.update(INSERT_POPULARITY_SNAPSHOTS_SQL);
     }
 
-    List<ProductListItem> findActiveProducts(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,
-        final ProductListSort sort, final ProductListCursor cursor, final int limit) {
+    List<ProductListItem> findActiveProducts(
+        final Long categoryId,
+        final LocalDate publishedFrom,
+        final LocalDate publishedTo,
+        final ProductListSort sort,
+        final ProductListCursor cursor,
+        final int limit
+    ) {
         final BooleanExpression publishedAtPredicate = publishedAtPredicate(publishedFrom, publishedTo);
         if (sort == ProductListSort.POPULARITY) {
             return findByPopularity(categoryId, publishedAtPredicate, cursor, limit);
@@ -82,8 +88,12 @@ class ProductQueryRepository {
         return findByCreatedAt(categoryId, publishedAtPredicate, cursor, limit);
     }
 
-    private List<ProductListItem> findByCreatedAt(final Long categoryId, final BooleanExpression publishedAtPredicate,
-        final ProductListCursor cursor, final int limit) {
+    private List<ProductListItem> findByCreatedAt(
+        final Long categoryId,
+        final BooleanExpression publishedAtPredicate,
+        final ProductListCursor cursor,
+        final int limit
+    ) {
         return queryFactory.selectFrom(product).join(product.book, book).fetchJoin().leftJoin(product.inventory).fetchJoin()
             .where(product.deletedAt.isNull(), book.deletedAt.isNull(), createdAtCursorPredicate(cursor),
                 categoryPredicate(categoryId, product.id), publishedAtPredicate)
@@ -91,8 +101,12 @@ class ProductQueryRepository {
             .map(item -> new ProductListItem(item, 0L, 0L, BigDecimal.ZERO)).toList();
     }
 
-    private List<ProductListItem> findByPopularity(final Long categoryId, final BooleanExpression publishedAtPredicate,
-        final ProductListCursor cursor, final int limit) {
+    private List<ProductListItem> findByPopularity(
+        final Long categoryId,
+        final BooleanExpression publishedAtPredicate,
+        final ProductListCursor cursor,
+        final int limit
+    ) {
         final var snapshot = new QProductPopularitySnapshot("productPopularitySnapshot");
         // ponytail: scalar-subquery plan; recheck EXPLAIN if MySQL optimizer settings change.
         final var activeProductId = JPAExpressions.select(product.id).from(product).join(product.book, book)

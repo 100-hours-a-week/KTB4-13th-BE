@@ -355,8 +355,11 @@ class RecommendationControllerTest {
         return new GetRecommendationFeedCommand(42L, RecommendationFeedSurface.HOME, size, cursor, null, null, null, null, null);
     }
 
-    private static GetRecommendationFeedCommand recommendMoreCommand(final RecommendationFeedSort sort, final Integer pubYearFrom,
-        final Integer pubYearTo) {
+    private static GetRecommendationFeedCommand recommendMoreCommand(
+        final RecommendationFeedSort sort,
+        final Integer pubYearFrom,
+        final Integer pubYearTo
+    ) {
         return new GetRecommendationFeedCommand(42L, RecommendationFeedSurface.RECOMMEND_MORE, 15, null, sort, null, pubYearFrom, pubYearTo,
             null);
     }

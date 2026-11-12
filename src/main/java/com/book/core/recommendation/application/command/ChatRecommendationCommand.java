@@ -12,8 +12,14 @@ public class ChatRecommendationCommand {
     private final List<RecommendationTurn> recentTurns;
     private final List<Long> excludeBookIds;
 
-    public ChatRecommendationCommand(final Long userId, final boolean consented, final Map<String, Object> spec, final String message,
-        final List<RecommendationTurn> recentTurns, final List<Long> excludeBookIds) {
+    public ChatRecommendationCommand(
+        final Long userId,
+        final boolean consented,
+        final Map<String, Object> spec,
+        final String message,
+        final List<RecommendationTurn> recentTurns,
+        final List<Long> excludeBookIds
+    ) {
         this.userId = userId;
         this.consented = consented;
         this.spec = spec;

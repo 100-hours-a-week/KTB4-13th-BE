@@ -46,9 +46,12 @@ public class RecommendationFeedClientImpl implements RecommendationFeedClient {
     private final GetRecommendationHistoryUseCase history;
     private final int requestTargetMaxBytes;
 
-    public RecommendationFeedClientImpl(@Qualifier(AiRestClientConfig.DEFAULT_AI_REST_CLIENT) final RestClient restClient,
-        final GetAiBookIdentifiersUseCase identifiers, final GetRecommendationHistoryUseCase history,
-        @Value("${ai.feed-request-target-max-bytes:4096}") final int requestTargetMaxBytes) {
+    public RecommendationFeedClientImpl(
+        @Qualifier(AiRestClientConfig.DEFAULT_AI_REST_CLIENT) final RestClient restClient,
+        final GetAiBookIdentifiersUseCase identifiers,
+        final GetRecommendationHistoryUseCase history,
+        @Value("${ai.feed-request-target-max-bytes:4096}") final int requestTargetMaxBytes
+    ) {
         this.restClient = restClient;
         this.identifiers = identifiers;
         this.history = history;

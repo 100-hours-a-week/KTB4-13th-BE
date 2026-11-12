@@ -33,6 +33,8 @@ public interface SearchControllerSpec {
         @Parameter(description = "출간연도 시작(포함)", example = "2020") @Positive final Integer pubYearFrom,
         @Parameter(description = "출간연도 종료(포함). pubYearFrom보다 작으면 400", example = "2024") @Positive final Integer pubYearTo,
         @Parameter(description = "popular(기본), newest, price_asc", example = "popular")
-        @Pattern(regexp = "popular|newest|price_asc") final String sort, @Parameter(description = "직전 응답의 nextCursor") final String cursor,
-        @Parameter(description = "한 페이지 개수. 기본 12, 최대 50", example = "12") @Positive @Max(50) final int size);
+        @Pattern(regexp = "popular|newest|price_asc") final String sort,
+        @Parameter(description = "직전 응답의 nextCursor") final String cursor,
+        @Parameter(description = "한 페이지 개수. 기본 12, 최대 50", example = "12") @Positive @Max(50) final int size
+    );
 }

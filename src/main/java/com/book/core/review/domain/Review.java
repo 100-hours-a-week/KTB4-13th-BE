@@ -44,8 +44,16 @@ public class Review extends BaseEntity {
     @Column(name = "is_spoiler", nullable = false)
     private boolean isSpoiler;
 
-    public Review(final Long id, final Long userId, final String reviewKey, final ReviewTargetType targetType, final Long targetId,
-        final BigDecimal rate, final String content, final boolean isSpoiler) {
+    public Review(
+        final Long id,
+        final Long userId,
+        final String reviewKey,
+        final ReviewTargetType targetType,
+        final Long targetId,
+        final BigDecimal rate,
+        final String content,
+        final boolean isSpoiler
+    ) {
         super(id);
         this.userId = userId;
         this.reviewKey = reviewKey;

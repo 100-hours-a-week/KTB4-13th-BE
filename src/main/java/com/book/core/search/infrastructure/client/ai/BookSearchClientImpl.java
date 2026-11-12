@@ -34,8 +34,10 @@ public class BookSearchClientImpl implements BookSearchClient {
     private final RestClient restClient;
     private final GetAiBookIdentifiersUseCase identifiers;
 
-    public BookSearchClientImpl(@Qualifier(AiRestClientConfig.DEFAULT_AI_REST_CLIENT) final RestClient restClient,
-        final GetAiBookIdentifiersUseCase identifiers) {
+    public BookSearchClientImpl(
+        @Qualifier(AiRestClientConfig.DEFAULT_AI_REST_CLIENT) final RestClient restClient,
+        final GetAiBookIdentifiersUseCase identifiers
+    ) {
         this.restClient = restClient;
         this.identifiers = identifiers;
     }

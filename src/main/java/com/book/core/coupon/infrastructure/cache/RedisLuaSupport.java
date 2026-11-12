@@ -23,13 +23,21 @@ final class RedisLuaSupport {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    static List<String> runForStrings(final StringRedisTemplate redisTemplate, final RedisScript<List> script, final List<String> keys,
-        final Object... args) {
+    static List<String> runForStrings(
+        final StringRedisTemplate redisTemplate,
+        final RedisScript<List> script,
+        final List<String> keys,
+        final Object... args
+    ) {
         return (List<String>) redisTemplate.execute(script, keys, toStringArgs(args));
     }
 
-    static long runForLong(final StringRedisTemplate redisTemplate, final RedisScript<Long> script, final List<String> keys,
-        final Object... args) {
+    static long runForLong(
+        final StringRedisTemplate redisTemplate,
+        final RedisScript<Long> script,
+        final List<String> keys,
+        final Object... args
+    ) {
         final Long result = redisTemplate.execute(script, keys, toStringArgs(args));
         if (result == null) {
             throw new IllegalStateException("Lua 결과 null");

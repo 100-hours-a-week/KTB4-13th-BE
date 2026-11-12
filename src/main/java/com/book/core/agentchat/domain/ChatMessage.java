@@ -34,8 +34,14 @@ public class ChatMessage extends BaseEntity {
     @Column(name = "response_payload", updatable = false, columnDefinition = "LONGTEXT")
     private String responsePayload;
 
-    public ChatMessage(final Long sessionId, final Long requestId, final long sequence, final String role, final String text,
-        final String responsePayload) {
+    public ChatMessage(
+        final Long sessionId,
+        final Long requestId,
+        final long sequence,
+        final String role,
+        final String text,
+        final String responsePayload
+    ) {
         if (sessionId == null || sessionId <= 0 || requestId == null || requestId <= 0 || sequence <= 0 || text == null
             || !("user".equals(role) || "assistant".equals(role)) || ("user".equals(role) && responsePayload != null)
             || ("assistant".equals(role) && (responsePayload == null || responsePayload.isBlank()))) {

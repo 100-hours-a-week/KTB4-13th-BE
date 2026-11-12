@@ -21,9 +21,11 @@ class NationalLibraryIsbnClientImpl implements NationalLibraryIsbnClient {
     private final ObjectMapper mapper;
     private final String apiKey;
 
-    NationalLibraryIsbnClientImpl(final ObjectMapper mapper,
+    NationalLibraryIsbnClientImpl(
+        final ObjectMapper mapper,
         @Value("${app.new-book.national-library-base-url:https://www.nl.go.kr}") final String baseUrl,
-        @Value("${app.new-book.national-library-key:}") final String apiKey) {
+        @Value("${app.new-book.national-library-key:}") final String apiKey
+    ) {
         this.http = BookCatalogHttp.connect(baseUrl);
         this.mapper = mapper;
         this.apiKey = apiKey;

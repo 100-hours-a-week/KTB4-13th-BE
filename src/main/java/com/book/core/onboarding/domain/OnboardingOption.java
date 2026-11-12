@@ -47,8 +47,14 @@ public class OnboardingOption {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public OnboardingOption(final Long id, final Long onboardingQuestionId, final Long parentOptionId, final String code,
-        final String content, final int displayOrder) {
+    public OnboardingOption(
+        final Long id,
+        final Long onboardingQuestionId,
+        final Long parentOptionId,
+        final String code,
+        final String content,
+        final int displayOrder
+    ) {
         this.id = id;
         this.onboardingQuestionId = onboardingQuestionId;
         this.parentOptionId = parentOptionId;

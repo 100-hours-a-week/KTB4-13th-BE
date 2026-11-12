@@ -22,8 +22,12 @@ public class FailChatRequestUseCase {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void execute(final SendChatMessageCommand command, final long generation, final ErrorCode failure,
-        final Long retryAfterSeconds) {
+    public void execute(
+        final SendChatMessageCommand command,
+        final long generation,
+        final ErrorCode failure,
+        final Long retryAfterSeconds
+    ) {
         final ChatSession session = chats.findSession(command.sessionId()).orElseThrow(() -> new CoreException(ErrorCode.CHAT_NOT_FOUND));
         session.requireOwner(command.userId());
         final ChatRequest request =

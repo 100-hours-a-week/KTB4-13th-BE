@@ -36,8 +36,10 @@ class NotificationController implements NotificationControllerSpec {
 
     @Override
     @PatchMapping("/{notificationId}/read")
-    public ResponseEntity<ApiResponse<Void>> read(@UserId final Long userId,
-        @Positive @PathVariable("notificationId") final Long notificationId) {
+    public ResponseEntity<ApiResponse<Void>> read(
+        @UserId final Long userId,
+        @Positive @PathVariable("notificationId") final Long notificationId
+    ) {
         notificationService.read(commandConverter.toReadCommand(userId, notificationId));
         return ResponseEntity.ok(ApiResponse.ok());
     }

@@ -48,8 +48,13 @@ public class RecommendationCard {
         return new RecommendationCard(null, userId, bookId, reasonLong, null);
     }
 
-    public static RecommendationCard restore(final Long id, final Long userId, final Long bookId, final String reasonLong,
-        final LocalDateTime createdAt) {
+    public static RecommendationCard restore(
+        final Long id,
+        final Long userId,
+        final Long bookId,
+        final String reasonLong,
+        final LocalDateTime createdAt
+    ) {
         return new RecommendationCard(id, userId, bookId, reasonLong, createdAt);
     }
 

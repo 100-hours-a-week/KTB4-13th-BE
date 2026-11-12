@@ -33,9 +33,15 @@ public class CancelBalance extends BaseEntity {
     @Column(name = "cancelled_coupon_amount", nullable = false, precision = 38, scale = 2)
     private BigDecimal cancelledCouponAmount;
 
-    public CancelBalance(final Long orderId, final BigDecimal cancellablePaidAmount, final BigDecimal cancellablePointAmount,
-        final BigDecimal cancellableCouponAmount, final BigDecimal cancelledPaidAmount, final BigDecimal cancelledPointAmount,
-        final BigDecimal cancelledCouponAmount) {
+    public CancelBalance(
+        final Long orderId,
+        final BigDecimal cancellablePaidAmount,
+        final BigDecimal cancellablePointAmount,
+        final BigDecimal cancellableCouponAmount,
+        final BigDecimal cancelledPaidAmount,
+        final BigDecimal cancelledPointAmount,
+        final BigDecimal cancelledCouponAmount
+    ) {
         this.orderId = orderId;
         this.cancellablePaidAmount = cancellablePaidAmount;
         this.cancellablePointAmount = cancellablePointAmount;

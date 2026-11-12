@@ -23,10 +23,12 @@ class TossPaymentConfiguration {
     private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
 
     @Bean
-    TossPaymentHttpClient tossPaymentHttpClient(@Value("${payment.toss.base-url}") final String baseUrl,
+    TossPaymentHttpClient tossPaymentHttpClient(
+        @Value("${payment.toss.base-url}") final String baseUrl,
         @Value("${payment.toss.secret-key:}") final String secretKey,
         @Value("${payment.toss.connect-timeout-ms:3000}") final int connectTimeoutMillis,
-        @Value("${payment.toss.read-timeout-ms:10000}") final int readTimeoutMillis) {
+        @Value("${payment.toss.read-timeout-ms:10000}") final int readTimeoutMillis
+    ) {
         final var requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofMillis(connectTimeoutMillis));
         requestFactory.setReadTimeout(Duration.ofMillis(readTimeoutMillis));

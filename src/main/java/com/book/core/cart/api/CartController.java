@@ -48,8 +48,11 @@ class CartController implements CartControllerSpec {
 
     @Override
     @PutMapping("/items/{cartItemId}")
-    public ResponseEntity<ApiResponse<Void>> modifyCartItem(@UserId final Long userId,
-        @Positive @PathVariable("cartItemId") final Long cartItemId, @Valid @RequestBody final ModifyCartItemRequest request) {
+    public ResponseEntity<ApiResponse<Void>> modifyCartItem(
+        @UserId final Long userId,
+        @Positive @PathVariable("cartItemId") final Long cartItemId,
+        @Valid @RequestBody final ModifyCartItemRequest request
+    ) {
         final ModifyCartItemCommand command = commandConverter.toModifyCartItemCommand(userId, cartItemId, request);
         cartService.modifyCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -57,8 +60,10 @@ class CartController implements CartControllerSpec {
 
     @Override
     @DeleteMapping("/items/{cartItemId}")
-    public ResponseEntity<ApiResponse<Void>> deleteCartItem(@UserId final Long userId,
-        @Positive @PathVariable("cartItemId") final Long cartItemId) {
+    public ResponseEntity<ApiResponse<Void>> deleteCartItem(
+        @UserId final Long userId,
+        @Positive @PathVariable("cartItemId") final Long cartItemId
+    ) {
         final DeleteCartItemCommand command = commandConverter.toDeleteCartItemCommand(userId, cartItemId);
         cartService.deleteCartItem(command);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -66,8 +71,10 @@ class CartController implements CartControllerSpec {
 
     @Override
     @DeleteMapping("/items")
-    public ResponseEntity<ApiResponse<Void>> deleteCartItems(@UserId final Long userId,
-        @Valid @RequestBody final DeleteCartItemsRequest request) {
+    public ResponseEntity<ApiResponse<Void>> deleteCartItems(
+        @UserId final Long userId,
+        @Valid @RequestBody final DeleteCartItemsRequest request
+    ) {
         final DeleteCartItemsCommand command = commandConverter.toDeleteCartItemsCommand(userId, request);
         cartService.deleteCartItems(command);
         return ResponseEntity.ok(ApiResponse.ok());

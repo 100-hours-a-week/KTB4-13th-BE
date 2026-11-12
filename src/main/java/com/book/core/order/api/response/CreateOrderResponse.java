@@ -18,13 +18,15 @@ public record CreateOrderResponse(
     public static CreateOrderResponse created(
         final String orderKey,
         final BigDecimal totalPrice,
-        final List<CreateOrderItemResponse> items) {
+        final List<CreateOrderItemResponse> items
+    ) {
         return new CreateOrderResponse(orderKey, "ORDER_CREATED", totalPrice, items);
     }
     public static CreateOrderResponse noAddress(
         final String orderKey,
         final BigDecimal totalPrice,
-        final List<CreateOrderItemResponse> items) {
+        final List<CreateOrderItemResponse> items
+    ) {
         return new CreateOrderResponse(orderKey, "NO_ADDRESS", totalPrice, items);
     }
 }

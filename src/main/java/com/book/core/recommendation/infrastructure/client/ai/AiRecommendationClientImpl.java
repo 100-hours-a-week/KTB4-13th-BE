@@ -47,8 +47,12 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
     private final GetRecommendationHistoryUseCase history;
     private final ObjectMapper json;
 
-    public AiRecommendationClientImpl(final AiChatHttpClient http, final GetAiBookIdentifiersUseCase identifiers,
-        final GetRecommendationHistoryUseCase history, final ObjectMapper json) {
+    public AiRecommendationClientImpl(
+        final AiChatHttpClient http,
+        final GetAiBookIdentifiersUseCase identifiers,
+        final GetRecommendationHistoryUseCase history,
+        final ObjectMapper json
+    ) {
         this.http = http;
         this.identifiers = identifiers;
         this.history = history;
@@ -150,8 +154,13 @@ public class AiRecommendationClientImpl implements AiRecommendationClient {
         return requestId != null ? requestId : UUID.randomUUID().toString();
     }
 
-    private byte[] chatBody(final AiRecommendationChatRequest request, final boolean consented, final Map<String, Object> spec,
-        final List<AiChatTurn> turns, final List<RecommendationExclusion> exclusions) {
+    private byte[] chatBody(
+        final AiRecommendationChatRequest request,
+        final boolean consented,
+        final Map<String, Object> spec,
+        final List<AiChatTurn> turns,
+        final List<RecommendationExclusion> exclusions
+    ) {
         return AiRequestBudget.fit(exclusions, (final List<RecommendationExclusion> selected) -> {
             final AiChatRequest body = new AiChatRequest(request.userId(), consented, spec, request.message(), turns,
                 RecommendationExclusion.isbnsFrom(selected, RecommendationExclusionSource.CONVERSATION),

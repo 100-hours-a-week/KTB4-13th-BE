@@ -13,8 +13,15 @@ public class OnboardingQuestionResult {
     private final List<OnboardingOptionResult> options;
     private final Long nextQuestionId;
 
-    public OnboardingQuestionResult(final Long questionId, final String code, final String content, final int minSelection,
-        final Integer maxSelection, final List<OnboardingOptionResult> options, final Long nextQuestionId) {
+    public OnboardingQuestionResult(
+        final Long questionId,
+        final String code,
+        final String content,
+        final int minSelection,
+        final Integer maxSelection,
+        final List<OnboardingOptionResult> options,
+        final Long nextQuestionId
+    ) {
         this.questionId = questionId;
         this.code = code;
         this.content = content;
@@ -24,8 +31,11 @@ public class OnboardingQuestionResult {
         this.nextQuestionId = nextQuestionId;
     }
 
-    public static OnboardingQuestionResult of(final OnboardingQuestion question, final List<OnboardingOption> options,
-        final Long nextQuestionId) {
+    public static OnboardingQuestionResult of(
+        final OnboardingQuestion question,
+        final List<OnboardingOption> options,
+        final Long nextQuestionId
+    ) {
         return new OnboardingQuestionResult(question.id(), question.code(), question.content(), question.minSelection(),
             question.maxSelection(), options.stream().map(OnboardingOptionResult::from).toList(), nextQuestionId);
     }

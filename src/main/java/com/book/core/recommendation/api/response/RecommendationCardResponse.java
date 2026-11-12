@@ -17,9 +17,18 @@ public class RecommendationCardResponse {
     private final String reasonShort;
     private final String reasonLong;
 
-    public RecommendationCardResponse(final Long recommendationCardId, final Long bookId, final Long productId, final String title,
-        final String author, final String coverImageUrl, final BigDecimal price, final Integer matchScore, final String reasonShort,
-        final String reasonLong) {
+    public RecommendationCardResponse(
+        final Long recommendationCardId,
+        final Long bookId,
+        final Long productId,
+        final String title,
+        final String author,
+        final String coverImageUrl,
+        final BigDecimal price,
+        final Integer matchScore,
+        final String reasonShort,
+        final String reasonLong
+    ) {
         this.recommendationCardId = recommendationCardId;
         this.bookId = bookId;
         this.productId = productId;

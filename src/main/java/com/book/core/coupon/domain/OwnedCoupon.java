@@ -35,8 +35,13 @@ public class OwnedCoupon extends BaseEntity {
     @Column(name = "used_count", nullable = false)
     private long usedCount = 0L;
 
-    public OwnedCoupon(final Long userId, final Long couponId, final OwnedCouponStatus status, final long maxUseCount,
-        final long usedCount) {
+    public OwnedCoupon(
+        final Long userId,
+        final Long couponId,
+        final OwnedCouponStatus status,
+        final long maxUseCount,
+        final long usedCount
+    ) {
         this.userId = userId;
         this.couponId = couponId;
         this.status = status;

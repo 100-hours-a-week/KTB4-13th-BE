@@ -16,8 +16,12 @@ public final class UserIdArgumentResolver implements HandlerMethodArgumentResolv
     }
 
     @Override
-    public Object resolveArgument(final MethodParameter parameter, final ModelAndViewContainer mavContainer,
-        final NativeWebRequest webRequest, final WebDataBinderFactory binderFactory) {
+    public Object resolveArgument(
+        final MethodParameter parameter,
+        final ModelAndViewContainer mavContainer,
+        final NativeWebRequest webRequest,
+        final WebDataBinderFactory binderFactory
+    ) {
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
             if (!parameter.getParameterAnnotation(UserId.class).required()) {

@@ -27,10 +27,13 @@ public class ChatRecommendationRequest {
     private final List<Long> excludeBookIds;
 
     @JsonCreator
-    public ChatRecommendationRequest(@JsonProperty("consented") final Boolean consented,
-        @JsonProperty("spec") final Map<String, Object> spec, @JsonProperty("message") final String message,
+    public ChatRecommendationRequest(
+        @JsonProperty("consented") final Boolean consented,
+        @JsonProperty("spec") final Map<String, Object> spec,
+        @JsonProperty("message") final String message,
         @JsonProperty("recentTurns") final List<RecommendationTurnRequest> recentTurns,
-        @JsonProperty("excludeBookIds") final List<Long> excludeBookIds) {
+        @JsonProperty("excludeBookIds") final List<Long> excludeBookIds
+    ) {
         this.consented = consented;
         this.spec = spec;
         this.message = message;

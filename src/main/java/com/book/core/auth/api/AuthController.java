@@ -37,16 +37,20 @@ class AuthController implements AuthControllerSpec {
 
     @PostMapping("/{providerType}/login")
     @Override
-    public ResponseEntity<ApiResponse<AuthLoginResponse>> login(@PathVariable final ProviderType providerType,
-        @Valid @RequestBody final AuthLoginRequest request) {
+    public ResponseEntity<ApiResponse<AuthLoginResponse>> login(
+        @PathVariable final ProviderType providerType,
+        @Valid @RequestBody final AuthLoginRequest request
+    ) {
         final AuthLoginCommand command = commandConverter.toAuthLoginCommand(providerType, request);
         return loginResponse(authService.login(command));
     }
 
     @PostMapping("/{providerType}/signup")
     @Override
-    public ResponseEntity<ApiResponse<AuthLoginResponse>> signup(@PathVariable final ProviderType providerType,
-        @Valid @RequestBody final AuthLoginRequest request) {
+    public ResponseEntity<ApiResponse<AuthLoginResponse>> signup(
+        @PathVariable final ProviderType providerType,
+        @Valid @RequestBody final AuthLoginRequest request
+    ) {
         final AuthLoginCommand command = commandConverter.toAuthLoginCommand(providerType, request);
         return loginResponse(authService.signup(command));
     }

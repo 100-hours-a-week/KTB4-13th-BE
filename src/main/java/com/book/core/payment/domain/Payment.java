@@ -51,9 +51,17 @@ public class Payment extends BaseEntity {
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
 
-    public Payment(final Long userId, final Long orderId, final BigDecimal originAmount, final Long ownedCouponId,
-        final BigDecimal couponDiscount, final BigDecimal usedPoint, final Long payerUserId, final BigDecimal paidAmount,
-        final PaymentState state) {
+    public Payment(
+        final Long userId,
+        final Long orderId,
+        final BigDecimal originAmount,
+        final Long ownedCouponId,
+        final BigDecimal couponDiscount,
+        final BigDecimal usedPoint,
+        final Long payerUserId,
+        final BigDecimal paidAmount,
+        final PaymentState state
+    ) {
         this.userId = userId;
         this.orderId = orderId;
         this.originAmount = originAmount;

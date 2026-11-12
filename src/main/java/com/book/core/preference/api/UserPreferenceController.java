@@ -38,8 +38,10 @@ class UserPreferenceController implements UserPreferenceControllerSpec {
 
     @Override
     @DeleteMapping("/memories")
-    public ResponseEntity<Void> deleteMemories(@UserId final Long userId,
-        @NotEmpty @RequestParam("ids") final List<@NotNull @Positive Long> memoryIds) {
+    public ResponseEntity<Void> deleteMemories(
+        @UserId final Long userId,
+        @NotEmpty @RequestParam("ids") final List<@NotNull @Positive Long> memoryIds
+    ) {
         userPreferenceService.deleteMemories(commandConverter.toDeleteUserMemoriesCommand(userId, memoryIds));
         return ResponseEntity.noContent().build();
     }

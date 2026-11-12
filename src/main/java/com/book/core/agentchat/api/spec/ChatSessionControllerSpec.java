@@ -35,16 +35,23 @@ public interface ChatSessionControllerSpec {
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "사용자별 목록"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 커서 또는 크기"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요")})
-    ResponseEntity<ApiResponse<ChatSessionListResponse>> list(@Parameter(hidden = true) Long userId, @Positive Long beforeId,
-        @Min(1) @Max(100) int limit);
+    ResponseEntity<ApiResponse<ChatSessionListResponse>> list(
+        @Parameter(hidden = true) Long userId,
+        @Positive Long beforeId,
+        @Min(1) @Max(100) int limit
+    );
 
     @Operation(summary = "대화 이력 조회", description = "순서 오름차순, 당시 응답 복원. nextAfterSequence로 다음 페이지를 조회하며 빈 목록이면 현재 끝입니다. 타인 방은 404입니다.")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "저장 이력"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 순서 또는 크기"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없거나 타인 대화방")})
-    ResponseEntity<ApiResponse<ChatHistoryResponse>> history(@Parameter(hidden = true) Long userId, @Positive Long sessionId,
-        @PositiveOrZero long afterSequence, @Min(1) @Max(100) int limit);
+    ResponseEntity<ApiResponse<ChatHistoryResponse>> history(
+        @Parameter(hidden = true) Long userId,
+        @Positive Long sessionId,
+        @PositiveOrZero long afterSequence,
+        @Min(1) @Max(100) int limit
+    );
 
     @Operation(summary = "대화 전송",
         description = "최근 20개 발화로 AI를 호출하고 같은 키의 성공 또는 실패를 재생합니다. "
@@ -64,10 +71,16 @@ public interface ChatSessionControllerSpec {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "502", description = "AI 응답 또는 인증 오류"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI 일시 불가 또는 SSE 처리 포화, Retry-After 제공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "504", description = "AI 시간 초과")})
-    ResponseEntity<ApiResponse<ChatReplyResponse>> send(@Parameter(hidden = true) Long userId, @Positive Long sessionId,
-        @Valid SendChatMessageRequest request);
+    ResponseEntity<ApiResponse<ChatReplyResponse>> send(
+        @Parameter(hidden = true) Long userId,
+        @Positive Long sessionId,
+        @Valid SendChatMessageRequest request
+    );
 
     @Operation(hidden = true)
-    ResponseEntity<SseEmitter> stream(@Parameter(hidden = true) Long userId, @Positive Long sessionId,
-        @Valid SendChatMessageRequest request);
+    ResponseEntity<SseEmitter> stream(
+        @Parameter(hidden = true) Long userId,
+        @Positive Long sessionId,
+        @Valid SendChatMessageRequest request
+    );
 }

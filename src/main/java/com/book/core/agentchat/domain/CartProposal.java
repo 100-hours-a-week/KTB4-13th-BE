@@ -43,8 +43,13 @@ public class CartProposal extends BaseEntity {
     @OrderBy("productId ASC")
     private List<CartChangeLine> items = new ArrayList<>();
 
-    public CartProposal(final Long userId, final String sourceKey, final String intent, final List<CartChangeLine> items,
-        final Instant createdAt) {
+    public CartProposal(
+        final Long userId,
+        final String sourceKey,
+        final String intent,
+        final List<CartChangeLine> items,
+        final Instant createdAt
+    ) {
         super(null);
         if (userId == null || userId <= 0 || sourceKey == null || sourceKey.isBlank() || sourceKey.length() > 100 || intent == null
             || intent.isBlank() || intent.length() > 2000 || createdAt == null || items == null || items.isEmpty() || items.size() > 30

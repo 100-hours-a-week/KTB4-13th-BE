@@ -39,8 +39,13 @@ public record ChatResponseSnapshot(int schemaVersion, Map<String, Object> spec, 
             result.followup(), List.of(), result.degraded(), "recommend", buttons, null, null);
     }
 
-    public static ChatResponseSnapshot shop(final Map<String, Object> spec, final String reply, final List<AgentButton> buttons,
-        final AgentExecutionSummary execution, AgentCheckout checkout) {
+    public static ChatResponseSnapshot shop(
+        final Map<String, Object> spec,
+        final String reply,
+        final List<AgentButton> buttons,
+        final AgentExecutionSummary execution,
+        AgentCheckout checkout
+    ) {
         return new ChatResponseSnapshot(2, spec, reply, List.of(), null, List.of(), false, "shop", buttons, execution, checkout);
     }
 

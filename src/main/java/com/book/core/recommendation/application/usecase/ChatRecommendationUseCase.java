@@ -70,8 +70,11 @@ public class ChatRecommendationUseCase {
             aiResult.degraded());
     }
 
-    private ResolvedRecommendationCard toResolvedCard(final RecommendationCardCandidate card, final Book book,
-        final RecommendationProductResult product) {
+    private ResolvedRecommendationCard toResolvedCard(
+        final RecommendationCardCandidate card,
+        final Book book,
+        final RecommendationProductResult product
+    ) {
         Long productId = null;
         BigDecimal price = null;
         if (product != null) {

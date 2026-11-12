@@ -12,8 +12,14 @@ public class AiRecommendationChatResult {
     private final List<String> buttons;
     private final boolean degraded;
 
-    public AiRecommendationChatResult(final Map<String, Object> spec, final String reply, final List<AiRecommendationCard> cards,
-        final String followup, final List<String> buttons, final boolean degraded) {
+    public AiRecommendationChatResult(
+        final Map<String, Object> spec,
+        final String reply,
+        final List<AiRecommendationCard> cards,
+        final String followup,
+        final List<String> buttons,
+        final boolean degraded
+    ) {
         this.spec = spec;
         this.reply = reply;
         this.cards = cards;

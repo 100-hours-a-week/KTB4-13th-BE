@@ -49,8 +49,11 @@ public class CompleteChatRequestUseCase {
     private final ChatRecommendationUseCase recommendations;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public ChatResponseSnapshot execute(final SendChatMessageCommand command, final long generation,
-        final ChatRecommendationAiOutcome outcome) {
+    public ChatResponseSnapshot execute(
+        final SendChatMessageCommand command,
+        final long generation,
+        final ChatRecommendationAiOutcome outcome
+    ) {
         final ChatSession session = chats.findSession(command.sessionId()).orElseThrow(() -> new CoreException(ErrorCode.CHAT_NOT_FOUND));
         session.requireOwner(command.userId());
         final ChatRequest request =
@@ -75,9 +78,14 @@ public class CompleteChatRequestUseCase {
 
     /** 장바구니 변경·제안·최종 화면·발화 쌍을 하나의 완료 트랜잭션으로 확정합니다. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public ChatResponseSnapshot executeAgent(final SendChatMessageCommand command, final long generation, final AgentDecision decision,
-        final AgentChatContext context, final Map<String, RecommendationProductResult> newProducts,
-        final Map<String, Object> previousSpec) {
+    public ChatResponseSnapshot executeAgent(
+        final SendChatMessageCommand command,
+        final long generation,
+        final AgentDecision decision,
+        final AgentChatContext context,
+        final Map<String, RecommendationProductResult> newProducts,
+        final Map<String, Object> previousSpec
+    ) {
         final ChatSession session = chats.findSession(command.sessionId()).orElseThrow(() -> new CoreException(ErrorCode.CHAT_NOT_FOUND));
         session.requireOwner(command.userId());
         final ChatRequest request =
@@ -106,8 +114,14 @@ public class CompleteChatRequestUseCase {
         return response;
     }
 
-    private ChatResponseSnapshot completeShop(final SendChatMessageCommand command, final Long requestId, final AgentDecision decision,
-        final AgentChatContext context, final Map<String, RecommendationProductResult> newProducts, final Map<String, Object> spec) {
+    private ChatResponseSnapshot completeShop(
+        final SendChatMessageCommand command,
+        final Long requestId,
+        final AgentDecision decision,
+        final AgentChatContext context,
+        final Map<String, RecommendationProductResult> newProducts,
+        final Map<String, Object> spec
+    ) {
         if (decision.selection() == null && decision.actions().isEmpty()) {
             return ChatResponseSnapshot.shop(spec, decision.reply(), decision.buttons(), null, null);
         }

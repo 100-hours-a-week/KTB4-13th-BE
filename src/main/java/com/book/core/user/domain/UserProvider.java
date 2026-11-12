@@ -43,8 +43,13 @@ public class UserProvider extends BaseEntity {
     @Column(name = "unlinked_at")
     private LocalDateTime unlinkedAt;
 
-    private UserProvider(final Long id, final Long userId, final ProviderType providerType, final String providerUserId,
-        final String providerEmail) {
+    private UserProvider(
+        final Long id,
+        final Long userId,
+        final ProviderType providerType,
+        final String providerUserId,
+        final String providerEmail
+    ) {
         super(id);
         validateUserId(userId);
         validateProviderType(providerType);
@@ -56,13 +61,22 @@ public class UserProvider extends BaseEntity {
         this.providerEmail = providerEmail;
     }
 
-    public static UserProvider create(final Long userId, final ProviderType providerType, final String providerUserId,
-        final String providerEmail) {
+    public static UserProvider create(
+        final Long userId,
+        final ProviderType providerType,
+        final String providerUserId,
+        final String providerEmail
+    ) {
         return new UserProvider(null, userId, providerType, providerUserId, providerEmail);
     }
 
-    public static UserProvider restore(final Long id, final Long userId, final ProviderType providerType, final String providerUserId,
-        final String providerEmail) {
+    public static UserProvider restore(
+        final Long id,
+        final Long userId,
+        final ProviderType providerType,
+        final String providerUserId,
+        final String providerEmail
+    ) {
         if (id == null || id <= 0) {
             throw new BusinessException(ErrorCode.INVALID_USER_PROVIDER_ID);
         }

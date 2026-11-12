@@ -36,13 +36,14 @@ public class Address extends BaseEntity {
     private boolean defaultAddress;
 
     public Address(
-            final Long id,
-            final Long userId,
-            final String label,
-            final String postalCode,
-            final String address,
-            final String detailAddress,
-            final boolean defaultAddress) {
+        final Long id,
+        final Long userId,
+        final String label,
+        final String postalCode,
+        final String address,
+        final String detailAddress,
+        final boolean defaultAddress
+    ) {
         super(id);
         this.userId = userId;
         this.label = normalizeRequired(label);
@@ -53,21 +54,23 @@ public class Address extends BaseEntity {
     }
 
     public static Address of(
-            final long userId,
-            final String label,
-            final String postalCode,
-            final String address,
-            final String detailAddress,
-            final boolean defaultAddress) {
+        final long userId,
+        final String label,
+        final String postalCode,
+        final String address,
+        final String detailAddress,
+        final boolean defaultAddress
+    ) {
         return new Address(null, userId, label, postalCode, address, detailAddress, defaultAddress);
     }
 
     public static Address register(
-            final long userId,
-            final String label,
-            final String postalCode,
-            final String address,
-            final String detailAddress) {
+        final long userId,
+        final String label,
+        final String postalCode,
+        final String address,
+        final String detailAddress
+    ) {
         return of(userId, label, postalCode, address, detailAddress, false);
     }
 

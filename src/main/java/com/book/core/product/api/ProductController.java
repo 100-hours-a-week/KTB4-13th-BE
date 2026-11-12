@@ -46,7 +46,8 @@ class ProductController implements ProductControllerSpec {
         @Positive @RequestParam(value = "limit", required = false) final Integer limit,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         @RequestParam(value = "publishedFrom", required = false) final LocalDate publishedFrom,
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @RequestParam(value = "publishedTo", required = false) final LocalDate publishedTo) {
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @RequestParam(value = "publishedTo", required = false) final LocalDate publishedTo
+    ) {
         final var command = commandConverter.toGetProductsCommand(categoryId, publishedFrom, publishedTo, sort, cursor, limit);
         final var result = productService.getProducts(command);
         final var response = resultConverter.toGetProductsResponse(result);

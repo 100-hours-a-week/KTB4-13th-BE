@@ -30,7 +30,8 @@ public interface AuthControllerSpec {
     ResponseEntity<ApiResponse<AuthLoginResponse>> login(
         @Parameter(description = "소셜 로그인 provider", required = true, example = "kakao") final ProviderType providerType,
         @RequestBody(description = "소셜 로그인 인가 코드, PKCE verifier, nonce", required = true,
-            content = @Content(schema = @Schema(implementation = AuthLoginRequest.class))) final AuthLoginRequest request);
+            content = @Content(schema = @Schema(implementation = AuthLoginRequest.class))) final AuthLoginRequest request
+    );
 
     @Operation(summary = "소셜 회원 가입", description = "외부 provider 인가 코드로 신규 회원을 생성하고 서비스 Token을 발급합니다. 로그인과 별도의 인가 코드가 필요합니다.")
     @ApiResponses({
@@ -43,7 +44,8 @@ public interface AuthControllerSpec {
     ResponseEntity<ApiResponse<AuthLoginResponse>> signup(
         @Parameter(description = "소셜 로그인 provider", required = true, example = "kakao") final ProviderType providerType,
         @RequestBody(description = "소셜 로그인 인가 코드, PKCE verifier, nonce", required = true,
-            content = @Content(schema = @Schema(implementation = AuthLoginRequest.class))) final AuthLoginRequest request);
+            content = @Content(schema = @Schema(implementation = AuthLoginRequest.class))) final AuthLoginRequest request
+    );
 
     @Operation(summary = "토큰 재발급", description = "HttpOnly Cookie의 Refresh Token을 검증하고 새로운 Access/Refresh Token을 발급합니다.")
     @ApiResponses({

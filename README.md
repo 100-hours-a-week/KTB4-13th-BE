@@ -176,7 +176,7 @@ Colima를 사용할 때 Testcontainers가 소켓을 찾지 못하면 해당 실�
 
 BE의 작업 완료는 Kafka 브로커 발행 확인이지 AI 처리 완료가 아닙니다. 발행 성공 응답 유실이나 AI DB 저장 후 offset commit 전 종료 시 중복될 수 있습니다. `job_revision`은 UUID로 순서를 나타내지 않으며, 재시도 시 같은 revision에 최신 데이터를 다시 읽을 수 있어 이를 단독 중복 제거 키로 사용해서는 안 됩니다. 사용자 key와 파티션별 순차 처리만으로 지연·재시도에 따른 최신 상태를 보장하지 못합니다. 현재 AI의 `idempotency_key`도 중복 제거에 사용되지 않습니다. AI 측 버전 검증·멱등성은 아직 구현되지 않았습니다.
 
-MySQL 작업자 락 연결이 끊기면 이전 작업자의 발행이 계속되어 DELETE 뒤에 오래된 UPSERT가 도착할 수 있습니다. 동의 철회나 탈퇴 후 지연된 메시지가 AI 프로필을 재생성할 수 있습니다. 발행 순서 보장과 Consumer 경합 대책을 검증하기 전에는 Kafka 경로를 활성화하지 않습니다. AI Consumer를 먼저 배포하고, HTTP 롤백 전 Consumer lag와 처리 중 작업을 확인합니다. 메시지에는 개인정보와 벡터가 들어갈 수 있으므로 ACL·보관 기간·DLT 접근을 제한하고 본문을 로그에 남기지 않습니다. 큰 본문은 브로커와 Producer·Consumer의 크기 제한을 초과할 수 있습니다. 초과 시 BE 작업은 재시도되며, 제한 조정 또는 입력 축소를 운영자가 해결해야 합니다.
+MySQL 작업자 락 연결이 끊기면 이전 작업자의 발행이 계속되어 DELETE 뒤에 오래된 UPSERT가 도착할 수 있습니다. 동의 철회나 탈퇴 후 지연된 메시지가 AI 프로필을 재생성할 수 있습니다. 발행 순서 보장과 Consumer 경합 대책을 검증하기 전에는 Kafka 경로를 활성화하지 않습니다. AI Consumer를 먼저 배포하고, HTTP 롤백 전 Consumer lag와 처리 중 작업을 확인합니다. 메시지에는 개인정보와 벡터가 들어갈 수 있으므로 ACL·보관 기간·DLT 접근을 제한하고 본문을 로그에 남기지 않습니다. 메시지 값은 AI 수신 한도와 같은 8MiB까지 발행하며 Producer `max.request.size`는 8,454,144바이트입니다. 원본·실패 토픽의 `max.message.bytes`도 8,454,144 이상으로 설정합니다. 값이 8MiB를 넘거나 Producer·브로커가 크기 한도로 거부하면 작업을 재시도하지 않고 실패 작업(`available_at` 9999-01-01)으로 보관하며, 원인은 `errorCode=AI_PROFILE_MESSAGE_TOO_LARGE` ERROR 로그로 확인합니다. 회원이 취향을 다시 수정하면 새 작업으로 다시 시도합니다.
 
 로컬에서 `docker compose -f compose.kafka.yml up -d`로 별도 브로커를 기동한 뒤 다음 토픽을 생성합니다. 기존 README의 내부 작업 토픽도 사용하는 경우 해당 생성 절차를 함께 실행합니다.
 

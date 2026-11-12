@@ -100,6 +100,19 @@ class ProcessProfileSyncJobUseCaseTest {
     }
 
     @Test
+    void 메시지_크기_초과는_다시_보내도_같으므로_갱신_작업을_재시도하지_않고_실패_작업으로_보관한다() {
+        final Job job = givenJob(0);
+        givenAgreedAndCompleted();
+        doThrow(new CoreException(ErrorCode.AI_PROFILE_MESSAGE_TOO_LARGE)).when(profiles).executeUpdate(USER_ID, job.revision());
+
+        process.execute();
+
+        verify(jobs).fail(job);
+        verify(jobs, never()).retry(any(), any());
+        verify(jobs, never()).complete(any());
+    }
+
+    @Test
     void 갱신_요청의_400과_401은_기존처럼_첫_재시도를_30초_뒤로_예약한다() {
         final Job job = givenJob(0);
         givenAgreedAndCompleted();

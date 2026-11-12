@@ -11,24 +11,26 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.book.core.book.application.port.BookCatalogException.Reason;
 import com.book.core.book.application.port.BookCatalogException;
+import com.book.core.book.application.port.BookCatalogFailureReason;
 import com.book.core.book.application.port.BookDetailCallBudget;
 import com.book.core.book.application.port.BookRepositoryPort;
-import com.book.core.book.application.port.DataForLibraryBookDetailClient.BookDetail;
 import com.book.core.book.application.port.DataForLibraryBookDetailClient;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
-import com.book.core.book.application.port.NationalLibraryIsbnClient.Page;
 import com.book.core.book.application.port.NationalLibraryIsbnClient;
 import com.book.core.book.application.port.NewBookImportLock;
+import com.book.core.book.application.result.BookDetail;
+import com.book.core.book.application.result.NewBookDetailFound;
+import com.book.core.book.application.result.NewBookImportOutcome;
+import com.book.core.book.application.result.NewBookIsbnPage;
 import com.book.core.book.application.service.NewBookImportService;
-import com.book.core.book.application.usecase.ImportNewBookDetailUseCase.Found;
-import com.book.core.book.application.usecase.ImportNewBookDetailUseCase.Outcome;
+import com.book.core.book.domain.Book;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
@@ -69,8 +71,8 @@ class NewBookImportUseCasesTest {
         final LocalDate from = TODAY.minusDays(30);
         final LocalDate through = TODAY.minusDays(1);
         when(nationalLibrary.findPaperBookIsbns(from, through, 1))
-            .thenReturn(new Page(List.of("978-89-8392-198-7", "9788983921988"), true));
-        when(nationalLibrary.findPaperBookIsbns(from, through, 2)).thenReturn(new Page(List.of(ISBN, OTHER_ISBN), false));
+            .thenReturn(new NewBookIsbnPage(List.of("978-89-8392-198-7", "9788983921988"), true));
+        when(nationalLibrary.findPaperBookIsbns(from, through, 2)).thenReturn(new NewBookIsbnPage(List.of(ISBN, OTHER_ISBN), false));
 
         assertThat(new CollectNewBookIsbnsUseCase(nationalLibrary).collect(TODAY)).containsExactly(ISBN, OTHER_ISBN);
     }
@@ -82,7 +84,7 @@ class NewBookImportUseCasesTest {
             return true;
         }).when(lock).runIfAcquired(any());
         when(collection.collect(TODAY)).thenReturn(List.of(ISBN, OTHER_ISBN));
-        when(details.findDetail(ISBN)).thenReturn(Outcome.RATE_LIMITED);
+        when(details.findDetail(ISBN)).thenReturn(NewBookImportOutcome.RATE_LIMITED);
 
         new NewBookImportService(lock, collection, details, registration).importNewBooks(TODAY);
 
@@ -94,13 +96,13 @@ class NewBookImportUseCasesTest {
     void 이미_등록된_도서는_호출하지_않는다() {
         when(books.existsByIsbn13(ISBN)).thenReturn(true);
 
-        assertThat(importer().findDetail(ISBN)).isEqualTo(Outcome.ALREADY_REGISTERED);
+        assertThat(importer().findDetail(ISBN)).isEqualTo(NewBookImportOutcome.ALREADY_REGISTERED);
         verifyNoInteractions(budget, detailClient, registration);
     }
 
     @Test
     void 예산이_없으면_상세_조회하지_않는다() {
-        assertThat(importer().findDetail(ISBN)).isEqualTo(Outcome.BUDGET_EXHAUSTED);
+        assertThat(importer().findDetail(ISBN)).isEqualTo(NewBookImportOutcome.BUDGET_EXHAUSTED);
         verifyNoInteractions(detailClient, registration);
     }
 
@@ -109,16 +111,16 @@ class NewBookImportUseCasesTest {
         when(budget.tryAcquire()).thenReturn(true);
         when(detailClient.findBookDetail(ISBN)).thenReturn(Optional.empty());
 
-        assertThat(importer().findDetail(ISBN)).isEqualTo(Outcome.MISSING_DETAIL);
+        assertThat(importer().findDetail(ISBN)).isEqualTo(NewBookImportOutcome.MISSING_DETAIL);
         verifyNoInteractions(registration);
     }
 
     @Test
     void 정보나루_호출_제한을_공유_예산에_반영한다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(detailClient.findBookDetail(ISBN)).thenThrow(new BookCatalogException(Reason.RATE_LIMIT));
+        when(detailClient.findBookDetail(ISBN)).thenThrow(new BookCatalogException(BookCatalogFailureReason.RATE_LIMIT));
 
-        assertThat(importer().findDetail(ISBN)).isEqualTo(Outcome.RATE_LIMITED);
+        assertThat(importer().findDetail(ISBN)).isEqualTo(NewBookImportOutcome.RATE_LIMITED);
         verify(budget).pauseAfterRateLimit();
         verifyNoInteractions(registration);
     }
@@ -131,7 +133,7 @@ class NewBookImportUseCasesTest {
             return true;
         }).when(lock).runIfAcquired(any());
         when(collection.collect(TODAY)).thenReturn(List.of(ISBN, OTHER_ISBN));
-        when(details.findDetail(any())).thenReturn(new Found(detail));
+        when(details.findDetail(any())).thenReturn(new NewBookDetailFound(detail));
         when(registration.register(ISBN, detail)).thenThrow(new DuplicateImportedIsbnException(new RuntimeException()));
         when(registration.register(OTHER_ISBN, detail)).thenThrow(new DataIntegrityViolationException("other constraint"));
         final var logger = (Logger) LoggerFactory.getLogger(NewBookImportService.class);
@@ -152,6 +154,21 @@ class NewBookImportUseCasesTest {
         order.verify(registration).register(OTHER_ISBN, detail);
         assertThat(appender.list).extracting(ILoggingEvent::getFormattedMessage).anySatisfy(
             (final var message) -> assertThat(message).contains("outcomes={ALREADY_REGISTERED_AFTER_LOOKUP=1, STORAGE_REJECTED=1}"));
+    }
+
+    @Test
+    void 등록_시점에도_같은_ISBN이_있으면_추가로_저장하지_않는다() {
+        final var detail = new BookDetail("신간", "저자", null, "출판사", "800", TODAY.minusDays(1), null);
+        when(books.existsByIsbn13(ISBN)).thenReturn(false, true);
+        final var useCase = new RegisterNewBookUseCase(books);
+
+        assertThat(useCase.register(ISBN, detail)).isTrue();
+        assertThat(useCase.register(ISBN, detail)).isFalse();
+
+        final var savedBook = ArgumentCaptor.forClass(Book.class);
+        verify(books).save(savedBook.capture());
+        assertThat(savedBook.getValue().isbn13()).isEqualTo(ISBN);
+        assertThat(savedBook.getValue().publishedAt()).isEqualTo(detail.publishedAt());
     }
 
     private ImportNewBookDetailUseCase importer() {

@@ -1,7 +1,6 @@
 package com.book.core.book.infrastructure.client;
 
-import com.book.core.book.application.port.DataForLibraryBookDetailClient.BookDetail;
-import com.book.core.book.infrastructure.client.DataForLibraryBookDetailClientImpl.ExternalBook;
+import com.book.core.book.application.result.BookDetail;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -10,7 +9,7 @@ import java.util.Optional;
 final class DataForLibraryBookDetailExternalMapper {
     private DataForLibraryBookDetailExternalMapper() {}
 
-    static Optional<BookDetail> toBookDetail(final ExternalBook book) {
+    static Optional<BookDetail> toBookDetail(final DataForLibraryExternalBook book) {
         if (!required(book.title()) || !required(book.author()) || !required(book.publisher()) || !required(book.category())
             || book.publishedAt() == null) {
             return Optional.empty();

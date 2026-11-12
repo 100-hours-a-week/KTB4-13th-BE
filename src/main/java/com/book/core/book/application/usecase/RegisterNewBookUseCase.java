@@ -2,7 +2,7 @@ package com.book.core.book.application.usecase;
 
 import com.book.common.annotation.UseCase;
 import com.book.core.book.application.port.BookRepositoryPort;
-import com.book.core.book.application.port.DataForLibraryBookDetailClient.BookDetail;
+import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.domain.Book;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;

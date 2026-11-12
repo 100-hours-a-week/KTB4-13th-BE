@@ -6,6 +6,7 @@ import com.book.core.book.domain.Isbn13;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,19 +22,19 @@ public class CollectNewBookIsbnsUseCase {
         final var candidateIsbns = new LinkedHashSet<String>();
         int calls = 0;
         try {
-            boolean hasNext;
-            do {
-                final var page = client.findPaperBookIsbns(from, through, ++calls);
-                for (final String isbn : page.candidateIsbns()) {
-                    Isbn13.normalize(isbn).ifPresent(candidateIsbns::add);
+            for (int pageNumber = 1;; pageNumber++) {
+                calls = pageNumber;
+                final var page = client.findPaperBookIsbns(from, through, pageNumber);
+                page.candidateIsbns().stream().map(Isbn13::normalize).flatMap(Optional::stream).forEachOrdered(candidateIsbns::add);
+                if (!page.hasNext()) {
+                    break;
                 }
-                hasNext = page.hasNext();
-            } while (hasNext);
-            return List.copyOf(candidateIsbns);
+            }
         } finally {
             final int candidateCount = candidateIsbns.size();
             log.atInfo().addKeyValue("listCallCount", calls).addKeyValue("candidateCount", candidateCount)
                 .log("[BOOK] 신간 후보 ISBN 수집이 종료됐습니다. listCallCount={}, candidateCount={}", calls, candidateCount);
         }
+        return List.copyOf(candidateIsbns);
     }
 }

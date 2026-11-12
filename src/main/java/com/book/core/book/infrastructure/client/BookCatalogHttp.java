@@ -1,7 +1,7 @@
 package com.book.core.book.infrastructure.client;
 
-import com.book.core.book.application.port.BookCatalogException.Reason;
 import com.book.core.book.application.port.BookCatalogException;
+import com.book.core.book.application.port.BookCatalogFailureReason;
 import java.net.URI;
 import java.time.Duration;
 import java.util.function.Function;
@@ -26,16 +26,16 @@ final class BookCatalogHttp {
                 .onStatus((final var status) -> status.isError(), (final var request, final var response) -> {
                     final int status = response.getStatusCode().value();
                     if (status == 429) {
-                        throw new BookCatalogException(Reason.RATE_LIMIT);
+                        throw new BookCatalogException(BookCatalogFailureReason.RATE_LIMIT);
                     }
                     if (status >= 500) {
-                        throw new BookCatalogException(Reason.TEMPORARY);
+                        throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
                     }
-                    throw new BookCatalogException(Reason.REJECTED);
+                    throw new BookCatalogException(BookCatalogFailureReason.REJECTED);
                 }).body(String.class);
         } catch (final RestClientException exception) {
             // Transport exceptions may contain the credential-bearing URL.
-            throw new BookCatalogException(Reason.TEMPORARY);
+            throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
         }
     }
 }

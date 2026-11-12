@@ -2,9 +2,9 @@ package com.book.core.book.application.service;
 
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
 import com.book.core.book.application.port.NewBookImportLock;
+import com.book.core.book.application.result.NewBookDetailFound;
+import com.book.core.book.application.result.NewBookImportOutcome;
 import com.book.core.book.application.usecase.CollectNewBookIsbnsUseCase;
-import com.book.core.book.application.usecase.ImportNewBookDetailUseCase.Found;
-import com.book.core.book.application.usecase.ImportNewBookDetailUseCase.Outcome;
 import com.book.core.book.application.usecase.ImportNewBookDetailUseCase;
 import com.book.core.book.application.usecase.RegisterNewBookUseCase;
 import java.time.LocalDate;
@@ -31,21 +31,22 @@ public class NewBookImportService {
 
     private void importCandidates(final LocalDate today) {
         final long startedAt = System.nanoTime();
-        final var outcomes = new EnumMap<Outcome, Integer>(Outcome.class);
+        final var outcomes = new EnumMap<NewBookImportOutcome, Integer>(NewBookImportOutcome.class);
         int candidates = 0;
         try {
             final var candidateIsbns = collection.collect(today);
             candidates = candidateIsbns.size();
             for (final String isbn13 : candidateIsbns) {
-                final Outcome outcome = importBook(isbn13);
+                final NewBookImportOutcome outcome = importBook(isbn13);
                 outcomes.merge(outcome, 1, Integer::sum);
-                if (outcome == Outcome.BUDGET_EXHAUSTED || outcome == Outcome.RATE_LIMITED) {
+                if (outcome == NewBookImportOutcome.BUDGET_EXHAUSTED || outcome == NewBookImportOutcome.RATE_LIMITED) {
                     break;
                 }
             }
         } finally {
             final int detailCalls = outcomes.values().stream().mapToInt(Integer::intValue).sum()
-                - outcomes.getOrDefault(Outcome.ALREADY_REGISTERED, 0) - outcomes.getOrDefault(Outcome.BUDGET_EXHAUSTED, 0);
+                - outcomes.getOrDefault(NewBookImportOutcome.ALREADY_REGISTERED, 0)
+                - outcomes.getOrDefault(NewBookImportOutcome.BUDGET_EXHAUSTED, 0);
             final long elapsedMs = (System.nanoTime() - startedAt) / 1_000_000;
             log.atInfo().addKeyValue("candidateCount", candidates).addKeyValue("detailCallCount", detailCalls)
                 .addKeyValue("outcomes", outcomes).addKeyValue("elapsedMs", elapsedMs)
@@ -54,30 +55,30 @@ public class NewBookImportService {
         }
     }
 
-    private Outcome importBook(final String isbn13) {
+    private NewBookImportOutcome importBook(final String isbn13) {
         final long startedAt = System.nanoTime();
         return switch (detailImport.findDetail(isbn13)) {
-            case Outcome outcome -> {
-                if (outcome != Outcome.ALREADY_REGISTERED && outcome != Outcome.BUDGET_EXHAUSTED) {
+            case NewBookImportOutcome outcome -> {
+                if (outcome != NewBookImportOutcome.ALREADY_REGISTERED && outcome != NewBookImportOutcome.BUDGET_EXHAUSTED) {
                     logDetailElapsed(isbn13, startedAt);
                 }
                 yield outcome;
             }
-            case Found found -> registerBook(isbn13, found, startedAt);
+            case NewBookDetailFound found -> registerBook(isbn13, found, startedAt);
         };
     }
 
-    private Outcome registerBook(final String isbn13, final Found found, final long startedAt) {
+    private NewBookImportOutcome registerBook(final String isbn13, final NewBookDetailFound found, final long startedAt) {
         try {
             if (registration.register(isbn13, found.detail())) {
-                return Outcome.REGISTERED;
+                return NewBookImportOutcome.REGISTERED;
             }
-            return Outcome.ALREADY_REGISTERED_AFTER_LOOKUP;
+            return NewBookImportOutcome.ALREADY_REGISTERED_AFTER_LOOKUP;
         } catch (final DuplicateImportedIsbnException exception) {
-            return Outcome.ALREADY_REGISTERED_AFTER_LOOKUP;
+            return NewBookImportOutcome.ALREADY_REGISTERED_AFTER_LOOKUP;
         } catch (final DataIntegrityViolationException exception) {
             log.atWarn().addKeyValue("isbn13", isbn13).log("[BOOK] 신간 도서 저장 제약을 충족하지 못했습니다. isbn13={}", isbn13);
-            return Outcome.STORAGE_REJECTED;
+            return NewBookImportOutcome.STORAGE_REJECTED;
         } finally {
             logDetailElapsed(isbn13, startedAt);
         }

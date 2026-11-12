@@ -6,15 +6,9 @@ import lombok.experimental.Accessors;
 @Getter
 @Accessors(fluent = true)
 public final class BookCatalogException extends RuntimeException {
-    public enum Reason {
-        TEMPORARY,
-        RATE_LIMIT,
-        REJECTED
-    }
+    private final BookCatalogFailureReason reason;
 
-    private final Reason reason;
-
-    public BookCatalogException(final Reason reason) {
+    public BookCatalogException(final BookCatalogFailureReason reason) {
         super(reason.name());
         this.reason = reason;
     }

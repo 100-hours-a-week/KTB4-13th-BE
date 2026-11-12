@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.book.application.port.BookCatalogException;
-import com.book.core.book.application.port.BookCatalogException.Reason;
+import com.book.core.book.application.port.BookCatalogFailureReason;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -68,7 +68,7 @@ class BookCatalogClientTest {
         respond("/api/srchDtlList", 429, "external response");
         final var client = new DataForLibraryBookDetailClientImpl(mapper, baseUrl, "sensitive-key");
         assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
-            assertThat(error.reason()).isEqualTo(Reason.RATE_LIMIT);
+            assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.RATE_LIMIT);
             assertThat(error.getMessage()).isEqualTo("RATE_LIMIT");
             assertThat(error.getCause()).isNull();
         });

@@ -1,5 +1,6 @@
 package com.book.core.book.infrastructure.persistence.repository;
 
+import com.book.core.book.application.result.NewBookIsbnPage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,10 +10,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.book.core.book.application.port.BookRepositoryPort;
-import com.book.core.book.application.port.DataForLibraryBookDetailClient.BookDetail;
 import com.book.core.book.application.port.DataForLibraryBookDetailClient;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
 import com.book.core.book.application.port.NationalLibraryIsbnClient;
+import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.service.NewBookImportService;
 import com.book.core.book.domain.Book;
 import java.time.LocalDate;
@@ -74,8 +75,7 @@ class NewBookImportIntegrationTest {
     void resetCatalog() {
         jdbc.update("DELETE FROM books WHERE imported_isbn13 IN (?, ?)", ISBN_A, ISBN_B);
         jdbc.update("UPDATE book_detail_call_budget SET quota_day = NULL, calls = 0, next_call_at = NULL WHERE id = 1");
-        when(nationalLibrary.findPaperBookIsbns(any(), any(), anyInt()))
-            .thenReturn(new NationalLibraryIsbnClient.Page(List.of(ISBN_A, ISBN_B), false));
+        when(nationalLibrary.findPaperBookIsbns(any(), any(), anyInt())).thenReturn(new NewBookIsbnPage(List.of(ISBN_A, ISBN_B), false));
     }
 
     @Test

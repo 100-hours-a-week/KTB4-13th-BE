@@ -104,7 +104,7 @@ class AiPersonalizationProfileClientImplTest {
                 {"message":"profile_delete_success","data":{"deleted":false}}
                 """, MediaType.APPLICATION_JSON));
 
-        client.deleteProfile(42L);
+        client.deleteProfile(42L, UUID.randomUUID());
 
         server.verify();
     }
@@ -124,7 +124,7 @@ class AiPersonalizationProfileClientImplTest {
             .andExpect(jsonPath("$.onboarding.liked_isbns[1]").value("9788900000042")).andExpect(jsonPath("$.memories").isEmpty())
             .andRespond(withSuccess());
 
-        client.updateProfile(request);
+        client.updateProfile(request, UUID.randomUUID());
 
         server.verify();
     }

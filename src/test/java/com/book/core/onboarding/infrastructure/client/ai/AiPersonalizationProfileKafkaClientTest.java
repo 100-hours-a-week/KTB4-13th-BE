@@ -46,10 +46,30 @@ class AiPersonalizationProfileKafkaClientTest {
         final ArgumentCaptor<String> value = ArgumentCaptor.forClass(String.class);
         verify(kafka).send(eq(EXPECTED_TOPIC), eq("42"), value.capture());
         final var event = json.readTree(value.getValue());
-        assertThat(event.get("schema_version").asInt()).isEqualTo(1);
+        assertThat(event.get("schema_version").asInt()).isEqualTo(2);
+        assertThat(event.get("operation").asText()).isEqualTo("UPSERT");
+        assertThat(event.get("user_id").asLong()).isEqualTo(42L);
         assertThat(event.get("job_revision").asText()).isEqualTo(revision.toString());
         assertThat(event.get("profile")).isEqualTo(json.readTree(json.writeValueAsString(mapper.toProfileRequest(request))));
         assertThat(event.at("/profile/onboarding/liked_isbns/0").asText()).isEqualTo("9788900000011");
+    }
+
+    @Test
+    void 삭제는_동일_key와_revision을_사용하고_프로필을_포함하지_않는다() throws Exception {
+        final UUID revision = UUID.randomUUID();
+        when(kafka.send(eq(EXPECTED_TOPIC), eq("42"), any(String.class))).thenReturn(CompletableFuture.completedFuture(null));
+
+        client.deleteProfile(42L, revision);
+
+        final ArgumentCaptor<String> value = ArgumentCaptor.forClass(String.class);
+        verify(kafka).send(eq(EXPECTED_TOPIC), eq("42"), value.capture());
+        final var event = json.readTree(value.getValue());
+        assertThat(event.size()).isEqualTo(4);
+        assertThat(event.path("schema_version").asInt()).isEqualTo(2);
+        assertThat(event.path("operation").asText()).isEqualTo("DELETE");
+        assertThat(event.path("user_id").asLong()).isEqualTo(42L);
+        assertThat(event.path("job_revision").asText()).isEqualTo(revision.toString());
+        assertThat(event.has("profile")).isFalse();
     }
 
     @Test
@@ -59,6 +79,7 @@ class AiPersonalizationProfileKafkaClientTest {
         when(kafka.send(eq(EXPECTED_TOPIC), eq("42"), any(String.class))).thenReturn(result);
 
         assertThatThrownBy(() -> client.updateProfile(request, UUID.randomUUID())).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> client.deleteProfile(42L, UUID.randomUUID())).isInstanceOf(CoreException.class);
     }
 
     @Test
@@ -86,9 +107,13 @@ class AiPersonalizationProfileKafkaClientTest {
 
         router.updateProfile(request);
         router.updateProfile(request, revision);
+        router.deleteProfile(42L);
+        router.deleteProfile(42L, revision);
 
         verify(http).updateProfile(request);
         verify(publisher).updateProfile(request, revision);
+        verify(http).deleteProfile(42L);
+        verify(publisher).deleteProfile(42L, revision);
     }
 
 }

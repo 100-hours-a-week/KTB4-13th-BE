@@ -23,10 +23,23 @@ class AiPersonalizationProfileKafkaClient {
     private final ObjectMapper json;
 
     void updateProfile(final AiPersonalizationProfileRequest request, final UUID revision) {
+        final AiProfileRequest profile;
         try {
-            final String message =
-                json.writeValueAsString(new AiPersonalizationProfileKafkaEvent(1, revision, mapper.toProfileRequest(request)));
-            kafka.send(KafkaTopics.AI_PROFILE, request.userId().toString(), message).get(12, TimeUnit.SECONDS);
+            profile = mapper.toProfileRequest(request);
+        } catch (final RuntimeException exception) {
+            throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
+        }
+        publish(request.userId(), new AiPersonalizationProfileKafkaEvent(2, "UPSERT", request.userId(), revision, profile));
+    }
+
+    void deleteProfile(final Long userId, final UUID revision) {
+        publish(userId, new AiPersonalizationProfileKafkaEvent(2, "DELETE", userId, revision, null));
+    }
+
+    private void publish(final Long userId, final AiPersonalizationProfileKafkaEvent event) {
+        try {
+            final String message = json.writeValueAsString(event);
+            kafka.send(KafkaTopics.AI_PROFILE, userId.toString(), message).get(12, TimeUnit.SECONDS);
         } catch (final InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);

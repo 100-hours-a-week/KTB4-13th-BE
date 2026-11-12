@@ -1,6 +1,8 @@
 package com.book.core.book.domain;
 
 import com.book.common.domain.BaseEntity;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -53,10 +55,10 @@ public class Book extends BaseEntity {
 
     public static Book registerNewBook(final String isbn13, final String title, final String author, final String description,
         final String publisher, final String category, final LocalDate publishedAt, final String coverImageUrl) {
-        final String normalizedIsbn13 = Isbn13.normalize(isbn13).orElseThrow();
+        final String normalizedIsbn13 = Isbn13.normalize(isbn13).orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
         if (title == null || title.isBlank() || author == null || author.isBlank() || publisher == null || publisher.isBlank()
             || category == null || category.isBlank() || publishedAt == null) {
-            throw new IllegalArgumentException("Required book metadata is missing");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         final Book book =
             new Book(null, normalizedIsbn13, null, title, author, description, publisher, category, publishedAt, coverImageUrl);

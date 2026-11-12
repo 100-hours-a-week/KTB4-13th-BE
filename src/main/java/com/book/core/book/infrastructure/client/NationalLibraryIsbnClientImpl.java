@@ -31,9 +31,6 @@ class NationalLibraryIsbnClientImpl implements NationalLibraryIsbnClient {
 
     @Override
     public NewBookIsbnPage findPaperBookIsbns(final LocalDate from, final LocalDate through, final int pageNumber) {
-        if (apiKey.isBlank()) {
-            throw new BookCatalogException(BookCatalogFailureReason.REJECTED);
-        }
         final String body = BookCatalogHttp.get(http,
             (final var uri) -> uri.path("/seoji/SearchApi.do").queryParam("cert_key", "{key}").queryParam("result_style", "json")
                 .queryParam("page_no", pageNumber).queryParam("page_size", PAGE_SIZE)

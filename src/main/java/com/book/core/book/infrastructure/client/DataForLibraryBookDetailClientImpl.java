@@ -30,9 +30,6 @@ class DataForLibraryBookDetailClientImpl implements DataForLibraryBookDetailClie
 
     @Override
     public Optional<BookDetail> findBookDetail(final String isbn13) {
-        if (apiKey.isBlank()) {
-            throw new BookCatalogException(BookCatalogFailureReason.REJECTED);
-        }
         final String body = BookCatalogHttp.get(http, (final var uri) -> uri.path("/api/srchDtlList").queryParam("authKey", "{key}")
             .queryParam("isbn13", isbn13).queryParam("loaninfoYN", "N").queryParam("format", "json").build(apiKey));
         try {

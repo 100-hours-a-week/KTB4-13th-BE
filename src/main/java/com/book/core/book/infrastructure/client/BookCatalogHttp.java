@@ -34,7 +34,7 @@ final class BookCatalogHttp {
                     throw new BookCatalogException(BookCatalogFailureReason.REJECTED);
                 }).body(String.class);
         } catch (final RestClientException exception) {
-            // Transport exceptions may contain the credential-bearing URL.
+            // 통신 예외에 인증키가 포함된 요청 URL이 들어갈 수 있습니다.
             throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
         }
     }

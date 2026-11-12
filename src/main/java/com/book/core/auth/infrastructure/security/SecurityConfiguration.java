@@ -37,8 +37,8 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.POST, "/admin-api/v1/coupons").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/*/login", "/api/v1/auth/*/signup", "/api/v1/auth/reissue").permitAll()
                 .requestMatchers(HttpMethod.POST, "/admin-api/v1/coupons/issuance-dlt/replay")
-                .access((authentication, context) -> new AuthorizationDecision(authentication.get() instanceof JwtAuthenticationToken token
-                    && couponAdminUserIds.contains(token.getName())))
+                .access((authentication, context) -> new AuthorizationDecision(
+                    authentication.get() instanceof JwtAuthenticationToken token && couponAdminUserIds.contains(token.getName())))
                 .anyRequest().authenticated())
             .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint))
             .oauth2ResourceServer(oauth2 -> oauth2

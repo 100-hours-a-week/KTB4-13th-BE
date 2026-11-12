@@ -26,14 +26,32 @@ class AiPersonalizationProfileKafkaClient {
     private final KafkaTemplate<String, String> kafka;
     private final ObjectMapper json;
 
-    /** 크기 초과는 다시 보내도 같은 결과라 일시 장애와 다른 오류로 알립니다. */
     void updateProfile(final AiPersonalizationProfileRequest request, final UUID revision) {
-        final String message = message(request, revision);
+        final AiProfileRequest profile;
+        try {
+            profile = mapper.toProfileRequest(request);
+        } catch (final RuntimeException exception) {
+            throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
+        }
+        publish(request.userId(), new AiPersonalizationProfileKafkaEvent(2, "UPSERT", request.userId(), revision, profile));
+    }
+
+    void deleteProfile(final Long userId, final UUID revision) {
+        publish(userId, new AiPersonalizationProfileKafkaEvent(2, "DELETE", userId, revision, null));
+    }
+
+    private void publish(final Long userId, final AiPersonalizationProfileKafkaEvent event) {
+        final String message;
+        try {
+            message = json.writeValueAsString(event);
+        } catch (final RuntimeException | com.fasterxml.jackson.core.JsonProcessingException exception) {
+            throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
+        }
         if (message.getBytes(StandardCharsets.UTF_8).length > MAX_MESSAGE_BYTES) {
             throw new CoreException(ErrorCode.AI_PROFILE_MESSAGE_TOO_LARGE);
         }
         try {
-            kafka.send(KafkaTopics.AI_PROFILE, request.userId().toString(), message).get(12, TimeUnit.SECONDS);
+            kafka.send(KafkaTopics.AI_PROFILE, userId.toString(), message).get(12, TimeUnit.SECONDS);
         } catch (final InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
@@ -41,14 +59,6 @@ class AiPersonalizationProfileKafkaClient {
             final ErrorCode errorCode = tooLarge(exception) ? ErrorCode.AI_PROFILE_MESSAGE_TOO_LARGE : ErrorCode.AI_SERVICE_FAILURE;
             throw new CoreException(errorCode, exception);
         } catch (final TimeoutException exception) {
-            throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
-        }
-    }
-
-    private String message(final AiPersonalizationProfileRequest request, final UUID revision) {
-        try {
-            return json.writeValueAsString(new AiPersonalizationProfileKafkaEvent(1, revision, mapper.toProfileRequest(request)));
-        } catch (final RuntimeException | com.fasterxml.jackson.core.JsonProcessingException exception) {
             throw new CoreException(ErrorCode.AI_SERVICE_FAILURE, exception);
         }
     }

@@ -39,7 +39,7 @@ public class ProcessProfileSyncJobUseCase {
         try {
             deleting = deletionRequired(job.userId());
             if (deleting) {
-                profiles.executeDelete(job.userId());
+                profiles.executeDelete(job.userId(), job.revision());
             } else if (updateAllowed(job.userId())) {
                 profiles.executeUpdate(job.userId(), job.revision());
             }

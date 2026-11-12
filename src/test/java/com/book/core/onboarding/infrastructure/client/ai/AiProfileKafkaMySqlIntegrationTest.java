@@ -2,6 +2,7 @@ package com.book.core.onboarding.infrastructure.client.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+
 import com.book.common.config.kafka.KafkaTopics;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import java.util.Map;
@@ -12,6 +13,7 @@ import com.book.core.onboarding.application.command.PutOnboardingPreferencesComm
 import com.book.core.onboarding.application.command.RecordPersonalizationAgreementCommand;
 import com.book.core.onboarding.application.usecase.ProcessProfileSyncJobUseCase;
 import com.book.core.onboarding.application.usecase.RecordPersonalizationAgreementUseCase;
+import com.book.core.onboarding.application.usecase.RequestProfileSyncUseCase;
 import com.book.core.onboarding.application.usecase.SaveOnboardingBooksUseCase;
 import com.book.core.onboarding.application.usecase.UpdateOnboardingPreferencesUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,6 +70,8 @@ class AiProfileKafkaMySqlIntegrationTest {
     @Autowired
     ObjectMapper json;
     @Autowired
+    RequestProfileSyncUseCase requestSync;
+    @Autowired
     AiPersonalizationProfileKafkaClient kafkaClient;
 
     @DynamicPropertySource
@@ -105,6 +109,8 @@ class AiProfileKafkaMySqlIntegrationTest {
                     final var event = json.readTree((String) record.value());
                     if (revision.equals(event.path("job_revision").asText())) {
                         assertThat(record.key()).isEqualTo("78901");
+                        assertThat(event.path("schema_version").asInt()).isEqualTo(2);
+                        assertThat(event.path("operation").asText()).isEqualTo("UPSERT");
                         assertThat(event.path("profile").path("user_id").asLong()).isEqualTo(userId);
                         return;
                     }
@@ -145,6 +151,45 @@ class AiProfileKafkaMySqlIntegrationTest {
                 }
             }
             throw new AssertionError("Updated profile record not received");
+        }
+    }
+
+    @Test
+    void 갱신_뒤_삭제가_같은_key로_전달된다() throws Exception {
+        final long userId = 78904L;
+        jdbc.update("INSERT INTO users (id, nickname) VALUES (?, 'AI Kafka 삭제 테스트')", userId);
+        jdbc.update("INSERT INTO user_onboardings (user_id, onboarding_status) VALUES (?, 'IN_PROGRESS')", userId);
+        agree.execute(new RecordPersonalizationAgreementCommand(userId));
+        saveBooks.execute(new PutOnboardingBooksCommand(userId, List.of()));
+        processJob.execute();
+        jdbc.update("UPDATE users SET delete_requested_at = DATE_SUB(NOW(), INTERVAL 8 DAY) WHERE id = ?", userId);
+        requestSync.execute(userId);
+        final String revision = jdbc.queryForObject("SELECT revision FROM profile_sync_jobs WHERE user_id = ?", String.class, userId);
+        processJob.execute();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs WHERE user_id = ?", Integer.class, userId)).isZero();
+
+        try (var consumer = consumers.createConsumer("ai-profile-delete-test")) {
+            final var partition = new TopicPartition(KafkaTopics.AI_PROFILE, 0);
+            consumer.assign(List.of(partition));
+            consumer.seekToBeginning(List.of(partition));
+            final var operations = new java.util.ArrayList<String>();
+            final long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
+            while (System.nanoTime() < deadline && operations.size() < 2) {
+                for (final var record : consumer.poll(Duration.ofMillis(250)).records(partition)) {
+                    if (!"78904".equals(record.key())) {
+                        continue;
+                    }
+                    final var event = json.readTree((String) record.value());
+                    assertThat(event.path("schema_version").asInt()).isEqualTo(2);
+                    assertThat(event.path("user_id").asLong()).isEqualTo(userId);
+                    operations.add(event.path("operation").asText());
+                    if ("DELETE".equals(event.path("operation").asText())) {
+                        assertThat(event.has("profile")).isFalse();
+                        assertThat(event.path("job_revision").asText()).isEqualTo(revision);
+                    }
+                }
+            }
+            assertThat(operations).containsExactly("UPSERT", "DELETE");
         }
     }
 

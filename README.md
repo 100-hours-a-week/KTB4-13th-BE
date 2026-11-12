@@ -147,7 +147,7 @@ Colima를 사용할 때 Testcontainers가 소켓을 찾지 못하면 해당 실�
 
 ### AI 추천 프로필 Kafka 직접 전달
 
-기본값은 기존 HTTP PUT입니다. AI Consumer와 삭제·순서 경합을 해결하고 운영 설정을 확인한 후에만 `PROFILE_SYNC_AI_KAFKA_ENABLED=true`로 전환합니다. 이 설정은 #544의 내부 작업 토픽 설정 `PROFILE_SYNC_KAFKA_ENABLED`와 별개입니다. 내부 토픽 사용 여부와 관계없이 MySQL 작업자가 AI 전용 토픽에 발행합니다. 야간 등 큐 외 기존 HTTP 호출은 그대로입니다.
+기본값은 기존 HTTP PUT·DELETE입니다. AI Consumer와 삭제·순서 경합을 해결하고 운영 설정을 확인한 후에만 `PROFILE_SYNC_AI_KAFKA_ENABLED=true`로 전환합니다. 이 설정은 #544의 내부 작업 토픽 설정 `PROFILE_SYNC_KAFKA_ENABLED`와 별개입니다. 내부 토픽 사용 여부와 관계없이 MySQL 작업자가 AI 전용 토픽에 발행합니다. 야간 등 큐 외 기존 HTTP 호출은 그대로입니다.
 
 - 토픽: `book.ai-profile.v1` (실패 토픽 예: `book.ai-profile.v1.DLT`)
 - Key: 사용자 ID의 UTF-8 10진 문자열
@@ -156,7 +156,9 @@ Colima를 사용할 때 Testcontainers가 소켓을 찾지 못하면 해당 실�
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "operation": "UPSERT",
+  "user_id": 42,
   "job_revision": "2d32c6a2-322d-46c3-b3d3-6c8680b6a723",
   "profile": {
     "user_id": 42,
@@ -168,11 +170,13 @@ Colima를 사용할 때 Testcontainers가 소켓을 찾지 못하면 해당 실�
 }
 ```
 
-`schema_version`은 메시지 계약 버전, `job_revision`은 BE 작업 UUID입니다. `profile`은 기존 PUT 본문이며 AI `ProfileRequest`로 검증합니다. 기억은 기존 계약대로 `type`, `value`, `strength`, `applies_to`, `keyword`, `created_at`, `vector`, `dim`을 포함합니다. AI Consumer는 `profile.user_id`와 key의 일치 여부를 검증한 뒤 기존 `service.rebuild` 계산·저장을 호출합니다. 자동 offset commit을 끄고 DB 저장 성공 후에만 commit합니다. 일시 실패는 backoff로 재시도하고, 재시도 소진 시 DLT 발행 성공을 확인한 다음 원본 offset을 진행합니다. DLT 발행 실패 시 원본을 넘기지 않습니다.
+삭제 메시지는 `{"schema_version":2,"operation":"DELETE","user_id":42,"job_revision":"2d32c6a2-322d-46c3-b3d3-6c8680b6a723"}`이며 `profile`을 포함하지 않습니다. AI는 기존 v1 UPSERT와 v2 UPSERT·DELETE를 지원해야 합니다.
+
+`schema_version`은 메시지 계약 버전, `job_revision`은 BE 작업 UUID입니다. `profile`은 기존 PUT 본문이며 AI `ProfileRequest`로 검증합니다. 기억은 기존 계약대로 `type`, `value`, `strength`, `applies_to`, `keyword`, `created_at`, `vector`, `dim`을 포함합니다. AI Consumer는 사용자 ID와 key의 일치 여부를 검증하고 기존 갱신·삭제 로직을 재사용해야 합니다. 자동 offset commit을 끄고 DB 저장 성공 후에만 commit합니다. 일시 실패는 backoff로 재시도하고, 재시도 소진 시 DLT 발행 성공을 확인한 다음 원본 offset을 진행합니다. DLT 발행 실패 시 원본을 넘기지 않습니다.
 
 BE의 작업 완료는 Kafka 브로커 발행 확인이지 AI 처리 완료가 아닙니다. 발행 성공 응답 유실이나 AI DB 저장 후 offset commit 전 종료 시 중복될 수 있습니다. `job_revision`은 UUID로 순서를 나타내지 않으며, 재시도 시 같은 revision에 최신 데이터를 다시 읽을 수 있어 이를 단독 중복 제거 키로 사용해서는 안 됩니다. 사용자 key와 파티션별 순차 처리만으로 지연·재시도에 따른 최신 상태를 보장하지 못합니다. 현재 AI의 `idempotency_key`도 중복 제거에 사용되지 않습니다. AI 측 버전 검증·멱등성은 아직 구현되지 않았습니다.
 
-동의 철회나 탈퇴 후 지연된 메시지가 AI 프로필을 재생성할 수 있습니다. 삭제 상태 검증과 경합 대책이 준비되기 전에는 직접 소비를 활성화하지 않습니다. 메시지에는 개인정보와 벡터가 들어갈 수 있으므로 ACL·보관 기간·DLT 접근을 제한하고 본문을 로그에 남기지 않습니다. 메시지 값은 AI 수신 한도와 같은 8MiB까지 발행하며 Producer `max.request.size`는 8,454,144바이트입니다. 원본·실패 토픽의 `max.message.bytes`도 8,454,144 이상으로 설정합니다. 값이 8MiB를 넘거나 Producer·브로커가 크기 한도로 거부하면 작업을 재시도하지 않고 실패 작업(`available_at` 9999-01-01)으로 보관하며, 원인은 `errorCode=AI_PROFILE_MESSAGE_TOO_LARGE` ERROR 로그로 확인합니다. 회원이 취향을 다시 수정하면 새 작업으로 다시 시도합니다.
+MySQL 작업자 락 연결이 끊기면 이전 작업자의 발행이 계속되어 DELETE 뒤에 오래된 UPSERT가 도착할 수 있습니다. 동의 철회나 탈퇴 후 지연된 메시지가 AI 프로필을 재생성할 수 있습니다. 발행 순서 보장과 Consumer 경합 대책을 검증하기 전에는 Kafka 경로를 활성화하지 않습니다. AI Consumer를 먼저 배포하고, HTTP 롤백 전 Consumer lag와 처리 중 작업을 확인합니다. 메시지에는 개인정보와 벡터가 들어갈 수 있으므로 ACL·보관 기간·DLT 접근을 제한하고 본문을 로그에 남기지 않습니다. 메시지 값은 AI 수신 한도와 같은 8MiB까지 발행하며 Producer `max.request.size`는 8,454,144바이트입니다. 원본·실패 토픽의 `max.message.bytes`도 8,454,144 이상으로 설정합니다. 값이 8MiB를 넘거나 Producer·브로커가 크기 한도로 거부하면 작업을 재시도하지 않고 실패 작업(`available_at` 9999-01-01)으로 보관하며, 원인은 `errorCode=AI_PROFILE_MESSAGE_TOO_LARGE` ERROR 로그로 확인합니다. 회원이 취향을 다시 수정하면 새 작업으로 다시 시도합니다.
 
 로컬에서 `docker compose -f compose.kafka.yml up -d`로 별도 브로커를 기동한 뒤 다음 토픽을 생성합니다. 기존 README의 내부 작업 토픽도 사용하는 경우 해당 생성 절차를 함께 실행합니다.
 

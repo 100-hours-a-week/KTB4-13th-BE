@@ -59,6 +59,11 @@ sentry:
   traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}
 
 app:
+  new-book:
+    enabled: ${NEW_BOOK_IMPORT_ENABLED:false}
+    national-library-key: ${NATIONAL_LIBRARY_ISBN_API_KEY:}
+    data-for-library-key: ${DATA_FOR_LIBRARY_API_KEY:}
+    detail-daily-limit: ${DATA_FOR_LIBRARY_DAILY_LIMIT:500}
   profile-sync:
     ai-kafka-enabled: ${PROFILE_SYNC_AI_KAFKA_ENABLED:false}
     kafka-enabled: ${PROFILE_SYNC_KAFKA_ENABLED:false}

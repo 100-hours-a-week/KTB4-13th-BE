@@ -1,12 +1,12 @@
 package com.book.core.coupon.application.port;
 
 import com.book.core.coupon.domain.IssuanceDltLog;
-import java.util.Optional;
+import java.util.List;
 
 public interface IssuanceDltLogRepositoryPort {
     void record(IssuanceDltLog log);
 
-    Optional<ReplayRequest> lockNextRequested();
+    List<ReplayRequest> lockPending(List<Long> ids);
 
     void markReplayed(long id);
 

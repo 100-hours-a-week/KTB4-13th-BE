@@ -1,10 +1,13 @@
 package com.book.core.auth.infrastructure.security;
 
 import com.book.core.user.application.usecase.CheckUserRestrictionUseCase;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -19,7 +22,8 @@ public class SecurityConfiguration {
     @Bean
     SecurityFilterChain securityFilterChain(final HttpSecurity http, @Qualifier("serviceJwtDecoder") final JwtDecoder serviceJwtDecoder,
         final JwtAuthenticationEntryPoint authenticationEntryPoint, final CorsConfigurationSource corsConfigurationSource,
-        final CheckUserRestrictionUseCase checkUserRestrictionUseCase) throws Exception {
+        final CheckUserRestrictionUseCase checkUserRestrictionUseCase,
+        @Value("${coupon.admin.user-ids:}") final Set<String> couponAdminUserIds) throws Exception {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource)).csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .formLogin(AbstractHttpConfigurer::disable).httpBasic(AbstractHttpConfigurer::disable)
@@ -31,6 +35,8 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.GET, "/api/v1/coupons", "/api/v1/reviews", "/api/v1/reviews/count").permitAll()
                 .requestMatchers(HttpMethod.POST, "/admin-api/v1/coupons").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/*/login", "/api/v1/auth/*/signup", "/api/v1/auth/reissue").permitAll()
+                .requestMatchers(HttpMethod.POST, "/admin-api/v1/coupons/issuance-dlt/replay")
+                .access((authentication, context) -> new AuthorizationDecision(couponAdminUserIds.contains(authentication.get().getName())))
                 .anyRequest().authenticated())
             .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint))
             .oauth2ResourceServer(oauth2 -> oauth2

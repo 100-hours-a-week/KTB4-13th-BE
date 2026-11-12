@@ -24,11 +24,6 @@ class CouponIssueKafkaConfig {
         return Executors.newSingleThreadScheduledExecutor();
     }
 
-    @Bean(defaultCandidate = false, destroyMethod = "shutdown")
-    ScheduledExecutorService couponDltReplayExecutor() {
-        return Executors.newSingleThreadScheduledExecutor();
-    }
-
     @Bean(defaultCandidate = false)
     ConcurrentKafkaListenerContainerFactory<Object, Object> issuanceDltListenerFactory(
         final ConcurrentKafkaListenerContainerFactoryConfigurer configurer, final ConsumerFactory<Object, Object> consumerFactory) {

@@ -41,8 +41,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 import org.testcontainers.kafka.KafkaContainer;
 
-@SpringBootTest(properties = {"coupon.kafka.worker-enabled=true", "coupon.cache.fresh-ms=60000", "coupon.cache.ttl-ms=120000",
-    "coupon.sold-out.ttl-seconds=86400", "coupon.sold-out.fast-path-ttl-ms=60000"})
+@SpringBootTest(properties = {"coupon.admin.user-ids=1", "coupon.kafka.worker-enabled=true", "coupon.cache.fresh-ms=60000",
+    "coupon.cache.ttl-ms=120000", "coupon.sold-out.ttl-seconds=86400", "coupon.sold-out.fast-path-ttl-ms=60000"})
 @AutoConfigureMockMvc
 @ActiveProfiles({"test", "mysql-test"})
 @Testcontainers
@@ -273,12 +273,17 @@ class CouponSoldOutHttpIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM issuance_dlt_log WHERE message_key = ?", Integer.class, log.messageKey()))
             .isOne();
 
-        jdbc.update("UPDATE issuance_dlt_log SET replay_requested_at = CURRENT_TIMESTAMP(6) WHERE id = ?", selectedId);
+        final String replay = "/admin-api/v1/coupons/issuance-dlt/replay";
+        final String body = "{\"ids\":[" + selectedId + "]}";
+        mvc.perform(post(replay).contentType("application/json").content(body).header(HttpHeaders.AUTHORIZATION,
+            "Bearer " + tokens.issue(2L).accessToken())).andExpect(status().isForbidden());
+        mvc.perform(post(replay).contentType("application/json").content(body).header(HttpHeaders.AUTHORIZATION,
+            "Bearer " + tokens.issue(1L).accessToken())).andExpect(status().isOk()).andExpect(jsonPath("$.data").value(1));
         assertCounts(selectedCoupon, 1);
         await().atMost(Duration.ofSeconds(15)).until(() -> Boolean.TRUE
             .equals(jdbc.queryForObject("SELECT replayed_at IS NOT NULL FROM issuance_dlt_log WHERE id = ?", Boolean.class, selectedId)));
         assertCounts(untouchedCoupon, 0);
-        assertThat(jdbc.queryForObject("SELECT replay_requested_at IS NULL FROM issuance_dlt_log WHERE id = ?", Boolean.class, untouchedId))
+        assertThat(jdbc.queryForObject("SELECT replayed_at IS NULL FROM issuance_dlt_log WHERE id = ?", Boolean.class, untouchedId))
             .isTrue();
         assertThat(redisTemplate.opsForValue().get(stockKey(selectedCoupon))).isEqualTo("1");
 

@@ -23,15 +23,14 @@
 권한 있는 운영자는 원인을 해결하고 미발급 상태를 확인한 뒤 필요한 ID만 선택합니다.
 
 ```sql
-SELECT id, message_key, error_type, received_at, replay_requested_at, replayed_at
+SELECT id, error_type, received_at, replayed_at
 FROM issuance_dlt_log
 WHERE replayed_at IS NULL
 ORDER BY received_at DESC
 LIMIT 100;
 
-UPDATE issuance_dlt_log
-SET replay_requested_at = CURRENT_TIMESTAMP(6)
-WHERE id IN (123) AND replay_requested_at IS NULL AND replayed_at IS NULL AND payload IS NOT NULL;
 ```
+
+모든 운영 인스턴스에서 `coupon.admin.user-ids`에 재발행 권한을 가진 JWT 사용자 ID를 설정합니다. 원인을 해결한 후 `POST /admin-api/v1/coupons/issuance-dlt/replay`에 `{"ids":[123]}`을 보냅니다. 한 번에 최대 100건을 선택할 수 있습니다.
 
 재발행 작업은 기존 메시지 키와 원문을 사용하고, Kafka 확인 후 `replayed_at`을 기록합니다. 이 시각은 재발행 완료를 뜻하므로 최종 발급은 DB에서 확인합니다. 재발행 결과가 불확실하면 같은 메시지가 다시 전달될 수 있으며, 소비자는 기존 발급을 확인해 중복 반영을 막습니다. 다시 실패한 건은 새 실패 기록으로 남고 운영자가 선택할 때까지 대기합니다.

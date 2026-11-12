@@ -64,6 +64,7 @@ app:
     national-library-key: ${NATIONAL_LIBRARY_ISBN_API_KEY:}
     data-for-library-key: ${DATA_FOR_LIBRARY_API_KEY:}
     detail-daily-limit: ${DATA_FOR_LIBRARY_DAILY_LIMIT:500}
+    discord-webhook-url: ${NEW_BOOK_IMPORT_DISCORD_WEBHOOK_URL:}
   profile-sync:
     ai-kafka-enabled: ${PROFILE_SYNC_AI_KAFKA_ENABLED:false}
     kafka-enabled: ${PROFILE_SYNC_KAFKA_ENABLED:false}

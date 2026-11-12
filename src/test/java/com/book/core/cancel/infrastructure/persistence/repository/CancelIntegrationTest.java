@@ -209,13 +209,8 @@ class CancelIntegrationTest {
             productId, bookId, "취소 테스트 상품", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), BigDecimal.ZERO, 10);
     }
 
-    private Order fixture(
-        final Long userId,
-        final int quantity,
-        final boolean hasCoupon,
-        final boolean couponUsed,
-        final Long otherProductId
-    ) {
+    private Order fixture(final Long userId, final int quantity, final boolean hasCoupon, final boolean couponUsed,
+        final Long otherProductId) {
         final long productId = 1000000L + userId;
         insertProduct(productId, 900000L + userId);
         return new TransactionTemplate(transactionManager).execute((final TransactionStatus status) -> {

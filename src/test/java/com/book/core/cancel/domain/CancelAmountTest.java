@@ -36,26 +36,14 @@ class CancelAmountTest {
         assertAmounts(amount(10000, 45000, 0, 35000, 0, 10000, 35000), 10000, 0, 0, false);
     }
 
-    private static CancelAmount amount(
-        final long cancel,
-        final long order,
-        final long canceled,
-        final long paid,
-        final long point,
-        final long coupon,
-        final long min
-    ) {
+    private static CancelAmount amount(final long cancel, final long order, final long canceled, final long paid, final long point,
+        final long coupon, final long min) {
         return new CancelAmount(BigDecimal.valueOf(cancel), BigDecimal.valueOf(order), BigDecimal.valueOf(canceled),
             BigDecimal.valueOf(paid), BigDecimal.valueOf(point), BigDecimal.valueOf(coupon), BigDecimal.valueOf(min));
     }
 
-    private static void assertAmounts(
-        final CancelAmount amount,
-        final long paid,
-        final long point,
-        final long coupon,
-        final boolean restore
-    ) {
+    private static void assertAmounts(final CancelAmount amount, final long paid, final long point, final long coupon,
+        final boolean restore) {
         assertThat(amount.paidAmount()).isEqualByComparingTo(BigDecimal.valueOf(paid));
         assertThat(amount.pointAmount()).isEqualByComparingTo(BigDecimal.valueOf(point));
         assertThat(amount.couponAmount()).isEqualByComparingTo(BigDecimal.valueOf(coupon));

@@ -251,14 +251,8 @@ class OrderRepositoryIntegrationTest {
                     List.of(new OrderCancellationItemResult(orderItemIds.get(0), 9227L, "주문 테스트 상품", 1L))));
     }
 
-    private void insertPartialCancel(
-        final Long orderId,
-        final Long paymentId,
-        final Long orderItemId,
-        final String paidAmount,
-        final String pointAmount,
-        final String canceledAt
-    ) {
+    private void insertPartialCancel(final Long orderId, final Long paymentId, final Long orderItemId, final String paidAmount,
+        final String pointAmount, final String canceledAt) {
         jdbc.update("""
                 INSERT INTO `cancel` (created_at, updated_at, user_id, type, order_id, order_item_id, payment_id, origin_amount,
                     owned_coupon_id, coupon_discount, used_point, paid_amount, canceled_quantity, canceled_paid_amount,

@@ -48,13 +48,8 @@ class UserMemoryTest {
         assertThat(memory.hasSameKeywordAs(memory(UserMemoryType.TOPIC, "haruki murakami", 2, List.of(0.1f, 0.2f), 2))).isFalse();
     }
 
-    private UserMemory memory(
-        final UserMemoryType type,
-        final String keyword,
-        final int strength,
-        final List<Float> vector,
-        final int dim
-    ) {
+    private UserMemory memory(final UserMemoryType type, final String keyword, final int strength, final List<Float> vector,
+        final int dim) {
         return new UserMemory(1L, type, "기억 문장", strength, List.of(), keyword, vector, dim, "cv_1");
     }
 }

@@ -30,15 +30,8 @@ class UserMemoryMySqlConstraintTest {
             "TOPIC   | 2 | '{}'                      | 추리 소설 | '[0.1]'      | 1 | ck_user_memories_categories",
             "TOPIC   | 2 | '[]'                      | ' '       | '[0.1]'      | 1 | ck_user_memories_keyword_not_blank",
             "TOPIC   | 2 | '[]'                      | 추리 소설 | '[0.1, 0.2]' | 1 | ck_user_memories_vector"})
-    void DB_제약을_어기는_기억은_저장하지_않는다(
-        final String type,
-        final int strength,
-        final String categories,
-        final String keyword,
-        final String vector,
-        final int dim,
-        final String constraint
-    ) {
+    void DB_제약을_어기는_기억은_저장하지_않는다(final String type, final int strength, final String categories, final String keyword, final String vector,
+        final int dim, final String constraint) {
         final DriverManagerDataSource dataSource =
             new DriverManagerDataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
         Flyway.configure().dataSource(dataSource).load().migrate();

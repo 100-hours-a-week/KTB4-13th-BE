@@ -318,14 +318,8 @@ class ShoppingAgentChatIntegrationTest {
         }
     }
 
-    private void coupon(
-        final long id,
-        final long ownerId,
-        final String state,
-        final String expiresAt,
-        final String couponDeletedAt,
-        final String ownedCouponDeletedAt
-    ) {
+    private void coupon(final long id, final long ownerId, final String state, final String expiresAt, final String couponDeletedAt,
+        final String ownedCouponDeletedAt) {
         jdbc.update("INSERT INTO coupon (id,name,type,discount,max_use_count,min_order_amount,expired_at,deleted_at) "
             + "VALUES (?,'테스트 정률 쿠폰','PERCENT_RATE',0.10,1,30000,?,?)", id, expiresAt, couponDeletedAt);
         jdbc.update("INSERT INTO owned_coupon (id,user_id,coupon_id,state,max_use_count,used_count,deleted_at) " + "VALUES (?,?,?,?,1,?,?)",

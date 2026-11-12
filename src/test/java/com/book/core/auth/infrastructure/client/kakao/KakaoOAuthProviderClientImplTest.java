@@ -159,16 +159,8 @@ class KakaoOAuthProviderClientImplTest {
             EXPECTED_NONCE);
     }
 
-    private String token(
-        final RSAKey key,
-        final SignatureAlgorithm algorithm,
-        final String issuer,
-        final String audience,
-        final Instant expiresAt,
-        final String subject,
-        final String email,
-        final String nonce
-    ) {
+    private String token(final RSAKey key, final SignatureAlgorithm algorithm, final String issuer, final String audience,
+        final Instant expiresAt, final String subject, final String email, final String nonce) {
         final JwtClaimsSet.Builder claims =
             JwtClaimsSet.builder().issuer(issuer).audience(List.of(audience)).issuedAt(expiresAt.minusSeconds(60)).expiresAt(expiresAt);
         if (subject != null) {

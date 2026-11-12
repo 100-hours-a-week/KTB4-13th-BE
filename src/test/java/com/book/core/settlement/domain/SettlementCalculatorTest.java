@@ -12,12 +12,8 @@ class SettlementCalculatorTest {
     @ParameterizedTest
     @CsvSource({"0,0.10,10000,90000", "10000000,0.10,10000,90000", "10000001,0.08,8000,92000", "100000000,0.08,8000,92000",
         "100000001,0.05,5000,95000"})
-    void 매출_경계값에_따른_수수료를_유지한다(
-        final BigDecimal recentSalesAmount,
-        final BigDecimal feeRate,
-        final BigDecimal feeAmount,
-        final BigDecimal settlementAmount
-    ) {
+    void 매출_경계값에_따른_수수료를_유지한다(final BigDecimal recentSalesAmount, final BigDecimal feeRate, final BigDecimal feeAmount,
+        final BigDecimal settlementAmount) {
         final var result = calculator.calculate(BigDecimal.valueOf(100000), recentSalesAmount);
         assertThat(result.originalAmount()).isEqualByComparingTo("100000");
         assertThat(result.feeRate()).isEqualByComparingTo(feeRate);

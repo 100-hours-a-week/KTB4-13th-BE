@@ -3,6 +3,7 @@ package com.book.core.onboarding.api;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -244,7 +245,7 @@ class OnboardingProfileRefreshIntegrationTest {
         jdbc.update("DELETE FROM user_term_agreement WHERE user_id = ?", userId);
         processJob.execute();
         verify(profileClient, never()).updateProfile(any(), any());
-        verify(profileClient).deleteProfile(userId);
+        verify(profileClient).deleteProfile(eq(userId), any());
         assertThat(jobCount(userId)).isZero();
     }
 
@@ -266,7 +267,7 @@ class OnboardingProfileRefreshIntegrationTest {
 
         final InOrder order = inOrder(profileClient);
         order.verify(profileClient).updateProfile(any(), any());
-        order.verify(profileClient).deleteProfile(userId);
+        order.verify(profileClient).deleteProfile(eq(userId), any());
         assertThat(jobCount(userId)).isZero();
     }
 
@@ -285,13 +286,13 @@ class OnboardingProfileRefreshIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE id = ? AND deleted_at IS NOT NULL", Integer.class, userId))
             .isOne();
         assertThat(jobCount(userId)).isOne();
-        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).doNothing().when(profileClient).deleteProfile(userId);
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).doNothing().when(profileClient).deleteProfile(eq(userId), any());
         processJob.execute();
         assertThat(jobCount(userId)).isOne();
         jdbc.update("UPDATE profile_sync_jobs SET available_at = '2000-01-01' WHERE user_id = ?", userId);
         processJob.execute();
 
-        verify(profileClient, times(2)).deleteProfile(userId);
+        verify(profileClient, times(2)).deleteProfile(eq(userId), any());
         verify(profileClient, times(1)).updateProfile(any(), any());
         assertThat(jobCount(userId)).isZero();
     }
@@ -301,12 +302,12 @@ class OnboardingProfileRefreshIntegrationTest {
         final Long userId = insertUser("최종탈퇴회원2");
         jdbc.update("UPDATE users SET delete_requested_at = ? WHERE id = ?", LocalDateTime.now().minusDays(8), userId);
         userService.completeUserDeletion();
-        doThrow(new CoreException(ErrorCode.AI_SERVICE_INVALID_REQUEST)).doNothing().when(profileClient).deleteProfile(userId);
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_INVALID_REQUEST)).doNothing().when(profileClient).deleteProfile(eq(userId), any());
 
         processJob.execute();
         processJob.execute();
 
-        verify(profileClient, times(1)).deleteProfile(userId);
+        verify(profileClient, times(1)).deleteProfile(eq(userId), any());
         assertThat(jobCount(userId)).isOne();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM profile_sync_jobs WHERE user_id = ? AND available_at >= '9999-01-01'",
             Integer.class, userId)).isOne();
@@ -315,7 +316,7 @@ class OnboardingProfileRefreshIntegrationTest {
             userId);
         processJob.execute();
 
-        verify(profileClient, times(2)).deleteProfile(userId);
+        verify(profileClient, times(2)).deleteProfile(eq(userId), any());
         assertThat(jobCount(userId)).isZero();
     }
 
@@ -362,7 +363,7 @@ class OnboardingProfileRefreshIntegrationTest {
         processJob.execute();
         processJob.execute();
 
-        verify(profileClient, never()).deleteProfile(any());
+        verify(profileClient, never()).deleteProfile(any(), any());
         verify(profileClient).updateProfile(any(), any());
         assertThat(jobCount(pendingUserId)).isZero();
         assertThat(jobCount(recoveredUserId)).isZero();

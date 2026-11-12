@@ -5,25 +5,36 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.book.application.usecase.GetAiBookIdentifiersUseCase;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
+import com.book.core.onboarding.application.usecase.RequestProfileSyncUseCase;
+import com.book.core.user.application.usecase.CheckWithdrawalConfirmedUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.apache.kafka.common.errors.RecordTooLargeException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.core.KafkaProducerException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 
 class AiPersonalizationProfileKafkaClientTest {
+    private static final String EXPECTED_TOPIC = "book.ai-profile.v1";
+
     private final KafkaTemplate<String, String> kafka = mock(KafkaTemplate.class);
     private final GetAiBookIdentifiersUseCase identifiers = mock(GetAiBookIdentifiersUseCase.class);
     private final AiPersonalizationProfileExternalMapper mapper =
@@ -37,27 +48,82 @@ class AiPersonalizationProfileKafkaClientTest {
     void 사용자_key와_기존_HTTP_변환_결과를_발행한다() throws Exception {
         final UUID revision = UUID.randomUUID();
         when(identifiers.findIsbns(List.of(100L))).thenReturn(List.of("9788900000011"));
-        when(kafka.send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), any(String.class)))
-            .thenReturn(CompletableFuture.completedFuture(null));
+        when(kafka.send(eq(EXPECTED_TOPIC), eq("42"), any(String.class))).thenReturn(CompletableFuture.completedFuture(null));
 
         client.updateProfile(request, revision);
 
         final ArgumentCaptor<String> value = ArgumentCaptor.forClass(String.class);
-        verify(kafka).send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), value.capture());
+        verify(kafka).send(eq(EXPECTED_TOPIC), eq("42"), value.capture());
         final var event = json.readTree(value.getValue());
-        assertThat(event.get("schema_version").asInt()).isEqualTo(1);
+        assertThat(event.get("schema_version").asInt()).isEqualTo(2);
+        assertThat(event.get("operation").asText()).isEqualTo("UPSERT");
+        assertThat(event.get("user_id").asLong()).isEqualTo(42L);
         assertThat(event.get("job_revision").asText()).isEqualTo(revision.toString());
         assertThat(event.get("profile")).isEqualTo(json.readTree(json.writeValueAsString(mapper.toProfileRequest(request))));
         assertThat(event.at("/profile/onboarding/liked_isbns/0").asText()).isEqualTo("9788900000011");
     }
 
     @Test
+    void 삭제는_동일_key와_revision을_사용하고_프로필을_포함하지_않는다() throws Exception {
+        final UUID revision = UUID.randomUUID();
+        when(kafka.send(eq(EXPECTED_TOPIC), eq("42"), any(String.class))).thenReturn(CompletableFuture.completedFuture(null));
+
+        client.deleteProfile(42L, revision);
+
+        final ArgumentCaptor<String> value = ArgumentCaptor.forClass(String.class);
+        verify(kafka).send(eq(EXPECTED_TOPIC), eq("42"), value.capture());
+        final var event = json.readTree(value.getValue());
+        assertThat(event.size()).isEqualTo(4);
+        assertThat(event.path("schema_version").asInt()).isEqualTo(2);
+        assertThat(event.path("operation").asText()).isEqualTo("DELETE");
+        assertThat(event.path("user_id").asLong()).isEqualTo(42L);
+        assertThat(event.path("job_revision").asText()).isEqualTo(revision.toString());
+        assertThat(event.has("profile")).isFalse();
+    }
+
+    @Test
     void 발행_실패는_작업_재시도에_사용할_예외로_전파한다() {
         final CompletableFuture<SendResult<String, String>> result = new CompletableFuture<>();
         result.completeExceptionally(new RuntimeException("broker unavailable"));
-        when(kafka.send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), any(String.class))).thenReturn(result);
+        when(kafka.send(eq(EXPECTED_TOPIC), eq("42"), any(String.class))).thenReturn(result);
 
-        assertThatThrownBy(() -> client.updateProfile(request, UUID.randomUUID())).isInstanceOf(CoreException.class);
+        assertThatThrownBy(() -> client.updateProfile(request, UUID.randomUUID())).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
+        assertThatThrownBy(() -> client.deleteProfile(42L, UUID.randomUUID())).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_SERVICE_FAILURE));
+    }
+
+    @Test
+    void AI_수신_한도인_8MiB까지는_발행하고_넘으면_발행하지_않고_크기_초과로_알린다() throws Exception {
+        final UUID revision = UUID.randomUUID();
+        final int baseBytes = json.writeValueAsBytes(
+            new AiPersonalizationProfileKafkaEvent(2, "UPSERT", 42L, revision, mapper.toProfileRequest(requestWithTag("")))).length;
+        final String limitTag = "x".repeat(AiPersonalizationProfileKafkaClient.MAX_MESSAGE_BYTES - baseBytes);
+        when(kafka.send(eq(EXPECTED_TOPIC), eq("42"), any(String.class))).thenReturn(CompletableFuture.completedFuture(null));
+
+        client.updateProfile(requestWithTag(limitTag), revision);
+
+        final ArgumentCaptor<String> value = ArgumentCaptor.forClass(String.class);
+        verify(kafka).send(eq(EXPECTED_TOPIC), eq("42"), value.capture());
+        assertThat(value.getValue().getBytes(StandardCharsets.UTF_8)).hasSize(AiPersonalizationProfileKafkaClient.MAX_MESSAGE_BYTES);
+        assertThatThrownBy(() -> client.updateProfile(requestWithTag(limitTag + "x"), revision)).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_PROFILE_MESSAGE_TOO_LARGE));
+        verify(kafka, times(1)).send(any(), any(), any());
+    }
+
+    @Test
+    void Producer나_브로커가_크기_한도로_거부하면_크기_초과로_알린다() {
+        final CompletableFuture<SendResult<String, String>> result = new CompletableFuture<>();
+        result.completeExceptionally(new KafkaProducerException(null, "send failed", new RecordTooLargeException("too large")));
+        when(kafka.send(eq(EXPECTED_TOPIC), eq("42"), any(String.class)))
+            .thenThrow(new KafkaException("Send failed", new RecordTooLargeException("too large"))).thenReturn(result);
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            assertThatThrownBy(() -> client.updateProfile(request, UUID.randomUUID())).isInstanceOfSatisfying(CoreException.class,
+                exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_PROFILE_MESSAGE_TOO_LARGE));
+        }
+        assertThatThrownBy(() -> client.deleteProfile(42L, UUID.randomUUID())).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_PROFILE_MESSAGE_TOO_LARGE));
     }
 
     @Test
@@ -65,14 +131,13 @@ class AiPersonalizationProfileKafkaClientTest {
         final UUID revision = UUID.randomUUID();
         final CompletableFuture<SendResult<String, String>> uncertain = mock(CompletableFuture.class);
         when(uncertain.get(12, TimeUnit.SECONDS)).thenThrow(new TimeoutException());
-        when(kafka.send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), any(String.class))).thenReturn(uncertain,
-            CompletableFuture.completedFuture(null));
+        when(kafka.send(eq(EXPECTED_TOPIC), eq("42"), any(String.class))).thenReturn(uncertain, CompletableFuture.completedFuture(null));
 
         assertThatThrownBy(() -> client.updateProfile(request, revision)).isInstanceOf(CoreException.class);
         client.updateProfile(request, revision);
 
         final ArgumentCaptor<String> values = ArgumentCaptor.forClass(String.class);
-        verify(kafka, times(2)).send(eq(AiPersonalizationProfileKafkaClient.TOPIC), eq("42"), values.capture());
+        verify(kafka, times(2)).send(eq(EXPECTED_TOPIC), eq("42"), values.capture());
         assertThat(json.readTree(values.getAllValues().get(0)).path("job_revision").asText()).isEqualTo(revision.toString());
         assertThat(json.readTree(values.getAllValues().get(1)).path("job_revision").asText()).isEqualTo(revision.toString());
     }
@@ -81,14 +146,27 @@ class AiPersonalizationProfileKafkaClientTest {
     void 라우터는_일반_요청을_HTTP로_작업_요청은_Kafka로_전달한다() {
         final var http = mock(AiPersonalizationProfileClientImpl.class);
         final var publisher = mock(AiPersonalizationProfileKafkaClient.class);
-        final var router = new AiPersonalizationProfileRoutingClient(http, publisher);
+        final var withdrawal = mock(CheckWithdrawalConfirmedUseCase.class);
+        final var requestSync = mock(RequestProfileSyncUseCase.class);
+        final var router = new AiPersonalizationProfileRoutingClient(http, publisher, withdrawal, requestSync);
         final var revision = UUID.randomUUID();
 
         router.updateProfile(request);
         router.updateProfile(request, revision);
+        router.deleteProfile(42L);
+        router.deleteProfile(42L, revision);
 
         verify(http).updateProfile(request);
         verify(publisher).updateProfile(request, revision);
+        verify(http).deleteProfile(42L);
+        verify(publisher).deleteProfile(42L, revision);
+        verifyNoMoreInteractions(publisher);
+        verify(withdrawal).execute(42L);
+        verifyNoInteractions(requestSync);
+    }
+
+    private static AiPersonalizationProfileRequest requestWithTag(final String tag) {
+        return new AiPersonalizationProfileRequest(42L, List.of(), List.of(), List.of(), List.of(tag), List.of());
     }
 
 }

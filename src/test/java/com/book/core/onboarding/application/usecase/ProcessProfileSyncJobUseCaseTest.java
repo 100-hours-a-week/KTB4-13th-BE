@@ -69,7 +69,7 @@ class ProcessProfileSyncJobUseCaseTest {
 
         process.execute();
 
-        verify(profiles).executeDelete(USER_ID);
+        verify(profiles).executeDelete(USER_ID, job.revision());
         verify(profiles, never()).executeUpdate(USER_ID, job.revision());
         verify(jobs).complete(job);
     }
@@ -81,7 +81,7 @@ class ProcessProfileSyncJobUseCaseTest {
 
         process.execute();
 
-        verify(profiles).executeDelete(USER_ID);
+        verify(profiles).executeDelete(USER_ID, job.revision());
         verify(profiles, never()).executeUpdate(USER_ID, job.revision());
         verify(jobs).complete(job);
     }
@@ -90,13 +90,26 @@ class ProcessProfileSyncJobUseCaseTest {
     void AI가_400으로_거부한_요청은_자동_재시도하지_않되_완료로_지우지_않고_실패_작업으로_보관한다() {
         final Job job = givenJob(0);
         when(withdrawalConfirmed.execute(USER_ID)).thenReturn(true);
-        doThrow(new CoreException(ErrorCode.AI_SERVICE_INVALID_REQUEST)).when(profiles).executeDelete(USER_ID);
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_INVALID_REQUEST)).when(profiles).executeDelete(USER_ID, job.revision());
 
         process.execute();
 
         verify(jobs).fail(job);
         verify(jobs, never()).complete(any());
         verify(jobs, never()).retry(any(), any());
+    }
+
+    @Test
+    void 메시지_크기_초과는_다시_보내도_같으므로_갱신_작업을_재시도하지_않고_실패_작업으로_보관한다() {
+        final Job job = givenJob(0);
+        givenAgreedAndCompleted();
+        doThrow(new CoreException(ErrorCode.AI_PROFILE_MESSAGE_TOO_LARGE)).when(profiles).executeUpdate(USER_ID, job.revision());
+
+        process.execute();
+
+        verify(jobs).fail(job);
+        verify(jobs, never()).retry(any(), any());
+        verify(jobs, never()).complete(any());
     }
 
     @Test
@@ -114,10 +127,24 @@ class ProcessProfileSyncJobUseCaseTest {
     }
 
     @Test
+    void 삭제_발행_실패는_같은_작업을_재시도한다() {
+        final Job job = givenJob(0);
+        when(withdrawalConfirmed.execute(USER_ID)).thenReturn(true);
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_FAILURE)).doNothing().when(profiles).executeDelete(USER_ID, job.revision());
+
+        process.execute();
+        process.execute();
+
+        verify(jobs).retry(job, NOW.plusSeconds(30));
+        verify(profiles, times(2)).executeDelete(USER_ID, job.revision());
+        verify(jobs).complete(job);
+    }
+
+    @Test
     void 서비스_토큰_인증_실패는_삭제_작업을_버리지_않고_최대_간격으로만_다시_시도한다() {
         final Job job = givenJob(0);
         when(withdrawalConfirmed.execute(USER_ID)).thenReturn(true);
-        doThrow(new CoreException(ErrorCode.AI_SERVICE_UNAUTHORIZED)).when(profiles).executeDelete(USER_ID);
+        doThrow(new CoreException(ErrorCode.AI_SERVICE_UNAUTHORIZED)).when(profiles).executeDelete(USER_ID, job.revision());
 
         process.execute();
 

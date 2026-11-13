@@ -29,7 +29,7 @@ class NewBookImportScheduler {
         return Executors.newSingleThreadScheduledExecutor();
     }
 
-    @Scheduled(cron = "${app.new-book.collection-cron:0 30 3 * * *}", zone = "Asia/Seoul", scheduler = "newBookImportExecutor")
+    @Scheduled(cron = "${app.new-book.collection-cron:0 40 15 * * *}", zone = "Asia/Seoul", scheduler = "newBookImportExecutor")
     void importNewBooks() {
         imports.importNewBooks(LocalDate.now(ZoneId.of("Asia/Seoul")));
     }

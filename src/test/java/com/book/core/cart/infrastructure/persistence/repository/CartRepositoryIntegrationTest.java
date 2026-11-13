@@ -47,7 +47,7 @@ class CartRepositoryIntegrationTest {
     JdbcTemplate jdbc;
 
     @Test
-    void 같은_사용자의_같은_상품_추가는_한_항목의_수량을_대체한다() {
+    void 같은_사용자의_같은_상품_추가는_한_항목에_수량을_누적한다() {
         createCart(1001L);
         createProduct(12001L, 13001L, 10);
         addUseCase.execute(new AddCartItemCommand(1001L, 12001L, 2));
@@ -65,7 +65,7 @@ class CartRepositoryIntegrationTest {
                         FROM cart_item item
                         JOIN carts cart ON cart.id = item.cart_id
                         WHERE cart.user_id = ? AND item.product_id = ?
-                        """, Integer.class, 1001L, 12001L)).isEqualTo(4);
+                        """, Integer.class, 1001L, 12001L)).isEqualTo(6);
     }
 
     @Test

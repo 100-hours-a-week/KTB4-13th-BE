@@ -53,7 +53,20 @@ class CartAddUseCaseTest {
     }
 
     @Test
-    void 기존_상품의_수량을_대체하고_삭제된_상품은_활성화한다() {
+    void 활성_상품을_다시_추가하면_기존_수량에_누적한다() {
+        final CartItem item = CartItem.from(1L, 20L, 2);
+        cartRepository.cart = new Cart(1L, 1L);
+        cartItemRepository.item = Optional.of(item);
+        productRepository.product = product(3);
+
+        useCase.execute(new AddCartItemCommand(1L, 20L, 1));
+
+        assertThat(item.quantity()).isEqualTo(3);
+        assertThat(cartItemRepository.savedItem).isNull();
+    }
+
+    @Test
+    void 삭제된_상품을_다시_추가하면_요청_수량으로_활성화한다() {
         final Cart cart = new Cart(1L, 1L);
         final CartItem item = CartItem.from(1L, 20L, 2);
         item.delete();
@@ -116,18 +129,31 @@ class CartAddUseCaseTest {
     }
 
     @Test
-    void 요청_수량이_재고보다_많으면_기존_장바구니_상품을_변경하지_않는다() {
+    void 합산_수량이_재고보다_많으면_기존_장바구니_상품을_변경하지_않는다() {
         final Cart cart = new Cart(1L, 1L);
         final CartItem item = CartItem.from(1L, 20L, 2);
         cartRepository.cart = cart;
         cartItemRepository.item = Optional.of(item);
         productRepository.product = product(2);
 
-        assertThatThrownBy(() -> useCase.execute(new AddCartItemCommand(1L, 20L, 3))).isInstanceOfSatisfying(CoreException.class,
+        assertThatThrownBy(() -> useCase.execute(new AddCartItemCommand(1L, 20L, 1))).isInstanceOfSatisfying(CoreException.class,
             exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INSUFFICIENT_PRODUCT_STOCK));
 
         assertThat(item.quantity()).isEqualTo(2);
         assertThat(item.isActive()).isTrue();
+    }
+
+    @Test
+    void 합산_수량이_500개를_넘으면_기존_상품을_변경하지_않는다() {
+        final CartItem item = CartItem.from(1L, 20L, 500);
+        cartRepository.cart = new Cart(1L, 1L);
+        cartItemRepository.item = Optional.of(item);
+        productRepository.product = product(501);
+
+        assertThatThrownBy(() -> useCase.execute(new AddCartItemCommand(1L, 20L, 1))).isInstanceOfSatisfying(CoreException.class,
+            exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_CART_ITEM_QUANTITY));
+
+        assertThat(item.quantity()).isEqualTo(500);
     }
 
     @Test

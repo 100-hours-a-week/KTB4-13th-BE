@@ -1,5 +1,6 @@
 package com.book.core.address.api.spec;
 
+import com.book.common.api.RequiresSecurity;
 import com.book.core.address.api.request.RegisterAddressRequest;
 import com.book.core.address.api.request.UpdateAddressRequest;
 import com.book.core.address.api.response.AddressListResponse;
@@ -12,7 +13,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 @Tag(name = "Address", description = "배송지 API")
 public interface AddressControllerSpec {
     @Operation(summary = "배송지 등록", description = "요청 회원의 활성 배송지를 등록합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "배송지 등록 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않거나 등록 정책을 위반함"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
@@ -36,14 +36,14 @@ public interface AddressControllerSpec {
     );
 
     @Operation(summary = "배송지 목록 조회", description = "인증된 회원의 활성 배송지 목록을 기본 배송지 우선으로 조회합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "배송지 목록 조회 성공"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")
     ResponseEntity<com.book.common.response.ApiResponse<AddressListResponse>> getAddresses(@Parameter(hidden = true) final Long userId);
 
     @Operation(summary = "배송지 수정", description = "배송지 전체 정보를 교체합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "배송지 수정 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식 또는 수정 정책이 올바르지 않음"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
@@ -59,7 +59,7 @@ public interface AddressControllerSpec {
     );
 
     @Operation(summary = "기본 배송지 지정", description = "요청 회원의 활성 배송지를 기본 배송지로 지정합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "기본 배송지 지정 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
@@ -72,7 +72,7 @@ public interface AddressControllerSpec {
     );
 
     @Operation(summary = "배송지 삭제", description = "요청 회원의 배송지를 삭제합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "배송지 삭제 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),

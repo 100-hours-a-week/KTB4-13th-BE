@@ -1,5 +1,6 @@
 package com.book.core.cart.api.spec;
 
+import com.book.common.api.RequiresSecurity;
 import com.book.core.cart.api.request.AddCartItemRequest;
 import com.book.core.cart.api.request.DeleteCartItemsRequest;
 import com.book.core.cart.api.request.ModifyCartItemRequest;
@@ -12,7 +13,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -27,7 +27,7 @@ public interface CartControllerSpec {
             같은 상품이 이미 담겨 있으면 기존 수량에 요청 수량을 더합니다. 삭제된 상품을 다시 담으면 요청 수량으로 복구합니다.
             quantity는 1~500 범위의 필수 입력입니다. 최종 수량이 500개 또는 가용 재고를 초과하면 추가하지 않습니다.
             """)
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "추가 성공"),
         @ApiResponse(responseCode = "409", description = "CONCURRENT_CHANGE: 동시 변경 충돌, 전체 미적용"),
         @ApiResponse(responseCode = "400", description = "요청 오류"), @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})
@@ -39,7 +39,7 @@ public interface CartControllerSpec {
     );
 
     @Operation(summary = "장바구니 상품 수량 변경", description = "인증된 회원의 활성 장바구니 상품 수량을 변경합니다. 재고가 부족하면 변경하지 않습니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "수량 변경 성공"),
         @ApiResponse(responseCode = "409", description = "CONCURRENT_CHANGE: 동시 변경 충돌, 전체 미적용"),
         @ApiResponse(responseCode = "400", description = "수량 형식이 잘못되었거나 상품 재고가 부족함"),
@@ -54,7 +54,7 @@ public interface CartControllerSpec {
     );
 
     @Operation(summary = "장바구니 상품 삭제", description = "인증된 회원의 활성 장바구니 상품을 논리 삭제합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "삭제 성공"),
         @ApiResponse(responseCode = "409", description = "CONCURRENT_CHANGE: 동시 변경 충돌, 전체 미적용"),
         @ApiResponse(responseCode = "400", description = "장바구니 상품 ID가 잘못됨"),
@@ -67,7 +67,7 @@ public interface CartControllerSpec {
     );
 
     @Operation(summary = "장바구니 상품 다건 삭제", description = "인증된 회원의 활성 장바구니 상품들을 논리 삭제합니다. 대상이 하나라도 유효하지 않으면 전체 요청을 실패합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "삭제 성공"),
         @ApiResponse(responseCode = "409", description = "CONCURRENT_CHANGE: 동시 변경 충돌, 전체 미적용"),
         @ApiResponse(responseCode = "400", description = "요청 목록이 비었거나 장바구니 상품 ID가 잘못됨"),
@@ -87,7 +87,7 @@ public interface CartControllerSpec {
         상품 행이 없는 항목도 유지하며 상품 표시 정보는 null, isAvailableForPurchase는 false로 반환합니다.
         isAvailableForPurchase는 상품과 연결 도서가 활성이고 상품 재고가 장바구니 수량 이상일 때만 true입니다.
         """)
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "장바구니 조회 성공"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"), @ApiResponse(responseCode = "500", description = "장바구니 조회 실패")})
     @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.AUTHORIZATION, required = true, example = "Bearer {accessToken}")

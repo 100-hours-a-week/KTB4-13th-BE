@@ -1,19 +1,19 @@
 package com.book.core.agentchat.api.spec;
 
+import com.book.common.api.RequiresSecurity;
 import com.book.common.response.ApiResponse;
 import com.book.core.agentchat.api.request.ConfirmCartProposalRequest;
 import com.book.core.agentchat.api.response.AgentCartExecutionResponse;
 import com.book.core.agentchat.api.response.AgentCartProposalResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "쇼핑 에이전트", description = "BE가 저장한 변경 제안 승인과 과거 성공 결과 조회")
-@SecurityRequirement(name = "bearerAuth")
+@RequiresSecurity
 public interface AgentCartControllerSpec {
     @Operation(summary = "제안 확인 후 실행 생성", description = "상품·수량·사용자는 변경할 수 없습니다. 첫 성공 201, 성공 재생 200. 거절은 400/404/409이며 전부 미적용입니다.")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "성공 실행 생성, Location 제공"),

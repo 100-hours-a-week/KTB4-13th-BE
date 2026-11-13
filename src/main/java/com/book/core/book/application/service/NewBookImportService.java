@@ -1,16 +1,20 @@
 package com.book.core.book.application.service;
 
+import com.book.core.book.application.port.BookCatalogException;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
 import com.book.core.book.application.port.NewBookImportLock;
+import com.book.core.book.application.port.NewBookImportNotifier;
 import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookImportOutcome;
+import com.book.core.book.application.result.NewBookImportReport;
 import com.book.core.book.application.usecase.CollectNewBookIsbnsUseCase;
 import com.book.core.book.application.usecase.ImportNewBookDetailUseCase;
 import com.book.core.book.application.usecase.RegisterNewBookUseCase;
 import java.time.LocalDate;
-import java.util.EnumMap;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
@@ -23,48 +27,91 @@ public class NewBookImportService {
     private final ImportNewBookDetailUseCase detailImport;
     private final RegisterNewBookUseCase registration;
 
+    private final NewBookImportNotifier notifier;
+
     public void importNewBooks(final LocalDate today) {
-        if (!batchLock.runIfAcquired(() -> importCandidates(today))) {
-            log.info("[BOOK] 다른 인스턴스가 신간 도서 등록 배치를 실행 중이어서 건너뜁니다.");
+        final var run = new NewBookImportRun();
+        final String previousRunId = MDC.get("runId");
+        try {
+            if (!batchLock.runIfAcquired(() -> importCandidates(today, run))) {
+                log.info("[BOOK] 다른 인스턴스가 신간 도서 등록 배치를 실행 중이어서 건너뜁니다.");
+            }
+        } catch (final RuntimeException exception) {
+            if (exception instanceof BookCatalogException catalogException) {
+                run.failureReason = catalogException.reason().description();
+            } else {
+                run.failureReason = exception.getClass().getSimpleName();
+            }
+            throw exception;
+        } finally {
+            try {
+                if (run.runId != null) {
+                    report(run);
+                }
+            } finally {
+                if (previousRunId == null) {
+                    MDC.remove("runId");
+                } else {
+                    MDC.put("runId", previousRunId);
+                }
+            }
         }
     }
 
-    private void importCandidates(final LocalDate today) {
+    private void importCandidates(final LocalDate today, final NewBookImportRun run) {
         final long startedAt = System.nanoTime();
-        final var outcomes = new EnumMap<NewBookImportOutcome, Integer>(NewBookImportOutcome.class);
-        int candidates = 0;
+        run.runId = UUID.randomUUID();
+        MDC.put("runId", run.runId.toString());
         try {
+            log.info("[BOOK] 신간 도서 등록 배치를 시작합니다. runId={}", run.runId);
             final var candidateIsbns = collection.collect(today);
-            candidates = candidateIsbns.size();
+            run.candidateCount = candidateIsbns.size();
             for (final String isbn13 : candidateIsbns) {
-                final NewBookImportOutcome outcome = importBook(isbn13);
-                outcomes.merge(outcome, 1, Integer::sum);
+                final NewBookImportOutcome outcome = importBook(isbn13, run);
+                run.outcomes.merge(outcome, 1, Integer::sum);
                 if (outcome == NewBookImportOutcome.BUDGET_EXHAUSTED || outcome == NewBookImportOutcome.RATE_LIMITED) {
                     break;
                 }
             }
         } finally {
-            final int detailCalls = outcomes.values().stream().mapToInt(Integer::intValue).sum()
-                - outcomes.getOrDefault(NewBookImportOutcome.ALREADY_REGISTERED, 0)
-                - outcomes.getOrDefault(NewBookImportOutcome.BUDGET_EXHAUSTED, 0);
-            final long elapsedMs = (System.nanoTime() - startedAt) / 1_000_000;
-            log.atInfo().addKeyValue("candidateCount", candidates).addKeyValue("detailCallCount", detailCalls)
-                .addKeyValue("outcomes", outcomes).addKeyValue("elapsedMs", elapsedMs)
-                .log("[BOOK] 신간 도서 등록 배치가 종료됐습니다. candidateCount={}, detailCallCount={}, outcomes={}, elapsedMs={}", candidates,
-                    detailCalls, outcomes, elapsedMs);
+            run.elapsedMs = (System.nanoTime() - startedAt) / 1_000_000;
         }
     }
 
-    private NewBookImportOutcome importBook(final String isbn13) {
+    private void report(final NewBookImportRun run) {
+        final var report =
+            new NewBookImportReport(run.runId, run.elapsedMs, run.candidateCount, run.detailCallCount, run.outcomes, run.failureReason);
+        var event = log.atInfo();
+        if (report.failed()) {
+            event = log.atError().addKeyValue("reason", report.failureReason());
+        }
+        event.addKeyValue("candidateCount", report.candidateCount()).addKeyValue("detailCallCount", report.detailCallCount())
+            .addKeyValue("outcomes", report.outcomes()).addKeyValue("elapsedMs", report.elapsedMs())
+            .log("[BOOK] 신간 도서 등록 배치가 {}. runId={}, candidateCount={}, detailCallCount={}, outcomes={}, elapsedMs={}, reason={}",
+                report.status(), report.runId(), report.candidateCount(), report.detailCallCount(), report.outcomes(), report.elapsedMs(),
+                report.failureReason());
+        try {
+            notifier.send(report);
+        } catch (final RuntimeException exception) {
+            log.atWarn().addKeyValue("reason", exception.getClass().getSimpleName()).log("[BOOK] 신간 도서 등록 배치 디스코드 알림 전송에 실패했습니다. runId={}",
+                report.runId());
+        }
+    }
+
+    private NewBookImportOutcome importBook(final String isbn13, final NewBookImportRun run) {
         final long startedAt = System.nanoTime();
         return switch (detailImport.findDetail(isbn13)) {
             case NewBookImportOutcome outcome -> {
                 if (outcome != NewBookImportOutcome.ALREADY_REGISTERED && outcome != NewBookImportOutcome.BUDGET_EXHAUSTED) {
+                    run.detailCallCount++;
                     logDetailElapsed(isbn13, startedAt);
                 }
                 yield outcome;
             }
-            case NewBookDetailFound found -> registerBook(isbn13, found, startedAt);
+            case NewBookDetailFound found -> {
+                run.detailCallCount++;
+                yield registerBook(isbn13, found, startedAt);
+            }
         };
     }
 

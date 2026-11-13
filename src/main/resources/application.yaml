@@ -59,6 +59,8 @@ sentry:
   traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}
 
 app:
+  notification:
+    discord-webhook-url: ${app.new-book.discord-webhook-url:${NEW_BOOK_IMPORT_DISCORD_WEBHOOK_URL:}}
   new-book:
     enabled: ${NEW_BOOK_IMPORT_ENABLED:false}
     national-library-key: ${NATIONAL_LIBRARY_ISBN_API_KEY:}

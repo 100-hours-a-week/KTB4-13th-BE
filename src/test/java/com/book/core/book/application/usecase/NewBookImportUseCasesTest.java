@@ -19,6 +19,7 @@ import com.book.core.book.application.port.DataForLibraryBookDetailClient;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
 import com.book.core.book.application.port.NationalLibraryIsbnClient;
 import com.book.core.book.application.port.NewBookImportLock;
+import com.book.core.book.application.port.NewBookImportNotifier;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookImportOutcome;
@@ -45,6 +46,8 @@ class NewBookImportUseCasesTest {
     @Mock
     private NewBookImportLock lock;
     @Mock
+    private NewBookImportNotifier notifier;
+    @Mock
     private CollectNewBookIsbnsUseCase collection;
     @Mock
     private ImportNewBookDetailUseCase details;
@@ -59,9 +62,9 @@ class NewBookImportUseCasesTest {
 
     @Test
     void 락을_획득하지_못하면_두_API_모두_호출하지_않는다() {
-        new NewBookImportService(lock, collection, details, registration).importNewBooks(TODAY);
+        new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY);
 
-        verifyNoInteractions(collection, details);
+        verifyNoInteractions(collection, details, notifier);
     }
 
     @Test
@@ -84,7 +87,7 @@ class NewBookImportUseCasesTest {
         when(collection.collect(TODAY)).thenReturn(List.of(ISBN, OTHER_ISBN));
         when(details.findDetail(ISBN)).thenReturn(NewBookImportOutcome.RATE_LIMITED);
 
-        new NewBookImportService(lock, collection, details, registration).importNewBooks(TODAY);
+        new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY);
 
         verify(details).findDetail(ISBN);
         org.mockito.Mockito.verifyNoMoreInteractions(details);
@@ -139,7 +142,7 @@ class NewBookImportUseCasesTest {
         appender.start();
         logger.addAppender(appender);
         try {
-            new NewBookImportService(lock, collection, details, registration).importNewBooks(TODAY);
+            new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY);
         } finally {
             logger.detachAppender(appender);
             appender.stop();

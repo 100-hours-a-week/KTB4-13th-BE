@@ -16,8 +16,12 @@ import com.book.core.address.application.command.UpdateAddressCommand;
 import com.book.core.address.application.result.UpdateAddressResult;
 import com.book.core.address.application.service.AddressService;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -28,6 +32,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
 
 @WebMvcTest(AddressController.class)
 @Import({AddressCommandConverter.class, AddressResultConverter.class, UserIdMvcConfig.class})
@@ -89,6 +94,35 @@ class UpdateAddressControllerTest {
 
         mvc.perform(put("/api/v1/user-addresses/{addressId}", 101).contentType(MediaType.APPLICATION_JSON).content(validRequestBody()))
             .andExpect(status().isForbidden()).andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.code").value("E403"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"label", "postalCode", "address", "detailAddress"})
+    void 수정_요청에서_255자를_초과하면_400을_응답하고_Service를_호출하지_않는다(final String field) throws Exception {
+        authenticateAs(42L);
+        final var fields = new HashMap<>(Map.of("label", "회사", "postalCode", "06236", "address", "서울시 강남구", "detailAddress", "101호"));
+        fields.put(field, "가".repeat(256));
+        final String body = JsonMapper.builder().build().writeValueAsString(fields);
+
+        mvc.perform(put("/api/v1/user-addresses/{addressId}", 101).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E400"));
+
+        verifyNoInteractions(addressService);
+    }
+
+    @Test
+    void 수정_요청에서_255자까지_허용한다() throws Exception {
+        authenticateAs(42L);
+        final String maxLengthValue = "가".repeat(255);
+        final var command = new UpdateAddressCommand(42L, 101L, maxLengthValue, maxLengthValue, maxLengthValue, maxLengthValue);
+        when(addressService.updateAddress(command)).thenReturn(new UpdateAddressResult(101L));
+        final String body = JsonMapper.builder().build().writeValueAsString(Map.of(
+            "label", maxLengthValue, "postalCode", maxLengthValue, "address", maxLengthValue, "detailAddress", maxLengthValue));
+
+        mvc.perform(put("/api/v1/user-addresses/{addressId}", 101).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isOk());
+
+        verify(addressService).updateAddress(command);
     }
 
     private static String validRequestBody() {

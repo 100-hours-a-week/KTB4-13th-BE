@@ -115,7 +115,8 @@ class ProductQueryRepository {
             queryFactory.select(snapshot.productId, snapshot.salesQuantity, snapshot.reviewCount, snapshot.reviewRate).from(snapshot)
                 .where(snapshot.productId.eq(activeProductId), popularityCursorPredicate(cursor, snapshot),
                     categoryPredicate(categoryId, snapshot.productId))
-                .orderBy(snapshot.salesQuantity.desc(), snapshot.productId.desc()).limit(limit).fetch();
+                .orderBy(snapshot.salesQuantity.desc(), snapshot.reviewCount.desc(), snapshot.reviewRate.desc(), snapshot.productId.desc())
+                .limit(limit).fetch();
         if (ranked.isEmpty()) {
             return List.of();
         }
@@ -140,8 +141,13 @@ class ProductQueryRepository {
         if (cursor == null) {
             return null;
         }
+        final BooleanExpression sameSalesQuantity = snapshot.salesQuantity.eq(cursor.salesQuantity());
+        final BooleanExpression sameReviewCount = snapshot.reviewCount.eq(cursor.reviewCount());
         return snapshot.salesQuantity.lt(cursor.salesQuantity())
-            .or(snapshot.salesQuantity.eq(cursor.salesQuantity()).and(snapshot.productId.lt(cursor.productId())));
+            .or(sameSalesQuantity.and(snapshot.reviewCount.lt(cursor.reviewCount())))
+            .or(sameSalesQuantity.and(sameReviewCount).and(snapshot.reviewRate.lt(cursor.reviewRate())))
+            .or(sameSalesQuantity.and(sameReviewCount).and(snapshot.reviewRate.eq(cursor.reviewRate()))
+                .and(snapshot.productId.lt(cursor.productId())));
     }
 
     private BooleanExpression categoryPredicate(final Long categoryId, final NumberExpression<Long> productId) {

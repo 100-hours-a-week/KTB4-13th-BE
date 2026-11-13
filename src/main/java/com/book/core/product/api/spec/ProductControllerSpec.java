@@ -30,7 +30,8 @@ public interface ProductControllerSpec {
 
     @Operation(summary = "상품 목록 조회",
         description = "활성 상품을 cursor 방식으로 조회합니다. sort=POPULARITY는 전체 기간 결제된 주문 상품 수량 합계 DESC, "
-            + "상품 ID DESC 순으로 정렬합니다. 집계된 판매량이 없으면 0이며 재고는 반영하지 않습니다. " + "인기 집계는 애플리케이션 시작 시와 이후 매시간 갱신되며, 갱신 실패 시 마지막 성공 집계를 사용합니다. "
+            + "활성 리뷰 수 DESC, 활성 리뷰 평균 평점 DESC, 상품 ID DESC 순으로 정렬합니다. 집계가 없는 지표는 0이며 재고는 반영하지 않습니다. "
+            + "인기 집계는 애플리케이션 시작 시와 이후 매시간 갱신되며, 갱신 실패 시 마지막 성공 집계를 사용합니다. "
             + "갱신 후 등록된 상품은 다음 성공 갱신부터 인기순 목록에 포함됩니다.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "상품 목록 조회 성공"),
         @ApiResponse(responseCode = "400", description = "요청이 올바르지 않음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
@@ -40,7 +41,8 @@ public interface ProductControllerSpec {
         @Parameter(in = ParameterIn.QUERY, description = "createdAt 또는 POPULARITY. 생략하면 createdAt입니다.", example = "POPULARITY",
             schema = @Schema(allowableValues = {"createdAt", "POPULARITY"}, defaultValue = "createdAt"))
         @RequestParam(value = "sort", required = false) final String sort,
-        @Parameter(in = ParameterIn.QUERY, description = "createdAt 정렬은 상품 ID 문자열, POPULARITY 정렬은 응답의 nextCursor 값을 전달합니다.")
+        @Parameter(in = ParameterIn.QUERY,
+            description = "createdAt 정렬은 상품 ID 문자열, POPULARITY 정렬은 현재 응답의 nextCursor 값을 전달합니다. 이전 2키 커서는 첫 페이지부터 다시 조회합니다.")
         @RequestParam(value = "cursor", required = false) final String cursor,
         @Parameter(in = ParameterIn.QUERY, example = "20") @Positive @RequestParam(value = "limit", required = false) final Integer limit,
         @Parameter(in = ParameterIn.QUERY, description = "출간일 시작(yyyy-MM-dd, 포함). 생략하면 하한 없이 조회합니다.", example = "2025-01-01")

@@ -23,7 +23,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 @Tag(name = "Cart", description = "장바구니 API")
 public interface CartControllerSpec {
     @Operation(summary = "장바구니 상품 추가",
-        description = "동일 장바구니에 같은 상품이 있으면 기존 수량에 누적하지 않고 요청한 수량으로 대체합니다. " + "같은 추가 요청을 반복해도 결과는 같습니다. quantity는 1~500 범위로 필수 입력입니다.")
+        description = """
+            같은 상품이 이미 담겨 있으면 기존 수량에 요청 수량을 더합니다. 삭제된 상품을 다시 담으면 요청 수량으로 복구합니다.
+            quantity는 1~500 범위의 필수 입력입니다. 최종 수량이 500개 또는 가용 재고를 초과하면 추가하지 않습니다.
+            """)
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "추가 성공"),
         @ApiResponse(responseCode = "409", description = "CONCURRENT_CHANGE: 동시 변경 충돌, 전체 미적용"),

@@ -27,12 +27,17 @@ public class AddCartItemUseCase {
         final Cart cart =
             cartRepository.findByUserIdForChange(command.userId()).orElseThrow(() -> new CoreException(ErrorCode.CART_NOT_FOUND));
 
-        // 장바구니에 이미 존재하는 상품이면 수량을 대체하고, 존재하지 않으면 새로 추가
+        // 장바구니에서 같은 상품의 기존 항목을 찾는다
         final List<CartItem> cartItems = cartItemRepository.findAllByCartIdForChange(cart.id());
         final Optional<CartItem> found =
             cartItems.stream().filter((final CartItem item) -> item.productId().equals(command.productId())).findFirst();
         CartItem.validateQuantity(command.quantity());
-        productDetailUseCase.validateAvailableStock(command.productId(), command.quantity());
+        int quantity = command.quantity();
+        if (found.isPresent() && found.get().isActive()) {
+            quantity += found.get().quantity();
+            CartItem.validateQuantity(quantity);
+        }
+        productDetailUseCase.validateAvailableStock(command.productId(), quantity);
 
         // 이미 존재하는 상품인지 확인
         if (found.isPresent()) {
@@ -45,8 +50,7 @@ public class AddCartItemUseCase {
                 cart.validateCanAddItem(cartItemCount);
                 cartItem.active(); // 상품을 활성화
             }
-            // 수량을 대체
-            cartItem.applyQuantity(command.quantity());
+            cartItem.applyQuantity(quantity);
             return;
         }
         // 새로 추가하는 상품이면, 장바구니에 추가할 수 있는지 확인

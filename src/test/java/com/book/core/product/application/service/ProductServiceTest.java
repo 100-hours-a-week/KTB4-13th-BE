@@ -74,7 +74,8 @@ class ProductServiceTest {
 
     @Test
     void 상품_목록_조회를_UseCase에_위임한다() {
-        final var command = new GetProductsCommand(null, null, null, ProductListSort.POPULARITY, new ProductListCursor(31L, 4L), 20);
+        final var command =
+            new GetProductsCommand(null, null, null, ProductListSort.POPULARITY, new ProductListCursor(31L, 4L, 0L, BigDecimal.ZERO), 20);
         final var result = GetProductsResult.of(List.of(), null);
         when(getProductsUseCase.execute(command)).thenReturn(result);
 

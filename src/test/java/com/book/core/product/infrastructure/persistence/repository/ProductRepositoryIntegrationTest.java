@@ -155,14 +155,15 @@ class ProductRepositoryIntegrationTest {
 
         final var firstPage = productRepository.findActiveProducts(3001L, null, null, ProductListSort.CREATED_AT, null, 1);
         final var secondPage =
-            productRepository.findActiveProducts(3001L, null, null, ProductListSort.CREATED_AT, new ProductListCursor(2101L, null), 2);
+            productRepository.findActiveProducts(3001L, null, null, ProductListSort.CREATED_AT,
+                new ProductListCursor(2101L, null, null, null), 2);
 
         assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2101L);
         assertThat(secondPage).extracting(item -> item.product().id()).containsExactly(2103L, 2102L);
     }
 
     @Test
-    void 인기순은_결제수량과_ID_순으로_정렬하고_커서와_기존_필터를_적용한다() {
+    void 인기순은_결제수량_리뷰수_평점_ID_순으로_정렬하고_커서와_기존_필터를_적용한다() {
         insertCategory(3003L, "활성 카테고리", null);
         insertCategory(3004L, "다른 카테고리", null);
         insertBook(1010L, "인기순 도서 1", null);
@@ -215,17 +216,26 @@ class ProductRepositoryIntegrationTest {
 
         final var firstPage = productRepository.findActiveProducts(3003L, null, null, ProductListSort.POPULARITY, null, 3);
         final var last = firstPage.getLast();
-        final var cursor = new ProductListCursor(last.product().id(), last.salesQuantity());
+        final var cursor = new ProductListCursor(last.product().id(), last.salesQuantity(), last.reviewCount(), last.reviewRate());
         final var secondPage = productRepository.findActiveProducts(3003L, null, null, ProductListSort.POPULARITY, cursor, 10);
 
-        assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2203L, 2205L, 2204L);
-        assertThat(secondPage).extracting(item -> item.product().id()).containsExactly(2202L, 2201L, 2209L, 2206L);
-        final var oneActiveReview = firstPage.stream().filter(item -> item.product().id() == 2205L).findFirst().orElseThrow();
+        assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2203L, 2204L, 2202L);
+        assertThat(secondPage).extracting(item -> item.product().id()).containsExactly(2201L, 2205L, 2209L, 2206L);
+        final var oneActiveReview = secondPage.stream().filter(item -> item.product().id() == 2205L).findFirst().orElseThrow();
         assertThat(oneActiveReview.reviewCount()).isEqualTo(1L);
         assertThat(oneActiveReview.reviewRate()).isEqualByComparingTo("10.0");
         assertThat(secondPage.getLast().salesQuantity()).isZero();
         assertThat(secondPage.getLast().reviewCount()).isZero();
         assertThat(secondPage.getLast().reviewRate()).isEqualByComparingTo(BigDecimal.ZERO);
+
+        ProductListCursor pageCursor = null;
+        for (final long productId : new long[] {2203L, 2204L, 2202L, 2201L, 2205L, 2209L, 2206L}) {
+            final var page = productRepository.findActiveProducts(3003L, null, null, ProductListSort.POPULARITY, pageCursor, 1);
+            assertThat(page).extracting(item -> item.product().id()).containsExactly(productId);
+            final var item = page.getFirst();
+            pageCursor = new ProductListCursor(item.product().id(), item.salesQuantity(), item.reviewCount(), item.reviewRate());
+        }
+        assertThat(productRepository.findActiveProducts(3003L, null, null, ProductListSort.POPULARITY, pageCursor, 1)).isEmpty();
 
         jdbc.update("UPDATE order_item SET quantity = 9 WHERE id = 4203");
         productService.refreshProductPopularitySnapshot();
@@ -274,7 +284,7 @@ class ProductRepositoryIntegrationTest {
 
         final var firstPage = productRepository.findActiveProducts(3502L, from, null, ProductListSort.CREATED_AT, null, 2);
         final var secondPage = productRepository.findActiveProducts(3502L, from, null, ProductListSort.CREATED_AT,
-            new ProductListCursor(firstPage.getLast().product().id(), null), 2);
+            new ProductListCursor(firstPage.getLast().product().id(), null, null, null), 2);
 
         assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2514L, 2513L);
         assertThat(secondPage).extracting(item -> item.product().id()).containsExactly(2511L);
@@ -302,7 +312,7 @@ class ProductRepositoryIntegrationTest {
         final var firstPage = productRepository.findActiveProducts(3503L, from, null, ProductListSort.POPULARITY, null, 2);
         final var last = firstPage.getLast();
         final var secondPage = productRepository.findActiveProducts(3503L, from, null, ProductListSort.POPULARITY,
-            new ProductListCursor(last.product().id(), last.salesQuantity()), 2);
+            new ProductListCursor(last.product().id(), last.salesQuantity(), last.reviewCount(), last.reviewRate()), 2);
 
         assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2523L, 2524L);
         assertThat(secondPage).extracting(item -> item.product().id()).containsExactly(2521L);
@@ -330,7 +340,8 @@ class ProductRepositoryIntegrationTest {
         assertThat(firstPage).extracting(item -> item.product().id()).containsExactly(2532L);
         assertThat(firstPage.getFirst().salesQuantity()).isZero();
         assertThat(
-            productRepository.findActiveProducts(3504L, null, null, ProductListSort.POPULARITY, new ProductListCursor(2532L, 0L), 10))
+            productRepository.findActiveProducts(3504L, null, null, ProductListSort.POPULARITY,
+                new ProductListCursor(2532L, 0L, 0L, BigDecimal.ZERO), 10))
             .extracting(item -> item.product().id()).containsExactly(2531L);
     }
 

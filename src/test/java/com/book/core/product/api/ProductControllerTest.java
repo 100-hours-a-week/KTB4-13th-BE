@@ -137,7 +137,7 @@ class ProductControllerTest {
 
     @Test
     void 인기순_정렬과_복합_커서를_서비스에_전달한다() throws Exception {
-        final String cursor = Base64.getUrlEncoder().withoutPadding().encodeToString("12:102".getBytes(StandardCharsets.UTF_8));
+        final String cursor = Base64.getUrlEncoder().withoutPadding().encodeToString("12:3:8.125:102".getBytes(StandardCharsets.UTF_8));
         when(productService.getProducts(any())).thenReturn(GetProductsResult.of(List.of(), null));
 
         mvc.perform(get("/api/v1/items").queryParam("sort", "POPULARITY").queryParam("cursor", cursor)).andExpect(status().isOk())
@@ -147,6 +147,8 @@ class ProductControllerTest {
         verify(productService).getProducts(commandCaptor.capture());
         assertThat(commandCaptor.getValue().sort()).isEqualTo(ProductListSort.POPULARITY);
         assertThat(commandCaptor.getValue().cursor().salesQuantity()).isEqualTo(12L);
+        assertThat(commandCaptor.getValue().cursor().reviewCount()).isEqualTo(3L);
+        assertThat(commandCaptor.getValue().cursor().reviewRate()).isEqualByComparingTo("8.125");
         assertThat(commandCaptor.getValue().cursor().productId()).isEqualTo(102L);
     }
 
@@ -183,7 +185,8 @@ class ProductControllerTest {
     void 지원하지_않는_정렬과_인기순_커서는_E400이다() throws Exception {
         mvc.perform(get("/api/v1/items").queryParam("sort", "unknown")).andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("E400"));
-        mvc.perform(get("/api/v1/items").queryParam("sort", "POPULARITY").queryParam("cursor", "101")).andExpect(status().isBadRequest())
+        mvc.perform(get("/api/v1/items").queryParam("sort", "POPULARITY").queryParam("cursor", "MTI6MTAy"))
+            .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("E400"));
 
         verifyNoInteractions(productService);

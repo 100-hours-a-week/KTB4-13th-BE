@@ -1,5 +1,6 @@
 package com.book.core.onboarding.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
@@ -76,6 +77,51 @@ class OnboardingPreferencesApiIntegrationTest {
 
         mvc.perform(get("/api/v1/onboarding")).andExpect(jsonPath("$.data.status").value("IN_PROGRESS"))
             .andExpect(jsonPath("$.data.answers[0].optionIds", contains(1)));
+    }
+
+    @Test
+    void Q3를_부분_변경하면_유지된_부모의_Q4_답변만_남는다() throws Exception {
+        final Long userId = insertUser("부모부분변경회원");
+        authenticateAs(userId);
+        saveAnswers(3, "[9,10]");
+        saveAnswers(4, "[23,28]");
+
+        saveAnswers(3, "[10,11]");
+
+        mvc.perform(get("/api/v1/onboarding")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.answers[0].optionIds", contains(10, 11)))
+            .andExpect(jsonPath("$.data.answers[1].questionId").value(4))
+            .andExpect(jsonPath("$.data.answers[1].optionIds", contains(28)));
+        assertThat(jdbc.queryForList("SELECT onboarding_option_id FROM user_onboarding_answers WHERE user_id = ?", Long.class, userId))
+            .containsExactlyInAnyOrder(10L, 11L, 28L);
+    }
+
+    @Test
+    void Q3를_모두_변경하면_기존_Q4_답변을_모두_삭제한다() throws Exception {
+        final Long userId = insertUser("부모전체변경회원");
+        authenticateAs(userId);
+        saveAnswers(3, "[9]");
+        saveAnswers(4, "[23]");
+
+        saveAnswers(3, "[10]");
+
+        mvc.perform(get("/api/v1/onboarding")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.answers[0].optionIds", contains(10)))
+            .andExpect(jsonPath("$.data.answers[1]").doesNotExist());
+        assertThat(jdbc.queryForList("SELECT onboarding_option_id FROM user_onboarding_answers WHERE user_id = ?", Long.class, userId))
+            .containsExactly(10L);
+    }
+
+    @Test
+    void 진행_조회에서_이미_저장된_불일치_Q4_답변을_제외한다() throws Exception {
+        final Long userId = insertUser("기존불일치답변회원");
+        authenticateAs(userId);
+        saveAnswers(3, "[10]");
+        saveAnswers(4, "[28]");
+        jdbc.update("INSERT INTO user_onboarding_answers (user_id, onboarding_option_id) VALUES (?, ?)", userId, 23);
+
+        mvc.perform(get("/api/v1/onboarding")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.answers[1].optionIds", contains(28)));
     }
 
     private void saveAnswers(final int questionId, final String optionIds) throws Exception {

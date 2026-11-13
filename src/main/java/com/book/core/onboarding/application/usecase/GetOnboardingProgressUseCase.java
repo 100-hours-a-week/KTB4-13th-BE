@@ -48,7 +48,7 @@ public class GetOnboardingProgressUseCase {
         final Map<Long, List<OnboardingOption>> optionsByQuestionId = new TreeMap<>();
         for (final Long optionId : answeredOptionIds) {
             final OnboardingOption option = optionsById.get(optionId);
-            if (option == null) {
+            if (option == null || (option.parentOptionId() != null && !optionsById.containsKey(option.parentOptionId()))) {
                 continue;
             }
             optionsByQuestionId.computeIfAbsent(option.onboardingQuestionId(), key -> new ArrayList<>()).add(option);

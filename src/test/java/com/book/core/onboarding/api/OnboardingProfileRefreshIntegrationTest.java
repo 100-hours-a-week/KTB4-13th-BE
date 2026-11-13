@@ -2,6 +2,8 @@ package com.book.core.onboarding.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -19,20 +21,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
+import com.book.core.onboarding.application.command.PutOnboardingAnswersCommand;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileClient;
 import com.book.core.onboarding.application.port.AiPersonalizationProfileRequest;
 import com.book.core.onboarding.application.usecase.ProcessProfileSyncJobUseCase;
 import com.book.core.onboarding.application.usecase.RequestProfileSyncUseCase;
+import com.book.core.onboarding.application.usecase.SaveOnboardingAnswersUseCase;
 import com.book.core.user.application.service.UserService;
 import com.book.core.user.application.usecase.CompleteUserDeletionUseCase;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
@@ -77,6 +87,9 @@ class OnboardingProfileRefreshIntegrationTest {
 
     @Autowired
     ProcessProfileSyncJobUseCase processJob;
+
+    @Autowired
+    SaveOnboardingAnswersUseCase saveOnboardingAnswers;
 
     @Autowired
     UserService userService;
@@ -386,6 +399,76 @@ class OnboardingProfileRefreshIntegrationTest {
 
         assertThat(optionIds(userId)).contains(1L).doesNotContain(2L);
         assertThat(jobCount(userId)).isZero();
+    }
+
+    @Test
+    void Q3_변경을_기다린_Q4_저장은_해제된_부모의_답변을_거절한다() throws Exception {
+        final Long userId = insertUser("온보딩답변동시저장회원");
+        saveOnboardingAnswers.execute(new PutOnboardingAnswersCommand(userId, 3L, List.of(9L, 10L)));
+        saveOnboardingAnswers.execute(new PutOnboardingAnswersCommand(userId, 4L, List.of(23L, 28L)));
+        final CountDownLatch q3Saved = new CountDownLatch(1);
+        final CountDownLatch commitQ3 = new CountDownLatch(1);
+        final CountDownLatch q4Started = new CountDownLatch(1);
+        final AtomicLong q3ConnectionId = new AtomicLong();
+        final AtomicLong q4ConnectionId = new AtomicLong();
+
+        try (final var executor = Executors.newFixedThreadPool(2)) {
+            final var q3 = executor.submit(() -> {
+                transaction.executeWithoutResult(status -> {
+                    q3ConnectionId.set(jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class));
+                    saveOnboardingAnswers.execute(new PutOnboardingAnswersCommand(userId, 3L, List.of(10L)));
+                    q3Saved.countDown();
+                    try {
+                        assertThat(commitQ3.await(20, TimeUnit.SECONDS)).isTrue();
+                    } catch (final InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError(exception);
+                    }
+                });
+            });
+            try {
+                assertThat(q3Saved.await(5, TimeUnit.SECONDS)).isTrue();
+                final var q4 = executor.submit(() -> {
+                    transaction.executeWithoutResult(status -> {
+                        q4ConnectionId.set(jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class));
+                        q4Started.countDown();
+                        saveOnboardingAnswers.execute(new PutOnboardingAnswersCommand(userId, 4L, List.of(23L)));
+                    });
+                });
+                assertThat(q4Started.await(5, TimeUnit.SECONDS)).isTrue();
+                assertOnboardingLockWait(q3ConnectionId.get(), q4ConnectionId.get());
+                commitQ3.countDown();
+
+                q3.get(5, TimeUnit.SECONDS);
+                assertThatThrownBy(() -> q4.get(5, TimeUnit.SECONDS)).cause().isInstanceOfSatisfying(CoreException.class,
+                    exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.ONBOARDING_PARENT_QUESTION_NOT_ANSWERED));
+                assertThat(optionIds(userId)).containsExactlyInAnyOrder(10L, 28L);
+            } finally {
+                commitQ3.countDown();
+            }
+        }
+    }
+
+    private void assertOnboardingLockWait(final long holderConnectionId, final long waiterConnectionId) throws SQLException {
+        final String sql = """
+            SELECT COUNT(*) FROM performance_schema.data_lock_waits w
+            JOIN performance_schema.data_locks requested ON w.REQUESTING_ENGINE_LOCK_ID = requested.ENGINE_LOCK_ID
+                AND w.ENGINE = requested.ENGINE
+            JOIN performance_schema.threads waiter ON w.REQUESTING_THREAD_ID = waiter.THREAD_ID
+            JOIN performance_schema.threads holder ON w.BLOCKING_THREAD_ID = holder.THREAD_ID
+            WHERE requested.OBJECT_SCHEMA = DATABASE() AND requested.OBJECT_NAME = 'user_onboardings'
+                AND holder.PROCESSLIST_ID = ? AND waiter.PROCESSLIST_ID = ?
+            """;
+        try (final var connection = DriverManager.getConnection(mysql.getJdbcUrl(), "root", mysql.getPassword());
+            final var statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, holderConnectionId);
+            statement.setLong(2, waiterConnectionId);
+            await().atMost(Duration.ofSeconds(5)).until(() -> {
+                try (final var result = statement.executeQuery()) {
+                    return result.next() && result.getInt(1) > 0;
+                }
+            });
+        }
     }
 
     private int deletedUserCount(final Long userId) {

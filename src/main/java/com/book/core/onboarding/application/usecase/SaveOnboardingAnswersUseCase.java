@@ -29,6 +29,7 @@ public class SaveOnboardingAnswersUseCase {
 
     @Transactional
     public void execute(final PutOnboardingAnswersCommand command) {
+        final boolean onboardingStarted = userOnboardingRepository.findActiveByUserIdForUpdate(command.userId()).isPresent();
         final OnboardingQuestion question =
             questionRepository.findById(command.questionId()).orElseThrow(() -> new CoreException(ErrorCode.ONBOARDING_QUESTION_NOT_FOUND));
 
@@ -45,10 +46,13 @@ public class SaveOnboardingAnswersUseCase {
 
         validateParentAnswered(command.userId(), selectedOptions);
 
-        ensureOnboardingStarted(command.userId());
+        if (!onboardingStarted) {
+            userOnboardingRepository.save(UserOnboarding.start(command.userId()));
+        }
 
         final List<Long> existingQuestionOptionIds =
             optionRepository.findByQuestionId(question.id()).stream().map(OnboardingOption::id).toList();
+        deleteChildAnswers(command, existingQuestionOptionIds);
         answerRepository.deleteByUserIdAndOnboardingOptionIdIn(command.userId(), existingQuestionOptionIds);
 
         final List<UserOnboardingAnswer> newAnswers =
@@ -71,9 +75,19 @@ public class SaveOnboardingAnswersUseCase {
         }
     }
 
-    private void ensureOnboardingStarted(final Long userId) {
-        if (userOnboardingRepository.findActiveByUserId(userId).isEmpty()) {
-            userOnboardingRepository.save(UserOnboarding.start(userId));
+    private void deleteChildAnswers(final PutOnboardingAnswersCommand command, final List<Long> existingQuestionOptionIds) {
+        final Set<Long> removedParentOptionIds =
+            existingQuestionOptionIds.stream().filter(optionId -> !command.optionIds().contains(optionId)).collect(Collectors.toSet());
+        if (removedParentOptionIds.isEmpty()) {
+            return;
+        }
+
+        final List<Long> answeredOptionIds =
+            answerRepository.findByUserId(command.userId()).stream().map(UserOnboardingAnswer::onboardingOptionId).toList();
+        final List<Long> childOptionIds = optionRepository.findAllByIdIn(answeredOptionIds).stream()
+            .filter(option -> removedParentOptionIds.contains(option.parentOptionId())).map(OnboardingOption::id).toList();
+        if (!childOptionIds.isEmpty()) {
+            answerRepository.deleteByUserIdAndOnboardingOptionIdIn(command.userId(), childOptionIds);
         }
     }
 }

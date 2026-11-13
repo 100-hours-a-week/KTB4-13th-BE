@@ -58,6 +58,7 @@ public interface OnboardingControllerSpec {
 
     @Operation(summary = "온보딩 답변 등록/수정",
         description = "questionId에 대한 답변을 optionIds로 교체합니다. 활성 온보딩이 없으면 새로 시작합니다. "
+            + "Question 3에서 선택을 해제하면 해당 부모의 Question 4 답변도 삭제됩니다. "
             + "선택지 개수가 질문의 minSelection/maxSelection을 벗어나거나 중복되면 400을 응답합니다. "
             + "선행 질문(Question 3) 답변이 없는 상태로 하위 질문(Question 4)의 선택지를 제출하면 409를 응답합니다.")
     @SecurityRequirement(name = "bearerAuth")

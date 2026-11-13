@@ -1,5 +1,6 @@
 package com.book.core.coupon.api.spec;
 
+import com.book.common.api.RequiresSecurity;
 import com.book.core.coupon.api.request.CreateCouponRequest;
 import com.book.core.coupon.api.response.CouponResponse;
 import com.book.core.coupon.api.response.OwnedCouponResponse;
@@ -7,7 +8,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -32,7 +32,7 @@ public interface CouponControllerSpec {
         @NotEmpty final List<@NotNull @Positive Long> couponIds
     );
 
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @Operation(summary = "쿠폰 발급", description = "활성 상태이고 발급 기간과 잔여 수량이 유효한 쿠폰을 인증된 회원에게 발급합니다.")
     @ApiResponses({@ApiResponse(responseCode = "202", description = "비동기 발급 접수 완료. 쿠폰함에는 DB 저장 이후 반영됩니다."),
         @ApiResponse(responseCode = "400", description = "잘못된 쿠폰 ID, 발급 기간이 아닌 쿠폰(E4000), 이미 발급한 쿠폰(E4001) 또는 발급 한도 초과(E4003)"),
@@ -42,7 +42,7 @@ public interface CouponControllerSpec {
         @Parameter(description = "쿠폰 ID", required = true) @Positive final Long couponId
     );
 
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @Operation(summary = "보유 쿠폰 조회", description = "인증된 회원의 활성 보유 쿠폰을 조회합니다. 만료 및 사용 완료 쿠폰도 포함합니다.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "보유 쿠폰 조회 성공"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음")})

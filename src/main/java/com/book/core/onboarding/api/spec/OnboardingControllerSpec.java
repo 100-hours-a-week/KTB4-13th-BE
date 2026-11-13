@@ -1,5 +1,6 @@
 package com.book.core.onboarding.api.spec;
 
+import com.book.common.api.RequiresSecurity;
 import com.book.common.response.ApiResponse;
 import com.book.core.onboarding.api.request.PutOnboardingAnswersRequest;
 import com.book.core.onboarding.api.request.PutOnboardingBooksRequest;
@@ -14,7 +15,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import jakarta.validation.Valid;
@@ -29,7 +29,7 @@ public interface OnboardingControllerSpec {
         description = "questionId에 해당하는 온보딩 질문과 선택지를 조회합니다. " + "선행 질문(Question 3) 답변에 의존하는 질문(Question 4)은 선행 답변이 있는 대분류의 선택지만 반환합니다. "
             + "parentOptionIds를 전달하면 저장된 답변 대신 전달한 대분류 선택지 기준으로 Question 4 선택지를 반환합니다. "
             + "parentOptionIds는 Question 4에만 전달할 수 있으며, 전달할 때는 1개 이상의 중복 없는 양수 ID여야 합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "온보딩 질문 조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",
@@ -48,7 +48,7 @@ public interface OnboardingControllerSpec {
     );
 
     @Operation(summary = "온보딩 진행 정보 조회", description = "요청 회원의 활성 온보딩 진행 상태, 질문별 응답, 선택 도서 목록을 조회합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "온보딩 진행 정보 조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "진행 중인 온보딩이 없음"),
@@ -61,7 +61,7 @@ public interface OnboardingControllerSpec {
             + "Question 3에서 선택을 해제하면 해당 부모의 Question 4 답변도 삭제됩니다. "
             + "선택지 개수가 질문의 minSelection/maxSelection을 벗어나거나 중복되면 400을 응답합니다. "
             + "선행 질문(Question 3) 답변이 없는 상태로 하위 질문(Question 4)의 선택지를 제출하면 409를 응답합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "온보딩 답변 등록/수정 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "선택지 개수나 형식이 올바르지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
@@ -80,7 +80,7 @@ public interface OnboardingControllerSpec {
 
     @Operation(summary = "온보딩 도서 후보 조회",
         description = "세부 카테고리 code를 중복 제거 후 1~9개 받아 해당 후보 전체를 반환합니다. 요청 카테고리 순서와 display_order, bookId 순으로 정렬하고 중복 도서는 한 번만 반환합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "도서 후보 조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "세부 카테고리 개수나 code가 올바르지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
@@ -95,7 +95,7 @@ public interface OnboardingControllerSpec {
     @Operation(summary = "온보딩 도서 선택 저장 및 완료",
         description = "선택한 도서 목록을 저장합니다. bookIds는 null일 수 없고 중복을 허용하지 않으며, 빈 배열은 허용합니다. "
             + "저장에 성공하면 온보딩 상태를 COMPLETED로 전환하고 completedAt을 최초 1회만 설정합니다. " + "이미 COMPLETED 상태에서 다시 저장해도 completedAt은 갱신되지 않습니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "온보딩 도서 선택 저장 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "도서 목록의 형식이 올바르지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
@@ -114,7 +114,7 @@ public interface OnboardingControllerSpec {
             + "answers에는 모든 질문을 한 번씩 포함해야 하며, Question 4 선택지의 부모는 같은 요청의 Question 3 선택지에 있어야 합니다. "
             + "bookIds는 빈 배열을 허용합니다. 기존 데이터와 비교해 변경된 답변과 도서만 반영하고, 온보딩 상태·완료 시각·개인화 동의는 변경하지 않습니다. "
             + "변경 사항이 있고 개인화 추천에 동의한 회원이면 수정이 저장된 뒤 AI 취향 프로필 갱신을 요청하며, AI 요청이 실패해도 수정 결과는 유지되고 성공으로 응답합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "온보딩 취향 정보 수정 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",
             description = "요청 형식이 올바르지 않거나, 질문 구성이 누락·중복되었거나, 선택지 개수나 목록 형식이 올바르지 않음"),
@@ -133,7 +133,7 @@ public interface OnboardingControllerSpec {
 
     @Operation(summary = "개인화 추천 동의 기록",
         description = "요청 회원의 개인화 추천 동의를 활성 개인화 약관에 기록합니다. 요청 본문은 없으며, 동의하지 않는 회원은 호출하지 않습니다. " + "이미 동의한 회원이 다시 호출해도 새 기록 없이 성공합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "개인화 추천 동의 기록 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "알 수 없는 오류")})

@@ -141,7 +141,10 @@ class CancelControllerTest {
 
     @Test
     void OpenAPI는_취소_API와_인증계약을_노출하고_userId를_입력으로_노출하지_않는다() throws Exception {
-        mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andExpect(jsonPath("$.paths['/api/v1/cancel'].post.security").exists())
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.paths['/api/v1/cancel'].post.security[0].bearerAuth").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/cancel'].post.responses['401'].description").value("인증 정보가 유효하지 않습니다."))
+            .andExpect(jsonPath("$.paths['/api/v1/cancel'].post.responses['403'].description").value("접근 권한이 없습니다."))
             .andExpect(jsonPath("$.paths['/api/v1/cancel'].post.parameters[0].name").value("Idempotency-Key"))
             .andExpect(jsonPath("$.paths['/api/v1/partial-cancel'].post").exists());
     }

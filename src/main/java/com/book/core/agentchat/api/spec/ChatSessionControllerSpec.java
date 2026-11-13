@@ -1,5 +1,6 @@
 package com.book.core.agentchat.api.spec;
 
+import com.book.common.api.RequiresSecurity;
 import com.book.common.response.ApiResponse;
 import com.book.core.agentchat.api.request.SendChatMessageRequest;
 import com.book.core.agentchat.api.response.ChatHistoryResponse;
@@ -11,7 +12,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -23,7 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Tag(name = "대화방", description = "인증 사용자별 추천 대화방과 저장 이력")
-@SecurityRequirement(name = "bearerAuth")
+@RequiresSecurity
 public interface ChatSessionControllerSpec {
     @Operation(summary = "빈 대화방 생성", description = "201과 새 대화방 식별자를 반환합니다. 사용자 ID는 인증에서만 추출합니다.")
     @ApiResponses({

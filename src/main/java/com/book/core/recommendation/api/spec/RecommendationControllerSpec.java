@@ -1,5 +1,6 @@
 package com.book.core.recommendation.api.spec;
 
+import com.book.common.api.RequiresSecurity;
 import com.book.common.response.ApiResponse;
 import com.book.core.recommendation.api.request.ChatRecommendationRequest;
 import com.book.core.recommendation.api.response.ChatRecommendationResponse;
@@ -12,7 +13,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -27,7 +27,7 @@ public interface RecommendationControllerSpec {
     @Operation(summary = "대화형 도서 추천",
         description = "인증된 사용자 기준으로 현재 spec, message, recentTurns, excludeBookIds를 전달해 AI 추천 서비스를 호출하고 "
             + "최대 3개의 추천 카드를 반환합니다. 카드의 productId와 price는 활성 상품이 없는 도서면 null입니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "추천 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
@@ -42,7 +42,7 @@ public interface RecommendationControllerSpec {
     );
 
     @Operation(summary = "추천 카드 상세 조회", description = "인증된 사용자의 저장 카드에서 recommendationCardId, bookId, reasonLong을 조회합니다. AI를 다시 호출하지 않습니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않거나 다른 사용자의 카드")})
@@ -56,7 +56,7 @@ public interface RecommendationControllerSpec {
         description = "인증된 회원의 취향 프로필을 기반으로 추천 목록을 조회합니다. surface=home은 정렬·필터를 받지 않고, "
             + "surface=recommend_more만 sort(match 기본, newest, price_asc)와 category, 출간연도 구간, matchScoreMin 필터를 받습니다. "
             + "AI가 축소 응답을 반환하면 X-Degraded 헤더가 함께 옵니다. 항목의 productId는 활성 상품이 없는 도서면 null입니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 형식이 올바르지 않거나 home에 정렬·필터를 보냄"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),

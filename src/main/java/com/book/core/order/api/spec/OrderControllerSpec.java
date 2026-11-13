@@ -1,5 +1,6 @@
 package com.book.core.order.api.spec;
 
+import com.book.common.api.RequiresSecurity;
 import com.book.core.order.api.request.CreateOrderRequest;
 import com.book.core.order.api.response.CreateOrderResponse;
 import com.book.core.order.api.response.OrderDetailResponse;
@@ -13,7 +14,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -30,7 +30,7 @@ public interface OrderControllerSpec {
     @Operation(summary = "내 주문내역 목록 조회",
         description = "인증 회원의 결제 이력이 있는 주문을 paidAt DESC, id DESC 순서로 조회합니다. status는 PAID, PARTIAL_CANCELED, CANCELED만 허용하고 "
             + "from·to(yyyy-MM-dd)는 각각 선택이며 결제일 기준 from 00:00 이상, to 다음 날 00:00 미만입니다. limit은 기본 20, 최대 100입니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "주문내역 목록 조회 성공"),
         @ApiResponse(responseCode = "400", description = "status=CREATED, from > to, limit 범위 오류, 필터 불일치·손상 cursor(E400)"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"), @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
@@ -48,7 +48,7 @@ public interface OrderControllerSpec {
         description = "주문 소유권을 확인하고 주문 정보와 주문 당시 배송지, 취소된 상품을 포함한 최초 주문상품 전체(ID 오름차순)를 조회합니다. "
             + "결제 이력이 있으면 payment에 결제 금액과 환불 완료·취소 가능 금액을, 없으면 null을 반환합니다. "
             + "cancellations는 취소 기록을 canceledAt DESC, id DESC 순서로 반환하며 없으면 빈 배열입니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "주문 상세 조회 성공"),
         @ApiResponse(responseCode = "400", description = "요청 형식 오류(E400)"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
@@ -64,7 +64,7 @@ public interface OrderControllerSpec {
 
     @Operation(summary = "체크아웃 주문 생성",
         description = "요청 회원의 장바구니 상품과 기본 활성 배송지를 확인한 뒤 주문 스냅샷을 생성합니다. 기본 배송지가 없어도 주문을 생성하고 NO_ADDRESS를 반환합니다. 재고는 확인만 하고 차감하지 않습니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "주문 키, 상태(ORDER_CREATED 또는 NO_ADDRESS), 총액과 상품별 주문 항목"),
         @ApiResponse(responseCode = "400", description = "요청 형식 오류(E400), 장바구니 상품 불일치(E3000), 재고 부족(E8001)"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),
@@ -78,7 +78,7 @@ public interface OrderControllerSpec {
     );
 
     @Operation(summary = "주문 전체 취소", description = "주문 소유자가 결제 전 생성한 주문 전체를 취소합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @RequiresSecurity
     @ApiResponses({@ApiResponse(responseCode = "200", description = "주문과 주문상품 취소 완료"),
         @ApiResponse(responseCode = "400", description = "요청 형식 오류(E400)"),
         @ApiResponse(responseCode = "401", description = "인증 정보가 유효하지 않음"),

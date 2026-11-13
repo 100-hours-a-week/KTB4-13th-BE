@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,8 +15,15 @@ import com.book.core.coupon.application.result.CouponReconcileOutcome;
 import com.book.core.coupon.application.port.IssuanceDltLogRepositoryPort;
 import com.book.core.coupon.domain.IssuanceDltLog;
 import com.book.core.coupon.application.usecase.ReconcileCouponStockUseCase;
+import com.book.core.coupon.application.usecase.FindOwnedCouponsForCheckoutUseCase;
+import com.book.core.order.application.port.OrderRepositoryPort;
+import com.book.core.order.domain.Order;
+import com.book.core.point.application.port.PointBalanceRepositoryPort;
+import com.book.core.point.domain.PointBalance;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +40,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -87,6 +96,71 @@ class CouponSoldOutHttpIntegrationTest {
 
     @Autowired
     private LoadingCache<String, Boolean> couponSoldOutCache;
+
+    @Autowired
+    private KafkaListenerEndpointRegistry kafkaListeners;
+
+    @Autowired
+    private OrderRepositoryPort orders;
+
+    @Autowired
+    private PointBalanceRepositoryPort points;
+
+    @Autowired
+    private FindOwnedCouponsForCheckoutUseCase checkoutCoupons;
+
+    @Test
+    void 마감_전에_접수한_쿠폰이_만료_뒤_쿠폰함에_반영되면_결제에_사용할_수_없다() throws Exception {
+        final long userId = 8_510_017L;
+        final long couponId = 8_510_017L;
+        final long productId = 8_510_018L;
+        final String token = "Bearer " + tokens.issue(userId).accessToken();
+        final var worker = kafkaListeners.getListenerContainers().stream()
+            .filter(container -> "book-coupon-issuance-redis".equals(container.getGroupId())).findFirst().orElseThrow();
+
+        worker.pause();
+        final LocalDateTime expiredAt;
+        try {
+            await().atMost(Duration.ofSeconds(15)).until(worker::isContainerPaused);
+            expiredAt = LocalDateTime.now().plusSeconds(5).withNano(0);
+            insertCoupon(couponId, 2, expiredAt.minusDays(1), expiredAt);
+            issue(userId, couponId).andExpect(status().isAccepted()).andExpect(jsonPath("$.success").value(true));
+            assertThat(LocalDateTime.now()).isBefore(expiredAt);
+            assertCounts(couponId, 0);
+            mvc.perform(get("/api/v1/owned-coupons").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty());
+            await().atMost(Duration.ofSeconds(10)).until(() -> !LocalDateTime.now().isBefore(expiredAt));
+            assertCounts(couponId, 0);
+        } finally {
+            worker.resume();
+        }
+
+        assertCounts(couponId, 1);
+        final Long ownedCouponId = jdbc.queryForObject("SELECT id FROM owned_coupon WHERE coupon_id = ?", Long.class, couponId);
+        mvc.perform(get("/api/v1/owned-coupons").header(HttpHeaders.AUTHORIZATION, token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(ownedCouponId))
+            .andExpect(jsonPath("$.data[0].state").value("ISSUED"))
+            .andExpect(jsonPath("$.data[0].expiredAt").value(expiredAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
+        assertThat(checkoutCoupons.execute(userId, List.of(couponId), expiredAt.minusSeconds(1))).hasSize(1);
+        assertThat(checkoutCoupons.execute(userId, List.of(couponId), expiredAt)).isEmpty();
+
+        jdbc.update(
+            "INSERT INTO books (id, title, author, publisher, category, published_at) VALUES (?, '책', '저자', '출판사', '소설', '2026-01-01')",
+            productId);
+        jdbc.update("""
+            INSERT INTO products (id, book_id, name, sale_price, discounted_price, cost_price, stock_quantity)
+            VALUES (?, ?, '쿠폰 대상 상품', 10000, 10000, 0, 10)
+            """, productId, productId);
+        jdbc.update("INSERT INTO coupon_target (coupon_id, target_type, target_id) VALUES (?, 'PRODUCT', ?)", couponId, productId);
+        points.save(new PointBalance(userId));
+        final Order order = Order.create(userId, "coupon-expiry-boundary", null);
+        order.addItem(productId, "책", "", "저자", BigDecimal.valueOf(10000), BigDecimal.valueOf(10000), 1);
+        orders.save(order);
+
+        mvc.perform(post("/api/v1/payments").header(HttpHeaders.AUTHORIZATION, token).contentType("application/json").content("""
+            {"orderKey":"%s","useOwnedCouponId":%d,"usePoint":0}
+            """.formatted(order.key(), ownedCouponId))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("E5000"));
+    }
 
     @Test
     void 매진_신호를_확인하면_중복_검사와_정책_조회를_건너뛴다() throws Exception {

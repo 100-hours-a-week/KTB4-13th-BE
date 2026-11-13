@@ -142,6 +142,17 @@ class OnboardingProfileRefreshIntegrationTest {
     }
 
     @Test
+    void 같은_개인화_동의_요청은_모두_200을_반환하고_동의_이력을_한_건만_저장한다() throws Exception {
+        final Long userId = insertUser("개인화동의중복회원");
+        authenticateAs(userId);
+
+        agreePersonalization();
+        agreePersonalization();
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_term_agreement WHERE user_id = ?", Integer.class, userId)).isOne();
+    }
+
+    @Test
     void 예약된_작업은_스케줄러가_자동으로_처리한다() throws Exception {
         final Long userId = insertUser("프로필갱신회원6");
         final Long bookId = insertBook("프로필 갱신 도서 7");

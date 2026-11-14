@@ -12,6 +12,8 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import com.book.common.config.ai.AiRestClientConfig;
+import com.book.common.config.ai.AiServerProperties;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.common.exception.RetryAfterException;
@@ -21,12 +23,18 @@ import com.book.core.search.application.command.BookSearchSort;
 import com.book.core.search.application.port.BookSearchItem;
 import com.book.core.search.application.port.BookSearchRequest;
 import com.book.core.search.application.port.BookSearchResult;
+import com.sun.net.httpserver.HttpServer;
 import java.math.BigDecimal;
+import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
+import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -140,6 +148,36 @@ class BookSearchClientImplTest {
             assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_SEARCH_RATE_LIMITED);
             assertThat(exception.retryAfterSeconds()).isEqualTo(1);
         });
+    }
+
+    @Test
+    @Timeout(10)
+    void AI가_응답을_보내지_않으면_기본_읽기_제한에서_검색을_종료한다() throws Exception {
+        final HttpServer slowAi = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        final CountDownLatch releaseResponse = new CountDownLatch(1);
+        slowAi.createContext("/search", exchange -> {
+            try (exchange) {
+                releaseResponse.await(12, TimeUnit.SECONDS);
+            } catch (final InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        slowAi.start();
+        try {
+            final var properties = new AiServerProperties("http://127.0.0.1:" + slowAi.getAddress().getPort(), SERVICE_TOKEN);
+            final var realClient = new BookSearchClientImpl(new AiRestClientConfig().aiRestClient(properties), identifiers);
+            final var request = new BookSearchRequest("소설", null, null, null, null, null, BookSearchSort.POPULAR, null, 12);
+            final long startedAt = System.nanoTime();
+
+            assertThatThrownBy(() -> realClient.search(request))
+                .isInstanceOfSatisfying(CoreException.class,
+                    exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_SEARCH_TIMEOUT))
+                .hasRootCauseInstanceOf(SocketTimeoutException.class);
+            assertThat(Duration.ofNanos(System.nanoTime() - startedAt)).isGreaterThanOrEqualTo(Duration.ofSeconds(5));
+        } finally {
+            releaseResponse.countDown();
+            slowAi.stop(0);
+        }
     }
 
     @Test

@@ -54,13 +54,13 @@ class NewBookImportServiceTest {
         final var detail = new BookDetail("신간", "저자", null, "출판사", "800", TODAY.minusDays(1), null);
         final var batchFailure = new IllegalStateException("외부 응답 원문 예시");
         when(collection.collect(TODAY)).thenReturn(List.of(ISBN, OTHER_ISBN));
-        when(details.findDetail(ISBN)).thenReturn(new NewBookDetailFound(detail));
+        when(details.findDetail(ISBN, TODAY)).thenReturn(new NewBookDetailFound(detail));
         when(registration.register(ISBN, detail)).thenReturn(true);
         if (batchFails) {
-            when(details.findDetail(OTHER_ISBN)).thenReturn(new NewBookDetailFound(detail));
+            when(details.findDetail(OTHER_ISBN, TODAY)).thenReturn(new NewBookDetailFound(detail));
             when(registration.register(OTHER_ISBN, detail)).thenThrow(batchFailure);
         } else {
-            when(details.findDetail(OTHER_ISBN)).thenReturn(NewBookImportOutcome.MISSING_DETAIL);
+            when(details.findDetail(OTHER_ISBN, TODAY)).thenReturn(NewBookImportOutcome.MISSING_DETAIL);
         }
         final var reportCaptor = ArgumentCaptor.forClass(NewBookImportReport.class);
         doAnswer((final var invocation) -> {

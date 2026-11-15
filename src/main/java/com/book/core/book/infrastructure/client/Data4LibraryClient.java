@@ -26,8 +26,12 @@ class Data4LibraryClient implements BookDetailFinder {
                 .queryParam("loaninfoYN", "N").queryParam("format", "json").build(properties.dataForLibraryKey()));
         try {
             final JsonNode response = mapper.readTree(body).path("response");
-            if (!response.isObject() || !response.path("error").isMissingNode()) {
+            if (!response.isObject()) {
                 throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
+            }
+            if (!response.path("error").isMissingNode()) {
+                // 정보나루는 인증 오류 등을 HTTP 200의 errCode·error 필드로 응답합니다. 예: errCode=authErr
+                throw new BookCatalogException(BookCatalogFailureReason.REJECTED, response.path("errCode").asString(null));
             }
             final JsonNode detail = response.path("detail");
             if (detail.isMissingNode() || detail.isNull()) {

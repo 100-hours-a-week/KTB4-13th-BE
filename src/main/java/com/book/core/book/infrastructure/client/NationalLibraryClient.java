@@ -33,6 +33,10 @@ class NationalLibraryClient implements NewBookIsbnFinder {
                 .build(properties.nationalLibraryKey(), "종이책"));
         try {
             final JsonNode response = mapper.readTree(body);
+            if ("ERROR".equals(text(response, "RESULT"))) {
+                // 국립중앙도서관은 인증 오류 등을 HTTP 200의 RESULT=ERROR, ERR_CODE로 응답합니다. 예: ERR_CODE=011
+                throw new BookCatalogException(BookCatalogFailureReason.REJECTED, text(response, "ERR_CODE"));
+            }
             final String total = text(response, "TOTAL_COUNT");
             if (total == null) {
                 throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);

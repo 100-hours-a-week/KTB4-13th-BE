@@ -9,6 +9,7 @@ import lombok.experimental.Accessors;
 @RequiredArgsConstructor
 public enum NewBookImportOutcome implements NewBookDetailLookup {
     ALREADY_REGISTERED("이미 등록되어 상세 조회를 건너뛰었습니다."),
+    WAITING_RETRY("이전 조회 결과에 따라 재시도 날짜 전이라 건너뛰었습니다."),
     BUDGET_EXHAUSTED("공유 호출 예산을 사용할 수 없어 조회를 중단했습니다."),
     MISSING_DETAIL("상세 정보 또는 등록에 필요한 값이 없습니다."),
     REGISTERED("신규 도서를 등록했습니다."),

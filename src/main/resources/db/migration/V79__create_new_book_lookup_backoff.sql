@@ -1,0 +1,6 @@
+CREATE TABLE new_book_lookup_backoff (
+    isbn13 CHAR(13) NOT NULL PRIMARY KEY,
+    failure_count INT NOT NULL,
+    retry_on DATE NOT NULL,
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
+);

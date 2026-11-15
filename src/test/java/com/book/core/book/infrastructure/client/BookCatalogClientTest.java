@@ -76,13 +76,28 @@ class BookCatalogClientTest {
     }
 
     @Test
-    void 정보나루_오류_응답은_일시_오류로_분류한다() {
+    void 정보나루_오류_응답은_요청_거부로_분류한다() {
         respond("/api/srchDtlList", 200, """
-            {"response":{"error":"invalid key"}}
+            {"response":{"errCode":"authErr","error":"인증정보가 일치하지 않습니다."}}
             """);
         final var client = new Data4LibraryClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
-        assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class,
-            (final var error) -> assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.TEMPORARY));
+        assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
+            assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.REJECTED);
+            assertThat(error.externalCode()).isEqualTo("authErr");
+        });
+    }
+
+    @Test
+    void 국중도_오류_응답은_요청_거부로_분류한다() {
+        respond("/seoji/SearchApi.do", 200, """
+            {"RESULT":"ERROR","ERR_CODE":"011","ERR_MESSAGE":"유효하지 않은 인증키 값입니다."}
+            """);
+        final var client = new NationalLibraryClient(http, new BookCatalogProperties(baseUrl, "key", baseUrl, ""), mapper);
+        assertThatThrownBy(() -> client.findPaperBookIsbns(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11), 1))
+            .isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
+                assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.REJECTED);
+                assertThat(error.externalCode()).isEqualTo("011");
+            });
     }
 
     private void respond(final String path, final int status, final String body) {

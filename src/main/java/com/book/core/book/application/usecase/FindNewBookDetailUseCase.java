@@ -2,13 +2,14 @@ package com.book.core.book.application.usecase;
 
 import com.book.common.annotation.UseCase;
 import com.book.core.book.application.port.BookCatalogException;
-import com.book.core.book.application.port.BookCatalogFailureReason;
 import com.book.core.book.application.port.BookDetailCallBudget;
-import com.book.core.book.application.port.BookRepositoryPort;
 import com.book.core.book.application.port.BookDetailFinder;
+import com.book.core.book.application.port.BookRepositoryPort;
+import com.book.core.book.application.port.NewBookLookupBackoff;
 import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookDetailLookup;
 import com.book.core.book.application.result.NewBookImportOutcome;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,10 +20,14 @@ public class FindNewBookDetailUseCase {
     private final BookRepositoryPort books;
     private final BookDetailFinder detailFinder;
     private final BookDetailCallBudget budget;
+    private final NewBookLookupBackoff backoff;
 
-    public NewBookDetailLookup findDetail(final String isbn13) {
+    public NewBookDetailLookup findDetail(final String isbn13, final LocalDate today) {
         if (books.existsByIsbn13(isbn13)) {
             return NewBookImportOutcome.ALREADY_REGISTERED;
+        }
+        if (backoff.isWaiting(isbn13, today)) {
+            return NewBookImportOutcome.WAITING_RETRY;
         }
         if (!budget.tryAcquire()) {
             return NewBookImportOutcome.BUDGET_EXHAUSTED;
@@ -31,17 +36,27 @@ public class FindNewBookDetailUseCase {
         try {
             final var detail = detailFinder.findBookDetail(isbn13);
             if (detail.isEmpty()) {
+                backoff.deferMissingDetail(isbn13, today);
                 return NewBookImportOutcome.MISSING_DETAIL;
             }
             return new NewBookDetailFound(detail.orElseThrow());
         } catch (final BookCatalogException exception) {
-            if (exception.reason() == BookCatalogFailureReason.RATE_LIMIT) {
-                budget.pauseAfterRateLimit();
-                return NewBookImportOutcome.RATE_LIMITED;
-            }
             log.atInfo().addKeyValue("isbn13", isbn13).addKeyValue("reason", exception.reason())
-                .log("[BOOK] 신간 도서 상세 조회에 실패했습니다. isbn13={}, reason={}", isbn13, exception.reason());
-            return NewBookImportOutcome.LOOKUP_FAILED;
+                .addKeyValue("externalCode", exception.externalCode())
+                .log("[BOOK] 신간 도서 상세 조회에 실패했습니다. isbn13={}, reason={}, externalCode={}", isbn13, exception.reason(),
+                    exception.externalCode());
+            return switch (exception.reason()) {
+                case RATE_LIMIT -> {
+                    budget.pauseAfterRateLimit();
+                    yield NewBookImportOutcome.RATE_LIMITED;
+                }
+                // 인증키·IP·요청 형식 오류는 도서와 무관하므로 ISBN을 미루지 않고 배치를 실패로 멈춥니다.
+                case REJECTED -> throw exception;
+                case TEMPORARY -> {
+                    backoff.deferAfterFailure(isbn13, today);
+                    yield NewBookImportOutcome.LOOKUP_FAILED;
+                }
+            };
         }
     }
 }

@@ -9,8 +9,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.book.core.book.application.port.BookRepositoryPort;
-import com.book.core.book.application.port.DataForLibraryBookDetailClient;
-import com.book.core.book.application.port.NationalLibraryIsbnClient;
+import com.book.core.book.application.port.BookDetailFinder;
+import com.book.core.book.application.port.NewBookIsbnFinder;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.service.NewBookImportService;
 import java.time.LocalDate;
@@ -63,15 +63,15 @@ class NewBookImportIntegrationTest {
     private TransactionTemplate transactions;
 
     @MockitoBean
-    private NationalLibraryIsbnClient nationalLibrary;
+    private NewBookIsbnFinder isbnFinder;
     @MockitoBean
-    private DataForLibraryBookDetailClient detail;
+    private BookDetailFinder detail;
 
     @BeforeEach
     void resetCatalog() {
         jdbc.update("DELETE FROM books WHERE imported_isbn13 IN (?, ?)", ISBN_A, ISBN_B);
         jdbc.update("UPDATE book_detail_call_budget SET quota_day = NULL, calls = 0, next_call_at = NULL WHERE id = 1");
-        when(nationalLibrary.findPaperBookIsbns(any(), any(), anyInt())).thenReturn(new NewBookIsbnPage(List.of(ISBN_A, ISBN_B), false));
+        when(isbnFinder.findPaperBookIsbns(any(), any(), anyInt())).thenReturn(new NewBookIsbnPage(List.of(ISBN_A, ISBN_B), false));
     }
 
     @Test
@@ -95,7 +95,7 @@ class NewBookImportIntegrationTest {
             first.get(5, TimeUnit.SECONDS);
         }
 
-        verify(nationalLibrary).findPaperBookIsbns(TODAY.minusDays(30), TODAY.minusDays(1), 1);
+        verify(isbnFinder).findPaperBookIsbns(TODAY.minusDays(30), TODAY.minusDays(1), 1);
         verify(detail).findBookDetail(ISBN_A);
         verify(detail).findBookDetail(ISBN_B);
         assertThat(books.existsByIsbn13(ISBN_A)).isTrue();

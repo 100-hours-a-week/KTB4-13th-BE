@@ -19,6 +19,7 @@ import tools.jackson.databind.ObjectMapper;
 class BookCatalogClientTest {
     private static final String ISBN = "9788983921987";
     private final ObjectMapper mapper = new ObjectMapper();
+    private final BookCatalogHttpClient http = new BookCatalogHttpClient();
     private final AtomicReference<String> query = new AtomicReference<>();
     private HttpServer server;
     private String baseUrl;
@@ -40,7 +41,7 @@ class BookCatalogClientTest {
         respond("/seoji/SearchApi.do", 200, """
             {"PAGE_NO":"1","TOTAL_COUNT":"101","docs":[{"EA_ISBN":"9788983921987","TITLE":"신간"}]}
             """);
-        final var client = new NationalLibraryIsbnClientImpl(mapper, baseUrl, "test+key");
+        final var client = new NationalLibraryClient(http, new BookCatalogProperties(baseUrl, "test+key", baseUrl, ""), mapper);
         final var page = client.findPaperBookIsbns(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11), 1);
         assertThat(page.candidateIsbns()).containsExactly(ISBN);
         assertThat(page.hasNext()).isTrue();
@@ -54,7 +55,7 @@ class BookCatalogClientTest {
             {"response":{"detail":[{"book":{"isbn13":"9788983921987","bookname":"신간","authors":"저자","publisher":"출판사",
              "class_no":"813.7","publication_date":"2026-11-01"}}]}}
             """);
-        final var client = new DataForLibraryBookDetailClientImpl(mapper, baseUrl, "test+key");
+        final var client = new Data4LibraryClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "test+key"), mapper);
         final var detail = client.findBookDetail(ISBN).orElseThrow();
         assertThat(detail.publishedAt()).isEqualTo(LocalDate.of(2026, 11, 1));
         assertThat(detail.category()).isEqualTo("813.7");
@@ -66,12 +67,22 @@ class BookCatalogClientTest {
     @Test
     void 호출_제한을_분류하고_응답이나_키를_예외에_담지_않는다() {
         respond("/api/srchDtlList", 429, "external response");
-        final var client = new DataForLibraryBookDetailClientImpl(mapper, baseUrl, "sensitive-key");
+        final var client = new Data4LibraryClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "sensitive-key"), mapper);
         assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
             assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.RATE_LIMIT);
             assertThat(error.getMessage()).isEqualTo("RATE_LIMIT");
             assertThat(error.getCause()).isNull();
         });
+    }
+
+    @Test
+    void 정보나루_오류_응답은_일시_오류로_분류한다() {
+        respond("/api/srchDtlList", 200, """
+            {"response":{"error":"invalid key"}}
+            """);
+        final var client = new Data4LibraryClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
+        assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class,
+            (final var error) -> assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.TEMPORARY));
     }
 
     private void respond(final String path, final int status, final String body) {

@@ -8,7 +8,7 @@ import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookImportOutcome;
 import com.book.core.book.application.result.NewBookImportReport;
 import com.book.core.book.application.usecase.CollectNewBookIsbnsUseCase;
-import com.book.core.book.application.usecase.ImportNewBookDetailUseCase;
+import com.book.core.book.application.usecase.FindNewBookDetailUseCase;
 import com.book.core.book.application.usecase.RegisterNewBookUseCase;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -24,7 +24,7 @@ import org.springframework.stereotype.Service;
 public class NewBookImportService {
     private final NewBookImportLock batchLock;
     private final CollectNewBookIsbnsUseCase collection;
-    private final ImportNewBookDetailUseCase detailImport;
+    private final FindNewBookDetailUseCase findNewBookDetail;
     private final RegisterNewBookUseCase registration;
 
     private final NewBookImportNotifier notifier;
@@ -100,7 +100,7 @@ public class NewBookImportService {
 
     private NewBookImportOutcome importBook(final String isbn13, final NewBookImportRun run) {
         final long startedAt = System.nanoTime();
-        return switch (detailImport.findDetail(isbn13)) {
+        return switch (findNewBookDetail.findDetail(isbn13)) {
             case NewBookImportOutcome outcome -> {
                 if (outcome != NewBookImportOutcome.ALREADY_REGISTERED && outcome != NewBookImportOutcome.BUDGET_EXHAUSTED) {
                     run.detailCallCount++;

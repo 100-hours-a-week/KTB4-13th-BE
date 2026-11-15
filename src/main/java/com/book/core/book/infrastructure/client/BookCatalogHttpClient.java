@@ -6,23 +6,19 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.function.Function;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriBuilder;
+import org.springframework.web.util.UriComponentsBuilder;
 
-final class BookCatalogHttp {
-    private BookCatalogHttp() {}
+@Component
+class BookCatalogHttpClient {
+    private final RestClient client = RestClient.builder().requestFactory(requestFactory()).build();
 
-    static RestClient connect(final String baseUrl) {
-        final var factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(3));
-        factory.setReadTimeout(Duration.ofSeconds(5));
-        return RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
-    }
-
-    static String get(final RestClient client, final Function<UriBuilder, URI> uri) {
+    String get(final String baseUrl, final Function<UriBuilder, URI> uri) {
         try {
-            return client.get().uri(uri).retrieve()
+            return client.get().uri(uri.apply(UriComponentsBuilder.fromUriString(baseUrl))).retrieve()
                 .onStatus((final var status) -> status.isError(), (final var request, final var response) -> {
                     final int status = response.getStatusCode().value();
                     if (status == 429) {
@@ -37,5 +33,12 @@ final class BookCatalogHttp {
             // 통신 예외에 인증키가 포함된 요청 URL이 들어갈 수 있습니다.
             throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
         }
+    }
+
+    private static SimpleClientHttpRequestFactory requestFactory() {
+        final var factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(3));
+        factory.setReadTimeout(Duration.ofSeconds(5));
+        return factory;
     }
 }

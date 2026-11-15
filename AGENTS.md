@@ -85,7 +85,8 @@ com.book
 - 신규 기능은 `application/port/{Feature}RepositoryPort`와 `infrastructure/persistence/repository/{Feature}RepositoryAdapter`를 분리합니다. Adapter는 `{Feature}JpaRepository`를 조합합니다. 기존 `{Feature}RepositoryImpl`은 기존 기능의 점진적 정리 대상이며 새 기능에 복사하지 않습니다.
 - Spring Data Repository는 `{Feature}JpaRepository`를 사용하고 업무 모델은 `domain/{Feature}`에 둡니다. 도메인 대응 타입이 없는 실제 요구의 영속 전용 모델만 `infrastructure/persistence/entity`에 두며, 예상 기능을 위한 Entity·테이블은 만들지 않습니다.
 - 초기 저장 구현은 `RepositoryPort → RepositoryAdapter → JpaRepository` 구조로 Spring Data JPA를 사용합니다. 복잡한 조인·통계·벌크 연산·프로젝션처럼 실제 요구가 생길 때만 `{Feature}QueryRepository`를 추가합니다.
-- 외부 연동은 `{Feature}Client` Port와 `{Feature}ClientImpl` 구현체로 분리합니다. 변환기는 출처가 드러나는 `{Feature}ExternalMapper`를 사용합니다.
+- 외부 연동 Port는 공급처 없이 행위를 드러내는 이름(예: `BookDetailFinder`, `NewBookIsbnFinder`)으로 명세하고, 구현체는 공급처가 드러나는 `{Provider}Client`(예: `Data4LibraryClient`, `NationalLibraryClient`)로 둡니다. `{Feature}Client` Port와 `{Feature}ClientImpl` 구현체 조합은 새로 만들지 않고, 기존 클라이언트는 해당 기능을 수정할 때 정리합니다. 변환기는 출처가 드러나는 `{Provider}ExternalMapper`를 사용합니다.
+- Repository가 아닌 기술 구현 Port(잠금·호출 한도 등)도 Port는 행위로, 구현체는 기술이 드러나는 이름(예: `MysqlNewBookImportLock`, `MysqlBookDetailCallBudget`)으로 둡니다.
 - 영속 전용 Entity·HTTP DTO·외부 SDK 타입을 Port와 UseCase의 입력·출력에 노출하지 않습니다. 업무 모델은 Port와 UseCase의 계약으로 사용할 수 있습니다.
 - 알려진 비즈니스 오류는 `CoreException`과 `ErrorCode`로 표현합니다. `ErrorCode`가 HTTP 상태·공개 코드·메시지·로그 레벨을 소유합니다. `DataAccessException`, `PersistenceException` 같은 저장소 기술 예외는 Repository에서 일괄 변환하지 않고 전파하며, `GlobalExceptionHandler`가 안전한 공통 응답으로 변환합니다. 기술 예외에 별도 비즈니스 의미가 생길 때만 명시적으로 변환합니다.
 - 기능별 기술 설정은 해당 Infrastructure에, 여러 기능이 공유하는 애플리케이션 설정은 `common/config`에 둡니다.

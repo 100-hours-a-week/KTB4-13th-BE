@@ -1,6 +1,9 @@
 package com.book.core.notification.application.service;
 
 import com.book.core.notification.application.command.CreateNotificationCommand;
+import com.book.core.notification.application.event.NotificationStreamMessage;
+import com.book.core.notification.application.usecase.SubscribeNotificationsUseCase;
+import java.util.function.Consumer;
 import com.book.core.notification.application.usecase.CreateNotificationUseCase;
 import com.book.core.notification.application.command.GetNotificationsCommand;
 import com.book.core.notification.application.result.GetNotificationsResult;
@@ -20,6 +23,11 @@ public class NotificationService {
     private final CreateNotificationUseCase createNotificationUseCase;
     private final GetNotificationsUseCase getNotificationsUseCase;
     private final ReadNotificationUseCase readNotificationUseCase;
+    private final SubscribeNotificationsUseCase subscribeNotificationsUseCase;
+
+    public Runnable subscribe(final Long userId, final Consumer<NotificationStreamMessage> subscriber) {
+        return subscribeNotificationsUseCase.subscribe(userId, subscriber);
+    }
 
     public Long create(final CreateNotificationCommand command) {
         return createNotificationUseCase.execute(command);

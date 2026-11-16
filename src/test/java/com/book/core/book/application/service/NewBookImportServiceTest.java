@@ -14,6 +14,7 @@ import ch.qos.logback.core.read.ListAppender;
 import com.book.core.book.application.port.NewBookImportLock;
 import com.book.core.book.application.port.NewBookImportNotifier;
 import com.book.core.book.application.result.BookDetail;
+import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookImportOutcome;
 import com.book.core.book.application.result.NewBookImportReport;
@@ -33,6 +34,8 @@ class NewBookImportServiceTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 11, 13);
     private static final String ISBN = "9788983921987";
     private static final String OTHER_ISBN = "9788972756194";
+    private static final NewBookCandidate CANDIDATE = new NewBookCandidate(ISBN, TODAY.minusDays(1));
+    private static final NewBookCandidate OTHER_CANDIDATE = new NewBookCandidate(OTHER_ISBN, TODAY.minusDays(2));
 
     @ParameterizedTest
     @CsvSource({"false, false", "true, false", "false, true", "true, true"})
@@ -51,14 +54,14 @@ class NewBookImportServiceTest {
             }
         };
 
-        final var detail = new BookDetail("신간", "저자", null, "출판사", "800", TODAY.minusDays(1), null);
+        final var detail = new BookDetail("신간", "저자", null, "출판사", "800", null);
         final var batchFailure = new IllegalStateException("외부 응답 원문 예시");
-        when(collection.collect(TODAY)).thenReturn(List.of(ISBN, OTHER_ISBN));
+        when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
         when(details.findDetail(ISBN, TODAY)).thenReturn(new NewBookDetailFound(detail));
-        when(registration.register(ISBN, detail)).thenReturn(true);
+        when(registration.register(CANDIDATE, detail)).thenReturn(true);
         if (batchFails) {
             when(details.findDetail(OTHER_ISBN, TODAY)).thenReturn(new NewBookDetailFound(detail));
-            when(registration.register(OTHER_ISBN, detail)).thenThrow(batchFailure);
+            when(registration.register(OTHER_CANDIDATE, detail)).thenThrow(batchFailure);
         } else {
             when(details.findDetail(OTHER_ISBN, TODAY)).thenReturn(NewBookImportOutcome.MISSING_DETAIL);
         }

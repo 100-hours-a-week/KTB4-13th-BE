@@ -2,11 +2,11 @@ package com.book.core.book.application.usecase;
 
 import com.book.common.annotation.UseCase;
 import com.book.core.book.application.port.NewBookIsbnFinder;
+import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.domain.Isbn13;
 import java.time.LocalDate;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -16,25 +16,28 @@ import lombok.extern.slf4j.Slf4j;
 public class CollectNewBookIsbnsUseCase {
     private final NewBookIsbnFinder isbnFinder;
 
-    public List<String> collect(final LocalDate today) {
+    public List<NewBookCandidate> collect(final LocalDate today) {
         final LocalDate from = today.minusDays(30);
         final LocalDate through = today.minusDays(1);
-        final var candidateIsbns = new LinkedHashSet<String>();
+        final var candidates = new LinkedHashMap<String, NewBookCandidate>();
         int calls = 0;
         try {
             for (int pageNumber = 1;; pageNumber++) {
                 calls = pageNumber;
                 final var page = isbnFinder.findPaperBookIsbns(from, through, pageNumber);
-                page.candidateIsbns().stream().map(Isbn13::normalize).flatMap(Optional::stream).forEachOrdered(candidateIsbns::add);
+                for (final NewBookCandidate candidate : page.candidates()) {
+                    Isbn13.normalize(candidate.isbn13()).ifPresent((final var isbn13) -> candidates.putIfAbsent(isbn13,
+                        new NewBookCandidate(isbn13, candidate.publishedAt())));
+                }
                 if (!page.hasNext()) {
                     break;
                 }
             }
         } finally {
-            final int candidateCount = candidateIsbns.size();
+            final int candidateCount = candidates.size();
             log.atInfo().addKeyValue("listCallCount", calls).addKeyValue("candidateCount", candidateCount)
                 .log("[BOOK] 신간 후보 ISBN 수집이 종료됐습니다. listCallCount={}, candidateCount={}", calls, candidateCount);
         }
-        return List.copyOf(candidateIsbns);
+        return List.copyOf(candidates.values());
     }
 }

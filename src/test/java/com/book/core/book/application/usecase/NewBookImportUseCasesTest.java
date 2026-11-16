@@ -26,6 +26,7 @@ import com.book.core.book.application.port.NewBookImportLock;
 import com.book.core.book.application.port.NewBookImportNotifier;
 import com.book.core.book.application.port.NewBookLookupBackoff;
 import com.book.core.book.application.result.BookDetail;
+import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookImportOutcome;
 import com.book.core.book.application.result.NewBookImportReport;
@@ -47,6 +48,8 @@ class NewBookImportUseCasesTest {
     private static final String ISBN = "9788983921987";
     private static final String OTHER_ISBN = "9788972756194";
     private static final LocalDate TODAY = LocalDate.of(2026, 11, 12);
+    private static final NewBookCandidate CANDIDATE = new NewBookCandidate(ISBN, TODAY.minusDays(1));
+    private static final NewBookCandidate OTHER_CANDIDATE = new NewBookCandidate(OTHER_ISBN, TODAY.minusDays(2));
 
     @Mock
     private NewBookIsbnFinder isbnFinder;
@@ -77,14 +80,15 @@ class NewBookImportUseCasesTest {
     }
 
     @Test
-    void 전체_페이지의_ISBN을_정규화하고_중복을_제거한다() {
+    void 전체_페이지의_ISBN을_정규화하고_중복은_처음_출간일을_유지한다() {
         final LocalDate from = TODAY.minusDays(30);
         final LocalDate through = TODAY.minusDays(1);
-        when(isbnFinder.findPaperBookIsbns(from, through, 1))
-            .thenReturn(new NewBookIsbnPage(List.of("978-89-8392-198-7", "9788983921988"), true));
-        when(isbnFinder.findPaperBookIsbns(from, through, 2)).thenReturn(new NewBookIsbnPage(List.of(ISBN, OTHER_ISBN), false));
+        when(isbnFinder.findPaperBookIsbns(from, through, 1)).thenReturn(new NewBookIsbnPage(
+            List.of(new NewBookCandidate("978-89-8392-198-7", TODAY.minusDays(1)), new NewBookCandidate("9788983921988", TODAY)), true));
+        when(isbnFinder.findPaperBookIsbns(from, through, 2)).thenReturn(
+            new NewBookIsbnPage(List.of(new NewBookCandidate(ISBN, TODAY.minusDays(9)), OTHER_CANDIDATE), false));
 
-        assertThat(new CollectNewBookIsbnsUseCase(isbnFinder).collect(TODAY)).containsExactly(ISBN, OTHER_ISBN);
+        assertThat(new CollectNewBookIsbnsUseCase(isbnFinder).collect(TODAY)).containsExactly(CANDIDATE, OTHER_CANDIDATE);
     }
 
     @Test
@@ -93,7 +97,7 @@ class NewBookImportUseCasesTest {
             invocation.getArgument(0, Runnable.class).run();
             return true;
         }).when(lock).runIfAcquired(any());
-        when(collection.collect(TODAY)).thenReturn(List.of(ISBN, OTHER_ISBN));
+        when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
         when(details.findDetail(ISBN, TODAY)).thenReturn(NewBookImportOutcome.RATE_LIMITED);
 
         new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY);
@@ -169,7 +173,7 @@ class NewBookImportUseCasesTest {
             invocation.getArgument(0, Runnable.class).run();
             return true;
         }).when(lock).runIfAcquired(any());
-        when(collection.collect(TODAY)).thenReturn(List.of(ISBN, OTHER_ISBN));
+        when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
         when(details.findDetail(ISBN, TODAY)).thenThrow(new BookCatalogException(BookCatalogFailureReason.REJECTED, "authErr"));
 
         assertThatThrownBy(() -> new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY))
@@ -189,15 +193,15 @@ class NewBookImportUseCasesTest {
 
     @Test
     void 조회_후_등록하고_ISBN_중복과_다른_저장_제약을_구분한다() {
-        final var detail = new BookDetail("신간", "저자", null, "출판사", "800", TODAY.minusDays(1), null);
+        final var detail = new BookDetail("신간", "저자", null, "출판사", "800", null);
         doAnswer((final var invocation) -> {
             invocation.getArgument(0, Runnable.class).run();
             return true;
         }).when(lock).runIfAcquired(any());
-        when(collection.collect(TODAY)).thenReturn(List.of(ISBN, OTHER_ISBN));
+        when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
         when(details.findDetail(any(), any())).thenReturn(new NewBookDetailFound(detail));
-        when(registration.register(ISBN, detail)).thenThrow(new DuplicateImportedIsbnException(new RuntimeException()));
-        when(registration.register(OTHER_ISBN, detail)).thenThrow(new DataIntegrityViolationException("other constraint"));
+        when(registration.register(CANDIDATE, detail)).thenThrow(new DuplicateImportedIsbnException(new RuntimeException()));
+        when(registration.register(OTHER_CANDIDATE, detail)).thenThrow(new DataIntegrityViolationException("other constraint"));
         final var logger = (Logger) LoggerFactory.getLogger(NewBookImportService.class);
         final var appender = new ListAppender<ILoggingEvent>();
         appender.start();
@@ -211,9 +215,9 @@ class NewBookImportUseCasesTest {
 
         final var order = inOrder(details, registration);
         order.verify(details).findDetail(ISBN, TODAY);
-        order.verify(registration).register(ISBN, detail);
+        order.verify(registration).register(CANDIDATE, detail);
         order.verify(details).findDetail(OTHER_ISBN, TODAY);
-        order.verify(registration).register(OTHER_ISBN, detail);
+        order.verify(registration).register(OTHER_CANDIDATE, detail);
         assertThat(appender.list).extracting(ILoggingEvent::getFormattedMessage).anySatisfy(
             (final var message) -> assertThat(message).contains("outcomes={ALREADY_REGISTERED_AFTER_LOOKUP=1, STORAGE_REJECTED=1}"));
     }
@@ -224,7 +228,8 @@ class NewBookImportUseCasesTest {
             return true;
         }).when(lock).runIfAcquired(any());
         final var isbns = IntStream.range(0, candidates)
-            .mapToObj((final var index) -> index == 0 ? ISBN : "97889839219" + String.format("%02d", index)).toList();
+            .mapToObj((final var index) -> index == 0 ? ISBN : "97889839219" + String.format("%02d", index))
+            .map((final var isbn) -> new NewBookCandidate(isbn, TODAY.minusDays(1))).toList();
         when(collection.collect(TODAY)).thenReturn(isbns);
         when(details.findDetail(any(), any())).thenReturn(outcome);
 

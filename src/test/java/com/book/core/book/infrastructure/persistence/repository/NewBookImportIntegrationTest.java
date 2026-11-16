@@ -1,5 +1,6 @@
 package com.book.core.book.infrastructure.persistence.repository;
 
+import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.application.result.NewBookIsbnPage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,7 +45,8 @@ class NewBookImportIntegrationTest {
     private static final String ISBN_A = "9788983921987";
     private static final String ISBN_B = "9788972756194";
     private static final LocalDate TODAY = LocalDate.of(2026, 11, 12);
-    private static final BookDetail DETAIL = new BookDetail("신간", "저자", null, "출판사", "800", TODAY.minusDays(1), null);
+    private static final BookDetail DETAIL = new BookDetail("신간", "저자", null, "출판사", "800", null);
+    private static final LocalDate PUBLISHED_AT_A = TODAY.minusDays(1);
 
     @Container
     @ServiceConnection
@@ -75,7 +77,8 @@ class NewBookImportIntegrationTest {
         jdbc.update("DELETE FROM books WHERE imported_isbn13 IN (?, ?)", ISBN_A, ISBN_B);
         jdbc.update("UPDATE book_detail_call_budget SET quota_day = NULL, calls = 0, next_call_at = NULL WHERE id = 1");
         jdbc.update("DELETE FROM new_book_lookup_backoff WHERE isbn13 IN (?, ?)", ISBN_A, ISBN_B);
-        when(isbnFinder.findPaperBookIsbns(any(), any(), anyInt())).thenReturn(new NewBookIsbnPage(List.of(ISBN_A, ISBN_B), false));
+        when(isbnFinder.findPaperBookIsbns(any(), any(), anyInt())).thenReturn(new NewBookIsbnPage(
+            List.of(new NewBookCandidate(ISBN_A, PUBLISHED_AT_A), new NewBookCandidate(ISBN_B, TODAY.minusDays(2))), false));
     }
 
     @Test
@@ -147,6 +150,8 @@ class NewBookImportIntegrationTest {
 
         verify(detail).findBookDetail(ISBN_A);
         verify(detail).findBookDetail(ISBN_B);
+        assertThat(jdbc.queryForObject("SELECT published_at FROM books WHERE imported_isbn13 = ?", LocalDate.class, ISBN_A))
+            .isEqualTo(PUBLISHED_AT_A);
     }
 
     private LocalDate retryOn() {

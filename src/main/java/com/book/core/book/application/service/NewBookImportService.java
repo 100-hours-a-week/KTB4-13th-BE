@@ -4,6 +4,7 @@ import com.book.core.book.application.port.BookCatalogException;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
 import com.book.core.book.application.port.NewBookImportLock;
 import com.book.core.book.application.port.NewBookImportNotifier;
+import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookDetailLookup;
 import com.book.core.book.application.result.NewBookImportOutcome;
@@ -66,11 +67,11 @@ public class NewBookImportService {
         MDC.put("runId", run.runId.toString());
         try {
             log.info("[BOOK] 신간 도서 등록 배치를 시작합니다. runId={}", run.runId);
-            final var candidateIsbns = collection.collect(today);
-            run.candidateCount = candidateIsbns.size();
+            final var candidates = collection.collect(today);
+            run.candidateCount = candidates.size();
             int consecutiveFailures = 0;
-            for (final String isbn13 : candidateIsbns) {
-                final NewBookImportOutcome outcome = importBook(isbn13, today, run);
+            for (final NewBookCandidate candidate : candidates) {
+                final NewBookImportOutcome outcome = importBook(candidate, today, run);
                 run.outcomes.merge(outcome, 1, Integer::sum);
                 if (outcome == NewBookImportOutcome.BUDGET_EXHAUSTED || outcome == NewBookImportOutcome.RATE_LIMITED) {
                     break;
@@ -111,7 +112,8 @@ public class NewBookImportService {
         }
     }
 
-    private NewBookImportOutcome importBook(final String isbn13, final LocalDate today, final NewBookImportRun run) {
+    private NewBookImportOutcome importBook(final NewBookCandidate candidate, final LocalDate today, final NewBookImportRun run) {
+        final String isbn13 = candidate.isbn13();
         final long startedAt = System.nanoTime();
         final NewBookDetailLookup lookup;
         try {
@@ -131,14 +133,15 @@ public class NewBookImportService {
             }
             case NewBookDetailFound found -> {
                 run.detailCallCount++;
-                yield registerBook(isbn13, found, startedAt);
+                yield registerBook(candidate, found, startedAt);
             }
         };
     }
 
-    private NewBookImportOutcome registerBook(final String isbn13, final NewBookDetailFound found, final long startedAt) {
+    private NewBookImportOutcome registerBook(final NewBookCandidate candidate, final NewBookDetailFound found, final long startedAt) {
+        final String isbn13 = candidate.isbn13();
         try {
-            if (registration.register(isbn13, found.detail())) {
+            if (registration.register(candidate, found.detail())) {
                 return NewBookImportOutcome.REGISTERED;
             }
             return NewBookImportOutcome.ALREADY_REGISTERED_AFTER_LOOKUP;

@@ -1,17 +1,14 @@
 package com.book.core.book.infrastructure.persistence.repository;
 
 import com.book.core.book.application.result.NewBookCandidate;
-import com.book.core.book.application.result.NewBookIsbnPage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.book.core.book.application.port.BookRepositoryPort;
-import com.book.core.book.application.port.BookDetailFinder;
-import com.book.core.book.application.port.NewBookIsbnFinder;
+import com.book.core.book.application.port.NewBookCollector;
 import com.book.core.book.application.port.NewBookLookupBackoff;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.service.NewBookImportService;
@@ -68,29 +65,27 @@ class NewBookImportIntegrationTest {
     private NewBookLookupBackoff backoff;
 
     @MockitoBean
-    private NewBookIsbnFinder isbnFinder;
-    @MockitoBean
-    private BookDetailFinder detail;
+    private NewBookCollector collector;
 
     @BeforeEach
     void resetCatalog() {
         jdbc.update("DELETE FROM books WHERE imported_isbn13 IN (?, ?)", ISBN_A, ISBN_B);
         jdbc.update("UPDATE book_detail_call_budget SET quota_day = NULL, calls = 0, next_call_at = NULL WHERE id = 1");
         jdbc.update("DELETE FROM new_book_lookup_backoff WHERE isbn13 IN (?, ?)", ISBN_A, ISBN_B);
-        when(isbnFinder.findPaperBookIsbns(any(), any(), anyInt())).thenReturn(new NewBookIsbnPage(
-            List.of(new NewBookCandidate(ISBN_A, PUBLISHED_AT_A), new NewBookCandidate(ISBN_B, TODAY.minusDays(2))), false));
+        when(collector.collectCandidates(any(), any())).thenReturn(
+            List.of(new NewBookCandidate(ISBN_A, PUBLISHED_AT_A), new NewBookCandidate(ISBN_B, TODAY.minusDays(2))));
     }
 
     @Test
     void 다른_세션은_상세_조회가_진행되는_동안_목록을_호출하지_않는다() throws Exception {
         final var started = new CountDownLatch(1);
         final var release = new CountDownLatch(1);
-        when(detail.findBookDetail(ISBN_A)).thenAnswer((final var call) -> {
+        when(collector.collectDetail(ISBN_A)).thenAnswer((final var call) -> {
             started.countDown();
             assertThat(release.await(5, TimeUnit.SECONDS)).isTrue();
             return Optional.of(DETAIL);
         });
-        when(detail.findBookDetail(ISBN_B)).thenReturn(Optional.of(DETAIL));
+        when(collector.collectDetail(ISBN_B)).thenReturn(Optional.of(DETAIL));
         try (var executor = Executors.newSingleThreadExecutor()) {
             final var first = executor.submit(() -> imports.importNewBooks(TODAY));
             try {
@@ -102,30 +97,30 @@ class NewBookImportIntegrationTest {
             first.get(5, TimeUnit.SECONDS);
         }
 
-        verify(isbnFinder).findPaperBookIsbns(TODAY.minusDays(30), TODAY.minusDays(1), 1);
-        verify(detail).findBookDetail(ISBN_A);
-        verify(detail).findBookDetail(ISBN_B);
+        verify(collector).collectCandidates(TODAY.minusDays(30), TODAY.minusDays(1));
+        verify(collector).collectDetail(ISBN_A);
+        verify(collector).collectDetail(ISBN_B);
         assertThat(books.existsByIsbn13(ISBN_A)).isTrue();
         assertThat(books.existsByIsbn13(ISBN_B)).isTrue();
     }
 
     @Test
     void 상세가_없었던_ISBN은_7일_동안_호출_한도를_쓰지_않고_건너뛴다() {
-        when(detail.findBookDetail(ISBN_A)).thenReturn(Optional.empty(), Optional.of(DETAIL));
-        when(detail.findBookDetail(ISBN_B)).thenReturn(Optional.of(DETAIL));
+        when(collector.collectDetail(ISBN_A)).thenReturn(Optional.empty(), Optional.of(DETAIL));
+        when(collector.collectDetail(ISBN_B)).thenReturn(Optional.of(DETAIL));
 
         imports.importNewBooks(TODAY);
         assertThat(books.existsByIsbn13(ISBN_A)).isFalse();
         assertThat(books.existsByIsbn13(ISBN_B)).isTrue();
 
         imports.importNewBooks(TODAY.plusDays(6));
-        verify(detail).findBookDetail(ISBN_A);
+        verify(collector).collectDetail(ISBN_A);
         assertThat(books.existsByIsbn13(ISBN_A)).isFalse();
 
         imports.importNewBooks(TODAY.plusDays(7));
         assertThat(books.existsByIsbn13(ISBN_A)).isTrue();
-        verify(detail, times(2)).findBookDetail(ISBN_A);
-        verify(detail).findBookDetail(ISBN_B);
+        verify(collector, times(2)).collectDetail(ISBN_A);
+        verify(collector).collectDetail(ISBN_B);
     }
 
     @Test
@@ -144,12 +139,12 @@ class NewBookImportIntegrationTest {
 
     @Test
     void 상세_요청이_두_건이면_같은_실행에서_연속_처리한다() {
-        when(detail.findBookDetail(any())).thenReturn(Optional.of(DETAIL));
+        when(collector.collectDetail(any())).thenReturn(Optional.of(DETAIL));
 
         imports.importNewBooks(TODAY);
 
-        verify(detail).findBookDetail(ISBN_A);
-        verify(detail).findBookDetail(ISBN_B);
+        verify(collector).collectDetail(ISBN_A);
+        verify(collector).collectDetail(ISBN_B);
         assertThat(jdbc.queryForObject("SELECT published_at FROM books WHERE imported_isbn13 = ?", LocalDate.class, ISBN_A))
             .isEqualTo(PUBLISHED_AT_A);
     }

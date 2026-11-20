@@ -1,4 +1,4 @@
-package com.book.core.book.infrastructure.scheduler;
+package com.book.core.book.infrastructure.persistence.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

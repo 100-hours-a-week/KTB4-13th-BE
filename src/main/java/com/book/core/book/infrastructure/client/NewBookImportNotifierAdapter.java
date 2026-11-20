@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-class NewBookImportMessageNotifier implements NewBookImportNotifier {
+class NewBookImportNotifierAdapter implements NewBookImportNotifier {
     private final NotificationSender sender;
 
     @Override

@@ -32,7 +32,6 @@ class MysqlNewBookLookupBackoff implements NewBookLookupBackoff {
 
     @Override
     public void deferAfterFailure(final String isbn13, final LocalDate today) {
-        // 실패할 때마다 1일, 2일, 4일로 대기 기간을 늘리고 4일에서 멈춥니다.
         jdbc.update("""
             INSERT INTO new_book_lookup_backoff (isbn13, failure_count, retry_on) VALUES (?, 1, ? + INTERVAL 1 DAY)
             ON DUPLICATE KEY UPDATE retry_on = ? + INTERVAL LEAST(1 << failure_count, ?) DAY, failure_count = failure_count + 1

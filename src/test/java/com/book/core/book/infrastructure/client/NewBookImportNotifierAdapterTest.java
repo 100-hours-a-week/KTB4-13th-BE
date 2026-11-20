@@ -14,7 +14,7 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
-class NewBookImportMessageNotifierTest {
+class NewBookImportNotifierAdapterTest {
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = "저장 오류")
@@ -23,7 +23,7 @@ class NewBookImportMessageNotifierTest {
         final var runId = UUID.randomUUID();
         final var report = new NewBookImportReport(runId, 1234L, 5, 3, Map.of(NewBookImportOutcome.REGISTERED, 2), failureReason);
 
-        new NewBookImportMessageNotifier(sender).send(report);
+        new NewBookImportNotifierAdapter(sender).send(report);
 
         final var message = ArgumentCaptor.forClass(String.class);
         verify(sender).send(message.capture());

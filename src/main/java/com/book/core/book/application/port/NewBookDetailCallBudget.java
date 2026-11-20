@@ -1,6 +1,6 @@
 package com.book.core.book.application.port;
 
-public interface BookDetailCallBudget {
+public interface NewBookDetailCallBudget {
     boolean tryAcquire();
 
     void pauseAfterRateLimit();

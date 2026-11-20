@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.resilience.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 
@@ -56,6 +57,7 @@ class NewBookCollectorAdapter implements NewBookCollector {
     }
 
     @Override
+    @Retryable(predicate = TemporaryFailureRetryPredicate.class, maxRetries = 2, delay = 500)
     public Optional<BookDetail> collectDetail(final String isbn13) {
         final var body = call(() -> jeongboNaru.findBookDetail(isbn13)).response();
         if (body == null) {

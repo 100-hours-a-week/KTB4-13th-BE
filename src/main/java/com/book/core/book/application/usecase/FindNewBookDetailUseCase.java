@@ -1,8 +1,8 @@
 package com.book.core.book.application.usecase;
 
 import com.book.common.annotation.UseCase;
-import com.book.core.book.application.port.BookCatalogException;
-import com.book.core.book.application.port.BookDetailCallBudget;
+import com.book.core.book.application.port.NewBookCollectorException;
+import com.book.core.book.application.port.NewBookDetailCallBudget;
 import com.book.core.book.application.port.BookRepositoryPort;
 import com.book.core.book.application.port.NewBookCollector;
 import com.book.core.book.application.port.NewBookLookupBackoff;
@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 public class FindNewBookDetailUseCase {
     private final BookRepositoryPort books;
     private final NewBookCollector collector;
-    private final BookDetailCallBudget budget;
+    private final NewBookDetailCallBudget budget;
     private final NewBookLookupBackoff backoff;
 
     public NewBookDetailLookup findDetail(final String isbn13, final LocalDate today) {
@@ -40,7 +40,7 @@ public class FindNewBookDetailUseCase {
                 return NewBookImportOutcome.MISSING_DETAIL;
             }
             return new NewBookDetailFound(detail.orElseThrow());
-        } catch (final BookCatalogException exception) {
+        } catch (final NewBookCollectorException exception) {
             log.atInfo().addKeyValue("isbn13", isbn13).addKeyValue("reason", exception.reason())
                 .addKeyValue("externalCode", exception.externalCode())
                 .log("[BOOK] 신간 도서 상세 조회에 실패했습니다. isbn13={}, reason={}, externalCode={}", isbn13, exception.reason(),

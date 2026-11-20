@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 
 @UseCase
 @RequiredArgsConstructor
-public class CollectNewBookIsbnsUseCase {
+public class CollectNewBookCandidatesUseCase {
     private final NewBookCollector collector;
 
     public List<NewBookCandidate> collect(final LocalDate today) {

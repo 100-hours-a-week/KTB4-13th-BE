@@ -15,9 +15,9 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.book.core.book.application.port.BookCatalogException;
-import com.book.core.book.application.port.BookCatalogFailureReason;
-import com.book.core.book.application.port.BookDetailCallBudget;
+import com.book.core.book.application.port.NewBookCollectorException;
+import com.book.core.book.application.port.NewBookCollectorFailureReason;
+import com.book.core.book.application.port.NewBookDetailCallBudget;
 import com.book.core.book.application.port.BookRepositoryPort;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
 import com.book.core.book.application.port.NewBookCollector;
@@ -56,13 +56,13 @@ class NewBookImportUseCasesTest {
     @Mock
     private NewBookImportNotifier notifier;
     @Mock
-    private CollectNewBookIsbnsUseCase collection;
+    private CollectNewBookCandidatesUseCase collection;
     @Mock
     private FindNewBookDetailUseCase details;
     @Mock
     private BookRepositoryPort books;
     @Mock
-    private BookDetailCallBudget budget;
+    private NewBookDetailCallBudget budget;
     @Mock
     private RegisterNewBookUseCase registration;
     @Mock
@@ -81,7 +81,7 @@ class NewBookImportUseCasesTest {
             List.of(new NewBookCandidate("978-89-8392-198-7", TODAY.minusDays(1)), new NewBookCandidate("9788983921988", TODAY),
                 new NewBookCandidate(ISBN, TODAY.minusDays(9)), OTHER_CANDIDATE));
 
-        assertThat(new CollectNewBookIsbnsUseCase(collector).collect(TODAY)).containsExactly(CANDIDATE, OTHER_CANDIDATE);
+        assertThat(new CollectNewBookCandidatesUseCase(collector).collect(TODAY)).containsExactly(CANDIDATE, OTHER_CANDIDATE);
     }
 
     @Test
@@ -126,7 +126,7 @@ class NewBookImportUseCasesTest {
     @Test
     void 정보나루_호출_제한을_공유_예산에_반영한다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(collector.collectDetail(ISBN)).thenThrow(new BookCatalogException(BookCatalogFailureReason.RATE_LIMIT));
+        when(collector.collectDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.RATE_LIMIT));
 
         assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.RATE_LIMITED);
         verify(budget).pauseAfterRateLimit();
@@ -144,7 +144,7 @@ class NewBookImportUseCasesTest {
     @Test
     void 일시_오류는_ISBN_재시도를_미룬다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(collector.collectDetail(ISBN)).thenThrow(new BookCatalogException(BookCatalogFailureReason.TEMPORARY));
+        when(collector.collectDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY));
 
         assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.LOOKUP_FAILED);
         verify(backoff).deferAfterFailure(ISBN, TODAY);
@@ -153,9 +153,9 @@ class NewBookImportUseCasesTest {
     @Test
     void 요청_거부는_ISBN을_미루지_않는다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(collector.collectDetail(ISBN)).thenThrow(new BookCatalogException(BookCatalogFailureReason.REJECTED));
+        when(collector.collectDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED));
 
-        assertThatThrownBy(() -> importer().findDetail(ISBN, TODAY)).isInstanceOf(BookCatalogException.class);
+        assertThatThrownBy(() -> importer().findDetail(ISBN, TODAY)).isInstanceOf(NewBookCollectorException.class);
         verify(backoff).isWaiting(ISBN, TODAY);
         verifyNoMoreInteractions(backoff);
     }
@@ -167,10 +167,10 @@ class NewBookImportUseCasesTest {
             return true;
         }).when(lock).runIfAcquired(any());
         when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
-        when(details.findDetail(ISBN, TODAY)).thenThrow(new BookCatalogException(BookCatalogFailureReason.REJECTED, "authErr"));
+        when(details.findDetail(ISBN, TODAY)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED, "authErr"));
 
         assertThatThrownBy(() -> new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY))
-            .isInstanceOf(BookCatalogException.class);
+            .isInstanceOf(NewBookCollectorException.class);
         verify(details).findDetail(ISBN, TODAY);
         verifyNoMoreInteractions(details);
         verify(notifier).send(argThat((final var report) -> report.failureReason().contains("authErr") && report.detailCallCount() == 1));

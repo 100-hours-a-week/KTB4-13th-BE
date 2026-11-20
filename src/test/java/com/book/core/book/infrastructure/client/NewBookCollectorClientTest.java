@@ -3,8 +3,8 @@ package com.book.core.book.infrastructure.client;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.book.core.book.application.port.BookCatalogException;
-import com.book.core.book.application.port.BookCatalogFailureReason;
+import com.book.core.book.application.port.NewBookCollectorException;
+import com.book.core.book.application.port.NewBookCollectorFailureReason;
 import com.book.core.book.application.result.NewBookCandidate;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
@@ -16,7 +16,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class BookCatalogClientTest {
+class NewBookCollectorClientTest {
     private static final String ISBN = "9788983921987";
     private final AtomicReference<String> query = new AtomicReference<>();
     private HttpServer server;
@@ -75,11 +75,12 @@ class BookCatalogClientTest {
     void 호출_제한을_분류하고_응답이나_키를_예외에_담지_않는다() {
         respond("/api/srchDtlList", 429, "external response");
         final var collector = collector("", "sensitive-key");
-        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
-            assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.RATE_LIMIT);
-            assertThat(error.getMessage()).isEqualTo("RATE_LIMIT");
-            assertThat(error.getCause()).isNull();
-        });
+        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
+            (final var error) -> {
+                assertThat(error.reason()).isEqualTo(NewBookCollectorFailureReason.RATE_LIMIT);
+                assertThat(error.getMessage()).isEqualTo("RATE_LIMIT");
+                assertThat(error.getCause()).isNull();
+            });
     }
 
     @Test
@@ -88,10 +89,11 @@ class BookCatalogClientTest {
             {"response":{"errCode":"authErr","error":"인증정보가 일치하지 않습니다."}}
             """);
         final var collector = collector("", "key");
-        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
-            assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.REJECTED);
-            assertThat(error.externalCode()).isEqualTo("authErr");
-        });
+        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
+            (final var error) -> {
+                assertThat(error.reason()).isEqualTo(NewBookCollectorFailureReason.REJECTED);
+                assertThat(error.externalCode()).isEqualTo("authErr");
+            });
     }
 
     @Test
@@ -109,8 +111,8 @@ class BookCatalogClientTest {
             """);
         final var collector = collector("key", "");
         assertThatThrownBy(() -> collector.collectCandidates(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11)))
-            .isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
-                assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.REJECTED);
+            .isInstanceOfSatisfying(NewBookCollectorException.class, (final var error) -> {
+                assertThat(error.reason()).isEqualTo(NewBookCollectorFailureReason.REJECTED);
                 assertThat(error.externalCode()).isEqualTo("011");
             });
     }
@@ -121,14 +123,15 @@ class BookCatalogClientTest {
             {"response":{"detail":"not-array"}}
             """);
         final var collector = collector("", "key");
-        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class,
-            (final var error) -> assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.TEMPORARY));
+        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
+            (final var error) -> assertThat(error.reason()).isEqualTo(NewBookCollectorFailureReason.TEMPORARY));
     }
 
     private NewBookCollectorAdapter collector(final String nationalLibraryKey, final String jeongboNaruKey) {
         return new NewBookCollectorAdapter(
-            BookCatalogClientConfiguration.createClient(NationalLibraryClient.class, baseUrl, "nationalLibraryKey", nationalLibraryKey),
-            BookCatalogClientConfiguration.createClient(JeongboNaruClient.class, baseUrl, "jeongboNaruKey", jeongboNaruKey));
+            NewBookCollectorClientConfiguration.createClient(NationalLibraryClient.class, baseUrl, "nationalLibraryKey",
+                nationalLibraryKey),
+            NewBookCollectorClientConfiguration.createClient(JeongboNaruClient.class, baseUrl, "jeongboNaruKey", jeongboNaruKey));
     }
 
     private void respond(final String path, final int status, final String body) {

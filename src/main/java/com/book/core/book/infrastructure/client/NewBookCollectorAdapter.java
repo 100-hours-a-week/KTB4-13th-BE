@@ -1,7 +1,7 @@
 package com.book.core.book.infrastructure.client;
 
-import com.book.core.book.application.port.BookCatalogException;
-import com.book.core.book.application.port.BookCatalogFailureReason;
+import com.book.core.book.application.port.NewBookCollectorException;
+import com.book.core.book.application.port.NewBookCollectorFailureReason;
 import com.book.core.book.application.port.NewBookCollector;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.result.NewBookCandidate;
@@ -59,13 +59,13 @@ class NewBookCollectorAdapter implements NewBookCollector {
     public Optional<BookDetail> collectDetail(final String isbn13) {
         final var body = call(() -> jeongboNaru.findBookDetail(isbn13)).response();
         if (body == null) {
-            throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
+            throw new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY);
         }
         if (body.error() != null || body.errCode() != null) {
             if (MISSING_ISBN_ERROR_CODE.equals(body.errCode())) {
                 return Optional.empty();
             }
-            throw new BookCatalogException(BookCatalogFailureReason.REJECTED, body.errCode());
+            throw new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED, body.errCode());
         }
         if (body.detail() == null) {
             return Optional.empty();
@@ -77,17 +77,17 @@ class NewBookCollectorAdapter implements NewBookCollector {
 
     private static int totalCount(final NationalLibraryResponse response, final int pageNumber) {
         if ("ERROR".equals(response.result())) {
-            throw new BookCatalogException(BookCatalogFailureReason.REJECTED, response.errorCode());
+            throw new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED, response.errorCode());
         }
         final int totalCount;
         try {
             totalCount = Integer.parseInt(Objects.requireNonNull(response.totalCount()).strip());
         } catch (final NullPointerException | NumberFormatException exception) {
-            throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
+            throw new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY);
         }
         final boolean noDocs = response.docs() == null || response.docs().isEmpty();
         if (totalCount < 0 || (totalCount > (long) (pageNumber - 1) * PAGE_SIZE && noDocs)) {
-            throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
+            throw new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY);
         }
         return totalCount;
     }
@@ -140,10 +140,10 @@ class NewBookCollectorAdapter implements NewBookCollector {
         try {
             response = request.get();
         } catch (final RestClientException exception) {
-            throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
+            throw new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY);
         }
         if (response == null) {
-            throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
+            throw new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY);
         }
         return response;
     }

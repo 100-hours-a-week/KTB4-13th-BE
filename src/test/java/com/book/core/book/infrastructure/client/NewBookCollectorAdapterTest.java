@@ -6,7 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.book.core.book.application.port.BookCatalogException;
+import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.result.NewBookCandidate;
 import java.time.LocalDate;
@@ -46,7 +46,7 @@ class NewBookCollectorAdapterTest {
         when(nationalLibrary.searchPaperBooks(FROM, THROUGH, 2, 100))
             .thenReturn(new NationalLibraryResponse("ERROR", "011", null, null));
 
-        assertThatThrownBy(() -> collector.collectCandidates(FROM, THROUGH)).isInstanceOfSatisfying(BookCatalogException.class,
+        assertThatThrownBy(() -> collector.collectCandidates(FROM, THROUGH)).isInstanceOfSatisfying(NewBookCollectorException.class,
             (final var error) -> assertThat(error.externalCode()).isEqualTo("011"));
     }
 

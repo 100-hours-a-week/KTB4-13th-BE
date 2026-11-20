@@ -1,7 +1,7 @@
 package com.book.core.book.infrastructure.client;
 
-import com.book.core.book.application.port.BookCatalogException;
-import com.book.core.book.application.port.BookCatalogFailureReason;
+import com.book.core.book.application.port.NewBookCollectorException;
+import com.book.core.book.application.port.NewBookCollectorFailureReason;
 import java.time.Duration;
 import java.util.Map;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -14,16 +14,16 @@ import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(BookCatalogProperties.class)
-class BookCatalogClientConfiguration {
+@EnableConfigurationProperties(NewBookCollectorProperties.class)
+class NewBookCollectorClientConfiguration {
     @Bean
-    NationalLibraryClient nationalLibraryClient(final BookCatalogProperties properties) {
+    NationalLibraryClient nationalLibraryClient(final NewBookCollectorProperties properties) {
         return createClient(NationalLibraryClient.class, properties.nationalLibraryBaseUrl(), "nationalLibraryKey",
             properties.nationalLibraryKey());
     }
 
     @Bean
-    JeongboNaruClient jeongboNaruClient(final BookCatalogProperties properties) {
+    JeongboNaruClient jeongboNaruClient(final NewBookCollectorProperties properties) {
         return createClient(JeongboNaruClient.class, properties.dataForLibraryBaseUrl(), "jeongboNaruKey", properties.dataForLibraryKey());
     }
 
@@ -36,12 +36,12 @@ class BookCatalogClientConfiguration {
             .defaultStatusHandler(HttpStatusCode::isError, (final var request, final var response) -> {
                 final int status = response.getStatusCode().value();
                 if (status == 429) {
-                    throw new BookCatalogException(BookCatalogFailureReason.RATE_LIMIT);
+                    throw new NewBookCollectorException(NewBookCollectorFailureReason.RATE_LIMIT);
                 }
                 if (status >= 500) {
-                    throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
+                    throw new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY);
                 }
-                throw new BookCatalogException(BookCatalogFailureReason.REJECTED);
+                throw new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED);
             }).build();
         return HttpServiceProxyFactory.builderFor(RestClientAdapter.create(restClient)).build().createClient(type);
     }

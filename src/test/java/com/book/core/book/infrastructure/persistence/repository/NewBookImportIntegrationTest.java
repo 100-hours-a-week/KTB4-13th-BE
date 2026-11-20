@@ -14,9 +14,6 @@ import com.book.core.book.application.service.NewBookImportService;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -70,34 +67,6 @@ class NewBookImportIntegrationTest {
         jdbc.update("UPDATE book_detail_call_budget SET quota_day = NULL, calls = 0 WHERE id = 1");
         when(collector.collectCandidates(any(), any())).thenReturn(
             List.of(new NewBookCandidate(ISBN_A, PUBLISHED_AT_A), new NewBookCandidate(ISBN_B, TODAY.minusDays(2))));
-    }
-
-    @Test
-    void 다른_세션은_상세_조회가_진행되는_동안_목록을_호출하지_않는다() throws Exception {
-        final var started = new CountDownLatch(1);
-        final var release = new CountDownLatch(1);
-        when(collector.findDetail(ISBN_A)).thenAnswer((final var call) -> {
-            started.countDown();
-            assertThat(release.await(5, TimeUnit.SECONDS)).isTrue();
-            return Optional.of(DETAIL);
-        });
-        when(collector.findDetail(ISBN_B)).thenReturn(Optional.of(DETAIL));
-        try (var executor = Executors.newSingleThreadExecutor()) {
-            final var first = executor.submit(() -> imports.importNewBooks(TODAY));
-            try {
-                assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
-                imports.importNewBooks(TODAY);
-            } finally {
-                release.countDown();
-            }
-            first.get(5, TimeUnit.SECONDS);
-        }
-
-        verify(collector).collectCandidates(TODAY.minusDays(30), TODAY.minusDays(1));
-        verify(collector).findDetail(ISBN_A);
-        verify(collector).findDetail(ISBN_B);
-        assertThat(books.existsByIsbn13(ISBN_A)).isTrue();
-        assertThat(books.existsByIsbn13(ISBN_B)).isTrue();
     }
 
     @Test

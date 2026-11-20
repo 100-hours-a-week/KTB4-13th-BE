@@ -214,9 +214,21 @@ class ShoppingAgentChatIntegrationTest {
     }
 
     @Test
-    void AI200_후_재고_거절은_사용자와_BE_안내를_저장한다() {
-        when(ai.chat(any(), anyLong(), anyLong(), any())).thenReturn(checkoutShop(ISBN, 5, new AgentCheckout(null, BigDecimal.ZERO)));
-        final ChatResponseSnapshot response = chats.send(command("stock", "1번 5권 담아줘"));
+    void AI_변경_목록에_재고가_부족한_상품이_있으면_모두_미적용하고_BE_안내를_저장한다() {
+        final long productId = userId + 10_000L;
+        final String isbn = "9788900000035";
+        jdbc.update("INSERT INTO books (id,isbn13,title,author,publisher,category,published_at) "
+            + "VALUES (?,?,'새 책','작가','출판사','소설','2026-01-01')", productId, isbn);
+        jdbc.update("INSERT INTO products (id,book_id,name,sale_price,discounted_price,cost_price,stock_quantity) "
+            + "VALUES (?,?,'새 상품',45000,40000,30000,5)", productId, productId);
+        jdbc.update("INSERT INTO product_inventory (product_id, on_hand_quantity) VALUES (?,?)", productId, 5);
+
+        when(ai.chat(any(), anyLong(), anyLong(), any())).thenReturn(new AgentDecision("shop", "두 상품을 담았어요", null,
+            List.of(new AgentAction("set", isbn, 1), new AgentAction("set", ISBN, 5)), null,
+            List.of(new AgentButton("주문 화면", "navigate", AgentButton.CHECKOUT_TARGET, null)),
+            new AgentCheckout(null, BigDecimal.ZERO)));
+
+        final ChatResponseSnapshot response = chats.send(command("stock", "새 책 1권이랑 1번 5권 담아줘"));
         assertThat(response.execution().status()).isEqualTo("rejected");
         assertThat(response.reply()).isEqualTo(ErrorCode.INSUFFICIENT_PRODUCT_STOCK.message());
         assertThat(response.agentButtons()).isEmpty();

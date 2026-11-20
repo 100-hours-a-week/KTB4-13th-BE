@@ -3,6 +3,7 @@ package com.book.core.book.infrastructure.client;
 import com.book.common.notification.NotificationSender;
 import com.book.core.book.application.port.NewBookImportNotifier;
 import com.book.core.book.application.result.NewBookImportReport;
+import com.book.core.book.infrastructure.observability.NewBookImportMetrics;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -10,9 +11,11 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 class NewBookImportNotifierAdapter implements NewBookImportNotifier {
     private final NotificationSender sender;
+    private final NewBookImportMetrics metrics;
 
     @Override
     public void send(final NewBookImportReport report) {
+        metrics.recordRun(report);
         final String summary = """
             신간 도서 등록 배치가 %s.
             runId=%s

@@ -7,6 +7,8 @@ import static org.mockito.Mockito.verify;
 import com.book.common.notification.NotificationSender;
 import com.book.core.book.application.result.NewBookImportOutcome;
 import com.book.core.book.application.result.NewBookImportReport;
+import com.book.core.book.infrastructure.observability.NewBookImportMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,7 +25,8 @@ class NewBookImportNotifierAdapterTest {
         final var runId = UUID.randomUUID();
         final var report = new NewBookImportReport(runId, 1234L, 5, 3, Map.of(NewBookImportOutcome.REGISTERED, 2), failureReason);
 
-        new NewBookImportNotifierAdapter(sender).send(report);
+        final var registry = new SimpleMeterRegistry();
+        new NewBookImportNotifierAdapter(sender, new NewBookImportMetrics(registry, 500)).send(report);
 
         final var message = ArgumentCaptor.forClass(String.class);
         verify(sender).send(message.capture());
@@ -33,5 +36,11 @@ class NewBookImportNotifierAdapterTest {
         } else {
             assertThat(message.getValue()).contains("실패했습니다", "실패 사유: 저장 오류");
         }
+        final String result = failureReason == null ? "completed" : "failed";
+        assertThat(registry.get("book.new_import.runs").tag("result", result).counter().count()).isEqualTo(1);
+        assertThat(registry.get("book.new_import.outcomes").tag("outcome", "REGISTERED").counter().count()).isEqualTo(2);
+        assertThat(registry.get("book.new_import.candidates").counter().count()).isEqualTo(5);
+        assertThat(registry.get("book.new_import.detail.calls").counter().count()).isEqualTo(3);
+        assertThat(registry.get("book.new_import.duration").tag("result", result).timer().count()).isEqualTo(1);
     }
 }

@@ -10,6 +10,7 @@ import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.port.NewBookCollectorFailureReason;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.result.NewBookCandidate;
+import com.book.core.book.infrastructure.observability.NewBookImportMetrics;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -31,6 +32,8 @@ class NewBookCollectorAdapterTest {
     private NationalLibraryClient nationalLibrary;
     @Mock
     private JeongboNaruClient jeongboNaru;
+    @Mock
+    private NewBookImportMetrics metrics;
     @InjectMocks
     private NewBookCollectorAdapter collector;
 

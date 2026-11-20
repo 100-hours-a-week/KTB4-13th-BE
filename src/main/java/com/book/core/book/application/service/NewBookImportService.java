@@ -4,7 +4,9 @@ import com.book.core.book.application.port.BookCatalogException;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
 import com.book.core.book.application.port.NewBookImportLock;
 import com.book.core.book.application.port.NewBookImportNotifier;
+import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.application.result.NewBookDetailFound;
+import com.book.core.book.application.result.NewBookDetailLookup;
 import com.book.core.book.application.result.NewBookImportOutcome;
 import com.book.core.book.application.result.NewBookImportReport;
 import com.book.core.book.application.usecase.CollectNewBookIsbnsUseCase;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class NewBookImportService {
+    private static final int MAX_CONSECUTIVE_LOOKUP_FAILURES = 5;
     private final NewBookImportLock batchLock;
     private final CollectNewBookIsbnsUseCase collection;
     private final FindNewBookDetailUseCase findNewBookDetail;
@@ -38,7 +41,7 @@ public class NewBookImportService {
             }
         } catch (final RuntimeException exception) {
             if (exception instanceof BookCatalogException catalogException) {
-                run.failureReason = catalogException.reason().description();
+                run.failureReason = catalogException.summary();
             } else {
                 run.failureReason = exception.getClass().getSimpleName();
             }
@@ -64,12 +67,23 @@ public class NewBookImportService {
         MDC.put("runId", run.runId.toString());
         try {
             log.info("[BOOK] 신간 도서 등록 배치를 시작합니다. runId={}", run.runId);
-            final var candidateIsbns = collection.collect(today);
-            run.candidateCount = candidateIsbns.size();
-            for (final String isbn13 : candidateIsbns) {
-                final NewBookImportOutcome outcome = importBook(isbn13, run);
+            final var candidates = collection.collect(today);
+            run.candidateCount = candidates.size();
+            int consecutiveFailures = 0;
+            for (final NewBookCandidate candidate : candidates) {
+                final NewBookImportOutcome outcome = importBook(candidate, today, run);
                 run.outcomes.merge(outcome, 1, Integer::sum);
                 if (outcome == NewBookImportOutcome.BUDGET_EXHAUSTED || outcome == NewBookImportOutcome.RATE_LIMITED) {
+                    break;
+                }
+                if (outcome == NewBookImportOutcome.LOOKUP_FAILED) {
+                    consecutiveFailures++;
+                } else if (outcome != NewBookImportOutcome.ALREADY_REGISTERED && outcome != NewBookImportOutcome.WAITING_RETRY) {
+                    consecutiveFailures = 0;
+                }
+                if (consecutiveFailures >= MAX_CONSECUTIVE_LOOKUP_FAILURES) {
+                    // 외부 장애가 이어지면 남은 호출 한도를 아끼기 위해 중단합니다.
+                    run.failureReason = "외부 API 상세 조회가 연속 %d회 실패해 중단했습니다.".formatted(consecutiveFailures);
                     break;
                 }
             }
@@ -98,11 +112,20 @@ public class NewBookImportService {
         }
     }
 
-    private NewBookImportOutcome importBook(final String isbn13, final NewBookImportRun run) {
+    private NewBookImportOutcome importBook(final NewBookCandidate candidate, final LocalDate today, final NewBookImportRun run) {
+        final String isbn13 = candidate.isbn13();
         final long startedAt = System.nanoTime();
-        return switch (findNewBookDetail.findDetail(isbn13)) {
+        final NewBookDetailLookup lookup;
+        try {
+            lookup = findNewBookDetail.findDetail(isbn13, today);
+        } catch (final BookCatalogException exception) {
+            run.detailCallCount++;
+            throw exception;
+        }
+        return switch (lookup) {
             case NewBookImportOutcome outcome -> {
-                if (outcome != NewBookImportOutcome.ALREADY_REGISTERED && outcome != NewBookImportOutcome.BUDGET_EXHAUSTED) {
+                if (outcome != NewBookImportOutcome.ALREADY_REGISTERED && outcome != NewBookImportOutcome.WAITING_RETRY
+                    && outcome != NewBookImportOutcome.BUDGET_EXHAUSTED) {
                     run.detailCallCount++;
                     logDetailElapsed(isbn13, startedAt);
                 }
@@ -110,14 +133,15 @@ public class NewBookImportService {
             }
             case NewBookDetailFound found -> {
                 run.detailCallCount++;
-                yield registerBook(isbn13, found, startedAt);
+                yield registerBook(candidate, found, startedAt);
             }
         };
     }
 
-    private NewBookImportOutcome registerBook(final String isbn13, final NewBookDetailFound found, final long startedAt) {
+    private NewBookImportOutcome registerBook(final NewBookCandidate candidate, final NewBookDetailFound found, final long startedAt) {
+        final String isbn13 = candidate.isbn13();
         try {
-            if (registration.register(isbn13, found.detail())) {
+            if (registration.register(candidate, found.detail())) {
                 return NewBookImportOutcome.REGISTERED;
             }
             return NewBookImportOutcome.ALREADY_REGISTERED_AFTER_LOOKUP;

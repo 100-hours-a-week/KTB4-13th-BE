@@ -3,9 +3,11 @@ package com.book.core.book.infrastructure.client;
 import com.book.core.book.application.port.BookCatalogException;
 import com.book.core.book.application.port.BookCatalogFailureReason;
 import com.book.core.book.application.port.NewBookIsbnFinder;
+import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.application.result.NewBookIsbnPage;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,10 @@ class NationalLibraryClient implements NewBookIsbnFinder {
                 .build(properties.nationalLibraryKey(), "종이책"));
         try {
             final JsonNode response = mapper.readTree(body);
+            if ("ERROR".equals(text(response, "RESULT"))) {
+                // 국립중앙도서관은 인증 오류 등을 HTTP 200의 RESULT=ERROR, ERR_CODE로 응답합니다. 예: ERR_CODE=011
+                throw new BookCatalogException(BookCatalogFailureReason.REJECTED, text(response, "ERR_CODE"));
+            }
             final String total = text(response, "TOTAL_COUNT");
             if (total == null) {
                 throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
@@ -49,11 +55,35 @@ class NationalLibraryClient implements NewBookIsbnFinder {
             if (noDocs) {
                 return new NewBookIsbnPage(List.of(), false);
             }
-            final List<String> isbns = docs.valueStream().map((final var document) -> text(document, "EA_ISBN"))
+            final List<NewBookCandidate> candidates = docs.valueStream().map(NationalLibraryClient::toCandidate)
                 .filter(Objects::nonNull).toList();
-            return new NewBookIsbnPage(isbns, (long) pageNumber * PAGE_SIZE < totalCount);
+            return new NewBookIsbnPage(candidates, (long) pageNumber * PAGE_SIZE < totalCount);
         } catch (final JacksonException | IllegalArgumentException exception) {
             throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
+        }
+    }
+
+    private static NewBookCandidate toCandidate(final JsonNode document) {
+        final String isbn13 = text(document, "EA_ISBN");
+        // 정보나루 상세는 출판 연도만 주므로 국중도의 실제 출간일, 없으면 출간 예정일을 사용합니다.
+        LocalDate publishedAt = date(text(document, "REAL_PUBLISH_DATE"));
+        if (publishedAt == null) {
+            publishedAt = date(text(document, "PUBLISH_PREDATE"));
+        }
+        if (isbn13 == null || publishedAt == null) {
+            return null;
+        }
+        return new NewBookCandidate(isbn13, publishedAt);
+    }
+
+    private static LocalDate date(final String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.strip(), DateTimeFormatter.BASIC_ISO_DATE);
+        } catch (final DateTimeParseException exception) {
+            return null;
         }
     }
 

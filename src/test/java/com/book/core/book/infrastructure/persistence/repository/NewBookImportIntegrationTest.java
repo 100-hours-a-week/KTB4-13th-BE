@@ -1,5 +1,6 @@
 package com.book.core.book.infrastructure.persistence.repository;
 
+import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.application.result.NewBookIsbnPage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.book.core.book.application.port.BookRepositoryPort;
 import com.book.core.book.application.port.BookDetailFinder;
 import com.book.core.book.application.port.NewBookIsbnFinder;
+import com.book.core.book.application.port.NewBookLookupBackoff;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.service.NewBookImportService;
 import java.time.LocalDate;
@@ -43,7 +45,8 @@ class NewBookImportIntegrationTest {
     private static final String ISBN_A = "9788983921987";
     private static final String ISBN_B = "9788972756194";
     private static final LocalDate TODAY = LocalDate.of(2026, 11, 12);
-    private static final BookDetail DETAIL = new BookDetail("신간", "저자", null, "출판사", "800", TODAY.minusDays(1), null);
+    private static final BookDetail DETAIL = new BookDetail("신간", "저자", null, "출판사", "800", null);
+    private static final LocalDate PUBLISHED_AT_A = TODAY.minusDays(1);
 
     @Container
     @ServiceConnection
@@ -61,6 +64,8 @@ class NewBookImportIntegrationTest {
     private JdbcTemplate jdbc;
     @Autowired
     private TransactionTemplate transactions;
+    @Autowired
+    private NewBookLookupBackoff backoff;
 
     @MockitoBean
     private NewBookIsbnFinder isbnFinder;
@@ -71,7 +76,9 @@ class NewBookImportIntegrationTest {
     void resetCatalog() {
         jdbc.update("DELETE FROM books WHERE imported_isbn13 IN (?, ?)", ISBN_A, ISBN_B);
         jdbc.update("UPDATE book_detail_call_budget SET quota_day = NULL, calls = 0, next_call_at = NULL WHERE id = 1");
-        when(isbnFinder.findPaperBookIsbns(any(), any(), anyInt())).thenReturn(new NewBookIsbnPage(List.of(ISBN_A, ISBN_B), false));
+        jdbc.update("DELETE FROM new_book_lookup_backoff WHERE isbn13 IN (?, ?)", ISBN_A, ISBN_B);
+        when(isbnFinder.findPaperBookIsbns(any(), any(), anyInt())).thenReturn(new NewBookIsbnPage(
+            List.of(new NewBookCandidate(ISBN_A, PUBLISHED_AT_A), new NewBookCandidate(ISBN_B, TODAY.minusDays(2))), false));
     }
 
     @Test
@@ -103,7 +110,7 @@ class NewBookImportIntegrationTest {
     }
 
     @Test
-    void 다음_실행은_이미_저장된_도서를_건너뛰고_상세가_없었던_ISBN만_다시_조회한다() {
+    void 상세가_없었던_ISBN은_7일_동안_호출_한도를_쓰지_않고_건너뛴다() {
         when(detail.findBookDetail(ISBN_A)).thenReturn(Optional.empty(), Optional.of(DETAIL));
         when(detail.findBookDetail(ISBN_B)).thenReturn(Optional.of(DETAIL));
 
@@ -111,10 +118,28 @@ class NewBookImportIntegrationTest {
         assertThat(books.existsByIsbn13(ISBN_A)).isFalse();
         assertThat(books.existsByIsbn13(ISBN_B)).isTrue();
 
-        imports.importNewBooks(TODAY.plusDays(1));
+        imports.importNewBooks(TODAY.plusDays(6));
+        verify(detail).findBookDetail(ISBN_A);
+        assertThat(books.existsByIsbn13(ISBN_A)).isFalse();
+
+        imports.importNewBooks(TODAY.plusDays(7));
         assertThat(books.existsByIsbn13(ISBN_A)).isTrue();
         verify(detail, times(2)).findBookDetail(ISBN_A);
         verify(detail).findBookDetail(ISBN_B);
+    }
+
+    @Test
+    void 일시_오류가_반복되면_재시도_간격을_1일_2일_4일로_늘린다() {
+        backoff.deferAfterFailure(ISBN_A, TODAY);
+        assertThat(retryOn()).isEqualTo(TODAY.plusDays(1));
+        backoff.deferAfterFailure(ISBN_A, TODAY);
+        assertThat(retryOn()).isEqualTo(TODAY.plusDays(2));
+        backoff.deferAfterFailure(ISBN_A, TODAY);
+        assertThat(retryOn()).isEqualTo(TODAY.plusDays(4));
+        backoff.deferAfterFailure(ISBN_A, TODAY);
+        assertThat(retryOn()).isEqualTo(TODAY.plusDays(4));
+        assertThat(backoff.isWaiting(ISBN_A, TODAY.plusDays(3))).isTrue();
+        assertThat(backoff.isWaiting(ISBN_A, TODAY.plusDays(4))).isFalse();
     }
 
     @Test
@@ -125,5 +150,11 @@ class NewBookImportIntegrationTest {
 
         verify(detail).findBookDetail(ISBN_A);
         verify(detail).findBookDetail(ISBN_B);
+        assertThat(jdbc.queryForObject("SELECT published_at FROM books WHERE imported_isbn13 = ?", LocalDate.class, ISBN_A))
+            .isEqualTo(PUBLISHED_AT_A);
+    }
+
+    private LocalDate retryOn() {
+        return jdbc.queryForObject("SELECT retry_on FROM new_book_lookup_backoff WHERE isbn13 = ?", LocalDate.class, ISBN_A);
     }
 }

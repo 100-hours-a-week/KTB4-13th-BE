@@ -29,6 +29,7 @@ class NewBookImportScheduler {
         return Executors.newSingleThreadScheduledExecutor();
     }
 
+    // NOTE: 기본 실행 시각 16:00은 운영 확인용입니다. 확인이 끝나면 API 사용이 적은 새벽 시간으로 바꿔야 합니다.
     @Scheduled(cron = "${app.new-book.collection-cron:0 0 16 * * *}", zone = "Asia/Seoul", scheduler = "newBookImportExecutor")
     void importNewBooks() {
         imports.importNewBooks(LocalDate.now(ZoneId.of("Asia/Seoul")));

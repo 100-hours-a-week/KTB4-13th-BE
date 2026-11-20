@@ -1,0 +1,31 @@
+local.file_match "book" {
+  path_targets = [{"__path__" = "/var/log/new-book-import/*.log", "job" = "book"}]
+}
+
+loki.source.file "book" {
+  targets    = local.file_match.book.targets
+  forward_to = [loki.process.book.receiver]
+}
+
+loki.process "book" {
+  stage.json {
+    expressions = {level = "level", logger = "logger_name", run_id = "runId"}
+  }
+
+  stage.regex {
+    source     = "filename"
+    expression = "(?P<instance_name>[^/]+)\\.log$"
+  }
+
+  stage.labels {
+    values = {level = "", instance_name = ""}
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

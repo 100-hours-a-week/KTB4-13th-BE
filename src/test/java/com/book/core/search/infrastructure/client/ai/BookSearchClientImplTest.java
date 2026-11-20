@@ -33,6 +33,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.slf4j.MDC;
@@ -151,6 +152,7 @@ class BookSearchClientImplTest {
     }
 
     @Test
+    @Tag("integration")
     @Timeout(10)
     void AI가_응답을_보내지_않으면_기본_읽기_제한에서_검색을_종료한다() throws Exception {
         final HttpServer slowAi = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -173,7 +175,8 @@ class BookSearchClientImplTest {
                 .isInstanceOfSatisfying(CoreException.class,
                     exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.AI_SEARCH_TIMEOUT))
                 .hasRootCauseInstanceOf(SocketTimeoutException.class);
-            assertThat(Duration.ofNanos(System.nanoTime() - startedAt)).isGreaterThanOrEqualTo(Duration.ofSeconds(5));
+            assertThat(Duration.ofNanos(System.nanoTime() - startedAt)).isGreaterThanOrEqualTo(Duration.ofSeconds(5))
+                .isLessThan(Duration.ofSeconds(6));
         } finally {
             releaseResponse.countDown();
             slowAi.stop(0);

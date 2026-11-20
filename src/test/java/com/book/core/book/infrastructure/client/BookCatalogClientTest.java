@@ -103,6 +103,15 @@ class BookCatalogClientTest {
     }
 
     @Test
+    void 정보나루에_없는_ISBN_응답은_상세_없음으로_본다() {
+        respond("/api/srchDtlList", 200, """
+            {"response":{"errCode":"isbnMpngErr","error":"ISBN에 해당하는 도서가 없습니다."}}
+            """);
+        final var client = new Data4LibraryClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
+        assertThat(client.findBookDetail(ISBN)).isEmpty();
+    }
+
+    @Test
     void 국중도_오류_응답은_요청_거부로_분류한다() {
         respond("/seoji/SearchApi.do", 200, """
             {"RESULT":"ERROR","ERR_CODE":"011","ERR_MESSAGE":"유효하지 않은 인증키 값입니다."}

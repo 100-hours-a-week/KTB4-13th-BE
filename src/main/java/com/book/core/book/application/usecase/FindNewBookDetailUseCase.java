@@ -5,7 +5,7 @@ import com.book.core.book.application.port.BookCatalogException;
 import com.book.core.book.application.port.BookCatalogFailureReason;
 import com.book.core.book.application.port.BookDetailCallBudget;
 import com.book.core.book.application.port.BookRepositoryPort;
-import com.book.core.book.application.port.DataForLibraryBookDetailClient;
+import com.book.core.book.application.port.BookDetailFinder;
 import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookDetailLookup;
 import com.book.core.book.application.result.NewBookImportOutcome;
@@ -15,9 +15,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @UseCase
 @RequiredArgsConstructor
-public class ImportNewBookDetailUseCase {
+public class FindNewBookDetailUseCase {
     private final BookRepositoryPort books;
-    private final DataForLibraryBookDetailClient client;
+    private final BookDetailFinder detailFinder;
     private final BookDetailCallBudget budget;
 
     public NewBookDetailLookup findDetail(final String isbn13) {
@@ -29,7 +29,7 @@ public class ImportNewBookDetailUseCase {
         }
 
         try {
-            final var detail = client.findBookDetail(isbn13);
+            final var detail = detailFinder.findBookDetail(isbn13);
             if (detail.isEmpty()) {
                 return NewBookImportOutcome.MISSING_DETAIL;
             }

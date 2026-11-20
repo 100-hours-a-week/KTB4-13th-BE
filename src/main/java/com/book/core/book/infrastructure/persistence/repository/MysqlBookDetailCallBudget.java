@@ -6,12 +6,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
-class BookDetailCallBudgetAdapter implements BookDetailCallBudget {
+class MysqlBookDetailCallBudget implements BookDetailCallBudget {
     private static final String QUOTA_DAY = "DATE(UTC_TIMESTAMP() + INTERVAL 9 HOUR)";
     private final JdbcTemplate jdbc;
     private final int dailyLimit;
 
-    BookDetailCallBudgetAdapter(final JdbcTemplate jdbc, @Value("${app.new-book.detail-daily-limit:500}") final int dailyLimit) {
+    MysqlBookDetailCallBudget(final JdbcTemplate jdbc, @Value("${app.new-book.detail-daily-limit:500}") final int dailyLimit) {
         if (dailyLimit < 1 || dailyLimit > 30000) {
             throw new IllegalArgumentException("Book detail daily limit must be between 1 and 30000");
         }

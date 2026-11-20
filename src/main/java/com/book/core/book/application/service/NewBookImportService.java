@@ -72,14 +72,14 @@ public class NewBookImportService {
             run.candidateCount = candidates.size();
             int consecutiveFailures = 0;
             for (final NewBookCandidate candidate : candidates) {
-                final NewBookImportOutcome outcome = importBook(candidate, today, run);
+                final NewBookImportOutcome outcome = importBook(candidate, run);
                 run.outcomes.merge(outcome, 1, Integer::sum);
                 if (outcome == NewBookImportOutcome.BUDGET_EXHAUSTED || outcome == NewBookImportOutcome.RATE_LIMITED) {
                     break;
                 }
                 if (outcome == NewBookImportOutcome.LOOKUP_FAILED) {
                     consecutiveFailures++;
-                } else if (outcome != NewBookImportOutcome.ALREADY_REGISTERED && outcome != NewBookImportOutcome.WAITING_RETRY) {
+                } else if (outcome != NewBookImportOutcome.ALREADY_REGISTERED) {
                     consecutiveFailures = 0;
                 }
                 if (consecutiveFailures >= MAX_CONSECUTIVE_LOOKUP_FAILURES) {
@@ -112,19 +112,19 @@ public class NewBookImportService {
         }
     }
 
-    private NewBookImportOutcome importBook(final NewBookCandidate candidate, final LocalDate today, final NewBookImportRun run) {
+    private NewBookImportOutcome importBook(final NewBookCandidate candidate, final NewBookImportRun run) {
         final String isbn13 = candidate.isbn13();
         final long startedAt = System.nanoTime();
         final NewBookDetailLookup lookup;
         try {
-            lookup = findNewBookDetail.findDetail(isbn13, today);
+            lookup = findNewBookDetail.findDetail(isbn13);
         } catch (final NewBookCollectorException exception) {
             run.detailCallCount++;
             throw exception;
         }
         return switch (lookup) {
             case NewBookImportOutcome outcome -> {
-                if (outcome != NewBookImportOutcome.ALREADY_REGISTERED && outcome != NewBookImportOutcome.WAITING_RETRY
+                if (outcome != NewBookImportOutcome.ALREADY_REGISTERED
                     && outcome != NewBookImportOutcome.BUDGET_EXHAUSTED) {
                     run.detailCallCount++;
                     logDetailElapsed(isbn13, startedAt);

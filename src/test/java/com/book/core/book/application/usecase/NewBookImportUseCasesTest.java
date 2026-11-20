@@ -25,7 +25,6 @@ import com.book.core.book.application.port.DuplicateImportedIsbnException;
 import com.book.core.book.application.port.NewBookCollector;
 import com.book.core.book.application.port.NewBookImportLock;
 import com.book.core.book.application.port.NewBookImportNotifier;
-import com.book.core.book.application.port.NewBookLookupBackoff;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.application.result.NewBookDetailFound;
@@ -68,8 +67,6 @@ class NewBookImportUseCasesTest {
     private NewBookDetailCallBudget budget;
     @Mock
     private RegisterNewBookUseCase registration;
-    @Mock
-    private NewBookLookupBackoff backoff;
 
     @Test
     void 락을_획득하지_못하면_두_API_모두_호출하지_않는다() {
@@ -94,11 +91,11 @@ class NewBookImportUseCasesTest {
             return true;
         }).when(lock).runIfAcquired(any());
         when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
-        when(details.findDetail(ISBN, TODAY)).thenReturn(NewBookImportOutcome.RATE_LIMITED);
+        when(details.findDetail(ISBN)).thenReturn(NewBookImportOutcome.RATE_LIMITED);
 
         new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY);
 
-        verify(details).findDetail(ISBN, TODAY);
+        verify(details).findDetail(ISBN);
         verifyNoMoreInteractions(details);
     }
 
@@ -106,13 +103,13 @@ class NewBookImportUseCasesTest {
     void 이미_등록된_도서는_호출하지_않는다() {
         when(books.existsByIsbn13(ISBN)).thenReturn(true);
 
-        assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.ALREADY_REGISTERED);
+        assertThat(importer().findDetail(ISBN)).isEqualTo(NewBookImportOutcome.ALREADY_REGISTERED);
         verifyNoInteractions(budget, collector, registration);
     }
 
     @Test
     void 예산이_없으면_상세_조회하지_않는다() {
-        assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.BUDGET_EXHAUSTED);
+        assertThat(importer().findDetail(ISBN)).isEqualTo(NewBookImportOutcome.BUDGET_EXHAUSTED);
         verifyNoInteractions(collector, registration);
     }
 
@@ -121,46 +118,33 @@ class NewBookImportUseCasesTest {
         when(budget.tryAcquire()).thenReturn(true);
         when(collector.findDetail(ISBN)).thenReturn(Optional.empty());
 
-        assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.MISSING_DETAIL);
-        verify(backoff).deferMissingDetail(ISBN, TODAY);
+        assertThat(importer().findDetail(ISBN)).isEqualTo(NewBookImportOutcome.MISSING_DETAIL);
         verifyNoInteractions(registration);
     }
 
     @Test
-    void 정보나루_호출_제한을_공유_예산에_반영한다() {
+    void 정보나루_호출_제한이면_RATE_LIMITED로_멈춘다() {
         when(budget.tryAcquire()).thenReturn(true);
         when(collector.findDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.RATE_LIMIT));
 
-        assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.RATE_LIMITED);
-        verify(budget).pauseAfterRateLimit();
+        assertThat(importer().findDetail(ISBN)).isEqualTo(NewBookImportOutcome.RATE_LIMITED);
         verifyNoInteractions(registration);
     }
 
     @Test
-    void 재시도_날짜_전이면_예산을_쓰지_않고_건너뛴다() {
-        when(backoff.isWaiting(ISBN, TODAY)).thenReturn(true);
-
-        assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.WAITING_RETRY);
-        verifyNoInteractions(budget, collector);
-    }
-
-    @Test
-    void 일시_오류는_ISBN_재시도를_미룬다() {
+    void 일시_오류는_LOOKUP_FAILED로_집계한다() {
         when(budget.tryAcquire()).thenReturn(true);
         when(collector.findDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY));
 
-        assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.LOOKUP_FAILED);
-        verify(backoff).deferAfterFailure(ISBN, TODAY);
+        assertThat(importer().findDetail(ISBN)).isEqualTo(NewBookImportOutcome.LOOKUP_FAILED);
     }
 
     @Test
-    void 요청_거부는_ISBN을_미루지_않는다() {
+    void 요청_거부는_예외를_다시_던진다() {
         when(budget.tryAcquire()).thenReturn(true);
         when(collector.findDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED));
 
-        assertThatThrownBy(() -> importer().findDetail(ISBN, TODAY)).isInstanceOf(NewBookCollectorException.class);
-        verify(backoff).isWaiting(ISBN, TODAY);
-        verifyNoMoreInteractions(backoff);
+        assertThatThrownBy(() -> importer().findDetail(ISBN)).isInstanceOf(NewBookCollectorException.class);
     }
 
     @Test
@@ -170,11 +154,11 @@ class NewBookImportUseCasesTest {
             return true;
         }).when(lock).runIfAcquired(any());
         when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
-        when(details.findDetail(ISBN, TODAY)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED, "authErr"));
+        when(details.findDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED, "authErr"));
 
         assertThatThrownBy(() -> new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY))
             .isInstanceOf(NewBookCollectorException.class);
-        verify(details).findDetail(ISBN, TODAY);
+        verify(details).findDetail(ISBN);
         verifyNoMoreInteractions(details);
         verify(notifier).send(argThat((final var report) -> report.failureReason().contains("authErr") && report.detailCallCount() == 1));
     }
@@ -183,7 +167,7 @@ class NewBookImportUseCasesTest {
     void 일시_오류가_연속_5회면_중단한다() {
         runBatchWith(NewBookImportOutcome.LOOKUP_FAILED, 7);
 
-        verify(details, times(5)).findDetail(any(), any());
+        verify(details, times(5)).findDetail(any());
         verify(notifier).send(argThat(NewBookImportReport::failed));
     }
 
@@ -195,7 +179,7 @@ class NewBookImportUseCasesTest {
             return true;
         }).when(lock).runIfAcquired(any());
         when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
-        when(details.findDetail(any(), any())).thenReturn(new NewBookDetailFound(detail));
+        when(details.findDetail(any())).thenReturn(new NewBookDetailFound(detail));
         when(registration.register(CANDIDATE, detail)).thenThrow(new DuplicateImportedIsbnException(new RuntimeException()));
         when(registration.register(OTHER_CANDIDATE, detail)).thenThrow(new DataIntegrityViolationException("other constraint"));
         final var logger = (Logger) LoggerFactory.getLogger(NewBookImportService.class);
@@ -210,9 +194,9 @@ class NewBookImportUseCasesTest {
         }
 
         final var order = inOrder(details, registration);
-        order.verify(details).findDetail(ISBN, TODAY);
+        order.verify(details).findDetail(ISBN);
         order.verify(registration).register(CANDIDATE, detail);
-        order.verify(details).findDetail(OTHER_ISBN, TODAY);
+        order.verify(details).findDetail(OTHER_ISBN);
         order.verify(registration).register(OTHER_CANDIDATE, detail);
         assertThat(appender.list).extracting(ILoggingEvent::getFormattedMessage).anySatisfy(
             (final var message) -> assertThat(message).contains("outcomes={ALREADY_REGISTERED_AFTER_LOOKUP=1, STORAGE_REJECTED=1}"));
@@ -226,7 +210,7 @@ class NewBookImportUseCasesTest {
             return true;
         }).when(lock).runIfAcquired(any());
         when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
-        when(details.findDetail(any(), any())).thenReturn(new NewBookDetailFound(detail));
+        when(details.findDetail(any())).thenReturn(new NewBookDetailFound(detail));
         when(registration.register(CANDIDATE, detail)).thenThrow(new CoreException(ErrorCode.INVALID_REQUEST));
         when(registration.register(OTHER_CANDIDATE, detail)).thenReturn(true);
 
@@ -245,12 +229,12 @@ class NewBookImportUseCasesTest {
             .mapToObj((final var index) -> index == 0 ? ISBN : "97889839219" + String.format("%02d", index))
             .map((final var isbn) -> new NewBookCandidate(isbn, TODAY.minusDays(1))).toList();
         when(collection.collect(TODAY)).thenReturn(isbns);
-        when(details.findDetail(any(), any())).thenReturn(outcome);
+        when(details.findDetail(any())).thenReturn(outcome);
 
         new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY);
     }
 
     private FindNewBookDetailUseCase importer() {
-        return new FindNewBookDetailUseCase(books, collector, budget, backoff);
+        return new FindNewBookDetailUseCase(books, collector, budget);
     }
 }

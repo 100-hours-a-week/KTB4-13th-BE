@@ -10,11 +10,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.resilience.annotation.EnableResilientMethods;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 @Configuration(proxyBeanMethods = false)
+@EnableResilientMethods(proxyTargetClass = true)
 @EnableConfigurationProperties(NewBookCollectorProperties.class)
 class NewBookCollectorClientConfiguration {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);

@@ -39,7 +39,7 @@ class SearchProductConsistencyIntegrationTest {
     private GetRecommendationProductsUseCase products;
 
     @Test
-    void 검색_응답의_가격은_AI_값을_유지하고_재고는_BE_상품을_기준으로_반환한다() throws Exception {
+    void 검색_응답의_가격과_재고는_BE_상품을_기준으로_반환한다() throws Exception {
         insertProduct(1523701L, 1523711L, "9788900237001", 0);
         insertProduct(1523702L, 1523712L, "9788900237018", 3);
 
@@ -63,10 +63,10 @@ class SearchProductConsistencyIntegrationTest {
 
         mvc.perform(get("/api/v1/search").param("query", "도서")).andExpect(status().isOk())
             .andExpect(jsonPath("$.data.items[0].productId").value(1523711))
-            .andExpect(jsonPath("$.data.items[0].price").value(13500))
+            .andExpect(jsonPath("$.data.items[0].price").value(18000))
             .andExpect(jsonPath("$.data.items[0].inStock").value(false))
             .andExpect(jsonPath("$.data.items[1].productId").value(1523712))
-            .andExpect(jsonPath("$.data.items[1].price").value(16000))
+            .andExpect(jsonPath("$.data.items[1].price").value(18000))
             .andExpect(jsonPath("$.data.items[1].inStock").value(true))
             .andExpect(jsonPath("$.data.nextCursor").value("next-page"));
         server.verify();

@@ -42,7 +42,7 @@ class SearchBooksUseCaseTest {
     }
 
     @Test
-    void 각_검색_결과에_도서의_활성_상품_productId를_한_번에_조회해_채우고_AI_검색_값을_보존한다() {
+    void 활성_상품을_한_번에_조회해_상품_ID와_할인_판매가와_재고를_반환한다() {
         productRepository.productsByBookId.put(2077L, product(501L, 2077L, 10));
         productRepository.productsByBookId.put(3310L, product(502L, 3310L, 0));
         bookSearchClient.result =
@@ -50,8 +50,9 @@ class SearchBooksUseCaseTest {
 
         final SearchBooksResult result = useCase.execute(command());
 
-        assertThat(result.items()).containsExactly(itemResult(2077L, 501L, "여행의 이유"), new SearchBookItemResult(3310L, "9788900000011", 502L,
-            "아무튼, 산", "작가", "출판사", new BigDecimal("13500"), false, "https://example.com/3310.jpg"));
+        assertThat(result.items()).containsExactly(itemResult(2077L, 501L, "여행의 이유", "18000.00"),
+            new SearchBookItemResult(3310L, "9788900000011", 502L, "아무튼, 산", "작가", "출판사", new BigDecimal("18000.00"), false,
+                "https://example.com/3310.jpg"));
         assertThat(result.nextCursor()).isEqualTo("next-page");
         assertThat(result.fallbackMessage()).isNull();
         assertThat(result.degraded()).isEqualTo("keyword-only");
@@ -59,14 +60,15 @@ class SearchBooksUseCaseTest {
     }
 
     @Test
-    void 활성_상품이_없는_도서의_검색_결과는_productId를_null로_반환한다() {
+    void 활성_상품이_없는_도서는_상품_ID_없이_AI_가격을_반환한다() {
         productRepository.productsByBookId.put(2077L, product(501L, 2077L, 10));
         bookSearchClient.result =
             new BookSearchResult(List.of(searchItem(2077L, "여행의 이유"), searchItem(4400L, "상품 없는 책")), null, null, null);
 
         final SearchBooksResult result = useCase.execute(command());
 
-        assertThat(result.items()).containsExactly(itemResult(2077L, 501L, "여행의 이유"), itemResult(4400L, null, "상품 없는 책"));
+        assertThat(result.items()).containsExactly(itemResult(2077L, 501L, "여행의 이유", "18000.00"),
+            itemResult(4400L, null, "상품 없는 책", "13500"));
     }
 
     @Test
@@ -90,8 +92,8 @@ class SearchBooksUseCaseTest {
             "https://example.com/" + bookId + ".jpg");
     }
 
-    private static SearchBookItemResult itemResult(final long bookId, final Long productId, final String title) {
-        return new SearchBookItemResult(bookId, "9788900000011", productId, title, "작가", "출판사", new BigDecimal("13500"), productId != null,
+    private static SearchBookItemResult itemResult(final long bookId, final Long productId, final String title, final String price) {
+        return new SearchBookItemResult(bookId, "9788900000011", productId, title, "작가", "출판사", new BigDecimal(price), productId != null,
             "https://example.com/" + bookId + ".jpg");
     }
 

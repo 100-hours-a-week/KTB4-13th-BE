@@ -13,18 +13,25 @@ import com.book.core.cancel.domain.CancelBalance;
 import com.book.core.cancel.domain.PartialCancelAction;
 import com.book.core.coupon.application.port.OwnedCouponRepositoryPort;
 import com.book.core.coupon.domain.OwnedCoupon;
+import com.book.core.coupon.domain.enums.CouponType;
 import com.book.core.coupon.domain.enums.OwnedCouponStatus;
 import com.book.core.onboarding.application.port.ProfileHistoryRepositoryPort;
 import com.book.core.order.application.port.OrderRepositoryPort;
 import com.book.core.order.domain.Order;
 import com.book.core.order.domain.OrderStatus;
 import com.book.core.payment.application.port.PaymentRepositoryPort;
+import com.book.core.payment.application.result.ApprovedPaymentResult;
+import com.book.core.payment.application.usecase.CompletePaymentUseCase;
+import com.book.core.payment.application.usecase.CreatePaymentUseCase;
 import com.book.core.payment.domain.Payment;
+import com.book.core.payment.domain.PaymentCoupon;
+import com.book.core.payment.domain.PaymentDiscount;
 import com.book.core.payment.domain.enums.PaymentMethod;
 import com.book.core.payment.domain.enums.PaymentState;
 import com.book.core.point.application.port.PointBalanceRepositoryPort;
 import com.book.core.point.domain.PointBalance;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -47,6 +54,10 @@ class CancelIntegrationTest {
     private OrderRepositoryPort orders;
     @Autowired
     private PaymentRepositoryPort payments;
+    @Autowired
+    private CreatePaymentUseCase createPayment;
+    @Autowired
+    private CompletePaymentUseCase completePayment;
     @Autowired
     private CancelBalanceRepositoryPort balances;
     @Autowired
@@ -131,6 +142,48 @@ class CancelIntegrationTest {
             new PartialCancelCommand(10003L, new PartialCancelAction(order.key(), itemId, 1L), UUID.randomUUID().toString()));
         assertThat(coupons.findByUserIdAndCouponId(10003L, 10003L).orElseThrow().usedCount()).isZero();
         assertThat(orders.findActiveOrderByKey(order.key()).orElseThrow().status()).isEqualTo(OrderStatus.PARTIAL_CANCELED);
+    }
+
+    @Test
+    void 정률_쿠폰의_실제_할인액을_결제와_부분취소에_사용한다() {
+        final long userId = 10009L;
+        final long productId = 1000000L + userId;
+        insertProduct(productId, 900000L + userId);
+        jdbc.update(
+            "INSERT INTO coupon (id, name, type, discount, max_use_count, min_order_amount, expired_at, created_at, updated_at, "
+                + "total_quantity, issued_quantity, starts_at) VALUES (?, '취소 테스트', 'PERCENT_RATE', 0.10, 1, 75000, "
+                + "TIMESTAMPADD(DAY, 7, CURRENT_TIMESTAMP), NOW(), NOW(), 100, 1, NOW())",
+            userId);
+        final Long ownedCouponId = coupons.save(new OwnedCoupon(userId, userId, OwnedCouponStatus.ISSUED, 1L, 0L)).id();
+        points.save(new PointBalance(null, userId, BigDecimal.ZERO));
+
+        final Order order = Order.create(userId, "test-cancel-" + UUID.randomUUID(), null);
+        order.addItem(productId, "책", "", "저자", BigDecimal.valueOf(20000), BigDecimal.valueOf(20000), 5);
+        orders.save(order);
+        final PaymentCoupon coupon = new PaymentCoupon(ownedCouponId, CouponType.PERCENT_RATE, new BigDecimal("0.10"),
+            BigDecimal.valueOf(75000));
+        createPayment.execute(order, userId, new PaymentDiscount(List.of(coupon), BigDecimal.ZERO, ownedCouponId, BigDecimal.ZERO));
+        final Payment payment = payments.findByOrderId(order.id()).orElseThrow();
+        assertThat(payment.couponDiscount()).isEqualByComparingTo("10000");
+        assertThat(payment.paidAmount()).isEqualByComparingTo("90000");
+
+        completePayment.execute(order.key(), new ApprovedPaymentResult("test-percent-pg", PaymentMethod.CARD, "test"));
+        assertThat(balances.findByOrderId(order.id()).orElseThrow().cancellableCouponAmount()).isEqualByComparingTo("10000");
+        assertThat(jdbc.queryForObject("select coupon_amount from transaction_history where order_id = ? and type = 'PAYMENT'",
+            BigDecimal.class, order.id())).isEqualByComparingTo("10000");
+
+        final Long itemId = itemId(order);
+        service.partialCancel(new PartialCancelCommand(userId, new PartialCancelAction(order.key(), itemId, 1L), "first"));
+        assertThat(balances.findByOrderId(order.id()).orElseThrow().cancellableCouponAmount()).isEqualByComparingTo("10000");
+        assertThat(coupons.findByUserIdAndCouponId(userId, userId).orElseThrow().status()).isEqualTo(OwnedCouponStatus.USED);
+
+        service.partialCancel(new PartialCancelCommand(userId, new PartialCancelAction(order.key(), itemId, 1L), "second"));
+        assertThat(balances.findByOrderId(order.id()).orElseThrow().cancellableCouponAmount()).isEqualByComparingTo("0");
+        assertThat(coupons.findByUserIdAndCouponId(userId, userId).orElseThrow().status()).isEqualTo(OwnedCouponStatus.ISSUED);
+        assertThat(jdbc.queryForObject("select canceled_coupon_amount from `cancel` where order_id = ? order by id desc limit 1",
+            BigDecimal.class, order.id())).isEqualByComparingTo("10000");
+        assertThat(jdbc.queryForObject("select paid_amount from transaction_history where order_id = ? order by id desc limit 1",
+            BigDecimal.class, order.id())).isEqualByComparingTo("10000");
     }
 
     @Test

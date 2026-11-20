@@ -48,15 +48,20 @@ public class PaymentDiscount {
         }
     }
 
-    public BigDecimal paidAmount(final BigDecimal orderPrice) {
-        if (orderPrice.compareTo(couponMinOrderAmount) < 0) {
-            throw new CoreException(ErrorCode.OWNED_COUPON_MIN_AMOUNT_NOT_REACHED);
-        }
-        final BigDecimal couponDiscountAmount = switch (couponType) {
+    /** 주문 금액에 적용되는 실제 쿠폰 할인액을 반환한다. */
+    public BigDecimal couponDiscountAmount(final BigDecimal orderPrice) {
+        return switch (couponType) {
             case NONE -> BigDecimal.ZERO;
             case FIXED_AMOUNT -> couponDiscount;
             case PERCENT_RATE -> orderPrice.multiply(couponDiscount);
         };
+    }
+
+    public BigDecimal paidAmount(final BigDecimal orderPrice) {
+        if (orderPrice.compareTo(couponMinOrderAmount) < 0) {
+            throw new CoreException(ErrorCode.OWNED_COUPON_MIN_AMOUNT_NOT_REACHED);
+        }
+        final BigDecimal couponDiscountAmount = couponDiscountAmount(orderPrice);
         // NOTE: 미입력 usePoint=-1의 원값 계산은 참고 동작을 유지하기로 확정했다.
         final BigDecimal amount = orderPrice.subtract(couponDiscountAmount.add(usePointAmount));
         if (amount.compareTo(BigDecimal.ZERO) < 0) {

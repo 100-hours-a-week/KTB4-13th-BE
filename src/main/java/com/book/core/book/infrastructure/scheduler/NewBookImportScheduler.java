@@ -6,6 +6,8 @@ import java.time.ZoneId;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import lombok.RequiredArgsConstructor;
+import net.javacrumbs.shedlock.core.LockAssert;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "app.new-book.enabled", havingValue = "true")
 @RequiredArgsConstructor
 class NewBookImportScheduler {
+    static final String LOCK_NAME = "new-book-import";
     private final NewBookImportService imports;
 
     @Bean(defaultCandidate = false, destroyMethod = "shutdown")
@@ -31,7 +34,10 @@ class NewBookImportScheduler {
 
     // NOTE: 기본 실행 시각 16:00은 운영 확인용입니다. 확인이 끝나면 API 사용이 적은 새벽 시간으로 바꿔야 합니다.
     @Scheduled(cron = "${app.new-book.collection-cron:0 0 16 * * *}", zone = "Asia/Seoul", scheduler = "newBookImportExecutor")
-    void importNewBooks() {
+    @SchedulerLock(name = LOCK_NAME, lockAtMostFor = "${app.new-book.lock-at-most-for:PT6H}",
+        lockAtLeastFor = "${app.new-book.lock-at-least-for:PT5M}")
+    public void importNewBooks() {
+        LockAssert.assertLocked();
         imports.importNewBooks(LocalDate.now(ZoneId.of("Asia/Seoul")));
     }
 }

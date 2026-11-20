@@ -2,7 +2,6 @@ package com.book.core.book.application.service;
 
 import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
-import com.book.core.book.application.port.NewBookImportLock;
 import com.book.core.book.application.port.NewBookImportNotifier;
 import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.application.result.NewBookDetailFound;
@@ -25,7 +24,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class NewBookImportService {
     private static final int MAX_CONSECUTIVE_LOOKUP_FAILURES = 5;
-    private final NewBookImportLock batchLock;
     private final CollectNewBooksUseCase collectCandidates;
     private final FindNewBookDetailUseCase findNewBookDetail;
     private final RegisterNewBookUseCase registerNewBook;
@@ -36,9 +34,7 @@ public class NewBookImportService {
         final var run = new NewBookImportRun();
         final String previousRunId = MDC.get("runId");
         try {
-            if (!batchLock.runIfAcquired(() -> importCandidates(today, run))) {
-                log.info("[BOOK] 다른 인스턴스가 신간 도서 등록 배치를 실행 중이어서 건너뜁니다.");
-            }
+            importCandidates(today, run);
         } catch (final RuntimeException exception) {
             if (exception instanceof NewBookCollectorException collectorException) {
                 run.failureReason = collectorException.summary();

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -21,7 +20,6 @@ import com.book.core.book.application.port.NewBookDetailCallBudget;
 import com.book.core.book.application.port.BookRepositoryPort;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
 import com.book.core.book.application.port.NewBookCollector;
-import com.book.core.book.application.port.NewBookImportLock;
 import com.book.core.book.application.port.NewBookImportNotifier;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.result.NewBookCandidate;
@@ -51,8 +49,6 @@ class NewBookImportUseCasesTest {
     @Mock
     private NewBookCollector collector;
     @Mock
-    private NewBookImportLock lock;
-    @Mock
     private NewBookImportNotifier notifier;
     @Mock
     private CollectNewBooksUseCase collection;
@@ -66,13 +62,6 @@ class NewBookImportUseCasesTest {
     private RegisterNewBookUseCase registration;
 
     @Test
-    void 락을_획득하지_못하면_두_API_모두_호출하지_않는다() {
-        new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY);
-
-        verifyNoInteractions(collection, details, notifier);
-    }
-
-    @Test
     void 최근_30일_후보의_ISBN을_정규화하고_중복은_처음_출간일을_유지한다() {
         when(collector.collectCandidates(TODAY.minusDays(30), TODAY.minusDays(1))).thenReturn(
             List.of(new NewBookCandidate("978-89-8392-198-7", TODAY.minusDays(1)), new NewBookCandidate("9788983921988", TODAY),
@@ -83,14 +72,10 @@ class NewBookImportUseCasesTest {
 
     @Test
     void 호출_제한을_만나면_남은_ISBN을_조회하지_않는다() {
-        doAnswer((final var invocation) -> {
-            invocation.getArgument(0, Runnable.class).run();
-            return true;
-        }).when(lock).runIfAcquired(any());
         when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
         when(details.findDetail(ISBN)).thenReturn(NewBookImportOutcome.RATE_LIMITED);
 
-        new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY);
+        new NewBookImportService(collection, details, registration, notifier).importNewBooks(TODAY);
 
         verify(details).findDetail(ISBN);
         verifyNoMoreInteractions(details);
@@ -146,14 +131,10 @@ class NewBookImportUseCasesTest {
 
     @Test
     void 요청_거부가_나면_남은_후보를_조회하지_않고_실패로_보고한다() {
-        doAnswer((final var invocation) -> {
-            invocation.getArgument(0, Runnable.class).run();
-            return true;
-        }).when(lock).runIfAcquired(any());
         when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
         when(details.findDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED, "authErr"));
 
-        assertThatThrownBy(() -> new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY))
+        assertThatThrownBy(() -> new NewBookImportService(collection, details, registration, notifier).importNewBooks(TODAY))
             .isInstanceOf(NewBookCollectorException.class);
         verify(details).findDetail(ISBN);
         verifyNoMoreInteractions(details);
@@ -171,10 +152,6 @@ class NewBookImportUseCasesTest {
     @Test
     void 조회_후_등록하고_ISBN_중복과_다른_저장_제약을_구분한다() {
         final var detail = new BookDetail("신간", "저자", null, "출판사", "800", null);
-        doAnswer((final var invocation) -> {
-            invocation.getArgument(0, Runnable.class).run();
-            return true;
-        }).when(lock).runIfAcquired(any());
         when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
         when(details.findDetail(any())).thenReturn(new NewBookDetailFound(detail));
         when(registration.register(CANDIDATE, detail)).thenThrow(new DuplicateImportedIsbnException(new RuntimeException()));
@@ -184,7 +161,7 @@ class NewBookImportUseCasesTest {
         appender.start();
         logger.addAppender(appender);
         try {
-            new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY);
+            new NewBookImportService(collection, details, registration, notifier).importNewBooks(TODAY);
         } finally {
             logger.detachAppender(appender);
             appender.stop();
@@ -200,17 +177,13 @@ class NewBookImportUseCasesTest {
     }
 
     private void runBatchWith(final NewBookImportOutcome outcome, final int candidates) {
-        doAnswer((final var invocation) -> {
-            invocation.getArgument(0, Runnable.class).run();
-            return true;
-        }).when(lock).runIfAcquired(any());
         final var isbns = IntStream.range(0, candidates)
             .mapToObj((final var index) -> index == 0 ? ISBN : "97889839219" + String.format("%02d", index))
             .map((final var isbn) -> new NewBookCandidate(isbn, TODAY.minusDays(1))).toList();
         when(collection.collect(TODAY)).thenReturn(isbns);
         when(details.findDetail(any())).thenReturn(outcome);
 
-        new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY);
+        new NewBookImportService(collection, details, registration, notifier).importNewBooks(TODAY);
     }
 
     private FindNewBookDetailUseCase importer() {

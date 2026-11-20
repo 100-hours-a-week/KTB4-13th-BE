@@ -6,6 +6,7 @@ import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.command.GetProductsCommand;
 import com.book.core.product.application.command.ProductListCursor;
 import com.book.core.product.application.command.ProductListSort;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Base64;
@@ -45,13 +46,14 @@ public class ProductCommandConverter {
         }
         try {
             if (sort == ProductListSort.CREATED_AT) {
-                return new ProductListCursor(Long.parseLong(cursor), null);
+                return new ProductListCursor(Long.parseLong(cursor), null, null, null);
             }
             final String[] parts = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8).split(":", -1);
-            if (parts.length != 2) {
+            if (parts.length != 4) {
                 throw new IllegalArgumentException();
             }
-            return new ProductListCursor(Long.parseLong(parts[1]), Long.parseLong(parts[0]));
+            return new ProductListCursor(Long.parseLong(parts[3]), Long.parseLong(parts[0]), Long.parseLong(parts[1]),
+                new BigDecimal(parts[2]));
         } catch (IllegalArgumentException exception) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }

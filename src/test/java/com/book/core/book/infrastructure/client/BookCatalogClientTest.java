@@ -15,12 +15,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.ObjectMapper;
 
 class BookCatalogClientTest {
     private static final String ISBN = "9788983921987";
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final BookCatalogHttpClient http = new BookCatalogHttpClient();
     private final AtomicReference<String> query = new AtomicReference<>();
     private HttpServer server;
     private String baseUrl;
@@ -40,16 +37,14 @@ class BookCatalogClientTest {
     @Test
     void 목록_응답의_전체_건수와_ISBN_출간일을_읽고_종이책_날짜_조건을_보낸다() {
         respond("/seoji/SearchApi.do", 200, """
-            {"PAGE_NO":"1","TOTAL_COUNT":"101","docs":[
+            {"PAGE_NO":"1","TOTAL_COUNT":"3","docs":[
              {"EA_ISBN":"9788983921987","TITLE":"신간","REAL_PUBLISH_DATE":"","PUBLISH_PREDATE":"20261111"},
              {"EA_ISBN":"9788972756194","TITLE":"출간","REAL_PUBLISH_DATE":"20261020","PUBLISH_PREDATE":"20261101"},
              {"EA_ISBN":"9788950983529","TITLE":"날짜 없음","REAL_PUBLISH_DATE":"","PUBLISH_PREDATE":""}]}
             """);
-        final var client = new NationalLibraryClient(http, new BookCatalogProperties(baseUrl, "test+key", baseUrl, ""), mapper);
-        final var page = client.searchPaperBooks(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11), 1);
-        assertThat(page.candidates()).containsExactly(new NewBookCandidate(ISBN, LocalDate.of(2026, 11, 11)),
+        final var candidates = collector("test+key", "").collectCandidates(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11));
+        assertThat(candidates).containsExactly(new NewBookCandidate(ISBN, LocalDate.of(2026, 11, 11)),
             new NewBookCandidate("9788972756194", LocalDate.of(2026, 10, 20)));
-        assertThat(page.hasNext()).isTrue();
         assertThat(query.get()).contains("cert_key=test%2Bkey", "start_publish_date=20261013", "end_publish_date=20261111", "ebook_yn=N",
             "page_no=1", "page_size=100", "form=%EC%A2%85%EC%9D%B4%EC%B1%85");
     }
@@ -60,8 +55,7 @@ class BookCatalogClientTest {
             {"response":{"detail":[{"book":{"isbn13":"9788983921987","bookname":"신간","authors":"저자","publisher":"출판사",
              "class_no":"813.7","publication_date":"2026","publication_year":"2026"}}]}}
             """);
-        final var client = new JeongboNaruClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "test+key"), mapper);
-        final var detail = client.findBookDetail(ISBN).orElseThrow();
+        final var detail = collector("", "test+key").collectDetail(ISBN).orElseThrow();
         assertThat(detail.category()).isEqualTo("813.7");
         assertThat(detail.coverImageUrl()).isNull();
         assertThat(detail.description()).isNull();
@@ -74,15 +68,14 @@ class BookCatalogClientTest {
             {"response":{"detail":[{"book":{"isbn13":"9788983921987","bookname":"신간","authors":"저자","publisher":"출판사",
              "class_no":"","publication_date":"2026"}}]}}
             """);
-        final var client = new JeongboNaruClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
-        assertThat(client.findBookDetail(ISBN)).isEmpty();
+        assertThat(collector("", "key").collectDetail(ISBN)).isEmpty();
     }
 
     @Test
     void 호출_제한을_분류하고_응답이나_키를_예외에_담지_않는다() {
         respond("/api/srchDtlList", 429, "external response");
-        final var client = new JeongboNaruClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "sensitive-key"), mapper);
-        assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
+        final var collector = collector("", "sensitive-key");
+        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
             assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.RATE_LIMIT);
             assertThat(error.getMessage()).isEqualTo("RATE_LIMIT");
             assertThat(error.getCause()).isNull();
@@ -94,8 +87,8 @@ class BookCatalogClientTest {
         respond("/api/srchDtlList", 200, """
             {"response":{"errCode":"authErr","error":"인증정보가 일치하지 않습니다."}}
             """);
-        final var client = new JeongboNaruClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
-        assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
+        final var collector = collector("", "key");
+        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
             assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.REJECTED);
             assertThat(error.externalCode()).isEqualTo("authErr");
         });
@@ -106,8 +99,7 @@ class BookCatalogClientTest {
         respond("/api/srchDtlList", 200, """
             {"response":{"errCode":"isbnMpngErr","error":"ISBN에 해당하는 도서가 없습니다."}}
             """);
-        final var client = new JeongboNaruClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
-        assertThat(client.findBookDetail(ISBN)).isEmpty();
+        assertThat(collector("", "key").collectDetail(ISBN)).isEmpty();
     }
 
     @Test
@@ -115,12 +107,28 @@ class BookCatalogClientTest {
         respond("/seoji/SearchApi.do", 200, """
             {"RESULT":"ERROR","ERR_CODE":"011","ERR_MESSAGE":"유효하지 않은 인증키 값입니다."}
             """);
-        final var client = new NationalLibraryClient(http, new BookCatalogProperties(baseUrl, "key", baseUrl, ""), mapper);
-        assertThatThrownBy(() -> client.searchPaperBooks(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11), 1))
+        final var collector = collector("key", "");
+        assertThatThrownBy(() -> collector.collectCandidates(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11)))
             .isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
                 assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.REJECTED);
                 assertThat(error.externalCode()).isEqualTo("011");
             });
+    }
+
+    @Test
+    void 응답_형식이_깨지면_일시_오류로_분류한다() {
+        respond("/api/srchDtlList", 200, """
+            {"response":{"detail":"not-array"}}
+            """);
+        final var collector = collector("", "key");
+        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class,
+            (final var error) -> assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.TEMPORARY));
+    }
+
+    private NewBookCollectorAdapter collector(final String nationalLibraryKey, final String jeongboNaruKey) {
+        return new NewBookCollectorAdapter(
+            BookCatalogClientConfiguration.createClient(NationalLibraryClient.class, baseUrl, "nationalLibraryKey", nationalLibraryKey),
+            BookCatalogClientConfiguration.createClient(JeongboNaruClient.class, baseUrl, "jeongboNaruKey", jeongboNaruKey));
     }
 
     private void respond(final String path, final int status, final String body) {

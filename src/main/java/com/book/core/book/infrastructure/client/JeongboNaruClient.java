@@ -1,53 +1,9 @@
 package com.book.core.book.infrastructure.client;
 
-import com.book.core.book.application.port.BookCatalogException;
-import com.book.core.book.application.port.BookCatalogFailureReason;
-import com.book.core.book.application.result.BookDetail;
-import com.book.core.book.domain.Isbn13;
-import java.util.Optional;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.service.annotation.GetExchange;
 
-@Component
-@RequiredArgsConstructor
-class JeongboNaruClient {
-    private static final String MISSING_ISBN_ERROR_CODE = "isbnMpngErr";
-    private final BookCatalogHttpClient http;
-    private final BookCatalogProperties properties;
-    private final ObjectMapper mapper;
-
-    Optional<BookDetail> findBookDetail(final String isbn13) {
-        final String body = http.get(properties.dataForLibraryBaseUrl(),
-            (final var uri) -> uri.path("/api/srchDtlList").queryParam("authKey", "{key}").queryParam("isbn13", isbn13)
-                .queryParam("loaninfoYN", "N").queryParam("format", "json").build(properties.dataForLibraryKey()));
-        try {
-            final JsonNode response = mapper.readTree(body).path("response");
-            if (!response.isObject()) {
-                throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
-            }
-            if (!response.path("error").isMissingNode()) {
-                final String errorCode = response.path("errCode").asString(null);
-                if (MISSING_ISBN_ERROR_CODE.equals(errorCode)) {
-                    return Optional.empty();
-                }
-                throw new BookCatalogException(BookCatalogFailureReason.REJECTED, errorCode);
-            }
-            final JsonNode detail = response.path("detail");
-            if (detail.isMissingNode() || detail.isNull()) {
-                return Optional.empty();
-            }
-            if (!detail.isArray()) {
-                throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
-            }
-            return detail.valueStream().map((final var entry) -> entry.path("book")).filter(JsonNode::isObject)
-                .filter((final var book) -> Isbn13.normalize(JeongboNaruExternalMapper.text(book, "isbn13")).filter(isbn13::equals)
-                    .isPresent())
-                .map(JeongboNaruExternalMapper::toBookDetail).flatMap(Optional::stream).findFirst();
-        } catch (final JacksonException | IllegalArgumentException exception) {
-            throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
-        }
-    }
+interface JeongboNaruClient {
+    @GetExchange("/api/srchDtlList?authKey={jeongboNaruKey}&loaninfoYN=N&format=json")
+    JeongboNaruResponse findBookDetail(@RequestParam("isbn13") String isbn13);
 }

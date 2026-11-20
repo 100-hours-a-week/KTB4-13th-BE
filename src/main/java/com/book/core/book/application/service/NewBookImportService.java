@@ -9,7 +9,7 @@ import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookDetailLookup;
 import com.book.core.book.application.result.NewBookImportOutcome;
 import com.book.core.book.application.result.NewBookImportReport;
-import com.book.core.book.application.usecase.CollectNewBookCandidatesUseCase;
+import com.book.core.book.application.usecase.CollectNewBooksUseCase;
 import com.book.core.book.application.usecase.FindNewBookDetailUseCase;
 import com.book.core.book.application.usecase.RegisterNewBookUseCase;
 import java.time.LocalDate;
@@ -26,7 +26,7 @@ import org.springframework.stereotype.Service;
 public class NewBookImportService {
     private static final int MAX_CONSECUTIVE_LOOKUP_FAILURES = 5;
     private final NewBookImportLock batchLock;
-    private final CollectNewBookCandidatesUseCase collectCandidates;
+    private final CollectNewBooksUseCase collectCandidates;
     private final FindNewBookDetailUseCase findNewBookDetail;
     private final RegisterNewBookUseCase registerNewBook;
 

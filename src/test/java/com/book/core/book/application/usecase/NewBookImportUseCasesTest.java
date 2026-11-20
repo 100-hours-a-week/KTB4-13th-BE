@@ -56,7 +56,7 @@ class NewBookImportUseCasesTest {
     @Mock
     private NewBookImportNotifier notifier;
     @Mock
-    private CollectNewBookCandidatesUseCase collection;
+    private CollectNewBooksUseCase collection;
     @Mock
     private FindNewBookDetailUseCase details;
     @Mock
@@ -81,7 +81,7 @@ class NewBookImportUseCasesTest {
             List.of(new NewBookCandidate("978-89-8392-198-7", TODAY.minusDays(1)), new NewBookCandidate("9788983921988", TODAY),
                 new NewBookCandidate(ISBN, TODAY.minusDays(9)), OTHER_CANDIDATE));
 
-        assertThat(new CollectNewBookCandidatesUseCase(collector).collect(TODAY)).containsExactly(CANDIDATE, OTHER_CANDIDATE);
+        assertThat(new CollectNewBooksUseCase(collector).collect(TODAY)).containsExactly(CANDIDATE, OTHER_CANDIDATE);
     }
 
     @Test

@@ -117,8 +117,9 @@ Controller와 Domain에는 트랜잭션을 두지 않고, Service에는 위 `Sig
 | API 출력 변환 | api/converter/{Feature}ResultConverter | Result를 응답 DTO로 변환 |
 | 영속성 변환 | infrastructure/persistence/mapper/{Feature}PersistenceMapper | 별도 표현이 필요할 때만 사용 |
 | 영속 전용 Entity | infrastructure/persistence/entity | 도메인 대응 타입이 없는 실제 요구의 기록·기술 모델 |
-| 외부 Port | application/port/{행위 이름} (예: BookDetailFinder) | 공급처 없이 행위를 드러내는 외부 기능 계약 |
-| 외부 구현 | infrastructure/client/{Provider}Client (예: Data4LibraryClient) | 공급처별 Port 구현·외부 DTO·SDK·타임아웃·오류 변환 |
+| 외부 Port | application/port/{행위 이름} (예: NewBookCollector) | 공급처 없이 행위를 드러내는 외부 기능 계약 |
+| 외부 구현 | infrastructure/client/{Port}Adapter (예: NewBookCollectorAdapter) | Port 구현·하나 이상의 Client 조합·페이지 반복 등 계약 충족 |
+| 외부 호출 | infrastructure/client/{Provider}Client (예: NationalLibraryClient, JeongboNaruClient) | 인터페이스 없는 공급처별 API 호출·외부 DTO·SDK·타임아웃·오류 변환 |
 | 외부 변환 | infrastructure/client/{Provider}ExternalMapper | 공급처 응답을 Port 결과로 변환 |
 
 - 신규로 만들거나 수정하는 HTTP API는 기능별 `CommandConverter`를 통해 HTTP 입력을 Command로 변환합니다. Converter는 표현 변환만 담당하며 업무 규칙이나 외부 호출을 소유하지 않습니다. 기존 `Request.toCommand()`는 해당 기능을 수정할 때 함께 정리합니다.

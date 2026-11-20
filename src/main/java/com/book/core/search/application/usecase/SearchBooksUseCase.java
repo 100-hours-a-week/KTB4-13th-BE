@@ -10,6 +10,7 @@ import com.book.core.search.application.port.BookSearchRequest;
 import com.book.core.search.application.port.BookSearchResult;
 import com.book.core.search.application.result.SearchBookItemResult;
 import com.book.core.search.application.result.SearchBooksResult;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -34,12 +35,14 @@ public class SearchBooksUseCase {
 
     private static SearchBookItemResult toItemResult(final BookSearchItem item, final RecommendationProductResult product) {
         Long productId = null;
+        BigDecimal price = item.price();
         boolean inStock = false;
         if (product != null) {
             productId = product.productId();
+            price = product.price();
             inStock = product.inStock();
         }
-        return new SearchBookItemResult(item.bookId(), item.isbn(), productId, item.title(), item.author(), item.publisher(), item.price(),
+        return new SearchBookItemResult(item.bookId(), item.isbn(), productId, item.title(), item.author(), item.publisher(), price,
             inStock, item.coverUrl());
     }
 }

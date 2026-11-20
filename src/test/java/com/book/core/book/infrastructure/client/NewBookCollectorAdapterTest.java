@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.result.NewBookCandidate;
+import com.book.core.book.infrastructure.observability.NewBookImportMetrics;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,8 @@ class NewBookCollectorAdapterTest {
     private NationalLibraryClient nationalLibrary;
     @Mock
     private JeongboNaruClient jeongboNaru;
+    @Mock
+    private NewBookImportMetrics metrics;
     @InjectMocks
     private NewBookCollectorAdapter collector;
 

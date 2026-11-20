@@ -8,6 +8,7 @@ import com.book.core.cart.application.result.GetCartItemResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.cart.application.usecase.GetCartUserIdsByProductIdUseCase;
 import com.book.core.notification.application.command.CreateNotificationCommand;
+import com.book.core.notification.application.command.LowStockNotificationEvent;
 import com.book.core.notification.application.service.NotificationService;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
@@ -29,6 +30,7 @@ import com.book.core.order.domain.OrderAddress;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.command.ProductQuantitiesCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
+import com.book.core.product.application.result.LowStockInventoryEntry;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.application.usecase.ReleaseProductInventoryUseCase;
 import com.book.core.product.application.usecase.ReserveProductInventoryUseCase;
@@ -67,6 +69,7 @@ public class OrderService {
     private final GetExpiredOrderKeysUseCase getExpiredOrderKeysUseCase;
     private final ExpireOrderUseCase expireOrderUseCase;
     private final NotificationService notificationService;
+    private final LowStockNotificationMode lowStockNotificationMode;
 
     public GetOrdersResult getOrders(final GetOrdersCommand command) {
         return getOrdersUseCase.execute(command);
@@ -125,11 +128,43 @@ public class OrderService {
             order.addItem(item.productId(), product.itemName(), product.thumbnailUrl(), product.author(), product.salePrice(),
                 product.discountedPrice(), item.quantity());
         }
-        final Map<Long, Integer> lowStockQuantitiesByProductId =
-            reserveProductInventoryUseCase.execute(new ProductQuantitiesCommand(order.reservedQuantities()));
+        final ProductQuantitiesCommand inventoryCommand = new ProductQuantitiesCommand(order.reservedQuantities());
+        if (lowStockNotificationMode == LowStockNotificationMode.V2) {
+            final Map<Long, Integer> lowStockQuantitiesByProductId =
+                reserveProductInventoryUseCase.execute(inventoryCommand, lowStockNotificationMode.threshold());
+            final CreateOrderResult result = createOrderUseCase.execute(order);
+            notifyLowStockAfterCommit(command.userId(), lowStockQuantitiesByProductId, productsByProductId);
+            return result;
+        }
+
+        final Map<Long, LowStockInventoryEntry> lowStockEntries =
+            reserveProductInventoryUseCase.executeWithLowStockNotificationEntries(inventoryCommand, lowStockNotificationMode.threshold());
         final CreateOrderResult result = createOrderUseCase.execute(order);
-        notifyLowStockAfterCommit(command.userId(), lowStockQuantitiesByProductId, productsByProductId);
+        notifyViewedProductLowStockAfterCommit(command.userId(), lowStockEntries, productsByProductId);
         return result;
+    }
+
+    private void notifyViewedProductLowStockAfterCommit(final Long orderUserId, final Map<Long, LowStockInventoryEntry> lowStockEntries,
+        final Map<Long, GetProductDetailResult> productsByProductId) {
+        if (lowStockEntries.isEmpty()) {
+            return;
+        }
+        final List<LowStockNotificationEvent> events = lowStockEntries.entrySet().stream()
+            .map(entry -> new LowStockNotificationEvent(entry.getKey(), orderUserId, productsByProductId.get(entry.getKey()).itemName(),
+                entry.getValue().state().lowStockNotificationVersion(), entry.getValue().referenceTime()))
+            .toList();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                for (final LowStockNotificationEvent event : events) {
+                    try {
+                        notificationService.createLowStockNotificationsAsync(event);
+                    } catch (final RuntimeException exception) {
+                        log.atError().addKeyValue("productId", event.productId()).log("[ORDER] 조회 기반 재고 부족 알림 작업 등록에 실패했습니다.", exception);
+                    }
+                }
+            }
+        });
     }
 
     private void notifyLowStockAfterCommit(final Long orderUserId, final Map<Long, Integer> lowStockQuantitiesByProductId,

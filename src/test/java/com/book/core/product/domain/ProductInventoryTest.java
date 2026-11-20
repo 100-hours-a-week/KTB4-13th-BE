@@ -37,6 +37,13 @@ class ProductInventoryTest {
         assertThat(ProductInventory.entersLowStock(5, 4)).isFalse();
     }
 
+    @Test
+    void V3는_5개_초과에서_5개_이하가_될_때만_진입한다() {
+        assertThat(ProductInventory.entersLowStock(6, 5, 5)).isTrue();
+        assertThat(ProductInventory.entersLowStock(5, 4, 5)).isFalse();
+        assertThat(ProductInventory.entersLowStock(6, 3, 5)).isTrue();
+    }
+
     private static ProductInventory inventory(final int onHandQuantity) {
         final Product product = new Product(1L, new Book(1L, null, null, "제목", "작가", null, null, null, null, null), "상품", null,
             new BigDecimal("20000"), new BigDecimal("18000"), new BigDecimal("12000"), onHandQuantity);

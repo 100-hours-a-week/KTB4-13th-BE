@@ -4,10 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.book.core.notification.application.command.CreateNotificationCommand;
+import com.book.core.notification.application.command.LowStockNotificationEvent;
 import com.book.core.notification.application.service.NotificationService;
 import com.book.core.notification.application.usecase.CreateNotificationUseCase;
+import com.book.core.notification.application.usecase.CreateLowStockNotificationUseCase;
+import com.book.core.product.application.usecase.FindLowStockNotificationCandidatesUseCase;
+import java.time.LocalDateTime;
 import com.book.core.notification.application.command.GetNotificationsCommand;
 import com.book.core.notification.application.result.GetNotificationsResult;
 import java.util.List;
@@ -28,6 +33,10 @@ class NotificationServiceTest {
     GetNotificationsUseCase getUseCase;
     @Mock
     ReadNotificationUseCase readUseCase;
+    @Mock
+    FindLowStockNotificationCandidatesUseCase findCandidatesUseCase;
+    @Mock
+    CreateLowStockNotificationUseCase createLowStockNotificationUseCase;
     @InjectMocks
     NotificationService service;
 
@@ -48,6 +57,45 @@ class NotificationServiceTest {
         assertThatCode(() -> service.createAllAsync(List.of(first, second))).doesNotThrowAnyException();
 
         verify(createUseCase).execute(second);
+    }
+
+    @Test
+    void V3_후보가_없으면_알림을_저장하지_않는다() {
+        final var event = event();
+        when(findCandidatesUseCase.execute(event.productId(), event.referenceTime())).thenReturn(List.of());
+
+        service.createLowStockNotificationsAsync(event);
+
+        verifyNoInteractions(createLowStockNotificationUseCase);
+    }
+
+    @Test
+    void V3는_주문자를_제외하고_건별_실패를_격리한다() {
+        final var event = event();
+        when(findCandidatesUseCase.execute(event.productId(), event.referenceTime())).thenReturn(List.of(42L, 7L, 8L));
+        when(createLowStockNotificationUseCase.execute(event, 7L)).thenThrow(new IllegalStateException("저장 실패"));
+        when(createLowStockNotificationUseCase.execute(event, 8L)).thenReturn(true);
+
+        service.createLowStockNotificationsAsync(event);
+
+        verify(createLowStockNotificationUseCase).execute(event, 7L);
+        verify(createLowStockNotificationUseCase).execute(event, 8L);
+    }
+
+    @Test
+    void V3_이벤트가_무효하면_나머지_수신자를_처리하지_않는다() {
+        final var event = event();
+        when(findCandidatesUseCase.execute(event.productId(), event.referenceTime())).thenReturn(List.of(7L, 8L));
+        when(createLowStockNotificationUseCase.execute(event, 7L)).thenReturn(false);
+
+        service.createLowStockNotificationsAsync(event);
+
+        verify(createLowStockNotificationUseCase).execute(event, 7L);
+        org.mockito.Mockito.verifyNoMoreInteractions(createLowStockNotificationUseCase);
+    }
+
+    private static LowStockNotificationEvent event() {
+        return new LowStockNotificationEvent(701L, 42L, "상품", 1, LocalDateTime.of(2026, 10, 26, 12, 0));
     }
 
     @Test

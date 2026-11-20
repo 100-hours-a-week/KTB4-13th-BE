@@ -47,6 +47,9 @@ public class ProductInventory {
     @Column(name = "target_stock", nullable = false)
     private int targetStock;
 
+    @Column(name = "low_stock_notification_version", nullable = false)
+    private long lowStockNotificationVersion;
+
     ProductInventory(final Product product, final int onHandQuantity) {
         if (product == null || onHandQuantity < 0) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
@@ -70,6 +73,10 @@ public class ProductInventory {
     }
 
     public static boolean entersLowStock(final int availableBefore, final int availableAfter) {
-        return availableBefore > LOW_STOCK_QUANTITY && availableAfter <= LOW_STOCK_QUANTITY;
+        return entersLowStock(availableBefore, availableAfter, LOW_STOCK_QUANTITY);
+    }
+
+    public static boolean entersLowStock(final int availableBefore, final int availableAfter, final int threshold) {
+        return availableBefore > threshold && availableAfter <= threshold;
     }
 }

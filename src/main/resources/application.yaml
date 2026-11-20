@@ -28,6 +28,8 @@ sentry:
 app:
   cors:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+  low-stock-notification:
+    mode: ${LOW_STOCK_NOTIFICATION_MODE:V2}
 
 auth:
   cookie:

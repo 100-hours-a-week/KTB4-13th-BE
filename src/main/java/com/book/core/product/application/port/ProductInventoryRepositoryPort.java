@@ -1,9 +1,14 @@
 package com.book.core.product.application.port;
 
+import com.book.core.product.application.result.ProductInventoryState;
+import java.util.Optional;
+
 public interface ProductInventoryRepositoryPort {
     boolean reserve(final Long productId, final int quantity);
 
-    int availableQuantity(final Long productId);
+    ProductInventoryState state(final Long productId);
+
+    Optional<ProductInventoryState> stateForUpdate(final Long productId);
 
     boolean release(final Long productId, final int quantity);
 

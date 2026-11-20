@@ -17,4 +17,9 @@ public class CreateNotificationUseCase {
     public Long execute(final CreateNotificationCommand command) {
         return notificationRepository.save(new Notification(command.userId(), command.title(), command.body())).id();
     }
+
+    @Transactional
+    public boolean executeIfEventKeyAbsent(final CreateNotificationCommand command, final String eventKey) {
+        return notificationRepository.insertIfEventKeyAbsent(new Notification(command.userId(), command.title(), command.body(), eventKey));
+    }
 }

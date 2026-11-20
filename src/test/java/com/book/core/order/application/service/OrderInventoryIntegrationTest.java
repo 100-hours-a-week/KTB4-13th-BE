@@ -8,12 +8,17 @@ import com.book.common.exception.ErrorCode;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
 import com.book.core.order.application.command.CreateOrderItemCommand;
+import com.book.core.product.application.command.ProductQuantitiesCommand;
+import com.book.core.product.application.usecase.ReserveProductInventoryUseCase;
+import com.book.core.product.application.result.ProductInventoryState;
+import com.book.core.product.application.result.LowStockInventoryEntry;
 import com.book.core.product.infrastructure.scheduler.ProductRestockScheduler;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -47,6 +52,8 @@ class OrderInventoryIntegrationTest {
     private ProductRestockScheduler restockScheduler;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private ReserveProductInventoryUseCase reserveProductInventoryUseCase;
 
     @Test
     void 주문을_만들면_예약하고_한_상품이라도_부족하면_주문과_예약과_알림을_모두_롤백한다() throws Exception {
@@ -105,6 +112,51 @@ class OrderInventoryIntegrationTest {
         awaitNotificationCount(7, userIds);
         Thread.sleep(100);
         assertThat(notifiedUserIds(userIds)).hasSize(7).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void V3_동시_예약에서는_6개에서_5개로_진입한_결과가_한_번만_반환된다() throws Exception {
+        final long productId = insertProduct(6);
+        final CountDownLatch start = new CountDownLatch(1);
+        final List<Future<Map<Long, LowStockInventoryEntry>>> results = new ArrayList<>();
+        try (ExecutorService executor = Executors.newFixedThreadPool(8)) {
+            for (int index = 0; index < 8; index++) {
+                results.add(executor.submit(() -> {
+                    start.await();
+                    try {
+                        return reserveProductInventoryUseCase
+                            .executeWithLowStockNotificationEntries(new ProductQuantitiesCommand(Map.of(productId, 1)), 5);
+                    } catch (final CoreException exception) {
+                        assertThat(exception.errorCode()).isEqualTo(ErrorCode.INSUFFICIENT_PRODUCT_STOCK);
+                        return null;
+                    }
+                }));
+            }
+            start.countDown();
+            final List<Map<Long, LowStockInventoryEntry>> successful = new ArrayList<>();
+            for (final Future<Map<Long, LowStockInventoryEntry>> result : results) {
+                final Map<Long, LowStockInventoryEntry> detected = result.get();
+                if (detected != null) {
+                    successful.add(detected);
+                }
+            }
+            assertThat(successful).hasSize(6);
+            assertThat(successful).filteredOn(result -> !result.isEmpty()).singleElement()
+                .satisfies(result -> assertThat(result.get(productId).state()).isEqualTo(new ProductInventoryState(5, 0)));
+        }
+        assertThat(inventory(productId)).containsExactly(6, 6);
+    }
+
+    @Test
+    void V3_여러_상품_예약중_실패하면_앞선_예약도_롤백한다() {
+        final long availableProductId = insertProduct(6);
+        final long insufficientProductId = insertProduct(0);
+
+        assertThatThrownBy(() -> reserveProductInventoryUseCase.executeWithLowStockNotificationEntries(
+            new ProductQuantitiesCommand(Map.of(availableProductId, 1, insufficientProductId, 1)), 5)).isInstanceOfSatisfying(
+                CoreException.class, exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INSUFFICIENT_PRODUCT_STOCK));
+        assertThat(inventory(availableProductId)).containsExactly(6, 0);
+        assertThat(inventory(insufficientProductId)).containsExactly(0, 0);
     }
 
     @Test

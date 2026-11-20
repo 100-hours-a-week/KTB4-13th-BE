@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.core.notification.application.command.CreateNotificationCommand;
 import com.book.core.notification.application.usecase.CreateNotificationUseCase;
 import com.book.core.notification.application.port.NotificationRepositoryPort;
+import com.book.core.notification.domain.Notification;
 import com.book.core.notification.application.command.ReadNotificationCommand;
 import com.book.core.notification.application.usecase.ReadNotificationUseCase;
 import com.book.common.exception.CoreException;
@@ -20,6 +21,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -50,6 +52,35 @@ class NotificationRepositoryIntegrationTest {
             .containsEntry("read_at", null).containsEntry("deleted_at", null);
         assertThat(row.get("created_at")).isNotNull();
         assertThat(row.get("updated_at")).isNotNull();
+        assertThat(row).containsEntry("event_key", null);
+    }
+
+    @Test
+    void 날짜가_다른_이벤트_키는_새_알림을_허용한다() {
+        final var command = new CreateNotificationCommand(42L, "제목", "본문");
+        assertThat(createUseCase.executeIfEventKeyAbsent(command, "low-stock:v3:42:71:2026-10-26")).isTrue();
+        assertThat(createUseCase.executeIfEventKeyAbsent(command, "low-stock:v3:42:71:2026-10-27")).isTrue();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE user_id = 42 AND event_key IS NOT NULL", Integer.class))
+            .isEqualTo(2);
+    }
+
+    @Test
+    void 소프트_삭제된_알림도_같은_날_이벤트_키를_계속_점유한다() {
+        final var command = new CreateNotificationCommand(44L, "제목", "본문");
+        final String eventKey = "low-stock:v3:44:71:2026-10-26";
+        assertThat(createUseCase.executeIfEventKeyAbsent(command, eventKey)).isTrue();
+        jdbc.update("UPDATE notifications SET deleted_at = CURRENT_TIMESTAMP(6) WHERE event_key = ?", eventKey);
+
+        assertThat(createUseCase.executeIfEventKeyAbsent(command, eventKey)).isFalse();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE event_key = ?", Integer.class, eventKey)).isEqualTo(1);
+    }
+
+    @Test
+    void 다른_DB_제약_오류는_이벤트_키_중복으로_처리하지_않는다() {
+        final var notification = new Notification(43L, "제목", "본문", "low-stock:v3:43:71:2026-10-26");
+        ReflectionTestUtils.setField(notification, "title", " ");
+
+        assertThatThrownBy(() -> repository.insertIfEventKeyAbsent(notification)).isInstanceOf(DataAccessException.class);
     }
 
     @Test

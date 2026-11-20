@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ProductCommandConverter {
-    public GetProductDetailCommand toGetProductDetailCommand(final Long productId) {
-        return GetProductDetailCommand.of(productId);
+    public GetProductDetailCommand toGetProductDetailCommand(final Long productId, final Long userId) {
+        return new GetProductDetailCommand(productId, userId);
     }
 
     public GetProductsCommand toGetProductsCommand(final Long categoryId, final LocalDate publishedFrom, final LocalDate publishedTo,

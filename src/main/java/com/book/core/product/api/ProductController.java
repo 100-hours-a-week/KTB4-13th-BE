@@ -1,6 +1,7 @@
 package com.book.core.product.api;
 
 import com.book.common.response.ApiResponse;
+import com.book.common.config.security.UserId;
 import com.book.core.product.api.converter.ProductCommandConverter;
 import com.book.core.product.api.converter.ProductResultConverter;
 import com.book.core.product.api.response.ProductDetailResponse;
@@ -30,8 +31,9 @@ class ProductController implements ProductControllerSpec {
 
     @Override
     @GetMapping("/products/{productId}")
-    public ResponseEntity<ApiResponse<ProductDetailResponse>> getProductDetail(@Positive @PathVariable("productId") final Long productId) {
-        final var command = commandConverter.toGetProductDetailCommand(productId);
+    public ResponseEntity<ApiResponse<ProductDetailResponse>> getProductDetail(@Positive @PathVariable("productId") final Long productId,
+        @UserId(required = false) final Long userId) {
+        final var command = commandConverter.toGetProductDetailCommand(productId, userId);
         final var result = productService.getProductDetail(command);
         final var response = resultConverter.toGetProductDetailResponse(result);
         return ResponseEntity.ok(ApiResponse.ok(response));

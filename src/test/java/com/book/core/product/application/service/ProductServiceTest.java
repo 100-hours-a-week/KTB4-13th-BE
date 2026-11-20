@@ -6,6 +6,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.common.exception.CoreException;
@@ -16,6 +18,7 @@ import com.book.core.coupon.application.usecase.GetCouponsUseCase;
 import com.book.core.coupon.domain.enums.CouponType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.Set;
 
 import com.book.core.product.application.command.GetProductDetailCommand;
@@ -31,6 +34,7 @@ import com.book.core.product.application.usecase.GetReceivableRestocksUseCase;
 import com.book.core.product.application.usecase.GetRestockCandidatesUseCase;
 import com.book.core.product.application.usecase.ReceiveProductRestockUseCase;
 import com.book.core.product.application.usecase.RefreshProductPopularitySnapshotUseCase;
+import com.book.core.product.application.usecase.RecordProductViewUseCase;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -41,9 +45,11 @@ class ProductServiceTest {
         mock(RefreshProductPopularitySnapshotUseCase.class);
     private final GetCouponTargetsUseCase couponTargetReader = mock(GetCouponTargetsUseCase.class);
     private final GetCouponsUseCase couponReader = mock(GetCouponsUseCase.class);
-    private final ProductService productService = new ProductService(useCase, getProductsUseCase, refreshProductPopularitySnapshotUseCase,
-        couponTargetReader, couponReader, mock(GetRestockCandidatesUseCase.class), mock(CreateProductRestockUseCase.class),
-        mock(GetReceivableRestocksUseCase.class), mock(ReceiveProductRestockUseCase.class));
+    private final RecordProductViewUseCase recordProductViewUseCase = mock(RecordProductViewUseCase.class);
+    private final ProductService productService =
+        new ProductService(useCase, getProductsUseCase, refreshProductPopularitySnapshotUseCase, couponTargetReader, couponReader,
+            mock(GetRestockCandidatesUseCase.class), mock(CreateProductRestockUseCase.class), mock(GetReceivableRestocksUseCase.class),
+            mock(ReceiveProductRestockUseCase.class), recordProductViewUseCase, Clock.systemDefaultZone());
 
     @Test
     void 상품_상세에_관련_활성_쿠폰_ID만_연결한다() {
@@ -62,14 +68,42 @@ class ProductServiceTest {
         order.verify(useCase).execute(command);
         order.verify(couponTargetReader).execute(List.of(20L));
         order.verify(couponReader).execute(Set.of(10L, 11L));
+        verifyNoInteractions(recordProductViewUseCase);
+    }
+
+    @Test
+    void 인증된_회원의_성공한_상세_조회마다_기록한다() {
+        final var command = new GetProductDetailCommand(20L, 42L);
+        final var result = new GetProductDetailResult(20L, "상품명", null, "작가", "출판사", java.time.LocalDate.of(2026, 1, 1), "소설", null,
+            BigDecimal.TEN, BigDecimal.ONE, 0L, BigDecimal.ZERO, 1, List.of());
+        when(useCase.execute(command)).thenReturn(result);
+        when(couponTargetReader.execute(List.of(20L))).thenReturn(Set.of());
+        when(couponReader.execute(Set.of())).thenReturn(List.of());
+
+        assertThat(productService.getProductDetail(command)).isEqualTo(result);
+        assertThat(productService.getProductDetail(command)).isEqualTo(result);
+        verify(recordProductViewUseCase, times(2)).execute(42L, 20L);
+    }
+
+    @Test
+    void 조회_기록_저장_실패는_상품_상세_결과에_영향을_주지_않는다() {
+        final var command = new GetProductDetailCommand(20L, 42L);
+        final var result = new GetProductDetailResult(20L, "상품명", null, "작가", "출판사", java.time.LocalDate.of(2026, 1, 1), "소설", null,
+            BigDecimal.TEN, BigDecimal.ONE, 0L, BigDecimal.ZERO, 1, List.of());
+        when(useCase.execute(command)).thenReturn(result);
+        when(couponTargetReader.execute(List.of(20L))).thenReturn(Set.of());
+        when(couponReader.execute(Set.of())).thenReturn(List.of());
+        doThrow(new IllegalStateException("product view storage failure")).when(recordProductViewUseCase).execute(42L, 20L);
+
+        assertThat(productService.getProductDetail(command)).isEqualTo(result);
     }
 
     @Test
     void 상품이_없으면_쿠폰을_조회하지_않는다() {
-        final var command = new GetProductDetailCommand(20L);
+        final var command = new GetProductDetailCommand(20L, 42L);
         when(useCase.execute(command)).thenThrow(new CoreException(ErrorCode.PRODUCT_NOT_FOUND));
         assertThatThrownBy(() -> productService.getProductDetail(command)).isInstanceOf(CoreException.class);
-        verifyNoInteractions(couponTargetReader, couponReader);
+        verifyNoInteractions(couponTargetReader, couponReader, recordProductViewUseCase);
     }
 
     @Test

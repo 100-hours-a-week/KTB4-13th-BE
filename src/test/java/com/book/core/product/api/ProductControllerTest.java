@@ -13,11 +13,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.book.common.api.config.SwaggerConfig;
+import com.book.common.config.security.UserIdMvcConfig;
 import com.book.common.exception.CoreException;
 import com.book.common.exception.ErrorCode;
 import com.book.core.product.api.converter.ProductCommandConverter;
 import com.book.core.product.api.converter.ProductResultConverter;
 import com.book.core.product.application.result.GetProductDetailResult;
+import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.command.GetProductsCommand;
 import com.book.core.product.application.command.ProductListSort;
 import com.book.core.product.application.result.GetProductItemResult;
@@ -25,15 +27,20 @@ import com.book.core.product.application.result.GetProductsResult;
 import com.book.core.product.application.service.ProductService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -43,7 +50,7 @@ import org.springdoc.webmvc.core.configuration.MultipleOpenApiSupportConfigurati
 import org.springdoc.webmvc.core.configuration.SpringDocWebMvcConfiguration;
 
 @WebMvcTest(ProductController.class)
-@Import({ProductCommandConverter.class, ProductResultConverter.class, SwaggerConfig.class})
+@Import({ProductCommandConverter.class, ProductResultConverter.class, SwaggerConfig.class, UserIdMvcConfig.class})
 @ImportAutoConfiguration({SpringDocConfiguration.class, SpringDocConfigProperties.class, SpringDocWebMvcConfiguration.class,
     MultipleOpenApiSupportConfiguration.class})
 @ActiveProfiles("test")
@@ -53,6 +60,11 @@ class ProductControllerTest {
 
     @MockitoBean
     ProductService productService;
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void 상품_상세를_명세_필드로_응답한다() throws Exception {
@@ -70,7 +82,20 @@ class ProductControllerTest {
             .andExpect(jsonPath("$.data.reviewRate").value(4.5)).andExpect(jsonPath("$.data.stockQuantity").value(10))
             .andExpect(jsonPath("$.data.couponIds[0]").value(1)).andExpect(jsonPath("$.data.coupons").doesNotExist());
 
-        verify(productService).getProductDetail(any());
+        verify(productService).getProductDetail(new GetProductDetailCommand(20L));
+    }
+
+    @Test
+    void 인증된_회원_ID를_상품_상세_조회_명령으로_전달한다() throws Exception {
+        final Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "none").subject("42").issuedAt(Instant.now())
+            .expiresAt(Instant.now().plusSeconds(3600)).build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+        when(productService.getProductDetail(any())).thenReturn(new GetProductDetailResult(20L, "상품명", null, "작가", "출판사",
+            LocalDate.of(2026, 1, 1), "소설", null, BigDecimal.TEN, BigDecimal.ONE, 0L, BigDecimal.ZERO, 1, List.of()));
+
+        mvc.perform(get("/api/v1/products/20")).andExpect(status().isOk()).andExpect(jsonPath("$.data.productId").value(20));
+
+        verify(productService).getProductDetail(new GetProductDetailCommand(20L, 42L));
     }
 
     @Test

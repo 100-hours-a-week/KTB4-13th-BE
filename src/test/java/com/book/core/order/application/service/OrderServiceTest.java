@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -19,6 +20,7 @@ import com.book.core.cart.application.result.GetCartResult;
 import com.book.core.cart.application.usecase.GetCartUseCase;
 import com.book.core.cart.application.usecase.GetCartUserIdsByProductIdUseCase;
 import com.book.core.notification.application.command.CreateNotificationCommand;
+import com.book.core.notification.application.command.LowStockNotificationEvent;
 import com.book.core.notification.application.service.NotificationService;
 import com.book.core.order.application.command.CancelOrderCommand;
 import com.book.core.order.application.command.CreateOrderCommand;
@@ -39,6 +41,8 @@ import com.book.core.order.domain.Order;
 import com.book.core.product.application.command.GetProductDetailCommand;
 import com.book.core.product.application.command.ProductQuantitiesCommand;
 import com.book.core.product.application.result.GetProductDetailResult;
+import com.book.core.product.application.result.ProductInventoryState;
+import com.book.core.product.application.result.LowStockInventoryEntry;
 import com.book.core.product.application.usecase.GetProductDetailUseCase;
 import com.book.core.product.application.usecase.ReleaseProductInventoryUseCase;
 import com.book.core.product.application.usecase.ReserveProductInventoryUseCase;
@@ -69,10 +73,7 @@ class OrderServiceTest {
     private final GetReservedOrderQuantitiesUseCase getReservedOrderQuantitiesUseCase = mock(GetReservedOrderQuantitiesUseCase.class);
     private final ExpireOrderUseCase expireOrderUseCase = mock(ExpireOrderUseCase.class);
     private final NotificationService notificationService = mock(NotificationService.class);
-    private final OrderService service =
-        new OrderService(getAddressUseCase, getCartUseCase, getCartUserIdsByProductIdUseCase, getProductDetailUseCase, createOrderUseCase,
-            cancelOrderUseCase, getOrdersUseCase, getOrderDetailUseCase, reserveProductInventoryUseCase, releaseProductInventoryUseCase,
-            getReservedOrderQuantitiesUseCase, mock(GetExpiredOrderKeysUseCase.class), expireOrderUseCase, notificationService);
+    private final OrderService service = serviceForMode(LowStockNotificationMode.V2);
 
     @BeforeEach
     void setUp() {
@@ -116,13 +117,13 @@ class OrderServiceTest {
 
         service.createOrder(command(new CreateOrderItemCommand(701L, 2), new CreateOrderItemCommand(701L, 3)));
 
-        verify(reserveProductInventoryUseCase).execute(new ProductQuantitiesCommand(Map.of(701L, 5)));
+        verify(reserveProductInventoryUseCase).execute(new ProductQuantitiesCommand(Map.of(701L, 5)), 3);
         assertThat(savedOrder().expiresAt()).isBetween(before.plusMinutes(10), LocalDateTime.now().plusMinutes(10));
     }
 
     @Test
     void 재고_예약에_실패하면_주문을_저장하지_않는다() {
-        doThrow(new CoreException(ErrorCode.INSUFFICIENT_PRODUCT_STOCK)).when(reserveProductInventoryUseCase).execute(any());
+        doThrow(new CoreException(ErrorCode.INSUFFICIENT_PRODUCT_STOCK)).when(reserveProductInventoryUseCase).execute(any(), eq(3));
 
         assertThatThrownBy(() -> service.createOrder(command(new CreateOrderItemCommand(701L, 2)))).isInstanceOf(CoreException.class);
         verifyNoInteractions(createOrderUseCase);
@@ -131,7 +132,7 @@ class OrderServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void 품절_임박에_진입하면_커밋_후_주문자를_뺀_장바구니_사용자에게_알림을_등록한다() {
-        when(reserveProductInventoryUseCase.execute(any())).thenReturn(Map.of(701L, 0));
+        when(reserveProductInventoryUseCase.execute(any(), eq(3))).thenReturn(Map.of(701L, 0));
         when(getCartUserIdsByProductIdUseCase.execute(701L)).thenReturn(List.of(7L, 42L));
         TransactionSynchronizationManager.initSynchronization();
         try {
@@ -151,7 +152,7 @@ class OrderServiceTest {
 
     @Test
     void 커밋_후_알림_작업_등록에_실패해도_주문_응답에_영향을_주지_않는다() {
-        when(reserveProductInventoryUseCase.execute(any())).thenReturn(Map.of(701L, 2));
+        when(reserveProductInventoryUseCase.execute(any(), eq(3))).thenReturn(Map.of(701L, 2));
         when(getCartUserIdsByProductIdUseCase.execute(701L)).thenReturn(List.of(7L));
         doThrow(new TaskRejectedException("거절")).when(notificationService).createAllAsync(any());
         TransactionSynchronizationManager.initSynchronization();
@@ -161,6 +162,27 @@ class OrderServiceTest {
             assertThatCode(() -> TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit))
                 .doesNotThrowAnyException();
             verify(notificationService).createAllAsync(any());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void V3에서는_커밋_후에만_버전과_진입_시각이_담긴_이벤트를_전달한다() {
+        final LocalDateTime referenceTime = LocalDateTime.of(2026, 10, 26, 12, 0);
+        when(reserveProductInventoryUseCase.executeWithLowStockNotificationEntries(any(), eq(5)))
+            .thenReturn(Map.of(701L, new LowStockInventoryEntry(new ProductInventoryState(5, 2), referenceTime)));
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            serviceForMode(LowStockNotificationMode.V3).createOrder(command(new CreateOrderItemCommand(701L, 1)));
+            verifyNoInteractions(getCartUserIdsByProductIdUseCase, notificationService);
+
+            TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+
+            verify(notificationService)
+                .createLowStockNotificationsAsync(new LowStockNotificationEvent(701L, 42L, "상품 701", 2, referenceTime));
+            verify(reserveProductInventoryUseCase).executeWithLowStockNotificationEntries(new ProductQuantitiesCommand(Map.of(701L, 1)), 5);
+            verifyNoInteractions(getCartUserIdsByProductIdUseCase);
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
@@ -274,6 +296,13 @@ class OrderServiceTest {
         final ArgumentCaptor<Order> order = ArgumentCaptor.forClass(Order.class);
         verify(createOrderUseCase).execute(order.capture());
         return order.getValue();
+    }
+
+    private OrderService serviceForMode(final LowStockNotificationMode mode) {
+        return new OrderService(getAddressUseCase, getCartUseCase, getCartUserIdsByProductIdUseCase, getProductDetailUseCase,
+            createOrderUseCase, cancelOrderUseCase, getOrdersUseCase, getOrderDetailUseCase, reserveProductInventoryUseCase,
+            releaseProductInventoryUseCase, getReservedOrderQuantitiesUseCase, mock(GetExpiredOrderKeysUseCase.class), expireOrderUseCase,
+            notificationService, mode);
     }
 
     private static CreateOrderCommand command(final CreateOrderItemCommand... items) {

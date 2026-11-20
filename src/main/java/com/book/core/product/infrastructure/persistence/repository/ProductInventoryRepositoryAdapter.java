@@ -1,8 +1,10 @@
 package com.book.core.product.infrastructure.persistence.repository;
 
 import com.book.core.product.application.port.ProductInventoryRepositoryPort;
+import com.book.core.product.application.result.ProductInventoryState;
 import com.book.core.product.domain.ProductInventory;
 import lombok.RequiredArgsConstructor;
+import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -24,8 +26,14 @@ class ProductInventoryRepositoryAdapter implements ProductInventoryRepositoryPor
     }
 
     @Override
-    public int availableQuantity(final Long productId) {
-        return jpaRepository.findAvailableQuantity(productId);
+    public ProductInventoryState state(final Long productId) {
+        return jpaRepository.findState(productId);
+    }
+
+    @Override
+    public Optional<ProductInventoryState> stateForUpdate(final Long productId) {
+        return jpaRepository.findForUpdate(productId)
+            .map(inventory -> new ProductInventoryState(inventory.availableQuantity(), inventory.lowStockNotificationVersion()));
     }
 
     @Override
@@ -45,6 +53,6 @@ class ProductInventoryRepositoryAdapter implements ProductInventoryRepositoryPor
 
     @Override
     public boolean receive(final Long productId, final int quantity) {
-        return jpaRepository.restore(productId, quantity) == 1;
+        return jpaRepository.receive(productId, quantity) == 1;
     }
 }

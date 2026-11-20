@@ -25,7 +25,8 @@ public interface ProductControllerSpec {
         @ApiResponse(responseCode = "400", description = "요청이 올바르지 않음"), @ApiResponse(responseCode = "404", description = "상품을 찾을 수 없음"),
         @ApiResponse(responseCode = "500", description = "알 수 없는 오류")})
     ResponseEntity<com.book.common.response.ApiResponse<ProductDetailResponse>> getProductDetail(
-        @Parameter(in = ParameterIn.PATH, required = true, example = "1") @Positive @PathVariable("productId") final Long productId);
+        @Parameter(in = ParameterIn.PATH, required = true, example = "1") @Positive @PathVariable("productId") final Long productId,
+        @Parameter(hidden = true) final Long userId);
 
     @Operation(summary = "상품 목록 조회",
         description = "활성 상품을 cursor 방식으로 조회합니다. sort=POPULARITY는 전체 기간 결제된 주문 상품 수량 합계 DESC, "

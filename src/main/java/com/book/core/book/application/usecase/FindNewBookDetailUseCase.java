@@ -3,8 +3,8 @@ package com.book.core.book.application.usecase;
 import com.book.common.annotation.UseCase;
 import com.book.core.book.application.port.BookCatalogException;
 import com.book.core.book.application.port.BookDetailCallBudget;
-import com.book.core.book.application.port.BookDetailFinder;
 import com.book.core.book.application.port.BookRepositoryPort;
+import com.book.core.book.application.port.NewBookCollector;
 import com.book.core.book.application.port.NewBookLookupBackoff;
 import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookDetailLookup;
@@ -18,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class FindNewBookDetailUseCase {
     private final BookRepositoryPort books;
-    private final BookDetailFinder detailFinder;
+    private final NewBookCollector collector;
     private final BookDetailCallBudget budget;
     private final NewBookLookupBackoff backoff;
 
@@ -34,7 +34,7 @@ public class FindNewBookDetailUseCase {
         }
 
         try {
-            final var detail = detailFinder.findBookDetail(isbn13);
+            final var detail = collector.collectDetail(isbn13);
             if (detail.isEmpty()) {
                 backoff.deferMissingDetail(isbn13, today);
                 return NewBookImportOutcome.MISSING_DETAIL;

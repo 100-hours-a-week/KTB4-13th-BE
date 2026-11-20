@@ -2,9 +2,7 @@ package com.book.core.book.infrastructure.client;
 
 import com.book.core.book.application.port.BookCatalogException;
 import com.book.core.book.application.port.BookCatalogFailureReason;
-import com.book.core.book.application.port.NewBookIsbnFinder;
 import com.book.core.book.application.result.NewBookCandidate;
-import com.book.core.book.application.result.NewBookIsbnPage;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -18,14 +16,13 @@ import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
-class NationalLibraryClient implements NewBookIsbnFinder {
+class NationalLibraryClient {
     private static final int PAGE_SIZE = 100;
     private final BookCatalogHttpClient http;
     private final BookCatalogProperties properties;
     private final ObjectMapper mapper;
 
-    @Override
-    public NewBookIsbnPage findPaperBookIsbns(final LocalDate from, final LocalDate through, final int pageNumber) {
+    NationalLibraryPage searchPaperBooks(final LocalDate from, final LocalDate through, final int pageNumber) {
         final String body = http.get(properties.nationalLibraryBaseUrl(),
             (final var uri) -> uri.path("/seoji/SearchApi.do").queryParam("cert_key", "{key}").queryParam("result_style", "json")
                 .queryParam("page_no", pageNumber).queryParam("page_size", PAGE_SIZE)
@@ -53,11 +50,11 @@ class NationalLibraryClient implements NewBookIsbnFinder {
                 throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
             }
             if (noDocs) {
-                return new NewBookIsbnPage(List.of(), false);
+                return new NationalLibraryPage(List.of(), false);
             }
             final List<NewBookCandidate> candidates = docs.valueStream().map(NationalLibraryClient::toCandidate)
                 .filter(Objects::nonNull).toList();
-            return new NewBookIsbnPage(candidates, (long) pageNumber * PAGE_SIZE < totalCount);
+            return new NationalLibraryPage(candidates, (long) pageNumber * PAGE_SIZE < totalCount);
         } catch (final JacksonException | IllegalArgumentException exception) {
             throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
         }

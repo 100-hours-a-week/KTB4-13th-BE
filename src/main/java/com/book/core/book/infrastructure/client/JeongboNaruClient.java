@@ -2,7 +2,6 @@ package com.book.core.book.infrastructure.client;
 
 import com.book.core.book.application.port.BookCatalogException;
 import com.book.core.book.application.port.BookCatalogFailureReason;
-import com.book.core.book.application.port.BookDetailFinder;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.domain.Isbn13;
 import java.util.Optional;
@@ -14,14 +13,13 @@ import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
-class Data4LibraryClient implements BookDetailFinder {
+class JeongboNaruClient {
     private static final String MISSING_ISBN_ERROR_CODE = "isbnMpngErr";
     private final BookCatalogHttpClient http;
     private final BookCatalogProperties properties;
     private final ObjectMapper mapper;
 
-    @Override
-    public Optional<BookDetail> findBookDetail(final String isbn13) {
+    Optional<BookDetail> findBookDetail(final String isbn13) {
         final String body = http.get(properties.dataForLibraryBaseUrl(),
             (final var uri) -> uri.path("/api/srchDtlList").queryParam("authKey", "{key}").queryParam("isbn13", isbn13)
                 .queryParam("loaninfoYN", "N").queryParam("format", "json").build(properties.dataForLibraryKey()));
@@ -47,9 +45,9 @@ class Data4LibraryClient implements BookDetailFinder {
                 throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
             }
             return detail.valueStream().map((final var entry) -> entry.path("book")).filter(JsonNode::isObject)
-                .filter((final var book) -> Isbn13.normalize(Data4LibraryExternalMapper.text(book, "isbn13")).filter(isbn13::equals)
+                .filter((final var book) -> Isbn13.normalize(JeongboNaruExternalMapper.text(book, "isbn13")).filter(isbn13::equals)
                     .isPresent())
-                .map(Data4LibraryExternalMapper::toBookDetail).flatMap(Optional::stream).findFirst();
+                .map(JeongboNaruExternalMapper::toBookDetail).flatMap(Optional::stream).findFirst();
         } catch (final JacksonException | IllegalArgumentException exception) {
             throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
         }

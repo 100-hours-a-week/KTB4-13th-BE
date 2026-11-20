@@ -19,9 +19,8 @@ import com.book.core.book.application.port.BookCatalogException;
 import com.book.core.book.application.port.BookCatalogFailureReason;
 import com.book.core.book.application.port.BookDetailCallBudget;
 import com.book.core.book.application.port.BookRepositoryPort;
-import com.book.core.book.application.port.BookDetailFinder;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
-import com.book.core.book.application.port.NewBookIsbnFinder;
+import com.book.core.book.application.port.NewBookCollector;
 import com.book.core.book.application.port.NewBookImportLock;
 import com.book.core.book.application.port.NewBookImportNotifier;
 import com.book.core.book.application.port.NewBookLookupBackoff;
@@ -30,7 +29,6 @@ import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookImportOutcome;
 import com.book.core.book.application.result.NewBookImportReport;
-import com.book.core.book.application.result.NewBookIsbnPage;
 import com.book.core.book.application.service.NewBookImportService;
 import java.time.LocalDate;
 import java.util.List;
@@ -52,7 +50,7 @@ class NewBookImportUseCasesTest {
     private static final NewBookCandidate OTHER_CANDIDATE = new NewBookCandidate(OTHER_ISBN, TODAY.minusDays(2));
 
     @Mock
-    private NewBookIsbnFinder isbnFinder;
+    private NewBookCollector collector;
     @Mock
     private NewBookImportLock lock;
     @Mock
@@ -63,8 +61,6 @@ class NewBookImportUseCasesTest {
     private FindNewBookDetailUseCase details;
     @Mock
     private BookRepositoryPort books;
-    @Mock
-    private BookDetailFinder detailFinder;
     @Mock
     private BookDetailCallBudget budget;
     @Mock
@@ -80,15 +76,12 @@ class NewBookImportUseCasesTest {
     }
 
     @Test
-    void 전체_페이지의_ISBN을_정규화하고_중복은_처음_출간일을_유지한다() {
-        final LocalDate from = TODAY.minusDays(30);
-        final LocalDate through = TODAY.minusDays(1);
-        when(isbnFinder.findPaperBookIsbns(from, through, 1)).thenReturn(new NewBookIsbnPage(
-            List.of(new NewBookCandidate("978-89-8392-198-7", TODAY.minusDays(1)), new NewBookCandidate("9788983921988", TODAY)), true));
-        when(isbnFinder.findPaperBookIsbns(from, through, 2)).thenReturn(
-            new NewBookIsbnPage(List.of(new NewBookCandidate(ISBN, TODAY.minusDays(9)), OTHER_CANDIDATE), false));
+    void 최근_30일_후보의_ISBN을_정규화하고_중복은_처음_출간일을_유지한다() {
+        when(collector.collectCandidates(TODAY.minusDays(30), TODAY.minusDays(1))).thenReturn(
+            List.of(new NewBookCandidate("978-89-8392-198-7", TODAY.minusDays(1)), new NewBookCandidate("9788983921988", TODAY),
+                new NewBookCandidate(ISBN, TODAY.minusDays(9)), OTHER_CANDIDATE));
 
-        assertThat(new CollectNewBookIsbnsUseCase(isbnFinder).collect(TODAY)).containsExactly(CANDIDATE, OTHER_CANDIDATE);
+        assertThat(new CollectNewBookIsbnsUseCase(collector).collect(TODAY)).containsExactly(CANDIDATE, OTHER_CANDIDATE);
     }
 
     @Test
@@ -111,19 +104,19 @@ class NewBookImportUseCasesTest {
         when(books.existsByIsbn13(ISBN)).thenReturn(true);
 
         assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.ALREADY_REGISTERED);
-        verifyNoInteractions(budget, detailFinder, registration);
+        verifyNoInteractions(budget, collector, registration);
     }
 
     @Test
     void 예산이_없으면_상세_조회하지_않는다() {
         assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.BUDGET_EXHAUSTED);
-        verifyNoInteractions(detailFinder, registration);
+        verifyNoInteractions(collector, registration);
     }
 
     @Test
     void 상세가_없으면_저장하지_않는다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(detailFinder.findBookDetail(ISBN)).thenReturn(Optional.empty());
+        when(collector.collectDetail(ISBN)).thenReturn(Optional.empty());
 
         assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.MISSING_DETAIL);
         verify(backoff).deferMissingDetail(ISBN, TODAY);
@@ -133,7 +126,7 @@ class NewBookImportUseCasesTest {
     @Test
     void 정보나루_호출_제한을_공유_예산에_반영한다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(detailFinder.findBookDetail(ISBN)).thenThrow(new BookCatalogException(BookCatalogFailureReason.RATE_LIMIT));
+        when(collector.collectDetail(ISBN)).thenThrow(new BookCatalogException(BookCatalogFailureReason.RATE_LIMIT));
 
         assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.RATE_LIMITED);
         verify(budget).pauseAfterRateLimit();
@@ -145,13 +138,13 @@ class NewBookImportUseCasesTest {
         when(backoff.isWaiting(ISBN, TODAY)).thenReturn(true);
 
         assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.WAITING_RETRY);
-        verifyNoInteractions(budget, detailFinder);
+        verifyNoInteractions(budget, collector);
     }
 
     @Test
     void 일시_오류는_ISBN_재시도를_미룬다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(detailFinder.findBookDetail(ISBN)).thenThrow(new BookCatalogException(BookCatalogFailureReason.TEMPORARY));
+        when(collector.collectDetail(ISBN)).thenThrow(new BookCatalogException(BookCatalogFailureReason.TEMPORARY));
 
         assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.LOOKUP_FAILED);
         verify(backoff).deferAfterFailure(ISBN, TODAY);
@@ -160,7 +153,7 @@ class NewBookImportUseCasesTest {
     @Test
     void 요청_거부는_ISBN을_미루지_않는다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(detailFinder.findBookDetail(ISBN)).thenThrow(new BookCatalogException(BookCatalogFailureReason.REJECTED));
+        when(collector.collectDetail(ISBN)).thenThrow(new BookCatalogException(BookCatalogFailureReason.REJECTED));
 
         assertThatThrownBy(() -> importer().findDetail(ISBN, TODAY)).isInstanceOf(BookCatalogException.class);
         verify(backoff).isWaiting(ISBN, TODAY);
@@ -237,6 +230,6 @@ class NewBookImportUseCasesTest {
     }
 
     private FindNewBookDetailUseCase importer() {
-        return new FindNewBookDetailUseCase(books, detailFinder, budget, backoff);
+        return new FindNewBookDetailUseCase(books, collector, budget, backoff);
     }
 }

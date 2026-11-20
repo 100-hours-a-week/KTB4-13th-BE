@@ -5,8 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import tools.jackson.databind.JsonNode;
 
-final class Data4LibraryExternalMapper {
-    private Data4LibraryExternalMapper() {}
+final class JeongboNaruExternalMapper {
+    private JeongboNaruExternalMapper() {}
 
     static Optional<BookDetail> toBookDetail(final JsonNode book) {
         final String title = text(book, "bookname");

@@ -47,7 +47,7 @@ class BookCatalogClientTest {
              {"EA_ISBN":"9788950983529","TITLE":"날짜 없음","REAL_PUBLISH_DATE":"","PUBLISH_PREDATE":""}]}
             """);
         final var client = new NationalLibraryClient(http, new BookCatalogProperties(baseUrl, "test+key", baseUrl, ""), mapper);
-        final var page = client.findPaperBookIsbns(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11), 1);
+        final var page = client.searchPaperBooks(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11), 1);
         assertThat(page.candidates()).containsExactly(new NewBookCandidate(ISBN, LocalDate.of(2026, 11, 11)),
             new NewBookCandidate("9788972756194", LocalDate.of(2026, 10, 20)));
         assertThat(page.hasNext()).isTrue();
@@ -61,7 +61,7 @@ class BookCatalogClientTest {
             {"response":{"detail":[{"book":{"isbn13":"9788983921987","bookname":"신간","authors":"저자","publisher":"출판사",
              "class_no":"813.7","publication_date":"2026","publication_year":"2026"}}]}}
             """);
-        final var client = new Data4LibraryClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "test+key"), mapper);
+        final var client = new JeongboNaruClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "test+key"), mapper);
         final var detail = client.findBookDetail(ISBN).orElseThrow();
         assertThat(detail.category()).isEqualTo("813.7");
         assertThat(detail.coverImageUrl()).isNull();
@@ -75,14 +75,14 @@ class BookCatalogClientTest {
             {"response":{"detail":[{"book":{"isbn13":"9788983921987","bookname":"신간","authors":"저자","publisher":"출판사",
              "class_no":"","publication_date":"2026"}}]}}
             """);
-        final var client = new Data4LibraryClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
+        final var client = new JeongboNaruClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
         assertThat(client.findBookDetail(ISBN)).isEmpty();
     }
 
     @Test
     void 호출_제한을_분류하고_응답이나_키를_예외에_담지_않는다() {
         respond("/api/srchDtlList", 429, "external response");
-        final var client = new Data4LibraryClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "sensitive-key"), mapper);
+        final var client = new JeongboNaruClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "sensitive-key"), mapper);
         assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
             assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.RATE_LIMIT);
             assertThat(error.getMessage()).isEqualTo("RATE_LIMIT");
@@ -95,7 +95,7 @@ class BookCatalogClientTest {
         respond("/api/srchDtlList", 200, """
             {"response":{"errCode":"authErr","error":"인증정보가 일치하지 않습니다."}}
             """);
-        final var client = new Data4LibraryClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
+        final var client = new JeongboNaruClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
         assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
             assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.REJECTED);
             assertThat(error.externalCode()).isEqualTo("authErr");
@@ -107,7 +107,7 @@ class BookCatalogClientTest {
         respond("/api/srchDtlList", 200, """
             {"response":{"errCode":"isbnMpngErr","error":"ISBN에 해당하는 도서가 없습니다."}}
             """);
-        final var client = new Data4LibraryClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
+        final var client = new JeongboNaruClient(http, new BookCatalogProperties(baseUrl, "", baseUrl, "key"), mapper);
         assertThat(client.findBookDetail(ISBN)).isEmpty();
     }
 
@@ -117,7 +117,7 @@ class BookCatalogClientTest {
             {"RESULT":"ERROR","ERR_CODE":"011","ERR_MESSAGE":"유효하지 않은 인증키 값입니다."}
             """);
         final var client = new NationalLibraryClient(http, new BookCatalogProperties(baseUrl, "key", baseUrl, ""), mapper);
-        assertThatThrownBy(() -> client.findPaperBookIsbns(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11), 1))
+        assertThatThrownBy(() -> client.searchPaperBooks(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11), 1))
             .isInstanceOfSatisfying(BookCatalogException.class, (final var error) -> {
                 assertThat(error.reason()).isEqualTo(BookCatalogFailureReason.REJECTED);
                 assertThat(error.externalCode()).isEqualTo("011");

@@ -1,6 +1,7 @@
 package com.book.core.coupon.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -10,6 +11,7 @@ import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.usecase.ReconcileCouponStockUseCase;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +30,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
 @SpringBootTest(properties = {"coupon.cache.fresh-ms=60000", "coupon.cache.ttl-ms=120000", "coupon.sold-out.ttl-seconds=86400",
-    "coupon.sold-out.fast-path-ttl-ms=60000"})
+    "coupon.sold-out.fast-path-ttl-ms=60000", "coupon.waiting-room.coupon-ids=8510010"})
 @AutoConfigureMockMvc
 @ActiveProfiles({"test", "mysql-test"})
 @Testcontainers
@@ -62,6 +64,36 @@ class CouponSoldOutHttpIntegrationTest {
 
     @Autowired
     private LoadingCache<String, Boolean> couponSoldOutCache;
+
+    @Test
+    void 대기열_대상_쿠폰은_인증된_사용자의_입장권으로만_발급한다() throws Exception {
+        final long couponId = 8_510_010L;
+        final String path = "/api/v1/coupons/{couponId}/waiting-room";
+        final String auth = "Bearer " + tokens.issue(1L).accessToken();
+        insertActiveCoupon(couponId, 2);
+
+        issue(1L, couponId).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("E4005"));
+        mvc.perform(post(path, couponId)).andExpect(status().isUnauthorized());
+        mvc.perform(get(path, couponId).header(HttpHeaders.AUTHORIZATION, auth)).andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("E4005"));
+        mvc.perform(post(path, couponId).header(HttpHeaders.AUTHORIZATION, auth)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.position").isNumber());
+
+        final String passKey = "coupon:{" + couponId + "}:waiting:passes";
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(4);
+        while (redisTemplate.opsForZSet().score(passKey, "1") == null && System.nanoTime() < deadline) {
+            Thread.sleep(25);
+        }
+        mvc.perform(get(path, couponId).header(HttpHeaders.AUTHORIZATION, auth)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.admitted").value(true)).andExpect(jsonPath("$.data.position").value(0));
+        issue(2L, couponId).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("E4005"));
+        issue(1L, couponId).andExpect(status().isOk());
+        assertCounts(couponId, 1);
+
+        redisTemplate.opsForZSet().add(passKey, "1", 0);
+        mvc.perform(get(path, couponId).header(HttpHeaders.AUTHORIZATION, auth)).andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("E4005"));
+    }
 
     @Test
     void 매진_신호를_확인하면_중복_검사와_정책_조회를_건너뛴다() throws Exception {

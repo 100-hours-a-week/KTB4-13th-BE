@@ -67,6 +67,10 @@ coupon:
   cache:
     ttl-ms: ${COUPON_CACHE_TTL_MS:10000}
     fresh-ms: ${COUPON_CACHE_FRESH_MS:500}
+  waiting-room:
+    coupon-ids: ${COUPON_WAITING_ROOM_COUPON_IDS:}
+    admissions-per-second: ${COUPON_WAITING_ROOM_ADMISSIONS_PER_SECOND:250}
+    pass-ttl-ms: ${COUPON_WAITING_ROOM_PASS_TTL_MS:30000}
   sold-out:
     ttl-seconds: ${COUPON_SOLD_OUT_TTL_SECONDS:86400}
     fast-path-ttl-ms: ${COUPON_SOLD_OUT_FAST_PATH_TTL_MS:1000}

@@ -1,6 +1,7 @@
 package com.book.core.coupon.api.converter;
 
 import com.book.core.coupon.api.request.CreateCouponRequest;
+import com.book.core.coupon.application.command.CouponWaitingRoomCommand;
 import com.book.core.coupon.application.command.CreateCouponCommand;
 import com.book.core.coupon.application.command.GetCouponsCommand;
 import com.book.core.coupon.application.command.GetOwnedCouponsCommand;
@@ -21,6 +22,10 @@ public class CouponCommandConverter {
 
     public IssueCouponCommand toIssueCouponCommand(final Long userId, final Long couponId) {
         return new IssueCouponCommand(userId, couponId);
+    }
+
+    public CouponWaitingRoomCommand toWaitingRoomCommand(final Long userId, final Long couponId) {
+        return new CouponWaitingRoomCommand(userId, couponId);
     }
 
     public GetOwnedCouponsCommand toGetOwnedCouponsCommand(final Long userId) {

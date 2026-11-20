@@ -9,11 +9,13 @@ import com.book.core.coupon.api.response.CouponResponse;
 import com.book.core.coupon.api.response.OwnedCouponResponse;
 import com.book.core.coupon.api.spec.CouponControllerSpec;
 import com.book.core.coupon.application.command.CreateCouponCommand;
+import com.book.core.coupon.application.command.CouponWaitingRoomCommand;
 import com.book.core.coupon.application.command.GetCouponsCommand;
 import com.book.core.coupon.application.command.GetOwnedCouponsCommand;
 import com.book.core.coupon.application.command.IssueCouponCommand;
 import com.book.core.coupon.application.result.CouponIssueOutcome;
 import com.book.core.coupon.application.result.CouponResult;
+import com.book.core.coupon.application.result.CouponWaitingRoomStatus;
 import com.book.core.coupon.application.result.OwnedCouponResult;
 import com.book.core.coupon.application.service.CouponService;
 import com.book.core.coupon.application.service.OwnedCouponService;
@@ -64,6 +66,22 @@ public class CouponController implements CouponControllerSpec {
             return ResponseEntity.accepted().body(ApiResponse.ok());
         }
         return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @PostMapping("/api/v1/coupons/{couponId}/waiting-room")
+    public ResponseEntity<ApiResponse<CouponWaitingRoomStatus>> enterWaitingRoom(@UserId final Long userId,
+        @PathVariable final Long couponId) {
+        final CouponWaitingRoomCommand command = commandConverter.toWaitingRoomCommand(userId, couponId);
+        return ResponseEntity.ok(ApiResponse.ok(couponService.enterWaitingRoom(command)));
+    }
+
+    @Override
+    @GetMapping("/api/v1/coupons/{couponId}/waiting-room")
+    public ResponseEntity<ApiResponse<CouponWaitingRoomStatus>> getWaitingRoomStatus(@UserId final Long userId,
+        @PathVariable final Long couponId) {
+        final CouponWaitingRoomCommand command = commandConverter.toWaitingRoomCommand(userId, couponId);
+        return ResponseEntity.ok(ApiResponse.ok(couponService.getWaitingRoomStatus(command)));
     }
 
     @Override

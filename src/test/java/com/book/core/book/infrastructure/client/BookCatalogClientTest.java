@@ -39,7 +39,6 @@ class BookCatalogClientTest {
 
     @Test
     void 목록_응답의_전체_건수와_ISBN_출간일을_읽고_종이책_날짜_조건을_보낸다() {
-        // 실제 응답처럼 실제 출간일이 비면 출간 예정일을 쓰고, 날짜가 없는 후보는 등록할 수 없어 제외합니다.
         respond("/seoji/SearchApi.do", 200, """
             {"PAGE_NO":"1","TOTAL_COUNT":"101","docs":[
              {"EA_ISBN":"9788983921987","TITLE":"신간","REAL_PUBLISH_DATE":"","PUBLISH_PREDATE":"20261111"},

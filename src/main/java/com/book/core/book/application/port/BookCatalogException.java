@@ -19,7 +19,6 @@ public final class BookCatalogException extends RuntimeException {
     public BookCatalogException(final BookCatalogFailureReason reason, final String externalCode) {
         super(reason.name());
         this.reason = reason;
-        // 외부 응답 원문 대신 형식이 확인된 오류 코드만 보관합니다.
         if (externalCode != null && SAFE_CODE.matcher(externalCode).matches()) {
             this.externalCode = externalCode;
         } else {

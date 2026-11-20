@@ -50,7 +50,6 @@ public class FindNewBookDetailUseCase {
                     budget.pauseAfterRateLimit();
                     yield NewBookImportOutcome.RATE_LIMITED;
                 }
-                // 인증키·IP·요청 형식 오류는 도서와 무관하므로 ISBN을 미루지 않고 배치를 실패로 멈춥니다.
                 case REJECTED -> throw exception;
                 case TEMPORARY -> {
                     backoff.deferAfterFailure(isbn13, today);

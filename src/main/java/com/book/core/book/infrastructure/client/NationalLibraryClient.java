@@ -33,7 +33,6 @@ class NationalLibraryClient {
         try {
             final JsonNode response = mapper.readTree(body);
             if ("ERROR".equals(text(response, "RESULT"))) {
-                // 국립중앙도서관은 인증 오류 등을 HTTP 200의 RESULT=ERROR, ERR_CODE로 응답합니다. 예: ERR_CODE=011
                 throw new BookCatalogException(BookCatalogFailureReason.REJECTED, text(response, "ERR_CODE"));
             }
             final String total = text(response, "TOTAL_COUNT");
@@ -62,7 +61,6 @@ class NationalLibraryClient {
 
     private static NewBookCandidate toCandidate(final JsonNode document) {
         final String isbn13 = text(document, "EA_ISBN");
-        // 정보나루 상세는 출판 연도만 주므로 국중도의 실제 출간일, 없으면 출간 예정일을 사용합니다.
         LocalDate publishedAt = date(text(document, "REAL_PUBLISH_DATE"));
         if (publishedAt == null) {
             publishedAt = date(text(document, "PUBLISH_PREDATE"));

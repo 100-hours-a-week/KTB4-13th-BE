@@ -82,7 +82,6 @@ public class NewBookImportService {
                     consecutiveFailures = 0;
                 }
                 if (consecutiveFailures >= MAX_CONSECUTIVE_LOOKUP_FAILURES) {
-                    // 외부 장애가 이어지면 남은 호출 한도를 아끼기 위해 중단합니다.
                     run.failureReason = "외부 API 상세 조회가 연속 %d회 실패해 중단했습니다.".formatted(consecutiveFailures);
                     break;
                 }

@@ -30,7 +30,6 @@ class BookCatalogHttpClient {
                     throw new BookCatalogException(BookCatalogFailureReason.REJECTED);
                 }).body(String.class);
         } catch (final RestClientException exception) {
-            // 통신 예외에 인증키가 포함된 요청 URL이 들어갈 수 있습니다.
             throw new BookCatalogException(BookCatalogFailureReason.TEMPORARY);
         }
     }

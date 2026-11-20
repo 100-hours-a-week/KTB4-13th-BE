@@ -13,7 +13,6 @@ final class JeongboNaruExternalMapper {
         final String author = text(book, "authors");
         final String publisher = text(book, "publisher");
         final String category = text(book, "class_no");
-        // 정보나루 publication_date는 출판 연도만 주므로 출간일은 국중도 목록 값을 사용합니다.
         if (!required(title) || !required(author) || !required(publisher) || !required(category)) {
             return Optional.empty();
         }

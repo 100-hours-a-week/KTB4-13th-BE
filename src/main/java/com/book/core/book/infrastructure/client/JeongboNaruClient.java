@@ -30,11 +30,9 @@ class JeongboNaruClient {
             }
             if (!response.path("error").isMissingNode()) {
                 final String errorCode = response.path("errCode").asString(null);
-                // 정보나루에 없는 ISBN은 도서별 결과이므로 배치를 멈추지 않고 상세 없음으로 봅니다.
                 if (MISSING_ISBN_ERROR_CODE.equals(errorCode)) {
                     return Optional.empty();
                 }
-                // 정보나루는 인증 오류 등을 HTTP 200의 errCode·error 필드로 응답합니다. 예: errCode=authErr
                 throw new BookCatalogException(BookCatalogFailureReason.REJECTED, errorCode);
             }
             final JsonNode detail = response.path("detail");

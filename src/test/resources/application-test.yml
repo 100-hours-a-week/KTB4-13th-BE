@@ -43,3 +43,7 @@ app:
 coupon:
   kafka:
     worker-enabled: false
+
+notification:
+  redis:
+    enabled: false

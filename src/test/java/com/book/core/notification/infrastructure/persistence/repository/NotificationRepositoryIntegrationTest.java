@@ -4,6 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.notification.application.command.CreateNotificationCommand;
+import com.book.core.notification.application.event.NotificationStreamMessage;
+import com.book.core.notification.application.usecase.SubscribeNotificationsUseCase;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.List;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import com.book.core.notification.application.usecase.CreateNotificationUseCase;
 import com.book.core.notification.application.port.NotificationRepositoryPort;
 import com.book.core.notification.application.command.ReadNotificationCommand;
@@ -17,9 +23,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -33,6 +45,16 @@ class NotificationRepositoryIntegrationTest {
     @Container
     @ServiceConnection
     static final MySQLContainer mysql = new MySQLContainer("mysql:8.4.8");
+    @Container
+    static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);
+
+    @DynamicPropertySource
+    static void redisProperties(final DynamicPropertyRegistry properties) {
+        properties.add("notification.redis.enabled", () -> true);
+        properties.add("spring.data.redis.host", redis::getHost);
+        properties.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+    }
+
     @Autowired
     CreateNotificationUseCase createUseCase;
     @Autowired
@@ -41,6 +63,13 @@ class NotificationRepositoryIntegrationTest {
     JdbcTemplate jdbc;
     @Autowired
     NotificationRepositoryPort repository;
+    @Autowired
+    SubscribeNotificationsUseCase subscriptions;
+    @Autowired
+    PlatformTransactionManager transactionManager;
+    @Autowired
+    @Qualifier("notificationRedisListener")
+    RedisMessageListenerContainer redisListener;
 
     @Test
     void 신규_알림과_공통_생명주기를_MySQL에_저장한다() {
@@ -50,6 +79,45 @@ class NotificationRepositoryIntegrationTest {
             .containsEntry("read_at", null).containsEntry("deleted_at", null);
         assertThat(row.get("created_at")).isNotNull();
         assertThat(row.get("updated_at")).isNotNull();
+    }
+
+    @Test
+    void 알림은_커밋_이후에만_연결에_전달되고_롤백하면_전달되지_않는다() throws Exception {
+        awaitRedisSubscription();
+        final List<NotificationStreamMessage> received = new CopyOnWriteArrayList<>();
+        final var delivery = new CountDownLatch(1);
+        final Runnable unsubscribe = subscriptions.subscribe(77331L, event -> {
+            if (event.eventName().equals("notification")) {
+                received.add(event);
+                delivery.countDown();
+            }
+        });
+        try {
+            final var transactions = new TransactionTemplate(transactionManager);
+            final Long id = transactions.execute(status -> {
+                final Long savedId = createUseCase.execute(new CreateNotificationCommand(77331L, "제목", "본문"));
+                assertThat(received).isEmpty();
+                return savedId;
+            });
+            assertThat(delivery.await(10, TimeUnit.SECONDS)).isTrue();
+            assertThat(received).containsExactly(NotificationStreamMessage.notification(id));
+            transactions.executeWithoutResult(status -> {
+                createUseCase.execute(new CreateNotificationCommand(77331L, "롤백", "본문"));
+                status.setRollbackOnly();
+            });
+            Thread.sleep(500);
+            assertThat(received).containsExactly(NotificationStreamMessage.notification(id));
+        } finally {
+            unsubscribe.run();
+        }
+    }
+
+    private void awaitRedisSubscription() throws InterruptedException {
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (!redisListener.isListening() && System.nanoTime() < deadline) {
+            Thread.sleep(10);
+        }
+        assertThat(redisListener.isListening()).isTrue();
     }
 
     @Test

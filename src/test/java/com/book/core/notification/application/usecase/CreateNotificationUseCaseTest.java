@@ -7,6 +7,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.notification.application.command.CreateNotificationCommand;
+import com.book.core.notification.application.event.NotificationCreatedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import com.book.core.notification.application.port.NotificationRepositoryPort;
 import com.book.core.notification.domain.Notification;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 class CreateNotificationUseCaseTest {
     @Mock
     NotificationRepositoryPort repository;
+    @Mock
+    ApplicationEventPublisher eventPublisher;
     @InjectMocks
     CreateNotificationUseCase useCase;
 
@@ -36,6 +40,7 @@ class CreateNotificationUseCaseTest {
         assertThat(captor.getValue().userId()).isEqualTo(42L);
         assertThat(captor.getValue().title()).isEqualTo("제목");
         assertThat(captor.getValue().body()).isEqualTo("본문");
+        verify(eventPublisher).publishEvent(new NotificationCreatedEvent(42L, 100L));
     }
 
     @Test

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import jakarta.validation.constraints.Positive;
 import org.springframework.web.bind.annotation.PathVariable;
 
@@ -19,6 +20,11 @@ public interface NotificationControllerSpec {
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "알림 목록과 전체 미읽음 개수"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "유효한 인증 필요")})
     ResponseEntity<ApiResponse<NotificationListResponse>> getRecent(@Parameter(hidden = true) final Long userId);
+
+    @Operation(summary = "실시간 알림 구독", description = "연결 준비·알림 발생·Redis 구독 복구 신호를 받으면 기존 알림 목록을 다시 조회합니다.")
+    @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "SSE 연결"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "유효한 인증 필요")})
+    ResponseEntity<SseEmitter> stream(@Parameter(hidden = true) final Long userId);
 
     @Operation(summary = "개별 알림 읽음 처리", description = "본인 활성 알림만 읽음 처리하며 반복 요청은 최초 읽음 시각을 유지합니다.")
     @ApiResponses({@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "읽음 처리 성공 또는 이미 읽음"),

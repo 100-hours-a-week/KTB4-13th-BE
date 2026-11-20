@@ -1,6 +1,9 @@
 package com.book.core.notification.api;
 
 import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.any;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -19,6 +22,7 @@ import com.book.support.config.WebCorsConfiguration;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import com.book.core.notification.api.converter.NotificationCommandConverter;
 import com.book.core.notification.api.converter.NotificationResultConverter;
+import com.book.core.notification.api.converter.NotificationStreamResultConverter;
 import com.book.core.notification.application.command.GetNotificationsCommand;
 import com.book.core.notification.application.result.GetNotificationsResult;
 import com.book.core.notification.application.result.NotificationItemResult;
@@ -39,6 +43,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @WebMvcTest(NotificationController.class)
 @Import({NotificationCommandConverter.class, NotificationResultConverter.class, UserIdMvcConfig.class, SecurityConfiguration.class,
@@ -49,6 +55,8 @@ class NotificationControllerTest {
     MockMvc mvc;
     @MockitoBean
     NotificationService service;
+    @MockitoBean
+    NotificationStreamResultConverter streamResultConverter;
     @MockitoBean(name = "serviceJwtDecoder")
     JwtDecoder decoder;
 
@@ -72,6 +80,23 @@ class NotificationControllerTest {
             .andExpect(jsonPath("$.data.notifications[0].title").value("제목"))
             .andExpect(jsonPath("$.data.notifications[0].body").value("본문")).andExpect(jsonPath("$.data.unreadCount").value(25));
         verify(service).getRecent(command);
+    }
+
+    @Test
+    void 인증된_사용자는_SSE_연결을_요청할_수_있다() throws Exception {
+        authenticate();
+        when(streamResultConverter.toResponse(any()))
+            .thenReturn(org.springframework.http.ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore())
+                .contentType(MediaType.TEXT_EVENT_STREAM).body(new SseEmitter(1000L)));
+        mvc.perform(get("/api/v1/notifications/stream").header("Authorization", "Bearer test-token")).andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM))
+            .andExpect(header().string("Cache-Control", "no-store")).andExpect(request().asyncStarted());
+        verify(streamResultConverter).toResponse(any());
+    }
+
+    @Test
+    void 인증_없는_SSE_요청은_거부한다() throws Exception {
+        mvc.perform(get("/api/v1/notifications/stream")).andExpect(status().isUnauthorized());
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.book.core.book.infrastructure.client;
 import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.port.NewBookCollectorFailureReason;
 import java.time.Duration;
+import io.micrometer.observation.ObservationRegistry;
 import java.util.Map;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -19,21 +20,28 @@ import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 @EnableConfigurationProperties(NewBookCollectorProperties.class)
 class NewBookCollectorClientConfiguration {
     @Bean
-    NationalLibraryClient nationalLibraryClient(final NewBookCollectorProperties properties) {
+    NationalLibraryClient nationalLibraryClient(final NewBookCollectorProperties properties, final ObservationRegistry observations) {
         return createClient(NationalLibraryClient.class, properties.nationalLibraryBaseUrl(), "nationalLibraryKey",
-            properties.nationalLibraryKey());
+            properties.nationalLibraryKey(), observations);
     }
 
     @Bean
-    JeongboNaruClient jeongboNaruClient(final NewBookCollectorProperties properties) {
-        return createClient(JeongboNaruClient.class, properties.dataForLibraryBaseUrl(), "jeongboNaruKey", properties.dataForLibraryKey());
+    JeongboNaruClient jeongboNaruClient(final NewBookCollectorProperties properties, final ObservationRegistry observations) {
+        return createClient(JeongboNaruClient.class, properties.dataForLibraryBaseUrl(), "jeongboNaruKey", properties.dataForLibraryKey(),
+            observations);
     }
 
-    static <T> T createClient(final Class<T> type, final String baseUrl, final String keyVariable, final String key) {
+    static <T> T createClient(
+        final Class<T> type,
+        final String baseUrl,
+        final String keyVariable,
+        final String key,
+        final ObservationRegistry observations
+    ) {
         final var requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(3));
         requestFactory.setReadTimeout(Duration.ofSeconds(5));
-        final RestClient restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory)
+        final RestClient restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory).observationRegistry(observations)
             .defaultUriVariables(Map.of(keyVariable, key))
             .defaultStatusHandler(HttpStatusCode::isError, (final var request, final var response) -> {
                 final int status = response.getStatusCode().value();

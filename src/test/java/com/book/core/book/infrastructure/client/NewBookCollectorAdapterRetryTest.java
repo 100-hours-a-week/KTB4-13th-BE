@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.book.core.book.application.port.NewBookCollector;
 import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.port.NewBookCollectorFailureReason;
+import com.book.core.book.infrastructure.observability.NewBookImportMetrics;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,8 @@ class NewBookCollectorAdapterRetryTest {
     void startContext() {
         context = new AnnotationConfigApplicationContext();
         context.register(RetryConfiguration.class);
-        context.registerBean(NewBookCollectorAdapter.class, () -> new NewBookCollectorAdapter(nationalLibrary, jeongboNaru));
+        context.registerBean(NewBookCollectorAdapter.class,
+            () -> new NewBookCollectorAdapter(nationalLibrary, jeongboNaru, mock(NewBookImportMetrics.class)));
         context.refresh();
         collector = context.getBean(NewBookCollector.class);
     }

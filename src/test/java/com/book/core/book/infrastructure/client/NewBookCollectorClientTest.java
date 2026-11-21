@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.port.NewBookCollectorFailureReason;
 import com.book.core.book.application.result.NewBookCandidate;
+import com.book.core.book.infrastructure.observability.NewBookImportMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.observation.ObservationRegistry;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -129,9 +132,11 @@ class NewBookCollectorClientTest {
 
     private NewBookCollectorAdapter collector(final String nationalLibraryKey, final String jeongboNaruKey) {
         return new NewBookCollectorAdapter(
-            NewBookCollectorClientConfiguration.createClient(NationalLibraryClient.class, baseUrl, "nationalLibraryKey",
-                nationalLibraryKey),
-            NewBookCollectorClientConfiguration.createClient(JeongboNaruClient.class, baseUrl, "jeongboNaruKey", jeongboNaruKey));
+            NewBookCollectorClientConfiguration.createClient(NationalLibraryClient.class, baseUrl, "nationalLibraryKey", nationalLibraryKey,
+                ObservationRegistry.NOOP),
+            NewBookCollectorClientConfiguration.createClient(JeongboNaruClient.class, baseUrl, "jeongboNaruKey", jeongboNaruKey,
+                ObservationRegistry.NOOP),
+            new NewBookImportMetrics(new SimpleMeterRegistry(), 500));
     }
 
     private void respond(final String path, final int status, final String body) {

@@ -11,7 +11,7 @@ class MysqlNewBookDetailCallBudget implements NewBookDetailCallBudget {
     private final JdbcTemplate jdbc;
     private final int dailyLimit;
 
-    MysqlNewBookDetailCallBudget(final JdbcTemplate jdbc, @Value("${app.new-book.detail-daily-limit:500}") final int dailyLimit) {
+    MysqlNewBookDetailCallBudget(final JdbcTemplate jdbc, @Value("${app.new-book.jeongbo-naru-daily-limit:500}") final int dailyLimit) {
         if (dailyLimit < 1 || dailyLimit > 30000) {
             throw new IllegalArgumentException("Book detail daily limit must be between 1 and 30000");
         }

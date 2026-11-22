@@ -24,7 +24,7 @@ class NewBookCollectorClientConfiguration {
 
     @Bean
     JeongboNaruClient jeongboNaruClient(final NewBookCollectorProperties properties) {
-        return createClient(JeongboNaruClient.class, properties.dataForLibraryBaseUrl(), "jeongboNaruKey", properties.dataForLibraryKey());
+        return createClient(JeongboNaruClient.class, properties.jeongboNaruBaseUrl(), "jeongboNaruKey", properties.jeongboNaruKey());
     }
 
     static <T> T createClient(final Class<T> type, final String baseUrl, final String keyVariable, final String key) {

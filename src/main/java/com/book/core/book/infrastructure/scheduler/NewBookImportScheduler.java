@@ -21,9 +21,9 @@ class NewBookImportScheduler {
     @Bean(defaultCandidate = false, destroyMethod = "shutdown")
     static ScheduledExecutorService newBookImportExecutor(
         @Value("${app.new-book.national-library-key}") final String nationalLibraryKey,
-        @Value("${app.new-book.data-for-library-key}") final String dataForLibraryKey
+        @Value("${app.new-book.jeongbo-naru-key}") final String jeongboNaruKey
     ) {
-        if (nationalLibraryKey.isBlank() || dataForLibraryKey.isBlank()) {
+        if (nationalLibraryKey.isBlank() || jeongboNaruKey.isBlank()) {
             throw new IllegalArgumentException("Both new book catalog API keys are required");
         }
         return Executors.newSingleThreadScheduledExecutor();

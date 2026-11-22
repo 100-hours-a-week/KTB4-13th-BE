@@ -49,4 +49,37 @@ class BookTest {
                 (final var error) -> assertThat(error.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
     }
 
+    @Test
+    void 신간_등록_필수값이_저장_길이를_넘으면_공통_오류를_반환한다() {
+        assertThatThrownBy(
+            () -> Book.registerNewBook("9788983921987", "가".repeat(256), "저자", null, "출판사", "800", LocalDate.of(2026, 1, 1), null))
+            .isInstanceOfSatisfying(CoreException.class,
+                (final var error) -> assertThat(error.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+    }
+
+    @Test
+    void 신간_등록_선택값이_비었거나_저장_길이를_넘으면_비워_둔다() {
+        final var tooLongDescription = "가".repeat(21_846);
+        final var tooLongCover = "https://image/" + "a".repeat(250);
+
+        final var book =
+            Book.registerNewBook("9788983921987", "도서명", "저자", tooLongDescription, "출판사", "800", LocalDate.of(2026, 1, 1), tooLongCover);
+        final var blank = Book.registerNewBook("9788983921987", "도서명", "저자", " ", "출판사", "800", LocalDate.of(2026, 1, 1), " ");
+
+        assertThat(book.description()).isNull();
+        assertThat(book.coverImageUrl()).isNull();
+        assertThat(blank.description()).isNull();
+        assertThat(blank.coverImageUrl()).isNull();
+    }
+
+    @Test
+    void 신간_등록_선택값이_저장_길이_안이면_그대로_둔다() {
+        final var description = "가".repeat(21_845);
+
+        final var book =
+            Book.registerNewBook("9788983921987", "도서명", "저자", description, "출판사", "800", LocalDate.of(2026, 1, 1), "https://image");
+
+        assertThat(book.description()).isEqualTo(description);
+        assertThat(book.coverImageUrl()).isEqualTo("https://image");
+    }
 }

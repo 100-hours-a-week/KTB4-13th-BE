@@ -1,4 +1,4 @@
-package com.book.core.book.infrastructure.scheduler;
+package com.book.core.book.infrastructure.persistence.repository;
 
 import com.book.core.book.application.port.NewBookImportLock;
 import java.sql.SQLException;

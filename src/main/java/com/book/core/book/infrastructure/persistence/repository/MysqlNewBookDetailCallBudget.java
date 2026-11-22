@@ -1,17 +1,17 @@
 package com.book.core.book.infrastructure.persistence.repository;
 
-import com.book.core.book.application.port.BookDetailCallBudget;
+import com.book.core.book.application.port.NewBookDetailCallBudget;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
-class MysqlBookDetailCallBudget implements BookDetailCallBudget {
+class MysqlNewBookDetailCallBudget implements NewBookDetailCallBudget {
     private static final String QUOTA_DAY = "DATE(UTC_TIMESTAMP() + INTERVAL 9 HOUR)";
     private final JdbcTemplate jdbc;
     private final int dailyLimit;
 
-    MysqlBookDetailCallBudget(final JdbcTemplate jdbc, @Value("${app.new-book.detail-daily-limit:500}") final int dailyLimit) {
+    MysqlNewBookDetailCallBudget(final JdbcTemplate jdbc, @Value("${app.new-book.jeongbo-naru-daily-limit:500}") final int dailyLimit) {
         if (dailyLimit < 1 || dailyLimit > 30000) {
             throw new IllegalArgumentException("Book detail daily limit must be between 1 and 30000");
         }

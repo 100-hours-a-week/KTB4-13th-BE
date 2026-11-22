@@ -1,10 +1,10 @@
 package com.book.core.book.application.usecase;
 
 import com.book.common.annotation.UseCase;
-import com.book.core.book.application.port.BookCatalogException;
-import com.book.core.book.application.port.BookDetailCallBudget;
-import com.book.core.book.application.port.BookDetailFinder;
+import com.book.core.book.application.port.NewBookCollectorException;
+import com.book.core.book.application.port.NewBookDetailCallBudget;
 import com.book.core.book.application.port.BookRepositoryPort;
+import com.book.core.book.application.port.NewBookCollector;
 import com.book.core.book.application.port.NewBookLookupBackoff;
 import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookDetailLookup;
@@ -18,8 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class FindNewBookDetailUseCase {
     private final BookRepositoryPort books;
-    private final BookDetailFinder detailFinder;
-    private final BookDetailCallBudget budget;
+    private final NewBookCollector collector;
+    private final NewBookDetailCallBudget budget;
     private final NewBookLookupBackoff backoff;
 
     public NewBookDetailLookup findDetail(final String isbn13, final LocalDate today) {
@@ -34,13 +34,13 @@ public class FindNewBookDetailUseCase {
         }
 
         try {
-            final var detail = detailFinder.findBookDetail(isbn13);
+            final var detail = collector.findDetail(isbn13);
             if (detail.isEmpty()) {
                 backoff.deferMissingDetail(isbn13, today);
                 return NewBookImportOutcome.MISSING_DETAIL;
             }
             return new NewBookDetailFound(detail.orElseThrow());
-        } catch (final BookCatalogException exception) {
+        } catch (final NewBookCollectorException exception) {
             log.atInfo().addKeyValue("isbn13", isbn13).addKeyValue("reason", exception.reason())
                 .addKeyValue("externalCode", exception.externalCode())
                 .log("[BOOK] 신간 도서 상세 조회에 실패했습니다. isbn13={}, reason={}, externalCode={}", isbn13, exception.reason(),
@@ -50,7 +50,6 @@ public class FindNewBookDetailUseCase {
                     budget.pauseAfterRateLimit();
                     yield NewBookImportOutcome.RATE_LIMITED;
                 }
-                // 인증키·IP·요청 형식 오류는 도서와 무관하므로 ISBN을 미루지 않고 배치를 실패로 멈춥니다.
                 case REJECTED -> throw exception;
                 case TEMPORARY -> {
                     backoff.deferAfterFailure(isbn13, today);

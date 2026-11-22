@@ -18,7 +18,7 @@ import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookImportOutcome;
 import com.book.core.book.application.result.NewBookImportReport;
-import com.book.core.book.application.usecase.CollectNewBookIsbnsUseCase;
+import com.book.core.book.application.usecase.CollectNewBooksUseCase;
 import com.book.core.book.application.usecase.FindNewBookDetailUseCase;
 import com.book.core.book.application.usecase.RegisterNewBookUseCase;
 import java.time.LocalDate;
@@ -40,7 +40,7 @@ class NewBookImportServiceTest {
     @ParameterizedTest
     @CsvSource({"false, false", "true, false", "false, true", "true, true"})
     void 배치_로그와_알림을_연결하고_알림_실패는_배치_결과를_바꾸지_않는다(final boolean batchFails, final boolean notificationFails) {
-        final var collection = mock(CollectNewBookIsbnsUseCase.class);
+        final var collection = mock(CollectNewBooksUseCase.class);
         final var details = mock(FindNewBookDetailUseCase.class);
         final var registration = mock(RegisterNewBookUseCase.class);
         final var notifier = mock(NewBookImportNotifier.class);

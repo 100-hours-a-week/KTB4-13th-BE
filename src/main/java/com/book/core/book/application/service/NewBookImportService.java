@@ -1,6 +1,7 @@
 package com.book.core.book.application.service;
 
-import com.book.core.book.application.port.BookCatalogException;
+import com.book.common.exception.CoreException;
+import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
 import com.book.core.book.application.port.NewBookImportLock;
 import com.book.core.book.application.port.NewBookImportNotifier;
@@ -9,7 +10,7 @@ import com.book.core.book.application.result.NewBookDetailFound;
 import com.book.core.book.application.result.NewBookDetailLookup;
 import com.book.core.book.application.result.NewBookImportOutcome;
 import com.book.core.book.application.result.NewBookImportReport;
-import com.book.core.book.application.usecase.CollectNewBookIsbnsUseCase;
+import com.book.core.book.application.usecase.CollectNewBooksUseCase;
 import com.book.core.book.application.usecase.FindNewBookDetailUseCase;
 import com.book.core.book.application.usecase.RegisterNewBookUseCase;
 import java.time.LocalDate;
@@ -26,9 +27,9 @@ import org.springframework.stereotype.Service;
 public class NewBookImportService {
     private static final int MAX_CONSECUTIVE_LOOKUP_FAILURES = 5;
     private final NewBookImportLock batchLock;
-    private final CollectNewBookIsbnsUseCase collection;
+    private final CollectNewBooksUseCase collectCandidates;
     private final FindNewBookDetailUseCase findNewBookDetail;
-    private final RegisterNewBookUseCase registration;
+    private final RegisterNewBookUseCase registerNewBook;
 
     private final NewBookImportNotifier notifier;
 
@@ -40,8 +41,8 @@ public class NewBookImportService {
                 log.info("[BOOK] 다른 인스턴스가 신간 도서 등록 배치를 실행 중이어서 건너뜁니다.");
             }
         } catch (final RuntimeException exception) {
-            if (exception instanceof BookCatalogException catalogException) {
-                run.failureReason = catalogException.summary();
+            if (exception instanceof NewBookCollectorException collectorException) {
+                run.failureReason = collectorException.summary();
             } else {
                 run.failureReason = exception.getClass().getSimpleName();
             }
@@ -67,7 +68,7 @@ public class NewBookImportService {
         MDC.put("runId", run.runId.toString());
         try {
             log.info("[BOOK] 신간 도서 등록 배치를 시작합니다. runId={}", run.runId);
-            final var candidates = collection.collect(today);
+            final var candidates = collectCandidates.collect(today);
             run.candidateCount = candidates.size();
             int consecutiveFailures = 0;
             for (final NewBookCandidate candidate : candidates) {
@@ -82,7 +83,6 @@ public class NewBookImportService {
                     consecutiveFailures = 0;
                 }
                 if (consecutiveFailures >= MAX_CONSECUTIVE_LOOKUP_FAILURES) {
-                    // 외부 장애가 이어지면 남은 호출 한도를 아끼기 위해 중단합니다.
                     run.failureReason = "외부 API 상세 조회가 연속 %d회 실패해 중단했습니다.".formatted(consecutiveFailures);
                     break;
                 }
@@ -118,7 +118,7 @@ public class NewBookImportService {
         final NewBookDetailLookup lookup;
         try {
             lookup = findNewBookDetail.findDetail(isbn13, today);
-        } catch (final BookCatalogException exception) {
+        } catch (final NewBookCollectorException exception) {
             run.detailCallCount++;
             throw exception;
         }
@@ -141,13 +141,13 @@ public class NewBookImportService {
     private NewBookImportOutcome registerBook(final NewBookCandidate candidate, final NewBookDetailFound found, final long startedAt) {
         final String isbn13 = candidate.isbn13();
         try {
-            if (registration.register(candidate, found.detail())) {
+            if (registerNewBook.register(candidate, found.detail())) {
                 return NewBookImportOutcome.REGISTERED;
             }
             return NewBookImportOutcome.ALREADY_REGISTERED_AFTER_LOOKUP;
         } catch (final DuplicateImportedIsbnException exception) {
             return NewBookImportOutcome.ALREADY_REGISTERED_AFTER_LOOKUP;
-        } catch (final DataIntegrityViolationException exception) {
+        } catch (final CoreException | DataIntegrityViolationException exception) {
             log.atWarn().addKeyValue("isbn13", isbn13).log("[BOOK] 신간 도서 저장 제약을 충족하지 못했습니다. isbn13={}", isbn13);
             return NewBookImportOutcome.STORAGE_REJECTED;
         } finally {

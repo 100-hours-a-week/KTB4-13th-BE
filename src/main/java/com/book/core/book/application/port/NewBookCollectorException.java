@@ -7,19 +7,18 @@ import lombok.experimental.Accessors;
 
 @Getter
 @Accessors(fluent = true)
-public final class BookCatalogException extends RuntimeException {
+public final class NewBookCollectorException extends RuntimeException {
     private static final Pattern SAFE_CODE = Pattern.compile("[A-Za-z0-9_-]{1,30}");
-    private final BookCatalogFailureReason reason;
+    private final NewBookCollectorFailureReason reason;
     private final String externalCode;
 
-    public BookCatalogException(final BookCatalogFailureReason reason) {
+    public NewBookCollectorException(final NewBookCollectorFailureReason reason) {
         this(reason, null);
     }
 
-    public BookCatalogException(final BookCatalogFailureReason reason, final String externalCode) {
+    public NewBookCollectorException(final NewBookCollectorFailureReason reason, final String externalCode) {
         super(reason.name());
         this.reason = reason;
-        // 외부 응답 원문 대신 형식이 확인된 오류 코드만 보관합니다.
         if (externalCode != null && SAFE_CODE.matcher(externalCode).matches()) {
             this.externalCode = externalCode;
         } else {

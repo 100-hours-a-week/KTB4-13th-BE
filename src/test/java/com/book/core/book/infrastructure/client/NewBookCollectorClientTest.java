@@ -5,19 +5,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.port.NewBookCollectorFailureReason;
-import com.book.core.book.application.result.NewBookCandidate;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.web.client.RestClientException;
 
 class NewBookCollectorClientTest {
     private static final String ISBN = "9788983921987";
+    private static final Duration READ_TIMEOUT = Duration.ofMillis(300);
     private final AtomicReference<String> query = new AtomicReference<>();
     private HttpServer server;
     private String baseUrl;
@@ -35,103 +39,80 @@ class NewBookCollectorClientTest {
     }
 
     @Test
-    void 목록_응답의_전체_건수와_ISBN_출간일을_읽고_종이책_날짜_조건을_보낸다() {
+    void 국중도_목록_조건을_인코딩해_보내고_응답을_record로_읽는다() {
         respond("/seoji/SearchApi.do", 200, """
             {"PAGE_NO":"1","TOTAL_COUNT":"3","docs":[
-             {"EA_ISBN":"9788983921987","TITLE":"신간","REAL_PUBLISH_DATE":"","PUBLISH_PREDATE":"20261111"},
-             {"EA_ISBN":"9788972756194","TITLE":"출간","REAL_PUBLISH_DATE":"20261020","PUBLISH_PREDATE":"20261101"},
-             {"EA_ISBN":"9788950983529","TITLE":"날짜 없음","REAL_PUBLISH_DATE":"","PUBLISH_PREDATE":""}]}
+             {"EA_ISBN":"9788983921987","TITLE":"신간","REAL_PUBLISH_DATE":"","PUBLISH_PREDATE":"20261111"}]}
             """);
-        final var candidates = collector("test+key", "").collectCandidates(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11));
-        assertThat(candidates).containsExactly(new NewBookCandidate(ISBN, LocalDate.of(2026, 11, 11)),
-            new NewBookCandidate("9788972756194", LocalDate.of(2026, 10, 20)));
+
+        final var response = nationalLibrary("test+key").searchPaperBooks(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11), 1, 100);
+
+        assertThat(response.totalCount()).isEqualTo("3");
+        assertThat(response.docs()).containsExactly(new NationalLibraryResponse.Book(ISBN, "", "20261111"));
         assertThat(query.get()).contains("cert_key=test%2Bkey", "start_publish_date=20261013", "end_publish_date=20261111", "ebook_yn=N",
             "page_no=1", "page_size=100", "form=%EC%A2%85%EC%9D%B4%EC%B1%85");
     }
 
     @Test
-    void 정보나루_상세를_변환하고_연도만_있는_출판일과_선택값_누락을_허용한다() {
+    void 정보나루_상세_조건을_인코딩해_보내고_응답을_record로_읽는다() {
         respond("/api/srchDtlList", 200, """
             {"response":{"detail":[{"book":{"isbn13":"9788983921987","bookname":"신간","authors":"저자","publisher":"출판사",
-             "class_no":"813.7","publication_date":"2026","publication_year":"2026"}}]}}
+             "class_no":"813.7","bookImageURL":"https://image"}}]}}
             """);
-        final var detail = collector("", "test+key").findDetail(ISBN).orElseThrow();
-        assertThat(detail.category()).isEqualTo("813.7");
-        assertThat(detail.coverImageUrl()).isNull();
-        assertThat(detail.description()).isNull();
+
+        final var response = jeongboNaru("test+key").findBookDetail(ISBN);
+
+        assertThat(response.response().detail()).extracting(JeongboNaruResponse.Detail::book)
+            .containsExactly(new JeongboNaruResponse.Book(ISBN, "신간", "저자", "출판사", "813.7", null, "https://image"));
         assertThat(query.get()).contains("authKey=test%2Bkey", "loaninfoYN=N", "format=json", "isbn13=" + ISBN);
     }
 
-    @Test
-    void 정보나루_분류번호가_비어_있으면_상세_없음으로_본다() {
-        respond("/api/srchDtlList", 200, """
-            {"response":{"detail":[{"book":{"isbn13":"9788983921987","bookname":"신간","authors":"저자","publisher":"출판사",
-             "class_no":"","publication_date":"2026"}}]}}
-            """);
-        assertThat(collector("", "key").findDetail(ISBN)).isEmpty();
+    @ParameterizedTest
+    @CsvSource({"429, RATE_LIMIT", "500, TEMPORARY", "503, TEMPORARY", "400, REJECTED", "403, REJECTED"})
+    void HTTP_상태를_실패_사유로_분류하고_응답이나_키를_예외에_담지_않는다(final int status, final NewBookCollectorFailureReason reason) {
+        respond("/api/srchDtlList", status, "external response");
+        final var client = jeongboNaru("sensitive-key");
+
+        assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class, (final var error) -> {
+            assertThat(error.reason()).isEqualTo(reason);
+            assertThat(error.getMessage()).isEqualTo(reason.name());
+            assertThat(error.externalCode()).isNull();
+            assertThat(error.getCause()).isNull();
+        });
     }
 
     @Test
-    void 호출_제한을_분류하고_응답이나_키를_예외에_담지_않는다() {
-        respond("/api/srchDtlList", 429, "external response");
-        final var collector = collector("", "sensitive-key");
-        assertThatThrownBy(() -> collector.findDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
-            (final var error) -> {
-                assertThat(error.reason()).isEqualTo(NewBookCollectorFailureReason.RATE_LIMIT);
-                assertThat(error.getMessage()).isEqualTo("RATE_LIMIT");
-                assertThat(error.getCause()).isNull();
-            });
+    void 읽기_시간을_넘기면_통신_오류로_끝난다() {
+        server.createContext("/api/srchDtlList", (final var exchange) -> {
+            try (exchange) {
+                Thread.sleep(READ_TIMEOUT.multipliedBy(3).toMillis());
+                exchange.sendResponseHeaders(200, -1);
+            } catch (final InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        final var client = jeongboNaru("key");
+
+        assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOf(RestClientException.class);
     }
 
     @Test
-    void 정보나루_오류_응답은_요청_거부로_분류한다() {
-        respond("/api/srchDtlList", 200, """
-            {"response":{"errCode":"authErr","error":"인증정보가 일치하지 않습니다."}}
-            """);
-        final var collector = collector("", "key");
-        assertThatThrownBy(() -> collector.findDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
-            (final var error) -> {
-                assertThat(error.reason()).isEqualTo(NewBookCollectorFailureReason.REJECTED);
-                assertThat(error.externalCode()).isEqualTo("authErr");
-            });
-    }
-
-    @Test
-    void 정보나루에_없는_ISBN_응답은_상세_없음으로_본다() {
-        respond("/api/srchDtlList", 200, """
-            {"response":{"errCode":"isbnMpngErr","error":"ISBN에 해당하는 도서가 없습니다."}}
-            """);
-        assertThat(collector("", "key").findDetail(ISBN)).isEmpty();
-    }
-
-    @Test
-    void 국중도_오류_응답은_요청_거부로_분류한다() {
-        respond("/seoji/SearchApi.do", 200, """
-            {"RESULT":"ERROR","ERR_CODE":"011","ERR_MESSAGE":"유효하지 않은 인증키 값입니다."}
-            """);
-        final var collector = collector("key", "");
-        assertThatThrownBy(() -> collector.collectCandidates(LocalDate.of(2026, 10, 13), LocalDate.of(2026, 11, 11)))
-            .isInstanceOfSatisfying(NewBookCollectorException.class, (final var error) -> {
-                assertThat(error.reason()).isEqualTo(NewBookCollectorFailureReason.REJECTED);
-                assertThat(error.externalCode()).isEqualTo("011");
-            });
-    }
-
-    @Test
-    void 응답_형식이_깨지면_일시_오류로_분류한다() {
+    void 응답_형식이_깨지면_통신_오류로_끝난다() {
         respond("/api/srchDtlList", 200, """
             {"response":{"detail":"not-array"}}
             """);
-        final var collector = collector("", "key");
-        assertThatThrownBy(() -> collector.findDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
-            (final var error) -> assertThat(error.reason()).isEqualTo(NewBookCollectorFailureReason.TEMPORARY));
+        final var client = jeongboNaru("key");
+
+        assertThatThrownBy(() -> client.findBookDetail(ISBN)).isInstanceOf(RestClientException.class);
     }
 
-    private NewBookCollectorAdapter collector(final String nationalLibraryKey, final String jeongboNaruKey) {
-        return new NewBookCollectorAdapter(
-            NewBookCollectorClientConfiguration.createClient(NationalLibraryClient.class, baseUrl, "nationalLibraryKey",
-                nationalLibraryKey),
-            NewBookCollectorClientConfiguration.createClient(JeongboNaruClient.class, baseUrl, "jeongboNaruKey", jeongboNaruKey));
+    private NationalLibraryClient nationalLibrary(final String key) {
+        return NewBookCollectorClientConfiguration.createClient(NationalLibraryClient.class, baseUrl, "nationalLibraryKey", key,
+            READ_TIMEOUT);
+    }
+
+    private JeongboNaruClient jeongboNaru(final String key) {
+        return NewBookCollectorClientConfiguration.createClient(JeongboNaruClient.class, baseUrl, "jeongboNaruKey", key, READ_TIMEOUT);
     }
 
     private void respond(final String path, final int status, final String body) {

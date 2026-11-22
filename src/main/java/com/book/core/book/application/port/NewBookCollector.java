@@ -9,5 +9,5 @@ import java.util.Optional;
 public interface NewBookCollector {
     List<NewBookCandidate> collectCandidates(LocalDate from, LocalDate through);
 
-    Optional<BookDetail> collectDetail(String isbn13);
+    Optional<BookDetail> findDetail(String isbn13);
 }

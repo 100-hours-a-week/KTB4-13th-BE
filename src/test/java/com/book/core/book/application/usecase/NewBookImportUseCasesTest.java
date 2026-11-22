@@ -116,7 +116,7 @@ class NewBookImportUseCasesTest {
     @Test
     void 상세가_없으면_저장하지_않는다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(collector.collectDetail(ISBN)).thenReturn(Optional.empty());
+        when(collector.findDetail(ISBN)).thenReturn(Optional.empty());
 
         assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.MISSING_DETAIL);
         verify(backoff).deferMissingDetail(ISBN, TODAY);
@@ -126,7 +126,7 @@ class NewBookImportUseCasesTest {
     @Test
     void 정보나루_호출_제한을_공유_예산에_반영한다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(collector.collectDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.RATE_LIMIT));
+        when(collector.findDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.RATE_LIMIT));
 
         assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.RATE_LIMITED);
         verify(budget).pauseAfterRateLimit();
@@ -144,7 +144,7 @@ class NewBookImportUseCasesTest {
     @Test
     void 일시_오류는_ISBN_재시도를_미룬다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(collector.collectDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY));
+        when(collector.findDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY));
 
         assertThat(importer().findDetail(ISBN, TODAY)).isEqualTo(NewBookImportOutcome.LOOKUP_FAILED);
         verify(backoff).deferAfterFailure(ISBN, TODAY);
@@ -153,7 +153,7 @@ class NewBookImportUseCasesTest {
     @Test
     void 요청_거부는_ISBN을_미루지_않는다() {
         when(budget.tryAcquire()).thenReturn(true);
-        when(collector.collectDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED));
+        when(collector.findDetail(ISBN)).thenThrow(new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED));
 
         assertThatThrownBy(() -> importer().findDetail(ISBN, TODAY)).isInstanceOf(NewBookCollectorException.class);
         verify(backoff).isWaiting(ISBN, TODAY);

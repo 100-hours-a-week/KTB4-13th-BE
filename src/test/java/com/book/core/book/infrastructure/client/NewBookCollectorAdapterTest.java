@@ -56,7 +56,7 @@ class NewBookCollectorAdapterTest {
         when(jeongboNaru.findBookDetail(FIRST.isbn13())).thenReturn(
             new JeongboNaruResponse(new JeongboNaruResponse.Body(null, null, List.of(new JeongboNaruResponse.Detail(book)))));
 
-        assertThat(collector.collectDetail(FIRST.isbn13()))
+        assertThat(collector.findDetail(FIRST.isbn13()))
             .contains(new BookDetail("신간", "저자", null, "출판사", "813.7", "https://image"));
         verify(jeongboNaru).findBookDetail(FIRST.isbn13());
         verifyNoInteractions(nationalLibrary);

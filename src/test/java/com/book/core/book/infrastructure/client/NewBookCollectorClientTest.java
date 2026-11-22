@@ -55,7 +55,7 @@ class NewBookCollectorClientTest {
             {"response":{"detail":[{"book":{"isbn13":"9788983921987","bookname":"신간","authors":"저자","publisher":"출판사",
              "class_no":"813.7","publication_date":"2026","publication_year":"2026"}}]}}
             """);
-        final var detail = collector("", "test+key").collectDetail(ISBN).orElseThrow();
+        final var detail = collector("", "test+key").findDetail(ISBN).orElseThrow();
         assertThat(detail.category()).isEqualTo("813.7");
         assertThat(detail.coverImageUrl()).isNull();
         assertThat(detail.description()).isNull();
@@ -68,14 +68,14 @@ class NewBookCollectorClientTest {
             {"response":{"detail":[{"book":{"isbn13":"9788983921987","bookname":"신간","authors":"저자","publisher":"출판사",
              "class_no":"","publication_date":"2026"}}]}}
             """);
-        assertThat(collector("", "key").collectDetail(ISBN)).isEmpty();
+        assertThat(collector("", "key").findDetail(ISBN)).isEmpty();
     }
 
     @Test
     void 호출_제한을_분류하고_응답이나_키를_예외에_담지_않는다() {
         respond("/api/srchDtlList", 429, "external response");
         final var collector = collector("", "sensitive-key");
-        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
+        assertThatThrownBy(() -> collector.findDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
             (final var error) -> {
                 assertThat(error.reason()).isEqualTo(NewBookCollectorFailureReason.RATE_LIMIT);
                 assertThat(error.getMessage()).isEqualTo("RATE_LIMIT");
@@ -89,7 +89,7 @@ class NewBookCollectorClientTest {
             {"response":{"errCode":"authErr","error":"인증정보가 일치하지 않습니다."}}
             """);
         final var collector = collector("", "key");
-        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
+        assertThatThrownBy(() -> collector.findDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
             (final var error) -> {
                 assertThat(error.reason()).isEqualTo(NewBookCollectorFailureReason.REJECTED);
                 assertThat(error.externalCode()).isEqualTo("authErr");
@@ -101,7 +101,7 @@ class NewBookCollectorClientTest {
         respond("/api/srchDtlList", 200, """
             {"response":{"errCode":"isbnMpngErr","error":"ISBN에 해당하는 도서가 없습니다."}}
             """);
-        assertThat(collector("", "key").collectDetail(ISBN)).isEmpty();
+        assertThat(collector("", "key").findDetail(ISBN)).isEmpty();
     }
 
     @Test
@@ -123,7 +123,7 @@ class NewBookCollectorClientTest {
             {"response":{"detail":"not-array"}}
             """);
         final var collector = collector("", "key");
-        assertThatThrownBy(() -> collector.collectDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
+        assertThatThrownBy(() -> collector.findDetail(ISBN)).isInstanceOfSatisfying(NewBookCollectorException.class,
             (final var error) -> assertThat(error.reason()).isEqualTo(NewBookCollectorFailureReason.TEMPORARY));
     }
 

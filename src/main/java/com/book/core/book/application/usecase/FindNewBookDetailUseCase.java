@@ -34,7 +34,7 @@ public class FindNewBookDetailUseCase {
         }
 
         try {
-            final var detail = collector.collectDetail(isbn13);
+            final var detail = collector.findDetail(isbn13);
             if (detail.isEmpty()) {
                 backoff.deferMissingDetail(isbn13, today);
                 return NewBookImportOutcome.MISSING_DETAIL;

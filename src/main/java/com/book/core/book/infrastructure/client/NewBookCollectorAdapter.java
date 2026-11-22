@@ -56,7 +56,7 @@ class NewBookCollectorAdapter implements NewBookCollector {
     }
 
     @Override
-    public Optional<BookDetail> collectDetail(final String isbn13) {
+    public Optional<BookDetail> findDetail(final String isbn13) {
         final var body = call(() -> jeongboNaru.findBookDetail(isbn13)).response();
         if (body == null) {
             throw new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY);

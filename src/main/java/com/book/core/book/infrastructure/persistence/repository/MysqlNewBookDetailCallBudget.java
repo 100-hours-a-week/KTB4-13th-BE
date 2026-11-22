@@ -24,15 +24,7 @@ class MysqlNewBookDetailCallBudget implements NewBookDetailCallBudget {
         return jdbc.update("""
             UPDATE book_detail_call_budget
             SET calls = IF(quota_day = %1$s, calls + 1, 1), quota_day = %1$s
-            WHERE id = 1 AND (next_call_at IS NULL OR next_call_at <= UTC_TIMESTAMP(6))
-                AND (quota_day IS NULL OR quota_day <> %1$s OR calls < ?)
+            WHERE id = 1 AND (quota_day IS NULL OR quota_day <> %1$s OR calls < ?)
             """.formatted(QUOTA_DAY), dailyLimit) == 1;
-    }
-
-    @Override
-    public void pauseAfterRateLimit() {
-        jdbc.update("""
-            UPDATE book_detail_call_budget SET next_call_at = UTC_TIMESTAMP(6) + INTERVAL 15 MINUTE WHERE id = 1
-            """);
     }
 }

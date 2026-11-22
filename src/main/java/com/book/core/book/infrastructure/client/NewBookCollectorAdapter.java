@@ -6,7 +6,6 @@ import com.book.core.book.application.port.NewBookCollector;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.domain.Isbn13;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -104,20 +103,11 @@ class NewBookCollectorAdapter implements NewBookCollector {
     }
 
     private static Optional<BookDetail> toBookDetail(final JeongboNaruResponse.Book book) {
-        if (!required(book.bookname()) || !required(book.authors()) || !required(book.publisher()) || !required(book.classNo())) {
+        if (!present(book.bookname()) || !present(book.authors()) || !present(book.publisher()) || !present(book.classNo())) {
             return Optional.empty();
         }
-        String cover = null;
-        if (required(book.bookImageUrl())) {
-            cover = book.bookImageUrl().strip();
-        }
-        String description = null;
-        if (book.description() != null && !book.description().isBlank()
-            && book.description().getBytes(StandardCharsets.UTF_8).length <= 65535) {
-            description = book.description();
-        }
-        return Optional.of(new BookDetail(book.bookname().strip(), book.authors().strip(), description, book.publisher().strip(),
-            book.classNo().strip(), cover));
+        return Optional.of(new BookDetail(book.bookname().strip(), book.authors().strip(), stripOrNull(book.description()),
+            book.publisher().strip(), book.classNo().strip(), stripOrNull(book.bookImageUrl())));
     }
 
     private static LocalDate date(final String value) {
@@ -131,8 +121,15 @@ class NewBookCollectorAdapter implements NewBookCollector {
         }
     }
 
-    private static boolean required(final String value) {
-        return value != null && !value.isBlank() && value.strip().length() <= 255;
+    private static boolean present(final String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private static String stripOrNull(final String value) {
+        if (present(value)) {
+            return value.strip();
+        }
+        return null;
     }
 
     private static <T> T call(final Supplier<T> request) {

@@ -76,7 +76,8 @@ class NewBookRegistrationConstraintTest {
     void 기존_ISBN이_있어도_다른_저장_제약_위반은_중복으로_바꾸지_않는다() {
         transactions.executeWithoutResult((final var status) -> books.save(newBook("신간")));
 
-        assertThatThrownBy(() -> transactions.executeWithoutResult((final var status) -> books.save(newBook("가".repeat(256)))))
+        final var tooLongTitle = new Book(null, ISBN_A, null, "가".repeat(256), "저자", null, "출판사", "800", TODAY, null);
+        assertThatThrownBy(() -> transactions.executeWithoutResult((final var status) -> books.save(tooLongTitle)))
             .isInstanceOf(DataIntegrityViolationException.class);
         assertThat(books.existsByIsbn13(ISBN_A)).isTrue();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM books WHERE imported_isbn13 = ?", Long.class, ISBN_A)).isEqualTo(1L);

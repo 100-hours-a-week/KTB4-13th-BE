@@ -7,6 +7,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -19,6 +20,9 @@ import lombok.experimental.Accessors;
 @Getter
 @Accessors(fluent = true)
 public class Book extends BaseEntity {
+    private static final int MAX_TEXT_LENGTH = 255;
+    private static final int MAX_DESCRIPTION_BYTES = 65_535;
+
     @Version
     @Column(nullable = false)
     private long version;
@@ -64,14 +68,32 @@ public class Book extends BaseEntity {
         final String coverImageUrl
     ) {
         final String normalizedIsbn13 = Isbn13.normalize(isbn13).orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        if (title == null || title.isBlank() || author == null || author.isBlank() || publisher == null || publisher.isBlank()
-            || category == null || category.isBlank() || publishedAt == null) {
+        if (!isStorableText(title) || !isStorableText(author) || !isStorableText(publisher) || !isStorableText(category)
+            || publishedAt == null) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        final Book book =
-            new Book(null, normalizedIsbn13, null, title, author, description, publisher, category, publishedAt, coverImageUrl);
+        final Book book = new Book(null, normalizedIsbn13, null, title, author, storableDescriptionOrNull(description), publisher, category,
+            publishedAt, storableTextOrNull(coverImageUrl));
         book.importedIsbn13 = normalizedIsbn13;
         return book;
+    }
+
+    private static boolean isStorableText(final String value) {
+        return value != null && !value.isBlank() && value.length() <= MAX_TEXT_LENGTH;
+    }
+
+    private static String storableTextOrNull(final String value) {
+        if (isStorableText(value)) {
+            return value;
+        }
+        return null;
+    }
+
+    private static String storableDescriptionOrNull(final String value) {
+        if (value == null || value.isBlank() || value.getBytes(StandardCharsets.UTF_8).length > MAX_DESCRIPTION_BYTES) {
+            return null;
+        }
+        return value;
     }
 
     public Book(

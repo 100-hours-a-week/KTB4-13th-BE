@@ -15,6 +15,8 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.book.common.exception.CoreException;
+import com.book.common.exception.ErrorCode;
 import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.port.NewBookCollectorFailureReason;
 import com.book.core.book.application.port.NewBookDetailCallBudget;
@@ -32,6 +34,7 @@ import com.book.core.book.application.result.NewBookImportReport;
 import com.book.core.book.application.service.NewBookImportService;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
@@ -213,6 +216,24 @@ class NewBookImportUseCasesTest {
         order.verify(registration).register(OTHER_CANDIDATE, detail);
         assertThat(appender.list).extracting(ILoggingEvent::getFormattedMessage).anySatisfy(
             (final var message) -> assertThat(message).contains("outcomes={ALREADY_REGISTERED_AFTER_LOOKUP=1, STORAGE_REJECTED=1}"));
+    }
+
+    @Test
+    void 도서_규칙을_어긴_상세는_저장_제약_위반으로_세고_다음_후보를_계속_처리한다() {
+        final var detail = new BookDetail("신간", "저자", null, "출판사", "800", null);
+        doAnswer((final var invocation) -> {
+            invocation.getArgument(0, Runnable.class).run();
+            return true;
+        }).when(lock).runIfAcquired(any());
+        when(collection.collect(TODAY)).thenReturn(List.of(CANDIDATE, OTHER_CANDIDATE));
+        when(details.findDetail(any(), any())).thenReturn(new NewBookDetailFound(detail));
+        when(registration.register(CANDIDATE, detail)).thenThrow(new CoreException(ErrorCode.INVALID_REQUEST));
+        when(registration.register(OTHER_CANDIDATE, detail)).thenReturn(true);
+
+        new NewBookImportService(lock, collection, details, registration, notifier).importNewBooks(TODAY);
+
+        verify(notifier).send(argThat((final var report) -> report.outcomes()
+            .equals(Map.of(NewBookImportOutcome.STORAGE_REJECTED, 1, NewBookImportOutcome.REGISTERED, 1))));
     }
 
     private void runBatchWith(final NewBookImportOutcome outcome, final int candidates) {

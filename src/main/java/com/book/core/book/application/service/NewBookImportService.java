@@ -1,5 +1,6 @@
 package com.book.core.book.application.service;
 
+import com.book.common.exception.CoreException;
 import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.port.DuplicateImportedIsbnException;
 import com.book.core.book.application.port.NewBookImportLock;
@@ -146,7 +147,7 @@ public class NewBookImportService {
             return NewBookImportOutcome.ALREADY_REGISTERED_AFTER_LOOKUP;
         } catch (final DuplicateImportedIsbnException exception) {
             return NewBookImportOutcome.ALREADY_REGISTERED_AFTER_LOOKUP;
-        } catch (final DataIntegrityViolationException exception) {
+        } catch (final CoreException | DataIntegrityViolationException exception) {
             log.atWarn().addKeyValue("isbn13", isbn13).log("[BOOK] 신간 도서 저장 제약을 충족하지 못했습니다. isbn13={}", isbn13);
             return NewBookImportOutcome.STORAGE_REJECTED;
         } finally {

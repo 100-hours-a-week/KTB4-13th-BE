@@ -6,6 +6,7 @@ import com.book.core.book.application.port.NewBookCollector;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.result.NewBookCandidate;
 import com.book.core.book.domain.Isbn13;
+import com.book.core.book.infrastructure.observability.NewBookImportMetrics;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -28,6 +29,7 @@ class NewBookCollectorAdapter implements NewBookCollector {
     private static final String MISSING_ISBN_ERROR_CODE = "isbnMpngErr";
     private final NationalLibraryClient nationalLibrary;
     private final JeongboNaruClient jeongboNaru;
+    private final NewBookImportMetrics metrics;
 
     @Override
     public List<NewBookCandidate> collectCandidates(final LocalDate from, final LocalDate through) {
@@ -63,6 +65,7 @@ class NewBookCollectorAdapter implements NewBookCollector {
             throw new NewBookCollectorException(NewBookCollectorFailureReason.TEMPORARY);
         }
         if (body.error() != null || body.errCode() != null) {
+            metrics.recordExternalError("jeongbo_naru", body.errCode());
             if (MISSING_ISBN_ERROR_CODE.equals(body.errCode())) {
                 return Optional.empty();
             }
@@ -76,8 +79,9 @@ class NewBookCollectorAdapter implements NewBookCollector {
             .map(NewBookCollectorAdapter::toBookDetail).flatMap(Optional::stream).findFirst();
     }
 
-    private static int totalCount(final NationalLibraryResponse response, final int pageNumber) {
+    private int totalCount(final NationalLibraryResponse response, final int pageNumber) {
         if ("ERROR".equals(response.result())) {
+            metrics.recordExternalError("national_library", response.errorCode());
             throw new NewBookCollectorException(NewBookCollectorFailureReason.REJECTED, response.errorCode());
         }
         final int totalCount;

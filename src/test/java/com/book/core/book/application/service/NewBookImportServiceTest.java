@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.book.core.book.application.port.NewBookImportLock;
 import com.book.core.book.application.port.NewBookImportNotifier;
 import com.book.core.book.application.result.BookDetail;
 import com.book.core.book.application.result.NewBookCandidate;
@@ -45,14 +44,6 @@ class NewBookImportServiceTest {
         final var registration = mock(RegisterNewBookUseCase.class);
         final var notifier = mock(NewBookImportNotifier.class);
         final var events = new ArrayList<String>();
-        final NewBookImportLock lock = (final var batch) -> {
-            try {
-                batch.run();
-                return true;
-            } finally {
-                events.add("unlock");
-            }
-        };
 
         final var detail = new BookDetail("신간", "저자", null, "출판사", "800", null);
         final var batchFailure = new IllegalStateException("외부 응답 원문 예시");
@@ -74,7 +65,7 @@ class NewBookImportServiceTest {
             return null;
         }).when(notifier).send(reportCaptor.capture());
 
-        final var service = new NewBookImportService(lock, collection, details, registration, notifier);
+        final var service = new NewBookImportService(collection, details, registration, notifier);
         final var logger = (Logger) LoggerFactory.getLogger(NewBookImportService.class);
         final var appender = new ListAppender<ILoggingEvent>();
         appender.start();
@@ -93,7 +84,7 @@ class NewBookImportServiceTest {
         final var report = reportCaptor.getValue();
         verify(notifier).send(report);
         verifyNoMoreInteractions(notifier);
-        assertThat(events).containsExactly("unlock", "send");
+        assertThat(events).containsExactly("send");
         assertThat(MDC.get("runId")).isNull();
         assertThat(report.runId().version()).isEqualTo(4);
         assertThat(report.failed()).isEqualTo(batchFails);

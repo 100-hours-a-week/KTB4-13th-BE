@@ -3,6 +3,7 @@ package com.book.core.book.infrastructure.client;
 import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.port.NewBookCollectorFailureReason;
 import java.time.Duration;
+import io.micrometer.observation.ObservationRegistry;
 import java.util.Map;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -23,15 +24,15 @@ class NewBookCollectorClientConfiguration {
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
 
     @Bean
-    NationalLibraryClient nationalLibraryClient(final NewBookCollectorProperties properties) {
+    NationalLibraryClient nationalLibraryClient(final NewBookCollectorProperties properties, final ObservationRegistry observations) {
         return createClient(NationalLibraryClient.class, properties.nationalLibraryBaseUrl(), "nationalLibraryKey",
-            properties.nationalLibraryKey(), READ_TIMEOUT);
+            properties.nationalLibraryKey(), READ_TIMEOUT, observations);
     }
 
     @Bean
-    JeongboNaruClient jeongboNaruClient(final NewBookCollectorProperties properties) {
+    JeongboNaruClient jeongboNaruClient(final NewBookCollectorProperties properties, final ObservationRegistry observations) {
         return createClient(JeongboNaruClient.class, properties.jeongboNaruBaseUrl(), "jeongboNaruKey", properties.jeongboNaruKey(),
-            READ_TIMEOUT);
+            READ_TIMEOUT, observations);
     }
 
     static <T> T createClient(
@@ -39,12 +40,13 @@ class NewBookCollectorClientConfiguration {
         final String baseUrl,
         final String keyVariable,
         final String key,
-        final Duration readTimeout
+        final Duration readTimeout,
+        final ObservationRegistry observations
     ) {
         final var requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(CONNECT_TIMEOUT);
         requestFactory.setReadTimeout(readTimeout);
-        final RestClient restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory)
+        final RestClient restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory).observationRegistry(observations)
             .defaultUriVariables(Map.of(keyVariable, key))
             .defaultStatusHandler(HttpStatusCode::isError, (final var request, final var response) -> {
                 if (response.getStatusCode().isSameCodeAs(HttpStatus.TOO_MANY_REQUESTS)) {

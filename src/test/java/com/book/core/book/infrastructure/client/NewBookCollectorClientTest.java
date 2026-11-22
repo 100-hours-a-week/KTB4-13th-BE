@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.book.core.book.application.port.NewBookCollectorException;
 import com.book.core.book.application.port.NewBookCollectorFailureReason;
+import io.micrometer.observation.ObservationRegistry;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -108,11 +109,12 @@ class NewBookCollectorClientTest {
 
     private NationalLibraryClient nationalLibrary(final String key) {
         return NewBookCollectorClientConfiguration.createClient(NationalLibraryClient.class, baseUrl, "nationalLibraryKey", key,
-            READ_TIMEOUT);
+            READ_TIMEOUT, ObservationRegistry.NOOP);
     }
 
     private JeongboNaruClient jeongboNaru(final String key) {
-        return NewBookCollectorClientConfiguration.createClient(JeongboNaruClient.class, baseUrl, "jeongboNaruKey", key, READ_TIMEOUT);
+        return NewBookCollectorClientConfiguration.createClient(JeongboNaruClient.class, baseUrl, "jeongboNaruKey", key, READ_TIMEOUT,
+            ObservationRegistry.NOOP);
     }
 
     private void respond(final String path, final int status, final String body) {

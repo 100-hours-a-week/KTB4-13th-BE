@@ -1,8 +1,6 @@
 package com.book.core.coupon.infrastructure.messaging;
 
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -19,11 +17,6 @@ import org.springframework.kafka.core.KafkaAdmin.NewTopics;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "coupon.kafka.worker-enabled", matchIfMissing = true)
 class CouponIssueKafkaConfig {
-    @Bean(destroyMethod = "shutdown")
-    ScheduledExecutorService couponKafkaExecutor() {
-        return Executors.newSingleThreadScheduledExecutor();
-    }
-
     @Bean(defaultCandidate = false)
     ConcurrentKafkaListenerContainerFactory<Object, Object> issuanceDltListenerFactory(
         final ConcurrentKafkaListenerContainerFactoryConfigurer configurer,

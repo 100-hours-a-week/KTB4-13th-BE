@@ -2,6 +2,11 @@ package com.book.core.coupon.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -13,6 +18,7 @@ import com.book.core.auth.application.port.TokenIssuer;
 import com.book.core.coupon.application.port.CouponStockPort;
 import com.book.core.coupon.application.result.CouponReconcileOutcome;
 import com.book.core.coupon.application.port.IssuanceDltLogRepositoryPort;
+import com.book.core.coupon.application.port.IssuanceRequestPublisher;
 import com.book.core.coupon.domain.IssuanceDltLog;
 import com.book.core.coupon.application.usecase.ReconcileCouponStockUseCase;
 import com.book.core.coupon.application.usecase.FindOwnedCouponsForCheckoutUseCase;
@@ -26,7 +32,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -43,6 +51,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.containers.GenericContainer;
@@ -82,6 +91,9 @@ class CouponSoldOutHttpIntegrationTest {
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
 
+    @MockitoSpyBean
+    private IssuanceRequestPublisher issuancePublisher;
+
     @Autowired
     private StringRedisTemplate redisTemplate;
 
@@ -108,6 +120,24 @@ class CouponSoldOutHttpIntegrationTest {
 
     @Autowired
     private FindOwnedCouponsForCheckoutUseCase checkoutCoupons;
+
+    @Test
+    void Kafka_전송을_확인하지_못하면_발급_오류를_반환하고_마지막_재고의_예약을_유지한다() throws Exception {
+        final long couponId = 8_510_018L;
+        final long userId = 8_510_018L;
+        insertActiveCoupon(couponId, 1);
+        doThrow(new CompletionException(new TimeoutException())).when(issuancePublisher)
+            .publishAndWait(eq(couponId + ":" + userId), anyString());
+
+        issue(userId, couponId).andExpect(status().isInternalServerError())
+            .andExpect(jsonPath("$.code").value("COUPON_ISSUE_FAILED"));
+
+        final var snapshot = couponStockPort.readSnapshot(couponId);
+        assertThat(snapshot.quantity()).isZero();
+        assertThat(snapshot.reservedUserIds()).containsExactly(userId);
+        assertThat(snapshot.soldOutSignalPresent()).isTrue();
+        assertCounts(couponId, 0);
+    }
 
     @Test
     void 마감_전에_접수한_쿠폰이_만료_뒤_쿠폰함에_반영되면_결제에_사용할_수_없다() throws Exception {
@@ -185,6 +215,8 @@ class CouponSoldOutHttpIntegrationTest {
         expectError(3L, couponId, "E4003");
         expectError(4L, couponId, "E4003");
 
+        verify(issuancePublisher).publishAndWait(eq(couponId + ":1"), anyString());
+        verify(issuancePublisher, never()).publishAndWait(eq(couponId + ":3"), anyString());
         assertThat(redisTemplate.hasKey(policyKey(couponId))).isFalse();
         assertCounts(couponId, 2);
     }

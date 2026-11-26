@@ -5,9 +5,10 @@ import static com.book.core.coupon.infrastructure.cache.RedisLuaSupport.runForLo
 
 import com.book.core.coupon.application.command.IssuanceRequested;
 import com.book.core.coupon.application.port.CouponIssueQueuePort;
+import com.book.core.coupon.application.port.IssuanceRequestPublisher;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
@@ -15,27 +16,38 @@ import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
-public class CouponIssueStreamAdapter implements CouponIssueQueuePort {
-    // shortcut: 접수 기록을 자동 삭제하지 않습니다. 운영 트래픽에서는 처리 완료 기준 보존 정책이 필요합니다.
+@Slf4j
+class CouponIssueKafkaAdapter implements CouponIssueQueuePort {
     private final RedisScript<Long> reserveScript = longLuaScript("lua/reserve-coupon-issue.lua");
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
     private final SoldOutProperties soldOutProperties;
-
-    @Value("${coupon.issuance.stream}")
-    private String stream;
+    private final IssuanceRequestPublisher publisher;
 
     @Override
     public Reservation reserve(final IssuanceRequested issue) {
+        final String payload = objectMapper.writeValueAsString(issue);
         final String prefix = "coupon:" + issue.couponId() + ":";
         final long result =
-            runForLong(redis, reserveScript, List.of(prefix + "stock", prefix + "sold_out", prefix + "reservations", stream),
-                issue.userId(), soldOutProperties.ttlSeconds(), objectMapper.writeValueAsString(issue));
+            runForLong(redis, reserveScript, List.of(prefix + "stock", prefix + "sold_out", prefix + "reservations"),
+                issue.userId(), soldOutProperties.ttlSeconds());
         return switch ((int) result) {
-            case 1 -> Reservation.ACCEPTED;
+            case 1 -> publish(issue, payload);
             case 0 -> Reservation.SOLD_OUT;
             case -1 -> Reservation.DUPLICATE;
             default -> Reservation.FAILED;
         };
+    }
+
+    private Reservation publish(final IssuanceRequested issue, final String payload) {
+        final String messageKey = issue.couponId() + ":" + issue.userId();
+        try {
+            publisher.publishAndWait(messageKey, payload);
+            return Reservation.ACCEPTED;
+        } catch (final RuntimeException failure) {
+            log.atWarn().addKeyValue("couponId", issue.couponId()).addKeyValue("userId", issue.userId())
+                .addKeyValue("errorType", failure.getClass().getSimpleName()).log("[COUPON] Kafka 발행 미확인, Redis 예약 유지");
+            return Reservation.FAILED;
+        }
     }
 }

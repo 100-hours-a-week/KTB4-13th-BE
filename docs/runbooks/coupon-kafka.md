@@ -1,20 +1,24 @@
 # Kafka 쿠폰 발급 운영
 
-쿠폰 발급 요청은 기본으로 Redis Lua로 재고 차감과 미발행 요청 기록을 함께 처리한 뒤 `202`를 반환합니다. 발행 작업은 Kafka 확인 뒤 Redis 기록을 ACK하고, 소비자는 MySQL 발급 저장을 커밋한 뒤 Kafka 오프셋을 반영합니다.
+발급 API는 Redis Lua로 재고를 차감하고 사용자를 예약한 뒤 Kafka에 직접 발행합니다. Kafka 전송 성공을 확인하면 `202`를 반환합니다. 쿠폰함은 소비자가 MySQL 발급 저장을 커밋한 뒤 갱신됩니다.
 
-## 전환과 역전환
+## 기존 테스트 요청 확인과 전환
 
-1. 배포 전에 Redis와 Kafka 연결을 확인합니다. Kafka 브로커는 `KAFKA_BOOTSTRAP_SERVERS`로 지정하고, 토픽 생성 전 `coupon.kafka.replicas`와 `coupon.kafka.min-in-sync-replicas`를 운영 구성에 맞춥니다. 로컬 기본값은 각각 1입니다.
-2. 대상 쿠폰의 신규 요청을 멈춥니다. 기존 Streams를 사용 중이면 `coupon:issuance:stream`의 `coupon-db` 그룹을 비운 뒤 DB 발급 수량·보유 쿠폰 행·Redis 잔량을 대조합니다.
-3. 모든 발급 인스턴스를 새 버전으로 전환합니다. 발급 API는 `202`를 반환하며, 쿠폰함은 소비자가 DB에 커밋한 뒤 갱신됩니다. 접수를 재개하고 Redis 미발행 기록과 Kafka 소비 지연을 확인합니다.
-4. 이전 버전으로 역전환하려면 요청을 다시 멈추고 Redis 발행 대기와 Kafka 소비 지연을 해소합니다. 실패 토픽의 미해결 건과 DB 발급·Redis 잔량을 대조한 뒤 이전 버전을 배포합니다.
+1. 대상 환경에서 기존 Stream 경로로 접수한 테스트 요청이 있었는지 확인합니다. 사용 이력이 없다면 새 버전으로 전환합니다.
+2. 사용 이력이 있다면 추가 테스트 요청을 넣지 않고, 이미 처리 중인 발급 API 요청이 끝났는지 확인합니다. 인계가 끝날 때까지 기존 버전의 릴레이를 계속 실행합니다. 기본 Stream 키는 `coupon:issuance:kafka-outbox`입니다. 환경에서 키를 변경했다면 해당 키로 조회합니다.
+
+   ```text
+   XINFO GROUPS coupon:issuance:kafka-outbox
+   XPENDING coupon:issuance:kafka-outbox coupon-kafka-relay
+   ```
+
+3. `coupon-kafka-relay` 그룹의 `lag`(미전달)와 `pending`(미확인)이 모두 0이면 Kafka 인계가 끝났으므로 새 버전으로 전환합니다. 그룹이 없거나 `lag`가 확인되지 않으면 완료로 판단하지 않습니다. Stream 항목은 ACK 뒤에도 남으므로 Stream 길이는 완료 기준으로 사용하지 않습니다.
 
 ## 처리 지연과 장애
 
-- Redis에서 `XINFO GROUPS coupon:issuance:kafka-outbox`로 `coupon-kafka-relay`의 `lag`(미전달)와 `pending`(미확인)을 확인합니다. 두 값이 0이어도 Kafka에 처리할 요청이 남을 수 있으므로 소비자 그룹 `book-coupon-issuance-redis`의 지연도 확인합니다.
-- 소비 재시도를 소진한 요청은 `book.coupon-issuance.redis.v1.DLT`에 남습니다. 원인을 해결한 뒤 발급 여부와 예약을 확인합니다.
-- Redis 복제 전에 `202`를 반환한 요청은 주 노드 장애 뒤 유실될 수 있습니다. 접수 유실을 허용할 수 없는 운영 환경에서는 활성화 전에 내구성 보완과 장애 전환 검증이 필요합니다.
-- Redis Stream은 ACK 후에도 항목을 보관합니다. 운영 트래픽을 받기 전에 미처리 요청을 보존할 수 있는 정리 기준과 메모리 한도를 정합니다.
+- Redis 예약 뒤 Kafka 전송 결과를 확인할 수 없으면 발급 API는 `COUPON_ISSUE_FAILED`를 반환하고 예약을 유지합니다. 타임아웃 뒤에도 늦게 전송될 수 있고, 예약 직후 앱이 종료되면 Kafka에 도착하지 않은 예약이 남을 수 있습니다. 대사의 `pendingReservations`와 Kafka 소비 지연, DLT 기록을 함께 확인합니다.
+- 브로커는 `KAFKA_BOOTSTRAP_SERVERS`로 지정합니다. 토픽 생성 전 `coupon.kafka.replicas`와 `coupon.kafka.min-in-sync-replicas`를 환경에 맞춥니다. 로컬 기본값은 각각 1입니다.
+- Stream에서 Kafka로 넘긴 테스트 요청의 최종 발급은 MySQL에서 확인합니다. Kafka 소비자 그룹은 `book-coupon-issuance-redis`입니다. 소비 재시도를 소진한 요청은 `book.coupon-issuance.redis.v1.DLT`에 남습니다.
 
 ## 행사 마감 직전 접수
 

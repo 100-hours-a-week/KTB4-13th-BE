@@ -1,0 +1,3506 @@
+{
+  "collected_at": "2026-11-27T01:39:37.751058+09:00",
+  "repository": "100-hours-a-week/KTB4-13th-BE",
+  "workflow": "ci.yml",
+  "run_limit": 60,
+  "records": [
+    {
+      "run_id": 45835850803,
+      "event": "pull_request",
+      "created_at": "2026-11-26T14:07:35Z",
+      "head_sha": "5e6b35d4730812258e8ef962fe00d7615340da1e",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000217607",
+      "job_seconds": 384.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 366.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 5.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 45417636594,
+      "event": "pull_request",
+      "created_at": "2026-11-24T14:45:22Z",
+      "head_sha": "7a2a220c15c54844c6cbd69a8d2ae8ab8f3505ad",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000217398",
+      "job_seconds": 372.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 6.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 354.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 4.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 45021416705,
+      "event": "pull_request",
+      "created_at": "2026-11-22T12:16:23Z",
+      "head_sha": "8681f29896beaf4b89371de76301dc1d38959d70",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000217074",
+      "job_seconds": 293.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 283.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44993909931,
+      "event": "pull_request",
+      "created_at": "2026-11-22T06:29:00Z",
+      "head_sha": "7a2a220c15c54844c6cbd69a8d2ae8ab8f3505ad",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000217060",
+      "job_seconds": 382.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 6.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 364.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44993908364,
+      "event": "pull_request",
+      "created_at": "2026-11-22T06:28:59Z",
+      "head_sha": "554427d007b33e88f4913041fe648168494ff17a",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000217059",
+      "job_seconds": 302.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 2.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 4.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 286.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44993905988,
+      "event": "pull_request",
+      "created_at": "2026-11-22T06:28:57Z",
+      "head_sha": "94382bf6807a222b1a444c111558087c9e9250ce",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000217056",
+      "job_seconds": 277.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 264.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44993884820,
+      "event": "pull_request",
+      "created_at": "2026-11-22T06:28:40Z",
+      "head_sha": "554427d007b33e88f4913041fe648168494ff17a",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000217053",
+      "job_seconds": 336.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 5.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 319.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44993884047,
+      "event": "pull_request",
+      "created_at": "2026-11-22T06:28:39Z",
+      "head_sha": "554427d007b33e88f4913041fe648168494ff17a",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000217047",
+      "job_seconds": 317.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 303.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44993883928,
+      "event": "pull_request",
+      "created_at": "2026-11-22T06:28:39Z",
+      "head_sha": "7a2a220c15c54844c6cbd69a8d2ae8ab8f3505ad",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000217045",
+      "job_seconds": 288.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 279.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44849300353,
+      "event": "pull_request",
+      "created_at": "2026-11-21T01:17:37Z",
+      "head_sha": "520109ac94edf1cdcc1fa3356de59042c346a4fe",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216676",
+      "job_seconds": 361.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 2.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 344.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44849299486,
+      "event": "pull_request",
+      "created_at": "2026-11-21T01:17:36Z",
+      "head_sha": "520109ac94edf1cdcc1fa3356de59042c346a4fe",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216673",
+      "job_seconds": 372.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 7.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 352.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44849198757,
+      "event": "pull_request",
+      "created_at": "2026-11-21T01:16:40Z",
+      "head_sha": "d70e4fe7d6b3b2fbb08fa75e66d4dac8a117e362",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216669",
+      "job_seconds": 354.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 0.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 343.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 1.0
+        }
+      ]
+    },
+    {
+      "run_id": 44849198430,
+      "event": "pull_request",
+      "created_at": "2026-11-21T01:16:40Z",
+      "head_sha": "d70e4fe7d6b3b2fbb08fa75e66d4dac8a117e362",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216667",
+      "job_seconds": 299.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 5.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 286.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 1.0
+        }
+      ]
+    },
+    {
+      "run_id": 44848932910,
+      "event": "pull_request",
+      "created_at": "2026-11-21T01:14:09Z",
+      "head_sha": "13bfb30cfeb7ed60371dffcd610e38bed7585bfe",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216665",
+      "job_seconds": 340.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 329.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44846726776,
+      "event": "pull_request",
+      "created_at": "2026-11-21T00:53:00Z",
+      "head_sha": "13bfb30cfeb7ed60371dffcd610e38bed7585bfe",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216643",
+      "job_seconds": 366.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 2.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 351.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44846691158,
+      "event": "pull_request",
+      "created_at": "2026-11-21T00:52:40Z",
+      "head_sha": "13bfb30cfeb7ed60371dffcd610e38bed7585bfe",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216640",
+      "job_seconds": 328.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 317.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44777473056,
+      "event": "pull_request",
+      "created_at": "2026-11-20T16:51:04Z",
+      "head_sha": "3d6ee859f6516e798e27e5f2c9b832e86325834d",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216186",
+      "job_seconds": 421.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 406.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44777468313,
+      "event": "pull_request",
+      "created_at": "2026-11-20T16:51:02Z",
+      "head_sha": "6cba646727e68129e8037b7d599fa4de831c0af1",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216184",
+      "job_seconds": 354.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 342.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44777458309,
+      "event": "pull_request",
+      "created_at": "2026-11-20T16:50:59Z",
+      "head_sha": "c00c41355e8fbfb0312839ec439e4f29e6980f01",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216180",
+      "job_seconds": 332.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 5.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 316.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44777411186,
+      "event": "pull_request",
+      "created_at": "2026-11-20T16:50:41Z",
+      "head_sha": "986dae2f98d0c1af67b99ea0f31e2d5524d345a4",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216174",
+      "job_seconds": 396.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 2.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 371.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 13.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44771293900,
+      "event": "pull_request",
+      "created_at": "2026-11-20T16:14:08Z",
+      "head_sha": "3d6ee859f6516e798e27e5f2c9b832e86325834d",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216131",
+      "job_seconds": 422.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 3.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 408.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44771292148,
+      "event": "pull_request",
+      "created_at": "2026-11-20T16:14:07Z",
+      "head_sha": "6cba646727e68129e8037b7d599fa4de831c0af1",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216129",
+      "job_seconds": 420.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 409.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44771289332,
+      "event": "pull_request",
+      "created_at": "2026-11-20T16:14:07Z",
+      "head_sha": "c00c41355e8fbfb0312839ec439e4f29e6980f01",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216127",
+      "job_seconds": 327.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 312.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44771211147,
+      "event": "pull_request",
+      "created_at": "2026-11-20T16:13:40Z",
+      "head_sha": "3d6ee859f6516e798e27e5f2c9b832e86325834d",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216125",
+      "job_seconds": 507.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 2.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 431.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 3.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 61.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44771200669,
+      "event": "pull_request",
+      "created_at": "2026-11-20T16:13:36Z",
+      "head_sha": "6cba646727e68129e8037b7d599fa4de831c0af1",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216117",
+      "job_seconds": 330.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 317.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44771051707,
+      "event": "pull_request",
+      "created_at": "2026-11-20T16:12:43Z",
+      "head_sha": "c00c41355e8fbfb0312839ec439e4f29e6980f01",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000216113",
+      "job_seconds": 372.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 3.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 6.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 353.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44695109645,
+      "event": "pull_request",
+      "created_at": "2026-11-20T07:27:33Z",
+      "head_sha": "3f012efa1cfac4ed1b581840149e8619d50f8c64",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215466",
+      "job_seconds": 375.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 3.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 358.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44691582152,
+      "event": "push",
+      "created_at": "2026-11-20T06:58:43Z",
+      "head_sha": "5436adf82d87d105cd6110801a45791932c45f18",
+      "job": "Publish backend image",
+      "runner": "GitHub Actions 1000215404",
+      "job_seconds": 87.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 4.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 4.0
+        },
+        {
+          "name": "Validate image publishing configuration",
+          "seconds": 0.0
+        },
+        {
+          "name": "Configure AWS credentials",
+          "seconds": 1.0
+        },
+        {
+          "name": "Log in to Amazon ECR",
+          "seconds": 4.0
+        },
+        {
+          "name": "Build and push Docker image",
+          "seconds": 71.0
+        },
+        {
+          "name": "Post Log in to Amazon ECR",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Configure AWS credentials",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44691582152,
+      "event": "push",
+      "created_at": "2026-11-20T06:58:43Z",
+      "head_sha": "5436adf82d87d105cd6110801a45791932c45f18",
+      "job": "Notify Cloud repository for Dev deployment",
+      "runner": "GitHub Actions 1000215409",
+      "job_seconds": 5.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Dispatch Dev deployment",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44691575330,
+      "event": "push",
+      "created_at": "2026-11-20T06:58:39Z",
+      "head_sha": "26cb927117d36def59f61f9d12816aaf68195a22",
+      "job": "Publish backend image",
+      "runner": "GitHub Actions 1000215402",
+      "job_seconds": 101.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate image publishing configuration",
+          "seconds": 0.0
+        },
+        {
+          "name": "Configure AWS credentials",
+          "seconds": 1.0
+        },
+        {
+          "name": "Log in to Amazon ECR",
+          "seconds": 2.0
+        },
+        {
+          "name": "Build and push Docker image",
+          "seconds": 91.0
+        },
+        {
+          "name": "Post Log in to Amazon ECR",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Configure AWS credentials",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44691575330,
+      "event": "push",
+      "created_at": "2026-11-20T06:58:39Z",
+      "head_sha": "26cb927117d36def59f61f9d12816aaf68195a22",
+      "job": "Notify Cloud repository for Dev deployment",
+      "runner": "GitHub Actions 1000215412",
+      "job_seconds": 3.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 0.0
+        },
+        {
+          "name": "Dispatch Dev deployment",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44691569162,
+      "event": "push",
+      "created_at": "2026-11-20T06:58:36Z",
+      "head_sha": "f33df2be67867f51d38122a50929fc999be05d4e",
+      "job": "Publish backend image",
+      "runner": "GitHub Actions 1000215400",
+      "job_seconds": 98.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate image publishing configuration",
+          "seconds": 0.0
+        },
+        {
+          "name": "Configure AWS credentials",
+          "seconds": 1.0
+        },
+        {
+          "name": "Log in to Amazon ECR",
+          "seconds": 2.0
+        },
+        {
+          "name": "Build and push Docker image",
+          "seconds": 88.0
+        },
+        {
+          "name": "Post Log in to Amazon ECR",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Configure AWS credentials",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44691569162,
+      "event": "push",
+      "created_at": "2026-11-20T06:58:36Z",
+      "head_sha": "f33df2be67867f51d38122a50929fc999be05d4e",
+      "job": "Notify Cloud repository for Dev deployment",
+      "runner": "GitHub Actions 1000215410",
+      "job_seconds": 6.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 2.0
+        },
+        {
+          "name": "Dispatch Dev deployment",
+          "seconds": 2.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44691562783,
+      "event": "push",
+      "created_at": "2026-11-20T06:58:32Z",
+      "head_sha": "a9436bef29c66b6d4b9252e09c6fb9f5e0e2ca8e",
+      "job": "Publish backend image",
+      "runner": "GitHub Actions 1000215397",
+      "job_seconds": 87.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 2.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate image publishing configuration",
+          "seconds": 0.0
+        },
+        {
+          "name": "Configure AWS credentials",
+          "seconds": 1.0
+        },
+        {
+          "name": "Log in to Amazon ECR",
+          "seconds": 2.0
+        },
+        {
+          "name": "Build and push Docker image",
+          "seconds": 77.0
+        },
+        {
+          "name": "Post Log in to Amazon ECR",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Configure AWS credentials",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44691562783,
+      "event": "push",
+      "created_at": "2026-11-20T06:58:32Z",
+      "head_sha": "a9436bef29c66b6d4b9252e09c6fb9f5e0e2ca8e",
+      "job": "Notify Cloud repository for Dev deployment",
+      "runner": "GitHub Actions 1000215406",
+      "job_seconds": 5.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Dispatch Dev deployment",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44689935525,
+      "event": "push",
+      "created_at": "2026-11-20T06:44:28Z",
+      "head_sha": "fa1437b6d5af10220360c7ba2b54cda89997cf15",
+      "job": "Publish backend image",
+      "runner": "GitHub Actions 1000215375",
+      "job_seconds": 89.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 3.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 5.0
+        },
+        {
+          "name": "Validate image publishing configuration",
+          "seconds": 0.0
+        },
+        {
+          "name": "Configure AWS credentials",
+          "seconds": 1.0
+        },
+        {
+          "name": "Log in to Amazon ECR",
+          "seconds": 4.0
+        },
+        {
+          "name": "Build and push Docker image",
+          "seconds": 71.0
+        },
+        {
+          "name": "Post Log in to Amazon ECR",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Configure AWS credentials",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44689935525,
+      "event": "push",
+      "created_at": "2026-11-20T06:44:28Z",
+      "head_sha": "fa1437b6d5af10220360c7ba2b54cda89997cf15",
+      "job": "Notify Cloud repository for Dev deployment",
+      "runner": "GitHub Actions 1000215377",
+      "job_seconds": 3.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Dispatch Dev deployment",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44689327979,
+      "event": "push",
+      "created_at": "2026-11-20T06:39:21Z",
+      "head_sha": "917585dd02b8cad2f0a7d361c4d2cc77dadc1d10",
+      "job": "Publish backend image",
+      "runner": "GitHub Actions 1000215359",
+      "job_seconds": 105.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate image publishing configuration",
+          "seconds": 0.0
+        },
+        {
+          "name": "Configure AWS credentials",
+          "seconds": 2.0
+        },
+        {
+          "name": "Log in to Amazon ECR",
+          "seconds": 2.0
+        },
+        {
+          "name": "Build and push Docker image",
+          "seconds": 97.0
+        },
+        {
+          "name": "Post Log in to Amazon ECR",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Configure AWS credentials",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44689327979,
+      "event": "push",
+      "created_at": "2026-11-20T06:39:21Z",
+      "head_sha": "917585dd02b8cad2f0a7d361c4d2cc77dadc1d10",
+      "job": "Notify Cloud repository for Dev deployment",
+      "runner": "GitHub Actions 1000215369",
+      "job_seconds": 3.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Dispatch Dev deployment",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44687226980,
+      "event": "pull_request",
+      "created_at": "2026-11-20T06:21:32Z",
+      "head_sha": "1e1c15bf3cd1f99d1a653d6971a7bf85944a7512",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215338",
+      "job_seconds": 367.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 5.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 350.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44687209582,
+      "event": "pull_request",
+      "created_at": "2026-11-20T06:21:23Z",
+      "head_sha": "1e1c15bf3cd1f99d1a653d6971a7bf85944a7512",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215337",
+      "job_seconds": 332.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 319.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44687082599,
+      "event": "pull_request",
+      "created_at": "2026-11-20T06:20:18Z",
+      "head_sha": "8c99ba9284a872aaeea7720b285167ed42d17162",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215326",
+      "job_seconds": 329.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 318.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44687045374,
+      "event": "pull_request",
+      "created_at": "2026-11-20T06:20:01Z",
+      "head_sha": "8c99ba9284a872aaeea7720b285167ed42d17162",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215319",
+      "job_seconds": 349.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 338.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44686983766,
+      "event": "pull_request",
+      "created_at": "2026-11-20T06:19:29Z",
+      "head_sha": "d85caa416d4e7eceb37d42fd7959a22d0758858d",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215316",
+      "job_seconds": 289.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 2.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 275.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44686753865,
+      "event": "pull_request",
+      "created_at": "2026-11-20T06:17:29Z",
+      "head_sha": "bc9ae94a6de51722640daef96bdfe0e6a286b7e8",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215314",
+      "job_seconds": 337.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 325.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44686640781,
+      "event": "pull_request",
+      "created_at": "2026-11-20T06:16:29Z",
+      "head_sha": "bc9ae94a6de51722640daef96bdfe0e6a286b7e8",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215309",
+      "job_seconds": 319.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 307.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44686188901,
+      "event": "pull_request",
+      "created_at": "2026-11-20T06:12:39Z",
+      "head_sha": "fff93f2ab958e65fc4d12b99302f42d679bf262e",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215304",
+      "job_seconds": 356.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 6.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 338.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44685343593,
+      "event": "push",
+      "created_at": "2026-11-20T06:05:28Z",
+      "head_sha": "f83e11036adc2c34a695c8cfb9ac5673394cf6cb",
+      "job": "Publish backend image",
+      "runner": "GitHub Actions 1000215287",
+      "job_seconds": 94.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate image publishing configuration",
+          "seconds": 0.0
+        },
+        {
+          "name": "Configure AWS credentials",
+          "seconds": 1.0
+        },
+        {
+          "name": "Log in to Amazon ECR",
+          "seconds": 2.0
+        },
+        {
+          "name": "Build and push Docker image",
+          "seconds": 85.0
+        },
+        {
+          "name": "Post Log in to Amazon ECR",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Configure AWS credentials",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44685343593,
+      "event": "push",
+      "created_at": "2026-11-20T06:05:28Z",
+      "head_sha": "f83e11036adc2c34a695c8cfb9ac5673394cf6cb",
+      "job": "Notify Cloud repository for Dev deployment",
+      "runner": "GitHub Actions 1000215288",
+      "job_seconds": 3.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Dispatch Dev deployment",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44684714901,
+      "event": "pull_request",
+      "created_at": "2026-11-20T06:00:06Z",
+      "head_sha": "a463ef44282b3a1ecd4044c64fea49e51d8ffad7",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215273",
+      "job_seconds": 364.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 5.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 345.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 3.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44684408701,
+      "event": "pull_request",
+      "created_at": "2026-11-20T05:57:09Z",
+      "head_sha": "a463ef44282b3a1ecd4044c64fea49e51d8ffad7",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215265",
+      "job_seconds": 325.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 311.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 44681761074,
+      "event": "pull_request",
+      "created_at": "2026-11-20T05:33:01Z",
+      "head_sha": "fde6ac9ebb569d600881773a294018614c01d110",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215231",
+      "job_seconds": 328.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 317.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43900310429,
+      "event": "pull_request",
+      "created_at": "2026-11-16T15:47:58Z",
+      "head_sha": "ba19347d385f586face155b7b56d859923aecdb9",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000209786",
+      "job_seconds": 364.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 5.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 345.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43899817689,
+      "event": "pull_request",
+      "created_at": "2026-11-16T15:45:21Z",
+      "head_sha": "ba19347d385f586face155b7b56d859923aecdb9",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000209783",
+      "job_seconds": 349.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 332.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43814825139,
+      "event": "pull_request",
+      "created_at": "2026-11-16T06:09:16Z",
+      "head_sha": "07bfdc5df4d930b9d130add8241c001b0dbaad9f",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000208947",
+      "job_seconds": 359.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 348.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43814443533,
+      "event": "pull_request",
+      "created_at": "2026-11-16T06:05:42Z",
+      "head_sha": "07bfdc5df4d930b9d130add8241c001b0dbaad9f",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000208925",
+      "job_seconds": 423.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 407.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43744207723,
+      "event": "pull_request",
+      "created_at": "2026-11-15T17:59:58Z",
+      "head_sha": "bebd40bc364e621e90a250729de5cc45f725b627",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000207601",
+      "job_seconds": 353.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 338.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43733681515,
+      "event": "pull_request",
+      "created_at": "2026-11-15T16:07:25Z",
+      "head_sha": "764e6cae14878fee355fbf5fb2c7efea89317ca5",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000207484",
+      "job_seconds": 379.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 367.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43558553251,
+      "event": "pull_request",
+      "created_at": "2026-11-14T04:49:46Z",
+      "head_sha": "fe857a937793b5d024663d22532a26c9b3826ba0",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000205023",
+      "job_seconds": 363.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 354.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43558506883,
+      "event": "pull_request",
+      "created_at": "2026-11-14T04:49:09Z",
+      "head_sha": "fe857a937793b5d024663d22532a26c9b3826ba0",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000205018",
+      "job_seconds": 401.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 390.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43554016058,
+      "event": "pull_request",
+      "created_at": "2026-11-14T03:54:52Z",
+      "head_sha": "c68964b9ec941b6e89a35dc1dea65d30dcaf8c76",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000215315",
+      "job_seconds": 325.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 5.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 309.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43552852909,
+      "event": "pull_request",
+      "created_at": "2026-11-14T03:40:39Z",
+      "head_sha": "c68964b9ec941b6e89a35dc1dea65d30dcaf8c76",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000204947",
+      "job_seconds": 325.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 310.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 0.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43551481915,
+      "event": "pull_request",
+      "created_at": "2026-11-14T03:24:34Z",
+      "head_sha": "4b4ee3bbebc9374a8bd09c5c9f356452d0f8715c",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000204929",
+      "job_seconds": 411.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 1.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 2.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 399.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 1.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 43551084263,
+      "event": "pull_request",
+      "created_at": "2026-11-14T03:20:07Z",
+      "head_sha": "4b4ee3bbebc9374a8bd09c5c9f356452d0f8715c",
+      "job": "Gradle check",
+      "runner": "GitHub Actions 1000204918",
+      "job_seconds": 349.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "seconds": 3.0
+        },
+        {
+          "name": "Check out repository",
+          "seconds": 5.0
+        },
+        {
+          "name": "Set up Java",
+          "seconds": 1.0
+        },
+        {
+          "name": "Grant Gradle wrapper execute permission",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run Gradle check",
+          "seconds": 324.0
+        },
+        {
+          "name": "Verify automation and coverage output",
+          "seconds": 3.0
+        },
+        {
+          "name": "Upload JaCoCo report",
+          "seconds": 2.0
+        },
+        {
+          "name": "Upload test diagnostics",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Set up Java",
+          "seconds": 4.0
+        },
+        {
+          "name": "Post Check out repository",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "seconds": 1.0
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "Gradle check": {
+      "job_seconds": {
+        "n": 50,
+        "median": 353.5,
+        "q1": 327.75,
+        "q3": 372.75,
+        "min": 277.0,
+        "max": 507.0
+      },
+      "steps": {
+        "Set up job": {
+          "n": 50,
+          "median": 1.0,
+          "q1": 1.0,
+          "q3": 1.0,
+          "min": 0.0,
+          "max": 3.0
+        },
+        "Check out repository": {
+          "n": 50,
+          "median": 2.0,
+          "q1": 2.0,
+          "q3": 2.0,
+          "min": 1.0,
+          "max": 5.0
+        },
+        "Set up Java": {
+          "n": 50,
+          "median": 3.0,
+          "q1": 1.0,
+          "q3": 4.25,
+          "min": 0.0,
+          "max": 7.0
+        },
+        "Grant Gradle wrapper execute permission": {
+          "n": 50,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0.0,
+          "max": 1.0
+        },
+        "Run Gradle check": {
+          "n": 50,
+          "median": 338.0,
+          "q1": 315.0,
+          "q3": 355.0,
+          "min": 264.0,
+          "max": 431.0
+        },
+        "Verify automation and coverage output": {
+          "n": 50,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 1.0,
+          "min": 0.0,
+          "max": 3.0
+        },
+        "Upload JaCoCo report": {
+          "n": 50,
+          "median": 2.0,
+          "q1": 1.0,
+          "q3": 2.0,
+          "min": 1.0,
+          "max": 2.0
+        },
+        "Upload test diagnostics": {
+          "n": 50,
+          "median": 2.0,
+          "q1": 2.0,
+          "q3": 3.0,
+          "min": 1.0,
+          "max": 4.0
+        },
+        "Post Set up Java": {
+          "n": 50,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 1.25,
+          "min": 0.0,
+          "max": 61.0
+        },
+        "Post Check out repository": {
+          "n": 50,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0.0,
+          "max": 1.0
+        },
+        "Complete job": {
+          "n": 50,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0.0,
+          "max": 1.0
+        }
+      }
+    },
+    "Publish backend image": {
+      "job_seconds": {
+        "n": 7,
+        "median": 94.0,
+        "q1": 87.0,
+        "q3": 101.0,
+        "min": 87.0,
+        "max": 105.0
+      },
+      "steps": {
+        "Set up job": {
+          "n": 7,
+          "median": 1.0,
+          "q1": 1.0,
+          "q3": 3.0,
+          "min": 1.0,
+          "max": 4.0
+        },
+        "Check out repository": {
+          "n": 7,
+          "median": 2.0,
+          "q1": 2.0,
+          "q3": 4.0,
+          "min": 1.0,
+          "max": 5.0
+        },
+        "Validate image publishing configuration": {
+          "n": 7,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "Configure AWS credentials": {
+          "n": 7,
+          "median": 1.0,
+          "q1": 1.0,
+          "q3": 1.0,
+          "min": 1.0,
+          "max": 2.0
+        },
+        "Log in to Amazon ECR": {
+          "n": 7,
+          "median": 2.0,
+          "q1": 2.0,
+          "q3": 4.0,
+          "min": 2.0,
+          "max": 4.0
+        },
+        "Build and push Docker image": {
+          "n": 7,
+          "median": 85.0,
+          "q1": 71.0,
+          "q3": 91.0,
+          "min": 71.0,
+          "max": 97.0
+        },
+        "Post Log in to Amazon ECR": {
+          "n": 7,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0.0,
+          "max": 1.0
+        },
+        "Post Configure AWS credentials": {
+          "n": 7,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0.0,
+          "max": 1.0
+        },
+        "Post Check out repository": {
+          "n": 7,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0.0,
+          "max": 1.0
+        },
+        "Complete job": {
+          "n": 7,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      }
+    },
+    "Notify Cloud repository for Dev deployment": {
+      "job_seconds": {
+        "n": 7,
+        "median": 3.0,
+        "q1": 3.0,
+        "q3": 5.0,
+        "min": 3.0,
+        "max": 6.0
+      },
+      "steps": {
+        "Set up job": {
+          "n": 7,
+          "median": 1.0,
+          "q1": 1.0,
+          "q3": 1.0,
+          "min": 0.0,
+          "max": 2.0
+        },
+        "Dispatch Dev deployment": {
+          "n": 7,
+          "median": 1.0,
+          "q1": 1.0,
+          "q3": 1.0,
+          "min": 0.0,
+          "max": 2.0
+        },
+        "Complete job": {
+          "n": 7,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      }
+    }
+  }
+}

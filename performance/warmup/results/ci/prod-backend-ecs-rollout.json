@@ -1,0 +1,12 @@
+{
+  "source": "KTB4-13th-CLOUD cd.yml 'Deploy release' job log: '새 task definition을 등록했습니다: ...prod-app-task' → 'backend ECS 배포가 안정 상태에 도달했습니다'",
+  "note": "안정 상태 판정은 deploy_ecs_service_prod.sh 기준(PRIMARY COMPLETED, running == desired). 새 태스크 이미지 pull·기동·헬스체크와 기존 태스크 drain이 모두 포함되며 구간별 분해는 AWS 조회 권한이 없어 미측정.",
+  "collected_at": "2026-11-27",
+  "runs": [
+    {"run_id": 43168531920, "registered": "2026-11-12T06:30:56Z", "stable": "2026-11-12T06:46:15Z", "seconds": 919, "task_definition": "prod-app-task:29"},
+    {"run_id": 43127161894, "registered": "2026-11-12T00:26:29Z", "stable": "2026-11-12T00:41:23Z", "seconds": 894, "task_definition": "prod-app-task:26"},
+    {"run_id": 39723607011, "registered": "2026-10-22T04:47:54Z", "stable": "2026-10-22T04:55:33Z", "seconds": 459, "task_definition": "prod-app-task:12"},
+    {"run_id": 39597464000, "registered": "2026-10-21T12:18:43Z", "stable": "2026-10-21T12:26:07Z", "seconds": 444, "task_definition": "prod-app-task:11"},
+    {"run_id": 39566513629, "registered": "2026-10-21T08:12:36Z", "stable": "2026-10-21T08:20:20Z", "seconds": 464, "task_definition": "prod-app-task:10"}
+  ]
+}

@@ -1,0 +1,487 @@
+{
+  "collected_at": "2026-11-27T01:41:52.899866+09:00",
+  "records": [
+    {
+      "run_id": 44691582152,
+      "created_at": "2026-11-20T06:58:43Z",
+      "gradle_download_seconds": 2.402018,
+      "gradle_boot_jar_seconds": 50.0,
+      "gradle_reported": "49s",
+      "image_export_seconds": 2.103996,
+      "push_seconds": 7.500178,
+      "docker_step_total_seconds": 71.076863,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 44691575330,
+      "created_at": "2026-11-20T06:58:39Z",
+      "gradle_download_seconds": 3.469325,
+      "gradle_boot_jar_seconds": 68.8,
+      "gradle_reported": "1m",
+      "image_export_seconds": 3.025834,
+      "push_seconds": 11.297681,
+      "docker_step_total_seconds": 90.620845,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 44691569162,
+      "created_at": "2026-11-20T06:58:36Z",
+      "gradle_download_seconds": 3.050187,
+      "gradle_boot_jar_seconds": 68.6,
+      "gradle_reported": "1m",
+      "image_export_seconds": 2.999058,
+      "push_seconds": 7.894655,
+      "docker_step_total_seconds": 87.779765,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 44691562783,
+      "created_at": "2026-11-20T06:58:32Z",
+      "gradle_download_seconds": 2.186714,
+      "gradle_boot_jar_seconds": 54.2,
+      "gradle_reported": "52s",
+      "image_export_seconds": 2.170707,
+      "push_seconds": 8.670249,
+      "docker_step_total_seconds": 76.547829,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 44689935525,
+      "created_at": "2026-11-20T06:44:28Z",
+      "gradle_download_seconds": 2.069096,
+      "gradle_boot_jar_seconds": 51.4,
+      "gradle_reported": "51s",
+      "image_export_seconds": 2.127186,
+      "push_seconds": 7.437479,
+      "docker_step_total_seconds": 71.718868,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 44689327979,
+      "created_at": "2026-11-20T06:39:21Z",
+      "gradle_download_seconds": 2.556075,
+      "gradle_boot_jar_seconds": 66.0,
+      "gradle_reported": "1m",
+      "image_export_seconds": 3.484819,
+      "push_seconds": 10.588207,
+      "docker_step_total_seconds": 96.619819,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 44685343593,
+      "created_at": "2026-11-20T06:05:28Z",
+      "gradle_download_seconds": 2.716727,
+      "gradle_boot_jar_seconds": 64.3,
+      "gradle_reported": "1m",
+      "image_export_seconds": 2.95412,
+      "push_seconds": 10.365596,
+      "docker_step_total_seconds": 85.341219,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43466433732,
+      "created_at": "2026-11-13T16:48:33Z",
+      "gradle_download_seconds": 2.94569,
+      "gradle_boot_jar_seconds": 71.6,
+      "gradle_reported": "1m",
+      "image_export_seconds": 0.000178,
+      "push_seconds": 8.48719,
+      "docker_step_total_seconds": 98.670121,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43466420975,
+      "created_at": "2026-11-13T16:48:29Z",
+      "gradle_download_seconds": 1.929996,
+      "gradle_boot_jar_seconds": 53.2,
+      "gradle_reported": "51s",
+      "image_export_seconds": 2.127611,
+      "push_seconds": 8.505773,
+      "docker_step_total_seconds": 75.193437,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43458068629,
+      "created_at": "2026-11-13T15:59:10Z",
+      "gradle_download_seconds": 2.460311,
+      "gradle_boot_jar_seconds": 66.5,
+      "gradle_reported": "1m",
+      "image_export_seconds": 2.81906,
+      "push_seconds": 9.968039,
+      "docker_step_total_seconds": 90.654412,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43455572867,
+      "created_at": "2026-11-13T15:44:08Z",
+      "gradle_download_seconds": 2.316952,
+      "gradle_boot_jar_seconds": 59.5,
+      "gradle_reported": "58s",
+      "image_export_seconds": 2.77755,
+      "push_seconds": 11.122041,
+      "docker_step_total_seconds": 88.666718,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43451623638,
+      "created_at": "2026-11-13T15:20:27Z",
+      "gradle_download_seconds": 2.332655,
+      "gradle_boot_jar_seconds": 59.6,
+      "gradle_reported": "57s",
+      "image_export_seconds": 2.797378,
+      "push_seconds": 10.82254,
+      "docker_step_total_seconds": 85.72253,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43447630142,
+      "created_at": "2026-11-13T14:56:57Z",
+      "gradle_download_seconds": 3.046622,
+      "gradle_boot_jar_seconds": 67.4,
+      "gradle_reported": "1m",
+      "image_export_seconds": 3.075799,
+      "push_seconds": 11.225512,
+      "docker_step_total_seconds": 89.236291,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43447619889,
+      "created_at": "2026-11-13T14:56:54Z",
+      "gradle_download_seconds": 2.91788,
+      "gradle_boot_jar_seconds": 69.3,
+      "gradle_reported": "1m",
+      "image_export_seconds": 4.1e-05,
+      "push_seconds": 8.253491,
+      "docker_step_total_seconds": 93.13146,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43380043967,
+      "created_at": "2026-11-13T06:37:57Z",
+      "gradle_download_seconds": 2.87398,
+      "gradle_boot_jar_seconds": 62.8,
+      "gradle_reported": "1m",
+      "image_export_seconds": 3.433499,
+      "push_seconds": 10.486971,
+      "docker_step_total_seconds": 89.542745,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43372913772,
+      "created_at": "2026-11-13T05:34:35Z",
+      "gradle_download_seconds": 2.354173,
+      "gradle_boot_jar_seconds": 51.6,
+      "gradle_reported": "51s",
+      "image_export_seconds": 2.143719,
+      "push_seconds": 7.83502,
+      "docker_step_total_seconds": 71.035325,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43260238356,
+      "created_at": "2026-11-12T16:34:57Z",
+      "gradle_download_seconds": 2.676915,
+      "gradle_boot_jar_seconds": 61.4,
+      "gradle_reported": "1m",
+      "image_export_seconds": 2.812318,
+      "push_seconds": 11.130747,
+      "docker_step_total_seconds": 86.835569,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43159921378,
+      "created_at": "2026-11-12T05:13:23Z",
+      "gradle_download_seconds": 1.904871,
+      "gradle_boot_jar_seconds": 59.3,
+      "gradle_reported": "57s",
+      "image_export_seconds": 2.401231,
+      "push_seconds": 10.003293,
+      "docker_step_total_seconds": 83.981356,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43159105861,
+      "created_at": "2026-11-12T05:06:12Z",
+      "gradle_download_seconds": 1.982372,
+      "gradle_boot_jar_seconds": 56.0,
+      "gradle_reported": "54s",
+      "image_export_seconds": 2.2111,
+      "push_seconds": 9.845014,
+      "docker_step_total_seconds": 78.501448,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43157256070,
+      "created_at": "2026-11-12T04:49:09Z",
+      "gradle_download_seconds": 2.492336,
+      "gradle_boot_jar_seconds": 56.6,
+      "gradle_reported": "55s",
+      "image_export_seconds": 2.196491,
+      "push_seconds": 10.1833,
+      "docker_step_total_seconds": 84.74475,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43156632045,
+      "created_at": "2026-11-12T04:43:16Z",
+      "gradle_download_seconds": 2.350705,
+      "gradle_boot_jar_seconds": 56.8,
+      "gradle_reported": "55s",
+      "image_export_seconds": 2.81238,
+      "push_seconds": 10.584595,
+      "docker_step_total_seconds": 81.91733,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43152670439,
+      "created_at": "2026-11-12T04:07:11Z",
+      "gradle_download_seconds": 2.38911,
+      "gradle_boot_jar_seconds": 60.5,
+      "gradle_reported": "58s",
+      "image_export_seconds": 2.832272,
+      "push_seconds": 8.109844,
+      "docker_step_total_seconds": 84.617741,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43152196592,
+      "created_at": "2026-11-12T04:02:59Z",
+      "gradle_download_seconds": 3.270343,
+      "gradle_boot_jar_seconds": 58.0,
+      "gradle_reported": "56s",
+      "image_export_seconds": 2.147279,
+      "push_seconds": 8.851236,
+      "docker_step_total_seconds": 80.888129,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43149739236,
+      "created_at": "2026-11-12T03:40:12Z",
+      "gradle_download_seconds": 2.671954,
+      "gradle_boot_jar_seconds": 57.5,
+      "gradle_reported": "55s",
+      "image_export_seconds": 2.360395,
+      "push_seconds": 9.753639,
+      "docker_step_total_seconds": 80.636071,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43149096164,
+      "created_at": "2026-11-12T03:34:18Z",
+      "gradle_download_seconds": 2.48769,
+      "gradle_boot_jar_seconds": 69.7,
+      "gradle_reported": "1m",
+      "image_export_seconds": 2.845901,
+      "push_seconds": 8.878375,
+      "docker_step_total_seconds": 99.176395,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43148461756,
+      "created_at": "2026-11-12T03:28:39Z",
+      "gradle_download_seconds": 2.830888,
+      "gradle_boot_jar_seconds": 69.3,
+      "gradle_reported": "1m",
+      "image_export_seconds": 3.191493,
+      "push_seconds": 11.399355,
+      "docker_step_total_seconds": 91.185327,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43139431350,
+      "created_at": "2026-11-12T02:09:32Z",
+      "gradle_download_seconds": 3.102596,
+      "gradle_boot_jar_seconds": 61.3,
+      "gradle_reported": "58s",
+      "image_export_seconds": 2.86096,
+      "push_seconds": 8.104886,
+      "docker_step_total_seconds": 86.521915,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43059573134,
+      "created_at": "2026-11-11T16:33:57Z",
+      "gradle_download_seconds": 3.180141,
+      "gradle_boot_jar_seconds": 71.4,
+      "gradle_reported": "1m",
+      "image_export_seconds": 3.14884,
+      "push_seconds": 11.171834,
+      "docker_step_total_seconds": 93.201764,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 43059333587,
+      "created_at": "2026-11-11T16:32:31Z",
+      "gradle_download_seconds": 3.09709,
+      "gradle_boot_jar_seconds": 88.9,
+      "gradle_reported": "1m",
+      "image_export_seconds": 3.182519,
+      "push_seconds": 9.662576,
+      "docker_step_total_seconds": 109.460078,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 42987649678,
+      "created_at": "2026-11-11T08:31:00Z",
+      "gradle_download_seconds": 2.61093,
+      "gradle_boot_jar_seconds": 67.9,
+      "gradle_reported": "1m",
+      "image_export_seconds": 3.048771,
+      "push_seconds": 7.98198,
+      "docker_step_total_seconds": 87.04627,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 42986318701,
+      "created_at": "2026-11-11T08:20:59Z",
+      "gradle_download_seconds": 3.927711,
+      "gradle_boot_jar_seconds": 59.5,
+      "gradle_reported": "58s",
+      "image_export_seconds": 2.770138,
+      "push_seconds": 9.783215,
+      "docker_step_total_seconds": 87.639332,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 42974089019,
+      "created_at": "2026-11-11T06:40:33Z",
+      "gradle_download_seconds": 3.010282,
+      "gradle_boot_jar_seconds": 67.4,
+      "gradle_reported": "1m",
+      "image_export_seconds": 3.082324,
+      "push_seconds": 8.371718,
+      "docker_step_total_seconds": 87.468124,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 42973670136,
+      "created_at": "2026-11-11T06:36:55Z",
+      "gradle_download_seconds": 3.077127,
+      "gradle_boot_jar_seconds": 71.7,
+      "gradle_reported": "1m",
+      "image_export_seconds": 2.908596,
+      "push_seconds": 9.069582,
+      "docker_step_total_seconds": 90.919216,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 42962639301,
+      "created_at": "2026-11-11T04:58:19Z",
+      "gradle_download_seconds": 2.212816,
+      "gradle_boot_jar_seconds": 51.9,
+      "gradle_reported": "50s",
+      "image_export_seconds": 1.721483,
+      "push_seconds": 8.620588,
+      "docker_step_total_seconds": 75.77224,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 42961152225,
+      "created_at": "2026-11-11T04:44:11Z",
+      "gradle_download_seconds": 3.091073,
+      "gradle_boot_jar_seconds": 59.9,
+      "gradle_reported": "58s",
+      "image_export_seconds": 2.9e-05,
+      "push_seconds": 7.082781,
+      "docker_step_total_seconds": 80.572863,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 42949016887,
+      "created_at": "2026-11-11T02:53:07Z",
+      "gradle_download_seconds": 2.800465,
+      "gradle_boot_jar_seconds": 59.8,
+      "gradle_reported": "58s",
+      "image_export_seconds": 1.857748,
+      "push_seconds": 8.571518,
+      "docker_step_total_seconds": 79.84225,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 42946102326,
+      "created_at": "2026-11-11T02:27:03Z",
+      "gradle_download_seconds": 5.297965,
+      "gradle_boot_jar_seconds": 54.7,
+      "gradle_reported": "53s",
+      "image_export_seconds": 1.476374,
+      "push_seconds": 7.919036,
+      "docker_step_total_seconds": 74.048786,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 42945288114,
+      "created_at": "2026-11-11T02:19:59Z",
+      "gradle_download_seconds": 2.966205,
+      "gradle_boot_jar_seconds": 55.1,
+      "gradle_reported": "53s",
+      "image_export_seconds": 1.95159,
+      "push_seconds": 8.52905,
+      "docker_step_total_seconds": 75.658006,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 42945253904,
+      "created_at": "2026-11-11T02:19:42Z",
+      "gradle_download_seconds": 3.106251,
+      "gradle_boot_jar_seconds": 60.2,
+      "gradle_reported": "59s",
+      "image_export_seconds": 2.022314,
+      "push_seconds": 8.077577,
+      "docker_step_total_seconds": 79.167667,
+      "base_image_cached": false
+    },
+    {
+      "run_id": 42945226536,
+      "created_at": "2026-11-11T02:19:29Z",
+      "gradle_download_seconds": 3.598061,
+      "gradle_boot_jar_seconds": 65.8,
+      "gradle_reported": "1m",
+      "image_export_seconds": 2.188176,
+      "push_seconds": 8.676706,
+      "docker_step_total_seconds": 84.032144,
+      "base_image_cached": false
+    }
+  ],
+  "summary": {
+    "gradle_download_seconds": {
+      "n": 40,
+      "median": 2.758596,
+      "q1": 2.36290725,
+      "q3": 3.0875865000000005,
+      "min": 1.904871,
+      "max": 5.297965
+    },
+    "gradle_boot_jar_seconds": {
+      "n": 40,
+      "median": 60.35,
+      "q1": 56.650000000000006,
+      "q3": 67.775,
+      "min": 50.0,
+      "max": 88.9
+    },
+    "image_export_seconds": {
+      "n": 40,
+      "median": 2.7738440000000004,
+      "q1": 2.12729225,
+      "q3": 2.9878234999999997,
+      "min": 2.9e-05,
+      "max": 3.484819
+    },
+    "push_seconds": {
+      "n": 40,
+      "median": 8.8648055,
+      "q1": 8.14575575,
+      "q3": 10.45662725,
+      "min": 7.082781,
+      "max": 11.399355
+    },
+    "docker_step_total_seconds": {
+      "n": 40,
+      "median": 85.5318745,
+      "q1": 79.33631274999999,
+      "q3": 90.35131999999999,
+      "min": 71.035325,
+      "max": 109.460078
+    }
+  }
+}

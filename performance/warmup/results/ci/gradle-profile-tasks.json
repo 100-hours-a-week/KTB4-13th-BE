@@ -1,0 +1,11 @@
+{
+  "source": "KTB4-13th-BE CI artifact test-diagnostics/reports/profile (./gradlew clean check bootJar --profile -x spotlessJava)",
+  "collected_at": "2026-11-27",
+  "runs": [
+    {"run_id": 44849300353, "total": "5m41.85s", "compileJava": "13.541s", "compileTestJava": "7.237s", "test": "1m13.48s", "integrationTest": "3m43.82s", "jacocoTestReport": "1.261s", "bootJar": "0.898s"},
+    {"run_id": 44993909931, "total": "6m3.21s", "compileJava": "14.294s", "compileTestJava": "7.518s", "test": "1m17.75s", "integrationTest": "4m5.04s", "jacocoTestReport": "1.247s", "bootJar": "1.293s"},
+    {"run_id": 45021416705, "total": "4m42.56s", "compileJava": "15.905s", "compileTestJava": "7.046s", "test": "54.808s", "integrationTest": "2m47.12s", "jacocoTestReport": "0.783s", "bootJar": "2.482s"},
+    {"run_id": 45417636594, "total": "5m52.18s", "compileJava": "13.716s", "compileTestJava": "7.955s", "test": "1m15.45s", "integrationTest": "3m53.50s", "jacocoTestReport": "1.199s", "bootJar": "1.199s"},
+    {"run_id": 45835850803, "total": "6m5.89s", "compileJava": "20.080s", "compileTestJava": "9.224s", "test": "1m2.73s", "integrationTest": "3m47.85s", "jacocoTestReport": "0.923s", "bootJar": "2.955s"}
+  ]
+}
